@@ -59,6 +59,11 @@ const isServerNonTestFile = (file) => (
   && !/\.test\.tsx?$/.test(file)
 );
 
+const sessionLifecycleInvalidationCallers = new Set([
+  'src/entities/SurfSession/model/usePublishedSession.ts',
+  'src/features/Upload/model/usePublishUploadSession.ts',
+]);
+
 const rules = [
   {
     id: 'no-route-panel-css-modules',
@@ -98,6 +103,12 @@ const rules = [
     pattern: /balance:\s*(\{\s*(increment|decrement)|-?\d)|\btransaction\.create(Many)?\(/,
     include: isServerNonTestFile,
     exclude: file => file === 'src/server/repositories/LedgerRepository.ts',
+  },
+  {
+    id: 'surf-session-owns-lifecycle-invalidation',
+    message: 'Session lifecycle projections must be invalidated through useSessionLifecycleInvalidation.',
+    pattern: /\btrpc\.sessions\.(?:list|mine|byId|media)\.(?:pathFilter|queryFilter)\b/,
+    include: file => sessionLifecycleInvalidationCallers.has(file),
   },
   {
     id: 'no-duplicated-flash-border',

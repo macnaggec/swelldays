@@ -146,8 +146,11 @@ describe('usePublishUploadSession', () => {
     // saveWorkspace has just moved the workspace to SAVED; getWorkspaceState only
     // serves ACTIVE workspaces, so refetching it here 404s (surfaced as a 500).
     expect(invalidatedKeys).not.toContain('uploads.getWorkspaceState');
-    // The owner-facing lists still refresh so the saved session shows up.
+    // The current-workspace indicator and the newly published session refresh.
     expect(invalidatedKeys).toContain('uploads.getActiveWorkspace');
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['sessions.byId', 'session-1'],
+    });
   });
 
   it('reports missing inputs in their visual order without saving', async () => {

@@ -4,6 +4,7 @@ import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { notify } from 'shared/lib/notifications';
 import { useTRPC } from 'shared/lib/trpc';
 import { MIN_MEDIA_PRICE_CENTS } from 'entities/Media';
+import { useSessionLifecycleInvalidation } from 'entities/SurfSession';
 import type { GalleryCard } from './types';
 import { useClearUploadQueue } from './useClearUploadQueue';
 import { getUploadQueueStatus } from './uploadQueuePolicy';
@@ -37,6 +38,7 @@ export function usePublishUploadSession({
 }: UsePublishUploadSessionOptions) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const invalidateSessionLifecycle = useSessionLifecycleInvalidation();
   const clearQueue = useClearUploadQueue();
   const { mutateAsync: saveWorkspace, isPending } = useMutation(
     trpc.uploads.saveWorkspace.mutationOptions({
@@ -48,14 +50,8 @@ export function usePublishUploadSession({
         // workspace → NotFound → HTTP 500. The query unmounts on navigation and its
         // stale cache is GC'd; there is no fresh state to fetch for a retired workspace.
         await Promise.all([
+          invalidateSessionLifecycle(result.id),
           queryClient.invalidateQueries(trpc.uploads.getActiveWorkspace.queryFilter()),
-          queryClient.invalidateQueries(trpc.sessions.list.pathFilter()),
-          queryClient.invalidateQueries(trpc.sessions.mine.queryFilter()),
-          queryClient.invalidateQueries(trpc.sessions.byId.queryFilter(result.id)),
-          queryClient.invalidateQueries(trpc.sessions.media.queryFilter(result.id)),
-          queryClient.invalidateQueries(trpc.users.myDraftCounts.queryFilter()),
-          queryClient.invalidateQueries(trpc.users.myUploads.queryFilter()),
-          queryClient.invalidateQueries(trpc.media.myDrafts.queryFilter()),
         ]);
       },
     }),

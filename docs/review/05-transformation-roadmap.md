@@ -2,12 +2,12 @@
 
 ## Executive summary
 
-- **Current state (verified 2026-07-20):** pre-launch solo-built marketplace, ~33.5k TypeScript LOC. The roadmap baseline through S3 passes all five mandatory gates locally (98 test files, 471/471 tests), and CI runs the full quality suite.
-- **Completed risk reduction:** the in-flight refactor is landed; gates and CI are operational; upload cleanup is scheduled with the destructive-boundary inverse test; the ledger invariant and single money write path are enforced; the media contract lineage and public storage-id exclusion are complete.
-- **Top current risks:** paid-but-unfulfilled orders remain invisible until L1 adds alerting/replay; the dev database has unresolved migration-history drift; signed-out carts are persisted locally but cleared on reload even though users may build a cart before authenticating; S4/S7 structural inconsistencies remain but are not launch-critical.
-- **Direction:** the roadmap has reached its stop-line, and the cheap product-truth decisions (S6 and Q4) are complete. Prefer product work unless the product backlog makes S4 or S7 immediately relevant. Keep S5 and L1–L6 deferred behind their documented triggers.
-- **Next action:** leave the architecture roadmap at its stop-line and choose the next product outcome; do not start S4/S7 merely because they are the next unchecked rows.
-- **Stop-line:** reached after S2+S3; do not start S4/S5/S7 by default. Validated adversarially in `06-roadmap-validation.md`; verdicts below are reconciled.
+- **Current state (verified 2026-07-20):** pre-launch solo-built marketplace, ~33.5k TypeScript LOC. The roadmap baseline through S7 passes all five mandatory gates locally (99 test files, 472/472 tests), and CI runs the full quality suite.
+- **Completed risk reduction:** the in-flight refactor is landed; gates and CI are operational; upload cleanup is scheduled with the destructive-boundary inverse test; the ledger invariant and single money write path are enforced; the media contract lineage, public storage-id exclusion, and session lifecycle cache ownership are complete.
+- **Top current risks:** paid-but-unfulfilled orders remain invisible until L1 adds alerting/replay; the dev database has unresolved migration-history drift; signed-out carts are persisted locally but cleared on reload even though users may build a cart before authenticating; S4's server dependency inconsistency remains but is not launch-critical.
+- **Direction:** the roadmap has reached its stop-line, and the cheap product-truth decisions (S6 and Q4) plus opportunistic S7 are complete. Prefer product work unless the product backlog makes S4 immediately relevant. Keep S5 and L1–L6 deferred behind their documented triggers.
+- **Next action:** leave the architecture roadmap at its stop-line and choose the next product outcome; do not start S4 merely because it is the next unchecked row.
+- **Stop-line:** reached after S2+S3; do not start S4/S5 by default. Validated adversarially in `06-roadmap-validation.md`; verdicts below are reconciled.
 
 ---
 
@@ -131,6 +131,10 @@ Findings from a live browser pass (signed-out + signed-in) and test audit that e
 
 - **Third balance writer found and consolidated:** the audit counted two `User.balance` writers, but `UserRepository.anonymizeAndDelete` was a third — it zeroed the balance and hand-created the FORFEIT transaction during account deletion. S1b moved all three behind tx-scoped `LedgerRepository.recordSale`/`forfeitBalance` (callers pass their `Prisma.TransactionClient`, so multi-table commits stay atomic). Enforcement: `ledger-owns-money-writes` rule in `check-style-boundaries.mjs` fails on balance-mutation shapes or `transaction.create` in any non-test `src/server/**` file outside `LedgerRepository.ts` (verified to fire on a deliberate violation).
 
+## Working notes (S7 session, 2026-07-20)
+
+- **Session lifecycle refresh policy is entity-owned:** `useSessionLifecycleInvalidation` is the single interface for invalidating the seven session-derived projections (session collections/detail/media, published uploads, draft presence, and draft media). Publish retains only active-workspace invalidation; start-edit retains active-workspace and workspace-state invalidation; retire has no operation-specific invalidation. The `surf-session-owns-lifecycle-invalidation` style-boundary rule rejects direct session projection invalidations in those callers (verified to fire on a deliberate violation).
+
 ## Working notes (S2 session, 2026-07-19)
 
 - **Lineage landed as `MediaCore` → `DraftMedia` / `PublishedMedia` / `PublicMedia` (+`PublicMediaPage`).** The full internal photographer shape is named `DraftMedia` (upload/own-media contract — the only projection carrying `cloudinaryPublicId`/`resource`); `PublicMedia` = `PublishedMedia` + `photographer` + `viewerEntitlement`. The three public endpoints (spot feed, session media, favorites) now return the identical `PublicMedia` shape — the feed previously leaked the full internal record and the endpoints disagreed on `photographer` presence. `AttributedPublishedMedia` (= `Omit<PublicMedia,'viewerEntitlement'>`) is the repo-layer pre-entitlement alias.
@@ -158,5 +162,5 @@ Status legend: ⬜ pending · 🚧 in progress · ✅ done · ⏸ deferred (need
 | S4 | Routes → services lint rules (sliver) | M | partial | ⬜ |
 | S5 | UploadWorkspaceRepository extraction | M | partial (conditional) | ⏸ |
 | S6 | Drive import: decide keep/remove | S (+M if remove) | yes (decision) | ✅ keep |
-| S7 | Entity-owned invalidation helpers | S | yes | ⬜ |
+| S7 | Entity-owned invalidation helpers | S | yes | ✅ |
 | L1–L6 | Deferred (see triggers) | — | yes (as deferrals) | ⏸ |

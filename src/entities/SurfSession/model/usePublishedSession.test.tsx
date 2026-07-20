@@ -42,6 +42,10 @@ vi.mock('shared/lib/trpc', () => ({
     },
     users: {
       myUploads: { queryFilter: queryFilter('users.myUploads') },
+      myDraftCounts: { queryFilter: queryFilter('users.myDraftCounts') },
+    },
+    media: {
+      myDrafts: { queryFilter: queryFilter('media.myDrafts') },
     },
   }),
 }));
@@ -51,7 +55,7 @@ beforeEach(() => {
 });
 
 describe('useStartSessionEdit', () => {
-  it('refreshes workspace and session projections after opening an edit workspace', async () => {
+  it('refreshes the edit workspace and composes session lifecycle invalidation', async () => {
     const { result } = renderHook(() => useStartSessionEdit());
 
     await act(async () => {
@@ -67,14 +71,11 @@ describe('useStartSessionEdit', () => {
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ['sessions.byId', 'session-1'],
     });
-    expect(mocks.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['sessions.media', 'session-1'],
-    });
   });
 });
 
 describe('useRetireSurfSession', () => {
-  it('refreshes session projections after removal', async () => {
+  it('composes session lifecycle invalidation after removal', async () => {
     const { result } = renderHook(() => useRetireSurfSession());
 
     await act(async () => {
@@ -82,17 +83,7 @@ describe('useRetireSurfSession', () => {
     });
 
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['sessions.mine', undefined],
-    });
-    expect(mocks.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ['sessions.byId', 'session-1'],
-    });
-    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['sessions.list'] });
-    expect(mocks.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['sessions.media', 'session-1'],
-    });
-    expect(mocks.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['users.myUploads', undefined],
     });
   });
 });
