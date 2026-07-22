@@ -12,7 +12,7 @@ import {
 } from 'features/Ledger';
 
 export const Route = createFileRoute('/_panel/me/earnings')({
-  staticData: { panelHeader: 'Earnings', panelMode: 'workspace' },
+  staticData: { panelHeader: 'Earnings' },
   component: EarningsRoute,
 });
 

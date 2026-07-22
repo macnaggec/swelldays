@@ -10,7 +10,7 @@ import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { signOut } from 'shared/lib/auth';
 
 export const Route = createFileRoute('/_panel/me/')({
-  staticData: { panelHeader: 'Account', panelMode: 'workspace' },
+  staticData: { panelHeader: 'Account' },
   component: AccountRoute,
 });
 

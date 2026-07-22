@@ -4,7 +4,7 @@ import { useAuthModal } from 'entities/Identity';
 import { PanelEmptyState } from 'shared/ui/PanelRouteLayout';
 
 export const Route = createFileRoute('/_panel/me')({
-  staticData: { panelMode: 'workspace' },
+  staticData: { appRouteIntent: 'routeWorkspace' },
   component: MeLayout,
 });
 

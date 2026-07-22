@@ -240,4 +240,14 @@ export default defineConfig(
       }],
     },
   },
+  {
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: ['src/shared/model/appRouteIntent.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', {
+        selector: 'TSUnionType:has(TSLiteralType Literal[value=/^(browse|browsing|galleryWorkspace|routeWorkspace|workspace|mapInput|fullPage|immersiveMapInput)$/])',
+        message: 'Route intent unions must be imported from shared/model/appRouteIntent.',
+      }],
+    },
+  },
 );

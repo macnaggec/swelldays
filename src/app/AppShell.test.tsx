@@ -2,10 +2,11 @@ import { act, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { useAddSpotStore } from 'features/AddSpot';
+import type { DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
 import { AppShell } from './AppShell';
 
 const mocks = vi.hoisted(() => ({
-  matches: [] as Array<{ routeId: string }>,
+  matches: [] as Array<{ routeId: string; staticData?: { appRouteIntent?: DeclaredAppRouteIntent } }>,
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -47,7 +48,10 @@ describe('AppShell Add Spot chrome', () => {
   });
 
   it('unmounts the globe scene and hides the left chrome on full-page overlay routes (e.g. admin)', () => {
-    mocks.matches = [{ routeId: '/_page' }, { routeId: '/_page/admin' }];
+    mocks.matches = [
+      { routeId: '/_page', staticData: { appRouteIntent: 'fullPage' } },
+      { routeId: '/_page/admin' },
+    ];
 
     render(<AppShell />);
 

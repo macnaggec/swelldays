@@ -6,7 +6,7 @@ export const Route = createFileRoute('/_panel/$spotId/session/$sessionId')({
   validateSearch: (search): { from?: string } => ({
     from: typeof search.from === 'string' ? search.from : undefined,
   }),
-  staticData: { panelMode: 'workspace' },
+  staticData: { appRouteIntent: 'routeWorkspace' },
   loader: async ({ context: { queryClient }, params }) =>
     queryClient.ensureQueryData(trpcProxy.sessions.byId.queryOptions(params.sessionId)),
   component: SessionDetailPage,

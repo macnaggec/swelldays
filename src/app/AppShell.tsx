@@ -2,18 +2,28 @@ import { useMatches } from '@tanstack/react-router';
 import { GlobeScene } from 'views/GlobeScene';
 import { LeftStrip } from 'widgets/LeftStrip';
 import { useAddSpotStore } from 'features/AddSpot';
-import { deriveAppChromePolicy } from 'shared/model/appChromePolicy';
+import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
+import { deriveDesktopFoundationAppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
+import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 
 export function AppShell() {
   const isAddSpotActive = useAddSpotStore((s) => s.isActive);
   const matches = useMatches();
-  const isFullPageRouteActive = matches.some((match) => match.routeId === '/_page');
-  const chromePolicy = deriveAppChromePolicy({ isAddSpotActive, isFullPageRouteActive });
+  const routeIntent = resolveAppRouteIntent(
+    matches,
+    isAddSpotActive ? 'immersiveMapInput' : undefined,
+  );
+  const browseExpanded = usePanelExpansionStore((state) => state.browsingExpanded);
+  const galleryExpanded = usePanelExpansionStore((state) => state.galleryExpanded);
+  const layoutPolicy = deriveDesktopFoundationAppShellLayoutPolicy({
+    routeIntent,
+    preferences: { browseExpanded, galleryExpanded },
+  });
 
   return (
     <>
-      {!isFullPageRouteActive && <GlobeScene />}
-      {chromePolicy.showLeftStrip && <LeftStrip />}
+      {layoutPolicy.map.interaction !== 'hidden' && <GlobeScene />}
+      {layoutPolicy.navigation === 'leftStrip' && <LeftStrip />}
     </>
   );
 }

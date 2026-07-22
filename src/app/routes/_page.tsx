@@ -3,6 +3,7 @@ import { Box } from '@mantine/core';
 import classes from './_page.module.css';
 
 export const Route = createFileRoute('/_page')({
+  staticData: { appRouteIntent: 'fullPage' },
   component: PageLayout,
 });
 

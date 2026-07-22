@@ -31,7 +31,7 @@ export function useCollectionsContext() {
 }
 
 export const Route = createFileRoute('/_panel/me/collections')({
-  staticData: { panelHeader: 'My Collections', panelMode: 'workspace' },
+  staticData: { panelHeader: 'My Collections' },
   component: CollectionsLayout,
 });
 

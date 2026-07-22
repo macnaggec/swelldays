@@ -18,7 +18,7 @@ export const Route = createFileRoute('/_panel/upload')({
     workspaceId: typeof search.workspaceId === 'string' ? search.workspaceId : undefined,
     spotId: typeof search.spotId === 'string' ? search.spotId : undefined,
   }),
-  staticData: { panelHeader: 'Upload', panelMode: 'mapInput' },
+  staticData: { panelHeader: 'Upload', appRouteIntent: 'mapInput' },
   component: UploadPanel,
 });
 

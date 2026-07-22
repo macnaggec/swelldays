@@ -4,8 +4,7 @@ import { deriveGlobeSceneMode } from './globeSceneMode';
 describe('deriveGlobeSceneMode', () => {
   it('names Add Spot before route or upload selection modes', () => {
     expect(deriveGlobeSceneMode({
-      isAddSpotActive: true,
-      isUploadSpotSelectionActive: true,
+      routeIntent: 'immersiveMapInput',
       selectedSpotId: 'spot-1',
       isUserExploring: false,
     })).toEqual({ kind: 'addSpotFlow' });
@@ -13,8 +12,7 @@ describe('deriveGlobeSceneMode', () => {
 
   it('names upload spot selection before focused spot routes', () => {
     expect(deriveGlobeSceneMode({
-      isAddSpotActive: false,
-      isUploadSpotSelectionActive: true,
+      routeIntent: 'mapInput',
       selectedSpotId: 'spot-1',
       isUserExploring: false,
     })).toEqual({ kind: 'uploadSpotSelection' });
@@ -22,8 +20,7 @@ describe('deriveGlobeSceneMode', () => {
 
   it('names focused spot routes with the selected spot id', () => {
     expect(deriveGlobeSceneMode({
-      isAddSpotActive: false,
-      isUploadSpotSelectionActive: false,
+      routeIntent: 'browse',
       selectedSpotId: 'spot-1',
       isUserExploring: false,
     })).toEqual({ kind: 'spotFocused', spotId: 'spot-1' });
@@ -31,8 +28,7 @@ describe('deriveGlobeSceneMode', () => {
 
   it('names active map exploration before the overview mode', () => {
     expect(deriveGlobeSceneMode({
-      isAddSpotActive: false,
-      isUploadSpotSelectionActive: false,
+      routeIntent: 'browse',
       selectedSpotId: null,
       isUserExploring: true,
     })).toEqual({ kind: 'userExploring' });
@@ -40,8 +36,7 @@ describe('deriveGlobeSceneMode', () => {
 
   it('names the default mode as overview', () => {
     expect(deriveGlobeSceneMode({
-      isAddSpotActive: false,
-      isUploadSpotSelectionActive: false,
+      routeIntent: 'browse',
       selectedSpotId: null,
       isUserExploring: false,
     })).toEqual({ kind: 'overview' });

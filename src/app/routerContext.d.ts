@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
+import type { DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
 
 declare module '@tanstack/react-router' {
   interface RouterContext {
@@ -6,11 +7,9 @@ declare module '@tanstack/react-router' {
   }
 
   interface StaticDataRouteOption {
-    /** Mark a route as rendered inside the global drawer. */
-    drawer?: true;
     /** Panel header text — read by PanelFrame in _panel.tsx; no effect bridge needed. */
     panelHeader?: string;
-    /** Panel layout mode owned by the route contract. */
-    panelMode?: 'browsing' | 'workspace' | 'mapInput' | 'galleryWorkspace';
+    /** Semantic presentation intent inherited through the active route tree. */
+    appRouteIntent?: DeclaredAppRouteIntent;
   }
 }
