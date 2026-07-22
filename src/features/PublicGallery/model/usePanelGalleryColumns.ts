@@ -1,5 +1,5 @@
-import { useSyncExternalStore } from 'react';
 import { PANEL_WIDTH_VW } from 'shared/model/panelExpansionStore';
+import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 
 /**
  * Derives the gallery column count from the panel's known width.
@@ -19,20 +19,11 @@ const MAX_COLUMNS = 6;
 const PANEL_PADDING = 24;
 const SIDEBAR_ALLOWANCE = 40;
 
-function subscribe(callback: () => void) {
-  window.addEventListener('resize', callback);
-  return () => window.removeEventListener('resize', callback);
-}
-
-function getViewportWidth() {
-  return window.innerWidth;
-}
-
 export function usePanelGalleryColumns(expanded: boolean): number {
-  const viewportWidth = useSyncExternalStore(subscribe, getViewportWidth, () => 1280);
+  const { viewportWidthPx } = useViewportCapabilities();
 
   const panelFraction = (expanded ? PANEL_WIDTH_VW.expanded : PANEL_WIDTH_VW.compact) / 100;
-  const gridWidth = viewportWidth * panelFraction - PANEL_PADDING - (expanded ? SIDEBAR_ALLOWANCE : 0);
+  const gridWidth = viewportWidthPx * panelFraction - PANEL_PADDING - (expanded ? SIDEBAR_ALLOWANCE : 0);
   const targetTile = expanded ? EXPANDED_TARGET_TILE : COMPACT_TARGET_TILE;
 
   const columns = Math.round(gridWidth / targetTile);

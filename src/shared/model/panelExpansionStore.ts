@@ -1,4 +1,3 @@
-import { useSyncExternalStore } from 'react';
 import { create } from 'zustand';
 
 /** Single source of truth for the panel's two fixed widths, shared with the globe's camera occlusion math. */
@@ -18,30 +17,3 @@ export const usePanelExpansionStore = create<PanelExpansionPreferences>((set) =>
   setBrowsingPanelExpanded: (expanded) => set({ browsingExpanded: expanded }),
   setGalleryPanelExpanded: (expanded) => set({ galleryExpanded: expanded }),
 }));
-
-let renderedPanelExpanded = false;
-const listeners = new Set<() => void>();
-
-export function getRenderedPanelExpandedSnapshot() {
-  return renderedPanelExpanded;
-}
-
-export function setRenderedPanelExpandedSnapshot(expanded: boolean) {
-  if (renderedPanelExpanded === expanded) return;
-
-  renderedPanelExpanded = expanded;
-  listeners.forEach((listener) => listener());
-}
-
-export function subscribeRenderedPanelExpandedSnapshot(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-export function useRenderedPanelExpandedSnapshot() {
-  return useSyncExternalStore(
-    subscribeRenderedPanelExpandedSnapshot,
-    getRenderedPanelExpandedSnapshot,
-    () => false,
-  );
-}

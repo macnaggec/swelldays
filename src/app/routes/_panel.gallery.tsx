@@ -1,13 +1,21 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { PublicGallery } from 'features/PublicGallery';
-import { usePanelFilter } from './_panel';
+import { usePanelExpanded, usePanelFilter } from './_panel';
 
 export const Route = createFileRoute('/_panel/gallery')({
-  staticData: { panelMode: 'galleryWorkspace' },
+  staticData: { appRouteIntent: 'galleryWorkspace' },
   component: GalleryPage,
 });
 
 function GalleryPage() {
   const { filters, clearFilters } = usePanelFilter();
-  return <PublicGallery filters={filters} onClearFilters={clearFilters} />;
+  const expanded = usePanelExpanded();
+
+  return (
+    <PublicGallery
+      expanded={expanded}
+      filters={filters}
+      onClearFilters={clearFilters}
+    />
+  );
 }

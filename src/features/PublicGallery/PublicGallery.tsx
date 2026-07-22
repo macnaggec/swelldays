@@ -5,7 +5,6 @@ import { useSpotMediaFeed, useSpotPreview } from 'entities/Spot';
 import { buildGalleryRows } from 'shared/lib/buildGalleryRows';
 import { VirtualGallery, type VirtualGalleryHandle } from 'shared/ui/VirtualGallery/VirtualGallery';
 import { useCartToggle } from 'entities/Commerce';
-import { useRenderedPanelExpandedSnapshot } from 'shared/model/panelExpansionStore';
 import PublicCard, { PublicCardAction } from './ui/cards/PublicCard';
 import MediaLightbox from './ui/MediaLightbox';
 import { GalleryDateSidebar } from './ui/GalleryDateSidebar';
@@ -16,6 +15,7 @@ import { PanelScrollChrome } from 'shared/ui/PanelScrollChrome';
 import { GalleryEmptyState } from './ui/GalleryEmptyState';
 
 export interface PublicGalleryProps {
+  expanded: boolean;
   /** Omit to browse published media across all spots instead of a single spot. */
   spotId?: string;
   onShare?: (items: PublicMedia[]) => void;
@@ -25,6 +25,7 @@ export interface PublicGalleryProps {
 }
 
 const PublicGallery: FC<PublicGalleryProps> = memo(({
+  expanded,
   spotId,
   onShare,
   emptyMessage,
@@ -48,7 +49,6 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
 
   // Panel width drives column count and card density: compact packs a dense grid
   // with actions moved to the lightbox; expanded keeps the roomy card layout.
-  const expanded = useRenderedPanelExpandedSnapshot();
   const columns = usePanelGalleryColumns(expanded);
 
   // ========================================================================
@@ -127,7 +127,12 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
     return (
       <>
         <PanelScrollChrome />
-        <SimpleGrid cols={columns} spacing={10} mt="md">
+        <SimpleGrid
+          cols={columns}
+          spacing="var(--wa-panel-grid-gap)"
+          px="var(--wa-panel-content-inset)"
+          mt="md"
+        >
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} height={120} radius="sm" />
           ))}

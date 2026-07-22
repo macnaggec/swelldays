@@ -4,11 +4,8 @@ import type { ComponentType, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { useAddSpotStore } from 'features/AddSpot';
-import {
-  getRenderedPanelExpandedSnapshot,
-  setRenderedPanelExpandedSnapshot,
-  usePanelExpansionStore,
-} from 'shared/model/panelExpansionStore';
+import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
+import type { DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
 import { Route, usePanelFeedLayoutReadyChange, useSetPanelRouteBackAction } from './_panel';
 
 const mocks = vi.hoisted(() => ({
@@ -22,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   activeWorkspace: null as null | { id: string; kind: 'NEW_SESSION' | 'SESSION_EDIT' },
   matches: [{ routeId: '/_panel/', staticData: {} }] as Array<{
     routeId: string;
-    staticData: { panelHeader?: string; panelMode?: 'browsing' | 'workspace' | 'mapInput' | 'galleryWorkspace' };
+    staticData: { panelHeader?: string; appRouteIntent?: DeclaredAppRouteIntent };
     loaderData?: unknown;
     search?: unknown;
   }>,
@@ -234,7 +231,6 @@ describe('Panel upload entry', () => {
     mocks.canGoBack = true;
     mocks.activeWorkspace = null;
     usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: true });
-    setRenderedPanelExpandedSnapshot(false);
     useAddSpotStore.getState().exit();
   });
 
@@ -281,7 +277,7 @@ describe('Panel upload entry', () => {
   });
 
   it('does not show the panel minimize control on the cart route', () => {
-    mocks.matches = [{ routeId: '/_panel/cart', staticData: { panelMode: 'workspace' }, search: {} }];
+    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
 
@@ -338,17 +334,30 @@ describe('Panel upload entry', () => {
   });
 
   it('opens the cart route in the full-size panel', () => {
-    mocks.matches = [{ routeId: '/_panel/cart', staticData: { panelMode: 'workspace' }, search: {} }];
+    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
   });
 
+  it('forces a route workspace open without overwriting browse or gallery preferences', () => {
+    usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: false });
+    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<Component />);
+
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-expanded', 'true');
+    expect(usePanelExpansionStore.getState()).toMatchObject({
+      browsingExpanded: false,
+      galleryExpanded: false,
+    });
+  });
+
   it('keeps gallery expanded by default while allowing an explicit compact toggle', async () => {
     mocks.matches = [{
       routeId: '/_panel/$spotId/gallery',
-      staticData: { panelMode: 'galleryWorkspace' },
+      staticData: { appRouteIntent: 'galleryWorkspace' },
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
@@ -368,7 +377,7 @@ describe('Panel upload entry', () => {
     usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: false });
     mocks.matches = [{
       routeId: '/_panel/gallery',
-      staticData: { panelMode: 'galleryWorkspace' },
+      staticData: { appRouteIntent: 'galleryWorkspace' },
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
@@ -380,7 +389,7 @@ describe('Panel upload entry', () => {
   it('compacts expanded gallery when the shared map action changes its preference', async () => {
     mocks.matches = [{
       routeId: '/_panel/$spotId/gallery',
-      staticData: { panelMode: 'galleryWorkspace' },
+      staticData: { appRouteIntent: 'galleryWorkspace' },
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
@@ -414,7 +423,7 @@ describe('Panel upload entry', () => {
 
     mocks.matches = [
       { routeId: '/_panel/$spotId', staticData: {} },
-      { routeId: '/_panel/$spotId/gallery', staticData: { panelMode: 'galleryWorkspace' } },
+      { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     rerender(<Component />);
     act(() => runNextFrame?.(0));
@@ -433,7 +442,7 @@ describe('Panel upload entry', () => {
     mocks.params = { spotId: 'spot-a' };
     mocks.matches = [
       { routeId: '/_panel/$spotId', staticData: {} },
-      { routeId: '/_panel/$spotId/gallery', staticData: { panelMode: 'galleryWorkspace' } },
+      { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     const Component = (Route as unknown as { component: ComponentType }).component;
     const { rerender } = render(<Component />);
@@ -459,7 +468,7 @@ describe('Panel upload entry', () => {
   it('has no back navigation on the gallery route since the Feed/Gallery switcher already covers it', () => {
     mocks.matches = [
       { routeId: '/_panel/$spotId', staticData: {} },
-      { routeId: '/_panel/$spotId/gallery', staticData: { panelMode: 'galleryWorkspace' } },
+      { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
@@ -468,7 +477,7 @@ describe('Panel upload entry', () => {
   });
 
   it('uses compact map-input behavior on the upload route, with a chevron-only back control', async () => {
-    mocks.matches = [{ routeId: '/_panel/upload', staticData: { panelMode: 'mapInput' }, search: {} }];
+    mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
 
@@ -484,7 +493,7 @@ describe('Panel upload entry', () => {
   });
 
   it('titles the panel "Upload" for a new upload and "Edit session" for an edit workspace', () => {
-    mocks.matches = [{ routeId: '/_panel/upload', staticData: { panelMode: 'mapInput' }, search: {} }];
+    mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     const { rerender } = render(<Component />);
 
@@ -494,46 +503,6 @@ describe('Panel upload entry', () => {
     rerender(<Component />);
 
     expect(screen.getByText('Edit session')).not.toBeNull();
-  });
-
-  it('publishes the user-expanded rendered panel state for the globe interaction policy', async () => {
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Expand panel' }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
-    });
-    expect(getRenderedPanelExpandedSnapshot()).toBe(true);
-  });
-
-  it('publishes route-required workspace rendered panel state for the globe interaction policy', () => {
-    mocks.matches = [{ routeId: '/_panel/cart', staticData: { panelMode: 'workspace' }, search: {} }];
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
-
-    expect(getRenderedPanelExpandedSnapshot()).toBe(true);
-  });
-
-  it('publishes compact rendered panel state instead of the user preference', async () => {
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    const { rerender } = render(<Component />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Expand panel' }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Report feed layout ready' }));
-    mocks.matches = [{ routeId: '/_panel/upload', staticData: { panelMode: 'mapInput' }, search: {} }];
-    rerender(<Component />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('false');
-    });
-    expect(getRenderedPanelExpandedSnapshot()).toBe(false);
   });
 
   it('compacts upload after expanded browsing even when feed layout is not ready', async () => {
@@ -552,7 +521,7 @@ describe('Panel upload entry', () => {
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
 
     runNextFrame = undefined;
-    mocks.matches = [{ routeId: '/_panel/upload', staticData: { panelMode: 'mapInput' }, search: {} }];
+    mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: {} }];
     rerender(<Component />);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
@@ -564,7 +533,7 @@ describe('Panel upload entry', () => {
   });
 
   it('lets the cart header span the full panel width', () => {
-    mocks.matches = [{ routeId: '/_panel/cart', staticData: { panelMode: 'workspace' }, search: {} }];
+    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
 
@@ -572,7 +541,7 @@ describe('Panel upload entry', () => {
   });
 
   it('routes cart visitors without a spot origin back to the feed', () => {
-    mocks.matches = [{ routeId: '/_panel/cart', staticData: { panelMode: 'workspace' }, search: {} }];
+    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
 
@@ -585,7 +554,7 @@ describe('Panel upload entry', () => {
     mocks.canGoBack = false;
     mocks.matches = [{
       routeId: '/_panel/$spotId/session/$sessionId',
-      staticData: { panelMode: 'workspace' },
+      staticData: { appRouteIntent: 'routeWorkspace' },
       loaderData: null,
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
@@ -601,7 +570,7 @@ describe('Panel upload entry', () => {
     mocks.canGoBack = true;
     mocks.matches = [{
       routeId: '/_panel/$spotId/session/$sessionId',
-      staticData: { panelMode: 'workspace' },
+      staticData: { appRouteIntent: 'routeWorkspace' },
       loaderData: null,
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
@@ -617,7 +586,7 @@ describe('Panel upload entry', () => {
     mocks.canGoBack = false;
     mocks.matches = [{
       routeId: '/_panel/$spotId/session/$sessionId',
-      staticData: { panelMode: 'workspace' },
+      staticData: { appRouteIntent: 'routeWorkspace' },
       loaderData: null,
       search: { from: 'collections' },
     }];
@@ -629,7 +598,7 @@ describe('Panel upload entry', () => {
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/me/collections' });
   });
 
-  it('keeps the returning feed expanded after visiting a full-size route', () => {
+  it('restores the compact feed preference after visiting a forced full-size route', () => {
     let runNextFrame: FrameRequestCallback | undefined;
     vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
       runNextFrame = callback;
@@ -638,7 +607,7 @@ describe('Panel upload entry', () => {
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
     mocks.matches = [{
       routeId: '/_panel/$spotId/session/$sessionId',
-      staticData: { panelMode: 'workspace' },
+      staticData: { appRouteIntent: 'routeWorkspace' },
       loaderData: null,
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
@@ -656,11 +625,11 @@ describe('Panel upload entry', () => {
 
     act(() => runNextFrame?.(0));
 
-    expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
+    expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('false');
     vi.unstubAllGlobals();
   });
 
-  it('keeps the returning gallery expanded after visiting a full-size route', async () => {
+  it('restores the compact gallery preference after visiting a forced full-size route', async () => {
     let runNextFrame: FrameRequestCallback | undefined;
     vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
       runNextFrame = callback;
@@ -670,7 +639,7 @@ describe('Panel upload entry', () => {
     mocks.params = { spotId: 'spot-a' };
     mocks.matches = [
       { routeId: '/_panel/$spotId', staticData: {} },
-      { routeId: '/_panel/$spotId/gallery', staticData: { panelMode: 'galleryWorkspace' } },
+      { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     const Component = (Route as unknown as { component: ComponentType }).component;
     const { rerender } = render(<Component />);
@@ -682,7 +651,7 @@ describe('Panel upload entry', () => {
     runNextFrame = undefined;
     mocks.matches = [{
       routeId: '/_panel/$spotId/session/$sessionId',
-      staticData: { panelMode: 'workspace' },
+      staticData: { appRouteIntent: 'routeWorkspace' },
       loaderData: null,
     }];
     rerender(<Component />);
@@ -692,12 +661,12 @@ describe('Panel upload entry', () => {
     runNextFrame = undefined;
     mocks.matches = [
       { routeId: '/_panel/$spotId', staticData: {} },
-      { routeId: '/_panel/$spotId/gallery', staticData: { panelMode: 'galleryWorkspace' } },
+      { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     rerender(<Component />);
     act(() => runNextFrame?.(0));
 
-    expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
+    expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('false');
     vi.unstubAllGlobals();
   });
 
@@ -705,7 +674,7 @@ describe('Panel upload entry', () => {
     mocks.params = { spotId: 'spot-a' };
     mocks.matches = [
       { routeId: '/_panel/$spotId', staticData: {} },
-      { routeId: '/_panel/$spotId/gallery', staticData: { panelMode: 'galleryWorkspace' } },
+      { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
@@ -748,7 +717,7 @@ describe('Panel upload entry', () => {
     mocks.params = { spotId: 'spot-a' };
     mocks.matches = [
       { routeId: '/_panel/$spotId', staticData: {} },
-      { routeId: '/_panel/$spotId/gallery', staticData: { panelMode: 'galleryWorkspace' } },
+      { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
@@ -761,7 +730,7 @@ describe('Panel upload entry', () => {
   });
 
   it('picks a new spot into the gallery route from the all-spots gallery', () => {
-    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { panelMode: 'galleryWorkspace' } }];
+    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
     mocks.params = {};
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
@@ -777,7 +746,7 @@ describe('Panel upload entry', () => {
   });
 
   it('shows all-spots gallery expanded until the photographer explicitly compacts it', async () => {
-    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { panelMode: 'galleryWorkspace' } }];
+    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
     mocks.params = {};
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
@@ -795,7 +764,7 @@ describe('Panel upload entry', () => {
   });
 
   it('restores real filtered gallery content after a new spot is picked', () => {
-    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { panelMode: 'galleryWorkspace' } }];
+    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
     mocks.params = {};
     const Component = (Route as unknown as { component: ComponentType }).component;
     const { rerender } = render(<Component />);
@@ -806,7 +775,7 @@ describe('Panel upload entry', () => {
     mocks.params = { spotId: 'spot-b' };
     mocks.matches = [
       { routeId: '/_panel/$spotId', staticData: {} },
-      { routeId: '/_panel/$spotId/gallery', staticData: { panelMode: 'galleryWorkspace' } },
+      { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     rerender(<Component />);
 
@@ -818,7 +787,7 @@ describe('Panel upload entry', () => {
     mocks.params = { spotId: 'spot-a' };
     mocks.matches = [
       { routeId: '/_panel/$spotId', staticData: {} },
-      { routeId: '/_panel/$spotId/gallery', staticData: { panelMode: 'galleryWorkspace' } },
+      { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<Component />);
@@ -932,7 +901,7 @@ describe('Panel favorites filter', () => {
     const { rerender } = render(<Component />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Favorites' }));
-    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { panelMode: 'galleryWorkspace' } }];
+    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
     rerender(<Component />);
 
     expect(screen.getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'true');

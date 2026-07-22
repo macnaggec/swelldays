@@ -76,7 +76,7 @@ describe('PublicGallery', () => {
   });
 
   it('renders published media without a gallery-local selection toolbar', () => {
-    render(<PublicGallery spotId="spot-1" />);
+    render(<PublicGallery expanded spotId="spot-1" />);
 
     expect(screen.getByTestId('virtual-gallery')).toBeInTheDocument();
     expect(screen.queryByTestId('gallery-toolbar')).not.toBeInTheDocument();
@@ -89,6 +89,7 @@ describe('PublicGallery', () => {
 
     render(
       <PublicGallery
+        expanded
         filters={{ date: { date: new Date('2026-07-01T00:00:00.000Z') }, favoriteSpotsOnly: false }}
         onClearFilters={onClearFilters}
       />,
@@ -105,7 +106,7 @@ describe('PublicGallery', () => {
   it('guides an unfiltered empty gallery toward the existing upload action', () => {
     galleryState.flatItems = [];
 
-    render(<PublicGallery />);
+    render(<PublicGallery expanded />);
 
     expect(screen.getByRole('heading', { name: 'No shots here yet' })).toBeInTheDocument();
     expect(

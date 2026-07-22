@@ -1,9 +1,9 @@
 import { createFileRoute, Outlet, useMatches, useNavigate, useParams, useRouter } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useSelectedSpot, useSpotPreview } from 'entities/Spot';
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useLayoutEffect, useState, type ReactNode } from 'react';
 import { useTRPC } from 'shared/lib/trpc';
-import { setRenderedPanelExpandedSnapshot, usePanelExpansionStore } from 'shared/model/panelExpansionStore';
+import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { Loader, Skeleton, Text, Title } from '@mantine/core';
 import {
   type SurfSessionItem,
@@ -25,9 +25,9 @@ import {
 import { formatDateRange } from 'shared/lib/dateUtils';
 import { useUser } from 'shared/hooks/useUser';
 import { useAuthModal } from 'features/Auth';
-import { deriveAppChromePolicy } from 'shared/model/appChromePolicy';
-import { derivePanelTargetPolicy, deriveRenderedPanelState } from './model/panelLayoutPolicy';
-import { getPanelRouteMode } from './model/panelRouteMode';
+import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
+import { deriveDesktopFoundationAppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
+import { deriveRenderedPanelState } from 'shared/model/panelLayoutPolicy';
 
 // ─── Contexts — shared with child routes ─────────────────────────────────────
 
@@ -75,6 +75,7 @@ export function useSetPanelRouteBackAction() {
 // ─── Route ────────────────────────────────────────────────────────────────────
 
 export const Route = createFileRoute('/_panel')({
+  staticData: { appRouteIntent: 'browse' },
   component: PanelLayout,
 });
 
@@ -118,7 +119,17 @@ function PanelFrame({ children }: { children: ReactNode }) {
   const hasUnfinishedUpload = activeWorkspace?.kind === 'NEW_SESSION';
   const hasActiveTransfers = useUploadStore((s) => s.transfers.size > 0);
   const isAddSpotActive = useAddSpotStore((s) => s.isActive);
-  const chromePolicy = deriveAppChromePolicy({ isAddSpotActive });
+  const appRouteIntent = resolveAppRouteIntent(
+    matches,
+    isAddSpotActive ? 'immersiveMapInput' : undefined,
+  );
+  const layoutPolicy = deriveDesktopFoundationAppShellLayoutPolicy({
+    routeIntent: appRouteIntent,
+    preferences: {
+      browseExpanded: userPreferredExpanded,
+      galleryExpanded: galleryPreferredExpanded,
+    },
+  });
 
   const cartMatch = matches.find((match) => match.routeId === '/_panel/cart');
   const spotMatch = matches.find((match) => match.routeId === '/_panel/$spotId');
@@ -161,40 +172,23 @@ function PanelFrame({ children }: { children: ReactNode }) {
   const { spot: activeSpot } = useSelectedSpot();
   const { data: cartFromSpot } = useSpotPreview(cartFrom ?? '', { enabled: !!cartFrom });
 
-  const panelRouteMode = getPanelRouteMode(matches);
-  const routeRequiresExpanded = panelRouteMode === 'workspace';
-  const routeRequiresCompactMapInput = panelRouteMode === 'mapInput';
-  const panelTargetPolicy = derivePanelTargetPolicy({
-    userPreferredExpanded,
-    galleryPreferredExpanded,
-    routeMode: panelRouteMode,
-    isAddSpotActive,
-  });
+  const routeRequiresCompactMapInput = appRouteIntent === 'mapInput';
+  const targetExpanded = layoutPolicy.drawer.state === 'expanded';
 
-  useLayoutEffect(() => {
-    if (!routeRequiresExpanded) return;
-    setUserPreferredExpanded(true);
-    setGalleryPreferredExpanded(true);
-  }, [routeRequiresExpanded, setGalleryPreferredExpanded, setUserPreferredExpanded]);
-
-  const canWaitForFeedLayout = panelTargetPolicy.reason === 'userPreference';
-  const handlePanelExpandToggle = useMemo(
-    () =>
-      panelTargetPolicy.canUserToggle
-        ? () => {
-          if (panelRouteMode === 'galleryWorkspace') {
-            setGalleryPreferredExpanded(!galleryPreferredExpanded);
-          } else {
-            setUserPreferredExpanded(!userPreferredExpanded);
-          }
-        }
-        : undefined,
-    [galleryPreferredExpanded, panelRouteMode, panelTargetPolicy.canUserToggle, setGalleryPreferredExpanded, setUserPreferredExpanded, userPreferredExpanded],
-  );
+  const canWaitForFeedLayout = layoutPolicy.drawer.canWaitForContent;
+  const handlePanelExpandToggle = layoutPolicy.drawer.control === 'expandCollapse'
+    ? () => {
+      if (appRouteIntent === 'galleryWorkspace') {
+        setGalleryPreferredExpanded(!galleryPreferredExpanded);
+      } else {
+        setUserPreferredExpanded(!userPreferredExpanded);
+      }
+    }
+    : undefined;
 
   const [isExpanded, setIsExpanded] = useState(() => deriveRenderedPanelState({
-    targetExpanded: panelTargetPolicy.expanded,
-    targetReason: panelTargetPolicy.reason,
+    targetExpanded,
+    targetReason: appRouteIntent,
     isFeedLayoutReady: false,
     canWaitForFeedLayout,
     currentRenderedExpanded: false,
@@ -202,8 +196,8 @@ function PanelFrame({ children }: { children: ReactNode }) {
   const [feedLayoutReady, setFeedLayoutReady] = useState(false);
   const handleFeedLayoutReadyChange = useCallback((ready: boolean) => setFeedLayoutReady(ready), []);
   const renderedPanelState = deriveRenderedPanelState({
-    targetExpanded: panelTargetPolicy.expanded,
-    targetReason: panelTargetPolicy.reason,
+    targetExpanded,
+    targetReason: appRouteIntent,
     isFeedLayoutReady: feedLayoutReady,
     canWaitForFeedLayout,
     currentRenderedExpanded: isExpanded,
@@ -214,14 +208,6 @@ function PanelFrame({ children }: { children: ReactNode }) {
     const frame = requestAnimationFrame(() => setIsExpanded(renderedPanelState.expanded));
     return () => cancelAnimationFrame(frame);
   }, [isExpanded, renderedPanelState.expanded]);
-
-  useLayoutEffect(() => {
-    setRenderedPanelExpandedSnapshot(isExpanded);
-  }, [isExpanded]);
-
-  useLayoutEffect(() => {
-    return () => setRenderedPanelExpandedSnapshot(false);
-  }, []);
 
   const header: ReactNode = (() => {
     if (cartMatch) {
@@ -349,9 +335,9 @@ function PanelFrame({ children }: { children: ReactNode }) {
   })();
 
   const routeBackActionForPanel = uploadMatch ? routeBackAction : null;
-  const defaultBackAction = !panelTargetPolicy.usesBackNavigation || cartMatch || galleryMatch || routeRequiresCompactMapInput
+  const defaultBackAction = layoutPolicy.drawer.control !== 'routeBack' || cartMatch || galleryMatch || routeRequiresCompactMapInput
     ? undefined
-    : routeRequiresExpanded
+    : appRouteIntent === 'routeWorkspace'
       ? () => {
         if (sessionDetailMatch && router.history.canGoBack()) router.history.back();
         else if (cameFromCollections) void navigate({ to: '/me/collections' });
@@ -367,7 +353,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
       <PanelFeedLayoutReadyContext.Provider value={handleFeedLayoutReadyChange}>
         <PanelExpandedContext.Provider value={isExpanded}>
           {/* Compact-mode filter pills — float on the map beside the panel */}
-          {chromePolicy.showFloatingPanelControls && (spotMatch || isDefaultIndex || allGalleryMatch) && !isExpanded && (
+          {layoutPolicy.chrome.panelControls === 'adjacent' && (spotMatch || isDefaultIndex || allGalleryMatch) && !isExpanded && (
             <FloatingPanelControls>
               <FilterPills
                 active={filters.date}
@@ -377,8 +363,10 @@ function PanelFrame({ children }: { children: ReactNode }) {
               />
             </FloatingPanelControls>
           )}
-          {chromePolicy.showSidePanel && (
+          {layoutPolicy.drawer.presentation !== 'hidden' && (
             <SidePanel
+              drawerPresentation={layoutPolicy.drawer.presentation}
+              drawerModality={layoutPolicy.drawer.modality === 'modal' ? 'modal' : 'nonmodal'}
               expanded={isExpanded}
               onExpandToggle={handlePanelExpandToggle}
               onBack={routeBackActionForPanel?.onBack ?? defaultBackAction}
