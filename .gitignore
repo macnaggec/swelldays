@@ -155,3 +155,6 @@ dist
 
 # Codex CLI configuration
 .codex/
+
+# Transient implementation contract written by /dispatch-task
+.scratch/CONTRACT.md
