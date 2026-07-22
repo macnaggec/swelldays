@@ -223,6 +223,36 @@ describe('CarouselLightbox', () => {
     expect(document.querySelector('[data-lightbox-media-loader]')).toBeNull();
   });
 
+  it('uses the shared, media-bounded skeleton for newly uploaded media until the image loads', () => {
+    render(
+      <CarouselLightbox
+        items={[
+          {
+            id: 'new-upload',
+            url: 'https://cdn.example.com/new-upload.jpg',
+            width: 2400,
+            height: 1600,
+          },
+        ]}
+        initialIndex={0}
+        opened
+        onClose={vi.fn()}
+      />,
+    );
+
+    const loader = document.querySelector('[data-lightbox-media-loader]');
+    expect(loader).not.toBeNull();
+    expect(loader?.classList.contains('mantine-Skeleton-root')).toBe(true);
+    expect(loader?.closest('[data-lightbox-media-frame="frameless"]')).not.toBeNull();
+    const mediaSizer = loader?.parentElement?.querySelector('[data-lightbox-media-sizer]');
+    expect(mediaSizer?.getAttribute('width')).toBe('2400');
+    expect(mediaSizer?.getAttribute('height')).toBe('1600');
+
+    fireEvent.load(screen.getByAltText('Media preview'));
+
+    expect(document.querySelector('[data-lightbox-media-loader]')).toBeNull();
+  });
+
   it('holds the frame at its pre-swap size until the incoming media loads', () => {
     // Media dimensions are not available synchronously at the swap commit even
     // when cached, so the frame must keep its old box while framer measures

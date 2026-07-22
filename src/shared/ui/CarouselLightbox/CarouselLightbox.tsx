@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { ActionIcon, Modal } from '@mantine/core';
+import { ActionIcon, Modal, Skeleton } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight, IconX, IconPhotoOff } from '@tabler/icons-react';
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'framer-motion';
 import classes from './CarouselLightbox.module.css';
@@ -292,6 +292,9 @@ const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
     mediaReady: !!activeItem && confirmedUrlsRef.current.has(activeItem.url) && !mediaFailed,
     mediaFailed,
   };
+  // Stored dimensions make the frame layout-ready, but only a successful decode/load proves
+  // there are media bytes to show. Keep the skeleton until that separate confirmation arrives.
+  const mediaLoading = !!activeItem && !mediaContext.mediaReady && !mediaFailed;
   const hasMultiple = items.length > 1;
   const overlay = activeItem ? renderOverlay?.(activeIndex, mediaContext) : null;
   const actions = activeItem ? (renderActions ?? renderFooter)?.(activeIndex, mediaContext) : null;
@@ -402,15 +405,7 @@ const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
       }}
       styles={framelessModalStyles}
     >
-      <div className={classes.stage} data-lightbox-stage data-lightbox-loading={chromeReady ? undefined : true}>
-        {activeItem && !chromeReady && (
-          <div
-            className={classes.loadingSkeleton}
-            data-lightbox-media-loader
-            role="status"
-            aria-label="Loading media"
-          />
-        )}
+      <div className={classes.stage} data-lightbox-stage>
         {activeItem && (
           <div
             className={classes.mediaSurface}
@@ -440,12 +435,34 @@ const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
               style={frameHold ? { minWidth: frameHold.width, minHeight: frameHold.height } : undefined}
               data-lightbox-active-media-id={activeItem.id}
               data-lightbox-media-frame="frameless"
+              data-lightbox-loading={chromeReady ? undefined : true}
               data-lightbox-resize-animation="none"
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerCancel}
             >
+              {mediaLoading && (
+                <div className={classes.loadingSlot} data-lightbox-media-loading-slot>
+                  {activeMediaDimensions && (
+                    <svg
+                      className={classes.loadingSizer}
+                      data-lightbox-media-sizer
+                      width={activeMediaDimensions.width}
+                      height={activeMediaDimensions.height}
+                      viewBox={`0 0 ${activeMediaDimensions.width} ${activeMediaDimensions.height}`}
+                      aria-hidden="true"
+                    />
+                  )}
+                  <Skeleton
+                    className={classes.loadingSkeleton}
+                    data-lightbox-media-loader
+                    radius="md"
+                    role="status"
+                    aria-label="Loading media"
+                  />
+                </div>
+              )}
               <motion.div className={classes.dragLayer} style={{ x: dragX }} data-lightbox-drag-layer>
                 <AnimatePresence initial={false} mode="popLayout" custom={nav.direction}>
                   <motion.div

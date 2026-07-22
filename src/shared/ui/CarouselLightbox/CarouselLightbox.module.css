@@ -101,7 +101,7 @@ video.media {
   visibility: hidden;
 }
 
-.stage[data-lightbox-loading] {
+.mediaFrame[data-lightbox-loading] {
   /* Media dimensions are unknown until it loads: present a neutral placeholder box with the
      same footprint as the "media unavailable" state (.mediaUnavailable) so loading and failed
      states read as the same shape. */
@@ -110,32 +110,37 @@ video.media {
   min-height: 0;
 }
 
+.loadingSlot {
+  position: relative;
+  display: grid;
+  grid-area: 1 / 1;
+  width: fit-content;
+  height: fit-content;
+  max-width: 100%;
+  max-height: min(68vh, calc(100dvh - 9rem));
+  place-items: center;
+}
+
+.mediaFrame[data-lightbox-loading] .loadingSlot {
+  width: 100%;
+  height: 100%;
+}
+
+.loadingSizer {
+  display: block;
+  grid-area: 1 / 1;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: min(68vh, calc(100dvh - 9rem));
+  visibility: hidden;
+}
+
 .loadingSkeleton {
   position: absolute;
   inset: 0;
   z-index: 1;
-  overflow: hidden;
   pointer-events: none;
-  border-radius: var(--wa-radius-dialog);
-  /* Opaque base so the shimmer animates cheaply: the GPU can occlude the (transparent) lightbox
-     stack behind it. A translucent placeholder would re-blend the whole stack every frame and
-     coil-whine — the same issue we fixed on modals. */
-  background: var(--wa-surface-dialog-opaque);
-}
-
-.loadingSkeleton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, var(--wa-surface-chrome), transparent);
-  transform: translateX(-100%);
-  animation: lightboxShimmer 1.4s ease-in-out infinite;
-}
-
-@keyframes lightboxShimmer {
-  to {
-    transform: translateX(100%);
-  }
 }
 
 /* Shown in place of a video/image that failed to load (broken source): a transparent slot with

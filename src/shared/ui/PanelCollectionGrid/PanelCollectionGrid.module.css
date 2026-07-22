@@ -9,22 +9,58 @@
   display: none;
 }
 
+/*
+ * The drawer surface (shared/ui/DrawerShell) stamps its width-animation
+ * target onto `data-drawer-state` the instant it starts moving — before the
+ * container query below can observe the new width. Selecting on that
+ * ancestor attribute lets the grid jump straight to the destination's column
+ * count instead of riding out the container query's one-frame lag.
+ *
+ * Every tier below repeats the same value for both `compact` and `expanded`
+ * alongside the bare container-query selector, at matching specificity. That
+ * keeps the cascade's effective specificity for `grid-template-columns`
+ * constant across a `data-drawer-state` flip, so flipping the attribute never
+ * drops the match down to the lower-specificity bare `.root` rule for a frame
+ * while the container query re-resolves against the (still unchanged) box.
+ */
+[data-drawer-state='compact'] .root {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+[data-drawer-state='expanded'] .root {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+[data-drawer-state='expanded'] .root[data-preview] > :nth-child(n + 4):nth-child(-n + 6) {
+  display: revert;
+}
+
 @container panel (min-width: 600px) {
-  .root {
+  .root,
+  [data-drawer-state] .root {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .root[data-preview] > :nth-child(n + 4):nth-child(-n + 6) {
+  .root[data-preview] > :nth-child(n + 4):nth-child(-n + 6),
+  [data-drawer-state] .root[data-preview] > :nth-child(n + 4):nth-child(-n + 6) {
     display: revert;
   }
 }
 
 @container panel (min-width: 900px) {
-  .root {
+  /*
+   * `[data-drawer-state='expanded'] .root` above is more specific than a bare
+   * `.root`, so it would otherwise keep winning past this breakpoint and cap
+   * wide expanded panels at 2 columns. Match that specificity here so the
+   * 900px width — not the drawer's target state — decides the final count.
+   */
+  .root,
+  [data-drawer-state] .root {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .root[data-preview] > :nth-child(n + 4) {
+  .root[data-preview] > :nth-child(n + 4),
+  [data-drawer-state] .root[data-preview] > :nth-child(n + 4) {
     display: revert;
   }
 }
