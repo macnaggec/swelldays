@@ -1,0 +1,30 @@
+.root {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--wa-panel-grid-gap);
+  width: 100%;
+}
+
+.root[data-preview] > :nth-child(n + 4) {
+  display: none;
+}
+
+@container panel (min-width: 600px) {
+  .root {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .root[data-preview] > :nth-child(n + 4):nth-child(-n + 6) {
+    display: revert;
+  }
+}
+
+@container panel (min-width: 900px) {
+  .root {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .root[data-preview] > :nth-child(n + 4) {
+    display: revert;
+  }
+}

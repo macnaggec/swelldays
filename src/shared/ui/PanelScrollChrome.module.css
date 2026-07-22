@@ -2,11 +2,14 @@
   position: sticky;
   top: 0;
   flex-shrink: 0;
-  padding: 8px 12px;
+  padding: 8px var(--wa-panel-content-inset);
   overflow: visible;
   transform: translateY(0);
-  z-index: 10;
-  transition: transform 220ms ease;
+  z-index: var(--wa-z-panel-chrome);
+  transition:
+    transform
+    var(--wa-motion-duration-chrome)
+    var(--wa-motion-easing-standard);
 }
 
 .chrome[data-hidden] {

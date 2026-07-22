@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
+import { PanelLayout } from 'shared/ui/PanelLayout';
 import { Route } from './_panel.cart';
 
 const mocks = vi.hoisted(() => ({
@@ -44,12 +45,12 @@ describe('CartPanelRoute', () => {
     mocks.items = [];
     const Component = (Route as unknown as { component: ComponentType }).component;
 
-    render(<Component />);
+    render(<PanelLayout><Component /></PanelLayout>);
 
     expect(screen.getByText('Your cart is empty').closest('[data-panel-gallery-inset]')).not.toBeNull();
   });
 
-  it('renders checkout in the shared panel gallery footer', () => {
+  it('renders checkout in the shared panel footer', () => {
     mocks.items = [{
       id: 'cart-item-1',
       label: 'Cart item',
@@ -60,8 +61,8 @@ describe('CartPanelRoute', () => {
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
 
-    render(<Component />);
+    render(<PanelLayout><Component /></PanelLayout>);
 
-    expect(screen.getByRole('button', { name: 'Checkout' }).closest('[data-panel-gallery-footer]')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Checkout' }).closest('[data-panel-layout-footer]')).not.toBeNull();
   });
 });

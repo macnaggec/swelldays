@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { render } from 'test/setup/render';
+import type { ReactNode } from 'react';
+import { render as renderWithProviders } from 'test/setup/render';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PanelLayout } from 'shared/ui/PanelLayout';
 import { UploadSidebar } from './UploadSidebar';
 import type { UploadWorkspaceState } from 'shared/types/uploadWorkspace';
 
@@ -12,6 +14,10 @@ function cssRule(selector: string) {
   const match = uploadSidebarCss.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`));
 
   return match?.[1]?.replace(/\s+/g, ' ').trim() ?? '';
+}
+
+function render(children: ReactNode) {
+  return renderWithProviders(<PanelLayout>{children}</PanelLayout>);
 }
 
 const mocks = vi.hoisted(() => ({
@@ -127,6 +133,8 @@ describe('UploadSidebar workspace behavior', () => {
     const publishButton = screen.getByRole('button', { name: 'Publish session' });
 
     expect(cancelButton.closest('footer')).toBe(publishButton.closest('footer'));
+    expect(publishButton.closest('[data-panel-layout-footer]')).not.toBeNull();
+    expect(publishButton.closest('[data-panel-scroll-owner]')).toBeNull();
     expect(header.compareDocumentPosition(bodyControl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(bodyControl.compareDocumentPosition(publishButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -299,12 +307,10 @@ describe('UploadSidebar workspace behavior', () => {
     expect(publishButton.closest('footer')).toHaveAttribute('data-ready', 'true');
   });
 
-  it('keeps the always-sticky footer transparent and puts the shared control glass on the publish button', () => {
+  it('keeps the projected footer transparent and puts the shared control glass on the publish button', () => {
     const footerRule = cssRule('.publishFooter');
 
     expect(footerRule).not.toContain('background:');
-    expect(footerRule).toContain('position: sticky');
-    expect(footerRule).toContain('z-index: 4');
 
     render(
       <UploadSidebar

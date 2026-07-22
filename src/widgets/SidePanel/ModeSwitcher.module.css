@@ -17,7 +17,9 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  transition: background 150ms ease, color 150ms ease;
+  transition:
+    background var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    color var(--wa-motion-duration-control) var(--wa-motion-easing-standard);
   white-space: nowrap;
 }
 

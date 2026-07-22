@@ -11,7 +11,7 @@ export const Route = createFileRoute('/_panel/cart')({
   validateSearch: (search): { from?: string } => ({
     from: typeof search.from === 'string' ? search.from : undefined,
   }),
-  staticData: { panelMode: 'workspace' },
+  staticData: { appRouteIntent: 'routeWorkspace' },
   component: CartPanelRoute,
 });
 

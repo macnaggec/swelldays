@@ -1,16 +1,11 @@
 .feed {
   flex: 1;
-  overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
 }
 
 .grid {
-  display: grid;
-  grid-template-columns: calc(25vw - 25px);
-  justify-content: center;
-  gap: 12px;
-  padding: 12px;
+  padding: var(--wa-panel-content-inset);
 }
 
 .card {

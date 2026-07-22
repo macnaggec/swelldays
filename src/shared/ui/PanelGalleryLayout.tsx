@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { PanelLayoutFooter } from './PanelLayout';
 import { PanelScrollChrome } from './PanelScrollChrome';
 import styles from './PanelGalleryLayout.module.css';
 
@@ -19,19 +20,12 @@ export function PanelGalleryLayout({ meta, footer, children }: PanelGalleryLayou
 
       <div className={styles.scroller} data-panel-gallery-scroller>
         <PanelScrollChrome />
-        <div
-          className={`${styles.galleryInset} ${footer ? styles.galleryInsetWithFooter : ''}`}
-          data-panel-gallery-inset
-        >
+        <div className={styles.galleryInset} data-panel-gallery-inset>
           {children}
         </div>
       </div>
 
-      {footer && (
-        <div className={styles.footer} data-panel-gallery-footer="fixed">
-          {footer}
-        </div>
-      )}
+      {footer && <PanelLayoutFooter>{footer}</PanelLayoutFooter>}
     </div>
   );
 }

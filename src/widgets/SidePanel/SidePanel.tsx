@@ -1,14 +1,23 @@
-import { useCallback, useRef, useState, type ReactNode, type UIEvent } from 'react';
+import {
+  useCallback,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+  type UIEvent,
+} from 'react';
 import { IconChevronLeft, IconMaximize, IconMinimize } from '@tabler/icons-react';
-import { motion } from 'framer-motion';
-import { materialClasses } from 'shared/ui/design-system';
+import {
+  DrawerShell,
+  type DrawerShellModality,
+  type DrawerShellPresentation,
+} from 'shared/ui/DrawerShell';
 import {
   PanelScrollChrome,
   PanelScrollChromeProvider,
   PanelScrollChromeStateProvider,
 } from 'shared/ui/PanelScrollChrome';
-import { PANEL_WIDTH_VW } from 'shared/model/panelExpansionStore';
-import { SIDE_PANEL_TRANSITION } from './panelMotion';
+import { PanelLayout } from 'shared/ui/PanelLayout';
 import styles from './SidePanel.module.css';
 
 const SCROLL_DIRECTION_THRESHOLD_PX = 8;
@@ -19,6 +28,9 @@ interface ScrollPosition {
 }
 
 interface SidePanelProps {
+  drawerPresentation?: DrawerShellPresentation;
+  drawerModality?: DrawerShellModality;
+  restoreFocusRef?: RefObject<HTMLElement | null>;
   /** Expands the panel to cover most of the viewport width. */
   expanded?: boolean;
   /** Called when the expand/collapse toggle is clicked. */
@@ -41,6 +53,9 @@ interface SidePanelProps {
 }
 
 export function SidePanel({
+  drawerPresentation = 'persistent',
+  drawerModality = 'nonmodal',
+  restoreFocusRef,
   expanded,
   onExpandToggle,
   onBack,
@@ -89,62 +104,56 @@ export function SidePanel({
   }, []);
 
   return (
-    <motion.div
-      className={`${styles.panel} ${materialClasses.panel}`}
-      initial={false}
-      animate={{ width: expanded ? `${PANEL_WIDTH_VW.expanded}vw` : `${PANEL_WIDTH_VW.compact}vw` }}
-      transition={{ width: SIDE_PANEL_TRANSITION }}
-    >
-      {/* Top bar: [expand/back] [center: header] */}
-      <div className={styles.panelTop}>
-        {!headerFullWidth && (
-          onBack || onExpandToggle ? (
-            <button
-              className={`${styles.topBtn} ${backLabel ? styles.topBtnLabeled : ''}`}
-              onClick={onBack ?? onExpandToggle}
-              disabled={backDisabled}
-              aria-label={onBack ? backLabel ?? 'Back' : expanded ? 'Collapse panel' : 'Expand panel'}
-            >
-              {onBack ? (
-                <>
-                  <IconChevronLeft size={16} />
-                  {backLabel && <span>{backLabel}</span>}
-                </>
-              ) : expanded ? (
-                <IconMinimize size={16} />
+    <PanelScrollChromeProvider value={subheader}>
+      <DrawerShell
+        presentation={drawerPresentation}
+        state={expanded ? 'expanded' : 'compact'}
+        modality={drawerModality}
+        restoreFocusRef={restoreFocusRef}
+      >
+        <PanelLayout
+          onScrollCapture={handleBodyScrollCapture}
+          header={(
+          <div className={styles.panelTop}>
+            {!headerFullWidth && (
+              onBack || onExpandToggle ? (
+                <button
+                  className={`${styles.topBtn} ${backLabel ? styles.topBtnLabeled : ''}`}
+                  onClick={onBack ?? onExpandToggle}
+                  disabled={backDisabled}
+                  aria-label={onBack ? backLabel ?? 'Back' : expanded ? 'Collapse panel' : 'Expand panel'}
+                >
+                  {onBack ? (
+                    <>
+                      <IconChevronLeft size={16} />
+                      {backLabel && <span>{backLabel}</span>}
+                    </>
+                  ) : expanded ? (
+                    <IconMinimize size={16} />
+                  ) : (
+                    <IconMaximize size={16} />
+                  )}
+                </button>
               ) : (
-                <IconMaximize size={16} />
-              )}
-            </button>
-          ) : (
-            <div aria-hidden="true" />
-          )
-        )}
+                <div aria-hidden="true" />
+              )
+            )}
 
-        {header && (
-          <div className={headerFullWidth ? styles.headerSlotFull : styles.headerSlot}>
-            {header}
+            {header && (
+              <div className={headerFullWidth ? styles.headerSlotFull : styles.headerSlot}>
+                {header}
+              </div>
+            )}
+            {!headerFullWidth && <div aria-hidden="true" />}
           </div>
-        )}
-        {!headerFullWidth && <div aria-hidden="true" />}
-      </div>
-
-      {/* Stable chrome is projected into the element that owns scrollTop. */}
-      <PanelScrollChromeProvider value={subheader}>
-        {!hideSubheaderOnScroll && subheader && (
-          <PanelScrollChrome />
-        )}
-
-        {/* Body */}
-        <PanelScrollChromeStateProvider value={scrollChromeState}>
-          <div
-            className={styles.body}
-            onScrollCapture={handleBodyScrollCapture}
-          >
+          )}
+          stickyChrome={!hideSubheaderOnScroll && subheader ? <PanelScrollChrome /> : undefined}
+        >
+          <PanelScrollChromeStateProvider value={scrollChromeState}>
             {children}
-          </div>
-        </PanelScrollChromeStateProvider>
-      </PanelScrollChromeProvider>
-    </motion.div>
+          </PanelScrollChromeStateProvider>
+        </PanelLayout>
+      </DrawerShell>
+    </PanelScrollChromeProvider>
   );
 }

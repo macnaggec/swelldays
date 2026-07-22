@@ -1,26 +1,12 @@
-/* ── Panel ────────────────────────────────────────────────────────────────── */
-.panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  height: 100%;
-  width: 25vw;
-  z-index: var(--wa-z-panel);
-  border-right: none;
-  border-radius: var(--wa-radius-panel) 0 0 var(--wa-radius-panel);
-
-  display: flex;
-  flex-direction: column;
-
-}
-
 /* ── Top row: [expand/back] [center: header] ────────────────────────────── */
 .panelTop {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   column-gap: 8px;
-  padding: 10px 8px;
+  min-height: var(--wa-panel-chrome-height);
+  box-sizing: border-box;
+  padding: 0 8px;
   flex-shrink: 0;
 }
 
@@ -40,21 +26,11 @@
   justify-self: stretch;
 }
 
-/* ── Panel body ───────────────────────────────────────────────────────────── */
-.body {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  position: relative; /* containing block for FloatingAction sticky positioning */
-}
-
 /* ── Top-row icon button (expand/back) ───────────────────────────────────── */
 .topBtn {
   justify-self: start;
-  width: 32px;
-  height: 32px;
+  width: var(--wa-control-size-compact);
+  height: var(--wa-control-size-compact);
   border: none;
   background: transparent;
   border-radius: var(--wa-radius-control-sm);
@@ -64,7 +40,9 @@
   justify-content: center;
   gap: 4px;
   color: var(--wa-text-muted);
-  transition: background-color 150ms ease, color 150ms ease;
+  transition:
+    background-color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    color var(--wa-motion-duration-control) var(--wa-motion-easing-standard);
 }
 
 .topBtnLabeled {

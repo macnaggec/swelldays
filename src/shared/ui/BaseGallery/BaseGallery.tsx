@@ -4,6 +4,7 @@ import styles from './BaseGallery.module.css';
 import SelectionCheckbox from './SelectionCheckbox';
 import { UseGallerySelectionReturn } from 'shared/hooks/gallery';
 import { usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
+import { PanelCollectionGrid } from 'shared/ui/PanelCollectionGrid';
 
 /**
  * Context passed to renderCard for each item
@@ -45,7 +46,7 @@ export interface BaseGalleryProps<T extends { id: string }> {
   /** Grid gap spacing (Mantine spacing value or CSS value) */
   gap?: string | number;
 
-  /** Override number of columns (default: 3 via CSS) */
+  /** Fixed-column override for non-panel surfaces; panel collections use their container width. */
   columns?: number;
 
   /** Accessibility label for the gallery */
@@ -112,7 +113,7 @@ function BaseGallery<T extends { id: string }>({
       )}
 
       {/* Main gallery grid */}
-      <div
+      <PanelCollectionGrid
         className={styles.gallery}
         role="grid"
         aria-label={ariaLabel}
@@ -155,7 +156,7 @@ function BaseGallery<T extends { id: string }>({
             </div>
           );
         })}
-      </div>
+      </PanelCollectionGrid>
 
       {/* Empty state slot - shown when no items */}
       {items.length === 0 && emptyState}

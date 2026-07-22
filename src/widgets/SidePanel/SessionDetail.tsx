@@ -9,6 +9,7 @@ import { useUser } from 'shared/hooks/useUser';
 import { useMediaFavorites } from 'entities/Media';
 import { BaseGallery } from 'shared/ui/BaseGallery';
 import { PanelGalleryLayout } from 'shared/ui/PanelGalleryLayout';
+import { PanelCollectionGrid } from 'shared/ui/PanelCollectionGrid';
 import styles from './SessionDetail.module.css';
 
 interface SessionDetailProps {
@@ -74,11 +75,11 @@ export function SessionDetail({ session }: SessionDetailProps) {
         }
       >
         {isLoading ? (
-          <div className={styles.skeletonGrid}>
+          <PanelCollectionGrid preview>
             {Array.from({ length: session.mediaCount || 6 }).map((_, i) => (
               <Skeleton key={i} height={0} style={{ paddingBottom: '62.5%', borderRadius: 8 }} />
             ))}
-          </div>
+          </PanelCollectionGrid>
         ) : (
           <BaseGallery
             items={media ?? []}

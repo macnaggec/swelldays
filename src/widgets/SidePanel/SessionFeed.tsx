@@ -6,12 +6,11 @@ import { useSessionFeed, type SurfSessionItem } from 'entities/SurfSession';
 import type { BrowseFilters } from 'shared/model/browseFilters';
 import { formatDateRange } from 'shared/lib/dateUtils';
 import { PanelScrollChrome } from 'shared/ui/PanelScrollChrome';
-import { SIDE_PANEL_TRANSITION } from './panelMotion';
+import { DRAWER_SHELL_TRANSITION } from 'shared/ui/DrawerShell';
+import { PanelCollectionGrid } from 'shared/ui/PanelCollectionGrid';
 import styles from './SessionFeed.module.css';
 
-const SESSION_CARD_TRACK = 'calc(25vw - 25px)';
-
-// ─── Session card ──────────────────────────────────────────────────────────────
+// ─── Session card
 
 function SessionCard({ session, onClick }: { session: SurfSessionItem; onClick: () => void }) {
   return (
@@ -46,10 +45,9 @@ function SessionCard({ session, onClick }: { session: SurfSessionItem; onClick: 
   );
 }
 
-// ─── Feed ─────────────────────────────────────────────────────────────────────
+// ─── Feed
 
 interface SessionFeedProps {
-  expanded?: boolean;
   filters?: BrowseFilters;
   onSessionClick?: (session: SurfSessionItem) => void;
   /** Route-driven spot filter — takes precedence over mapStore.selection. */
@@ -59,14 +57,11 @@ interface SessionFeedProps {
 }
 
 export function SessionFeed({
-  expanded,
   filters,
   onSessionClick,
   spotId: spotIdProp,
   onLayoutReadyChange,
 }: SessionFeedProps) {
-  const columns = expanded ? 3 : 1;
-
   const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } =
     useSessionFeed({ spotId: spotIdProp, filters });
 
@@ -82,39 +77,38 @@ export function SessionFeed({
     <div className={styles.feed}>
       <PanelScrollChrome />
       {isLoading ? (
-        <div
+        <PanelCollectionGrid
           className={styles.grid}
-          style={{ gridTemplateColumns: `repeat(${columns}, ${SESSION_CARD_TRACK})` }}
+          preview
         >
-          {Array.from({ length: columns * 3 }).map((_, i) => (
+          {Array.from({ length: 9 }).map((_, i) => (
             <div key={i}>
               <Skeleton height={0} className={styles.skeletonMedia} />
               <Skeleton height={14} mb={4} radius="sm" />
               <Skeleton height={11} width="60%" radius="sm" />
             </div>
           ))}
-        </div>
+        </PanelCollectionGrid>
       ) : sessions.length === 0 ? (
         <Center h={200}>
           <Text size="sm" c="dimmed">No sessions found</Text>
         </Center>
       ) : (
         <>
-          <div
-            className={styles.grid}
-            style={{ gridTemplateColumns: `repeat(${columns}, ${SESSION_CARD_TRACK})` }}
-          >
+          <PanelCollectionGrid className={styles.grid}>
             {sessions.map((s) => (
               <motion.div
                 key={s.id}
                 layout="position"
-                layoutDependency={columns}
-                transition={{ layout: SIDE_PANEL_TRANSITION }}
+                transition={{ layout: DRAWER_SHELL_TRANSITION }}
               >
-                <SessionCard session={s} onClick={() => onSessionClick?.(s)} />
+                <SessionCard
+                  session={s}
+                  onClick={() => onSessionClick?.(s)}
+                />
               </motion.div>
             ))}
-          </div>
+          </PanelCollectionGrid>
 
           {hasNextPage && !isFetchingNextPage && (
             <Center py="md">

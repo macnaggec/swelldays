@@ -2,9 +2,12 @@
 .toolbar {
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: var(--wa-z-panel-chrome);
   background: var(--gallery-toolbar-bg, transparent);
-  transition: transform 220ms ease;
+  transition:
+    transform
+    var(--wa-motion-duration-chrome)
+    var(--wa-motion-easing-standard);
 }
 
 .toolbar[data-hidden] {
@@ -12,22 +15,7 @@
 }
 
 .gallery {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  width: 100%;
-}
-
-@media (max-width: 900px) {
-  .gallery {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .gallery {
-    grid-template-columns: 1fr;
-  }
+  min-width: 0;
 }
 
 .gallery-item {

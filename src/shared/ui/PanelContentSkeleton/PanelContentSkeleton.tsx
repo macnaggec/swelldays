@@ -1,24 +1,25 @@
 
 
-import { SimpleGrid, Skeleton, Stack } from '@mantine/core';
+import { Skeleton, Stack } from '@mantine/core';
+import { PanelCollectionGrid } from 'shared/ui/PanelCollectionGrid';
 
-const CARD_COUNT = 6;
+const CARD_COUNT = 9;
 
 /**
  * PanelContentSkeleton — loading placeholder for the spot panel tab body.
  *
- * Mirrors BaseGallery's 3-column grid so the transition from skeleton to
- * content is visually stable. Used as the Suspense fallback in SpotLayout
+ * Mirrors BaseGallery's panel-container grid so the transition from skeleton
+ * to content is visually stable. Used as the Suspense fallback in SpotLayout
  * while the async view (gallery or upload) is in-flight.
  */
 export function PanelContentSkeleton() {
   return (
     <Stack gap="md">
-      <SimpleGrid cols={3} spacing={10}>
+      <PanelCollectionGrid preview>
         {Array.from({ length: CARD_COUNT }, (_, i) => (
           <Skeleton key={i} height={110} radius="sm" />
         ))}
-      </SimpleGrid>
+      </PanelCollectionGrid>
     </Stack>
   );
 }

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Box, Button, Group, Popover, Stack, Text } from '@mantine/core';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { notify } from 'shared/lib/notifications';
+import { getViewportCapabilitiesSnapshot } from 'shared/model/viewportCapabilities';
 import { MIN_MEDIA_PRICE_CENTS } from 'entities/Media';
 import {
   useUploadManager,
@@ -19,6 +20,7 @@ import { PriceStep } from './steps/PriceStep';
 import { TimeStep } from './steps/TimeStep';
 import { combineDateAndTime, minutesToTime } from './steps/helpers';
 import materials from 'shared/ui/design-system/materials.module.css';
+import { PanelLayoutFooter } from 'shared/ui/PanelLayout';
 import styles from './UploadSidebar.module.css';
 import type { UploadWorkspaceState } from 'shared/types/uploadWorkspace';
 
@@ -222,8 +224,7 @@ function UploadSidebarContent({
             : firstViolation === 'price'
               ? priceSectionRef.current
               : timeSectionRef.current;
-        const prefersReducedMotion = typeof window.matchMedia === 'function'
-          && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const { prefersReducedMotion } = getViewportCapabilitiesSnapshot();
 
         target?.scrollIntoView({
           behavior: prefersReducedMotion ? 'auto' : 'smooth',
@@ -325,9 +326,10 @@ function UploadSidebarContent({
         />
       </Box>
 
-      {/* Action footer: Cancel discards the draft, Publish finalizes it. */}
-      <Box component="footer" className={styles.publishFooter} data-ready={canPublish ? 'true' : 'false'}>
-        <Group className={styles.footerActions} gap="sm" justify="center">
+      <PanelLayoutFooter>
+        {/* Cancel discards the draft; Publish finalizes it. PanelLayout owns placement. */}
+        <Box component="footer" className={styles.publishFooter} data-ready={canPublish ? 'true' : 'false'}>
+          <Group className={styles.footerActions} gap="sm" justify="center">
           <Popover
             opened={isConfirmingDiscard}
             onChange={setIsConfirmingDiscard}
@@ -397,8 +399,9 @@ function UploadSidebarContent({
           >
             {isEditMode ? 'Save' : 'Publish session'}
           </Button>
-        </Group>
-      </Box>
+          </Group>
+        </Box>
+      </PanelLayoutFooter>
 
     </Stack>
   );

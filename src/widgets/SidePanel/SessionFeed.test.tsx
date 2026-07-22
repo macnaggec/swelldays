@@ -2,7 +2,6 @@ import { MantineProvider } from '@mantine/core';
 import { render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SessionFeed } from './SessionFeed';
-import styles from './SessionFeed.module.css';
 
 const mocks = vi.hoisted(() => ({
   isLoading: false,
@@ -40,32 +39,12 @@ describe('SessionFeed', () => {
     mocks.isLoading = false;
   });
 
-  it('changes the grid from the shared panel layout state', () => {
-    const { container, rerender } = render(
-      <MantineProvider>
-        <SessionFeed expanded={false} />
-      </MantineProvider>,
-    );
-    const grid = container.querySelector<HTMLElement>(`.${styles.grid}`);
-    const cardTrack = 'calc(25vw - 25px)';
-
-    expect(grid?.style.gridTemplateColumns).toBe(`repeat(1, ${cardTrack})`);
-
-    rerender(
-      <MantineProvider>
-        <SessionFeed expanded />
-      </MantineProvider>,
-    );
-
-    expect(grid?.style.gridTemplateColumns).toBe(`repeat(3, ${cardTrack})`);
-  });
-
   it('reports layout readiness only while real session cards are committed', () => {
     const onLayoutReadyChange = vi.fn();
     mocks.isLoading = true;
     const { rerender, unmount } = render(
       <MantineProvider>
-        <SessionFeed expanded onLayoutReadyChange={onLayoutReadyChange} />
+        <SessionFeed onLayoutReadyChange={onLayoutReadyChange} />
       </MantineProvider>,
     );
 
@@ -74,7 +53,7 @@ describe('SessionFeed', () => {
     mocks.isLoading = false;
     rerender(
       <MantineProvider>
-        <SessionFeed expanded onLayoutReadyChange={onLayoutReadyChange} />
+        <SessionFeed onLayoutReadyChange={onLayoutReadyChange} />
       </MantineProvider>,
     );
 

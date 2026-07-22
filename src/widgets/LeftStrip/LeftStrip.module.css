@@ -1,7 +1,7 @@
 .root {
   position: fixed;
-  top: 12px;
-  left: 12px;
+  top: var(--wa-shell-edge-clearance);
+  left: var(--wa-shell-edge-clearance);
   z-index: var(--wa-z-floating-chrome);
   display: flex;
   align-items: center;
@@ -17,8 +17,8 @@
 }
 
 .button {
-  width: 44px;
-  height: 44px;
+  width: var(--wa-control-size-navigation);
+  height: var(--wa-control-size-navigation);
   display: inline-flex;
   align-items: center;
   justify-content: center;

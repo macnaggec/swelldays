@@ -1,8 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import {
-  SimpleGrid,
-  Skeleton,
-} from '@mantine/core';
+import { Skeleton } from '@mantine/core';
 import { useState } from 'react';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { notify } from 'shared/lib/notifications';
@@ -10,6 +7,7 @@ import { RemoveSessionModal, SurfSessionCard, useStartSessionEdit, type SurfSess
 import { PanelGalleryLayout } from 'shared/ui/PanelGalleryLayout';
 import { PanelEmptyState } from 'shared/ui/PanelRouteLayout';
 import { BaseGallery } from 'shared/ui/BaseGallery';
+import { PanelCollectionGrid } from 'shared/ui/PanelCollectionGrid';
 import { useCollectionsContext } from './_panel.me.collections';
 
 export const Route = createFileRoute('/_panel/me/collections/')({
@@ -36,11 +34,11 @@ function UploadsTab() {
   if (isLoadingUploads) {
     return (
       <PanelGalleryLayout>
-        <SimpleGrid cols={2} spacing="xs">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <PanelCollectionGrid preview>
+          {Array.from({ length: 9 }).map((_, i) => (
             <Skeleton key={i} height={160} radius="sm" />
           ))}
-        </SimpleGrid>
+        </PanelCollectionGrid>
       </PanelGalleryLayout>
     );
   }

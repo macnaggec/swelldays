@@ -9,9 +9,30 @@
   --wa-z-panel: 200;
   --wa-z-floating-chrome: 300;
   --wa-z-modal: 500;
+  --wa-z-panel-chrome: 10;
 
-  /* Layout */
-  --wa-layout-strip-safe: 72px;
+  /* Responsive layout */
+  --wa-shell-edge-clearance: 12px;
+  --wa-panel-content-inset: 12px;
+  --wa-panel-grid-gap: 12px;
+  --wa-panel-chrome-height: 52px;
+  --wa-panel-section-chrome-height: 32px;
+
+  /* Responsive controls */
+  --wa-control-size-compact: 32px;
+  --wa-control-height-default: 2.25rem;
+  --wa-control-size-navigation: 44px;
+
+  /* Motion */
+  --wa-motion-duration-control: 150ms;
+  --wa-motion-duration-chrome: 220ms;
+  --wa-motion-easing-standard: ease;
+
+  /* Safe areas */
+  --wa-safe-area-top: env(safe-area-inset-top, 0px);
+  --wa-safe-area-right: env(safe-area-inset-right, 0px);
+  --wa-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --wa-safe-area-left: env(safe-area-inset-left, 0px);
 
   /* Glass surfaces */
   --wa-surface-chrome: rgba(255, 255, 255, 0.08);

@@ -1,7 +1,7 @@
 .sidebar {
   --upload-gutter: 16px;
   --upload-section-gap: 12px;
-  --upload-control-height: 36px;
+  --upload-control-height: var(--wa-control-height-default);
   --upload-compact-inset: 8px;
   --upload-block-padding-top: 12px;
   --upload-block-padding-bottom: 16px;
@@ -78,13 +78,8 @@
   box-shadow: inset 3px 0 0 var(--wa-status-danger);
 }
 
-/* Always sticky so Cancel and Publish stay reachable while the form scrolls;
-   data-ready only switches the publish emphasis, not the footer position. */
 .publishFooter {
-  margin-top: auto;
-  position: sticky;
-  z-index: 4;
-  bottom: 0;
+  width: 100%;
 }
 
 .cancelButton {
