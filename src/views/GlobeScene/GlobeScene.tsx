@@ -6,21 +6,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMatches, useNavigate } from '@tanstack/react-router';
 import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
 import type { LngLat } from 'shared/types/coordinates';
-import { usePanelExpansionStore, useRenderedPanelExpandedSnapshot } from 'shared/model/panelExpansionStore';
-import { getPanelRouteMode } from 'shared/model/panelRouteMode';
+import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
+import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
+import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import { useTRPC } from 'shared/lib/trpc';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { notify } from 'shared/lib/notifications';
-import { deriveAppChromePolicy } from 'shared/model/appChromePolicy';
+import { deriveDesktopFoundationAppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
 import { materialClasses } from 'shared/ui/design-system';
+import { useDrawerGeometry } from 'shared/ui/DrawerShell';
 import classes from './GlobeScene.module.css';
-import { deriveGlobeInteractionPolicy } from './model/globeInteractionPolicy';
 import { deriveGlobeMotionPolicy } from './model/globeMotionPolicy';
 import { deriveGlobeSceneMode } from './model/globeSceneMode';
-import { deriveGlobeSidebarOcclusionPx } from './model/globeSidebarOcclusion';
+import { deriveDrawerViewportOcclusionPx } from './model/drawerViewportOcclusion';
 import { getOverviewMapBounds } from './model/overviewBoundsStrategy';
-
-const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
 function subscribeDocumentVisibility(onStoreChange: () => void) {
   document.addEventListener('visibilitychange', onStoreChange);
@@ -31,29 +30,10 @@ function getDocumentHiddenSnapshot() {
   return document.hidden;
 }
 
-function subscribeReducedMotion(onStoreChange: () => void) {
-  const mediaQuery = window.matchMedia(REDUCED_MOTION_QUERY);
-
-  mediaQuery.addEventListener('change', onStoreChange);
-  return () => mediaQuery.removeEventListener('change', onStoreChange);
-}
-
-function getReducedMotionSnapshot() {
-  return window.matchMedia(REDUCED_MOTION_QUERY).matches;
-}
-
 function useDocumentHidden() {
   return useSyncExternalStore(
     subscribeDocumentVisibility,
     getDocumentHiddenSnapshot,
-    () => false,
-  );
-}
-
-function usePrefersReducedMotion() {
-  return useSyncExternalStore(
-    subscribeReducedMotion,
-    getReducedMotionSnapshot,
     () => false,
   );
 }
@@ -79,13 +59,21 @@ export function GlobeScene() {
   const setTempPin = useAddSpotStore((s) => s.setTempPin);
   const [isUserExploring, setIsUserExploring] = useState(false);
   const isDocumentHidden = useDocumentHidden();
-  const prefersReducedMotion = usePrefersReducedMotion();
-  const isRenderedPanelExpanded = useRenderedPanelExpandedSnapshot();
+  const { prefersReducedMotion, viewportWidthPx } = useViewportCapabilities();
+  const browseExpanded = usePanelExpansionStore((state) => state.browsingExpanded);
+  const galleryExpanded = usePanelExpansionStore((state) => state.galleryExpanded);
   const setBrowsingPanelExpanded = usePanelExpansionStore((state) => state.setBrowsingPanelExpanded);
   const setGalleryPanelExpanded = usePanelExpansionStore((state) => state.setGalleryPanelExpanded);
   const matches = useMatches();
-  const panelRouteMode = getPanelRouteMode(matches);
-  const canCompactPanelFromMap = panelRouteMode === 'browsing' || panelRouteMode === 'galleryWorkspace';
+  const routeIntent = resolveAppRouteIntent(
+    matches,
+    isAddSpotActive ? 'immersiveMapInput' : undefined,
+  );
+  const isImmersiveMapInput = routeIntent === 'immersiveMapInput';
+  const layoutPolicy = deriveDesktopFoundationAppShellLayoutPolicy({
+    routeIntent,
+    preferences: { browseExpanded, galleryExpanded },
+  });
   const navigate = useNavigate();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -109,10 +97,8 @@ export function GlobeScene() {
   const selectedSpotId = uploadMatch
     ? (uploadSeedSpotId ?? uploadWorkspaceState?.workspace.spotId ?? null)
     : routeSelectedSpotId;
-  const chromePolicy = deriveAppChromePolicy({ isAddSpotActive });
   const sceneMode = deriveGlobeSceneMode({
-    isAddSpotActive,
-    isUploadSpotSelectionActive: Boolean(uploadMatch),
+    routeIntent,
     selectedSpotId,
     isUserExploring,
   });
@@ -121,25 +107,23 @@ export function GlobeScene() {
     isDocumentHidden,
     prefersReducedMotion,
   });
-  const interactionPolicy = deriveGlobeInteractionPolicy({
-    sceneMode,
-    isRenderedPanelExpanded,
-    canCompactPanelFromMap,
+  const interactionPolicy = layoutPolicy.map.interaction === 'hidden'
+    ? 'background'
+    : layoutPolicy.map.interaction;
+  const drawerGeometry = useDrawerGeometry();
+  const isShellDrawerExpanded = layoutPolicy.drawer.state === 'expanded'
+    || layoutPolicy.drawer.state === 'full';
+  const drawerOccludedPx = deriveDrawerViewportOcclusionPx({
+    drawerBounds: drawerGeometry,
+    viewportWidthPx,
   });
-  const sidebarOccludedPx = useMemo(
-    () => deriveGlobeSidebarOcclusionPx({
-      isRenderedPanelExpanded,
-      viewportWidthPx: window.innerWidth,
-    }),
-    [isRenderedPanelExpanded],
-  );
 
   const handleSpotSelect = useCallback(async (spot: MapSpotProjection) => {
     if (isUpdatingWorkspace) return;
 
     if (sceneMode.kind !== 'uploadSpotSelection') {
       await navigate({
-        to: panelRouteMode === 'galleryWorkspace' ? '/$spotId/gallery' : '/$spotId',
+        to: routeIntent === 'galleryWorkspace' ? '/$spotId/gallery' : '/$spotId',
         params: { spotId: spot.id },
       });
       return;
@@ -164,21 +148,21 @@ export function GlobeScene() {
     } catch (error) {
       notify.error(getErrorMessage(error), 'Unable to Save Spot');
     }
-  }, [isUpdatingWorkspace, navigate, panelRouteMode, queryClient, sceneMode.kind, trpc, updateWorkspace, workspaceId]);
+  }, [isUpdatingWorkspace, navigate, queryClient, routeIntent, sceneMode.kind, trpc, updateWorkspace, workspaceId]);
 
   const handleMapCoordinateClick = useCallback((coords: LngLat) => {
     setTempPin(coords);
   }, [setTempPin]);
 
   const handleCameraGestureStart = useCallback(() => {
-    if (!isRenderedPanelExpanded) return;
+    if (!isShellDrawerExpanded) return;
 
-    if (panelRouteMode === 'galleryWorkspace') {
+    if (routeIntent === 'galleryWorkspace') {
       setGalleryPanelExpanded(false);
-    } else if (panelRouteMode === 'browsing') {
+    } else if (routeIntent === 'browse') {
       setBrowsingPanelExpanded(false);
     }
-  }, [isRenderedPanelExpanded, panelRouteMode, setBrowsingPanelExpanded, setGalleryPanelExpanded]);
+  }, [isShellDrawerExpanded, routeIntent, setBrowsingPanelExpanded, setGalleryPanelExpanded]);
 
   return (
     <div className={classes.root}>
@@ -188,9 +172,9 @@ export function GlobeScene() {
         onSpotSelect={handleSpotSelect}
         motionPolicy={motionPolicy}
         interactionPolicy={interactionPolicy}
-        sidebarOccludedPx={sidebarOccludedPx}
-        isCoordinatePickerActive={isAddSpotActive}
-        showNavigationControl={chromePolicy.showMapNavigationControl}
+        rightOccludedPx={drawerOccludedPx}
+        isCoordinatePickerActive={isImmersiveMapInput}
+        showNavigationControl={layoutPolicy.map.navigationControl === 'visible'}
         tempPin={tempPin}
         onMapCoordinateClick={handleMapCoordinateClick}
         onUserExploreStart={() => setIsUserExploring(true)}
@@ -201,7 +185,7 @@ export function GlobeScene() {
       {isUpdatingWorkspace && (
         <div className={`${classes.saveStatus} ${materialClasses.status}`} role="status">Saving spot…</div>
       )}
-      {isAddSpotActive && <AddSpotPanel />}
+      {isImmersiveMapInput && <AddSpotPanel />}
     </div>
   );
 }

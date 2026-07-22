@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
-import { screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
+import { publishDrawerGeometry } from './DrawerShell/geometry';
 import {
   FloatingPanelControls,
   PanelEmptyState,
@@ -20,6 +21,10 @@ function cssRule(selector: string) {
 }
 
 describe('PanelRouteLayout', () => {
+  afterEach(() => {
+    act(() => publishDrawerGeometry(null));
+  });
+
   it('separates route header chrome from route content', () => {
     render(
       <PanelRouteLayout header={<div>Search control</div>}>
@@ -70,6 +75,17 @@ describe('PanelRouteLayout', () => {
     expect(action.closest('[data-panel-toolbar-action]')).not.toBeNull();
     expect(screen.getByText('Filters').closest('[data-panel-toolbar-trailing]')).not.toBeNull();
     expect(action.querySelector('[data-panel-route-action-indicator]')).not.toBeNull();
+    expect(
+      screen.getByText('Search').closest('[data-panel-search-toolbar]')?.hasAttribute('data-expanded'),
+    ).toBe(true);
+  });
+
+  it('uses the same three-column geometry as the expanded session feed', () => {
+    expect(cssRule('.toolbar[data-expanded]')).toContain(
+      'grid-template-columns: repeat(3, minmax(0, 1fr))',
+    );
+    expect(cssRule('.toolbar[data-expanded]')).toContain('gap: var(--wa-panel-grid-gap)');
+    expect(cssRule('.toolbarMainExpanded')).toContain('display: contents');
   });
 
   it('gives the search field and action stronger contrast than passive controls', () => {
@@ -102,5 +118,30 @@ describe('PanelRouteLayout', () => {
 
     expect(controls).not.toBeNull();
     expect(controls?.closest('[data-panel-route-header]')).toBeNull();
+  });
+
+  it('anchors floating controls beside the rendered drawer edge as its bounds change', () => {
+    const publishDrawerWidth = (width: number) => {
+      act(() => {
+        publishDrawerGeometry(new DOMRect(window.innerWidth - width, 0, width, 768));
+      });
+    };
+
+    publishDrawerWidth(320);
+    render(
+      <FloatingPanelControls>
+        <span>Compact filters</span>
+      </FloatingPanelControls>,
+    );
+
+    const controls = screen.getByText('Compact filters').closest<HTMLElement>(
+      '[data-floating-panel-controls]',
+    );
+
+    expect(controls?.style.insetInlineEnd).toBe('328px');
+
+    publishDrawerWidth(456);
+
+    expect(controls?.style.insetInlineEnd).toBe('464px');
   });
 });

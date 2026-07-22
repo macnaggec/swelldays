@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useDrawerAdjacentInlineEndInset } from 'shared/ui/DrawerShell';
 import styles from './PanelRouteLayout.module.css';
 
 interface PanelRouteLayoutProps {
@@ -64,7 +65,11 @@ export function PanelSearchToolbar({
   expanded = false,
 }: PanelSearchToolbarProps) {
   return (
-    <div className={styles.toolbar} data-panel-search-toolbar>
+    <div
+      className={styles.toolbar}
+      data-panel-search-toolbar
+      data-expanded={expanded || undefined}
+    >
       <div
         className={`${styles.toolbarMain} ${expanded ? styles.toolbarMainExpanded : styles.toolbarMainCompact}`}
       >
@@ -103,8 +108,15 @@ export function PanelRouteActionButton({
 }
 
 export function FloatingPanelControls({ children }: { children: ReactNode }) {
+  const inlineEndInset = useDrawerAdjacentInlineEndInset(8);
+
   return (
-    <div className={styles.floatingControls} data-floating-panel-controls>
+    <div
+      className={styles.floatingControls}
+      data-floating-panel-controls
+      data-positioned={inlineEndInset !== null || undefined}
+      style={inlineEndInset === null ? undefined : { insetInlineEnd: inlineEndInset }}
+    >
       {children}
     </div>
   );

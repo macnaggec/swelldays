@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   selectedSpotPopup: vi.fn(),
   flyTo: vi.fn(),
   easeTo: vi.fn(),
+  setPadding: vi.fn(),
   getZoom: vi.fn(() => 1.5),
   navigationControl: vi.fn(),
 }));
@@ -79,6 +80,7 @@ vi.mock('react-map-gl', () => ({
           easeTo: mocks.easeTo,
           flyTo: mocks.flyTo,
           getZoom: mocks.getZoom,
+          setPadding: mocks.setPadding,
         } })}
       >
         Load map
@@ -643,7 +645,7 @@ describe('GlobeMapComponent selected spot focus', () => {
         selectedSpotId={null}
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        sidebarOccludedPx={500}
+        rightOccludedPx={500}
       />,
     );
 
@@ -655,7 +657,7 @@ describe('GlobeMapComponent selected spot focus', () => {
         selectedSpotId="spot-1"
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        sidebarOccludedPx={500}
+        rightOccludedPx={500}
       />,
     );
 
@@ -713,20 +715,20 @@ describe('GlobeMapComponent selected spot popup', () => {
   });
 });
 
-describe('GlobeMapComponent sidebar occlusion changes', () => {
+describe('GlobeMapComponent right-side occlusion changes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getZoom.mockReturnValue(12);
   });
 
-  it('re-centers the already-focused spot into the newly visible area when the occlusion width changes', () => {
+  it('updates camera padding without restarting the selected-spot focus animation', () => {
     const { rerender } = render(
       <GlobeMapComponent
         spots={spots}
         selectedSpotId={null}
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        sidebarOccludedPx={250}
+        rightOccludedPx={250}
       />,
     );
 
@@ -738,10 +740,12 @@ describe('GlobeMapComponent sidebar occlusion changes', () => {
         selectedSpotId="spot-1"
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        sidebarOccludedPx={250}
+        rightOccludedPx={250}
       />,
     );
     mocks.easeTo.mockClear();
+    mocks.flyTo.mockClear();
+    mocks.setPadding.mockClear();
 
     rerender(
       <GlobeMapComponent
@@ -749,16 +753,18 @@ describe('GlobeMapComponent sidebar occlusion changes', () => {
         selectedSpotId="spot-1"
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        sidebarOccludedPx={750}
+        rightOccludedPx={750}
       />,
     );
 
-    expect(mocks.easeTo).toHaveBeenCalledWith({
-      center: [115.085, -8.815],
-      padding: { top: 300, right: 750 },
-      duration: 600,
-      essential: true,
+    expect(mocks.setPadding).toHaveBeenCalledWith({
+      top: 300,
+      right: 750,
+      bottom: 0,
+      left: 0,
     });
+    expect(mocks.easeTo).not.toHaveBeenCalled();
+    expect(mocks.flyTo).not.toHaveBeenCalled();
   });
 
   it('does not move the camera when the occlusion width changes with no spot selected', () => {
@@ -768,12 +774,13 @@ describe('GlobeMapComponent sidebar occlusion changes', () => {
         selectedSpotId={null}
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        sidebarOccludedPx={250}
+        rightOccludedPx={250}
       />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: /load map/i }));
     mocks.easeTo.mockClear();
+    mocks.setPadding.mockClear();
 
     rerender(
       <GlobeMapComponent
@@ -781,10 +788,11 @@ describe('GlobeMapComponent sidebar occlusion changes', () => {
         selectedSpotId={null}
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        sidebarOccludedPx={750}
+        rightOccludedPx={750}
       />,
     );
 
     expect(mocks.easeTo).not.toHaveBeenCalled();
+    expect(mocks.setPadding).not.toHaveBeenCalled();
   });
 });

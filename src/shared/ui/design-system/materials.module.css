@@ -12,7 +12,7 @@
   box-shadow: var(--wa-glass-shadow-chrome);
 }
 
-/* Zero specificity so a consumer's own position (e.g. SidePanel's fixed) always wins. */
+/* Zero specificity so a consumer's own position (e.g. DrawerShell's fixed) always wins. */
 :where(.panel) {
   position: relative;
 }

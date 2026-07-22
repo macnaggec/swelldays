@@ -2,18 +2,22 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GlobeScene } from './GlobeScene';
 import type { LngLat } from 'shared/types/coordinates';
+import type { DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
+import type { DrawerGeometry } from 'shared/ui/DrawerShell';
 
 const mocks = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
   isUpdatingWorkspace: false,
-  isRenderedPanelExpanded: false,
+  browsingExpanded: false,
+  galleryExpanded: true,
+  drawerGeometry: null as DrawerGeometry | null,
   setBrowsingPanelExpanded: vi.fn(),
   setGalleryPanelExpanded: vi.fn(),
-  matches: [{ routeId: '/_panel/upload', search: { workspaceId: 'workspace-1' } }] as Array<{
+  matches: [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: { workspaceId: 'workspace-1' } }] as Array<{
     routeId: string;
     params?: { spotId?: string };
     search?: { workspaceId?: string; spotId?: string };
-    staticData?: { panelMode?: 'browsing' | 'workspace' | 'mapInput' | 'galleryWorkspace' };
+    staticData?: { appRouteIntent?: DeclaredAppRouteIntent };
   }>,
   navigate: vi.fn(),
   notifyError: vi.fn(),
@@ -45,7 +49,7 @@ vi.mock('widgets/GlobeMap', () => ({
     selectedSpotId?: string | null;
     tempPin?: LngLat | null;
     interactionPolicy?: 'interactive' | 'background';
-    sidebarOccludedPx?: number;
+    rightOccludedPx?: number;
   }) => (
     <div
       data-coordinate-picker-active={String(isCoordinatePickerActive)}
@@ -54,7 +58,7 @@ vi.mock('widgets/GlobeMap', () => ({
       data-selected-spot-id={selectedSpotId ?? ''}
       data-has-camera-intent={String('cameraIntent' in restProps)}
       data-interaction-policy={String(restProps.interactionPolicy)}
-      data-sidebar-occluded-px={String(restProps.sidebarOccludedPx)}
+      data-right-occluded-px={String(restProps.rightOccludedPx)}
     >
       <button onClick={() => onSpotSelect({ id: 'spot-1' })}>Select Pipeline</button>
       <button onClick={() => onCameraGestureStart?.()}>Explore map</button>
@@ -74,15 +78,21 @@ vi.mock('features/AddSpot', () => ({
 }));
 
 vi.mock('shared/model/panelExpansionStore', () => ({
-  useRenderedPanelExpandedSnapshot: () => mocks.isRenderedPanelExpanded,
   usePanelExpansionStore: (selector: (state: {
+    browsingExpanded: boolean;
+    galleryExpanded: boolean;
     setBrowsingPanelExpanded: typeof mocks.setBrowsingPanelExpanded;
     setGalleryPanelExpanded: typeof mocks.setGalleryPanelExpanded;
   }) => unknown) => selector({
+    browsingExpanded: mocks.browsingExpanded,
+    galleryExpanded: mocks.galleryExpanded,
     setBrowsingPanelExpanded: mocks.setBrowsingPanelExpanded,
     setGalleryPanelExpanded: mocks.setGalleryPanelExpanded,
   }),
-  PANEL_WIDTH_VW: { compact: 25, expanded: 75 },
+}));
+
+vi.mock('shared/ui/DrawerShell', () => ({
+  useDrawerGeometry: () => mocks.drawerGeometry,
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -115,13 +125,18 @@ vi.mock('shared/lib/notifications', () => ({
   notify: { error: mocks.notifyError },
 }));
 
+beforeEach(() => {
+  mocks.browsingExpanded = false;
+  mocks.galleryExpanded = true;
+  mocks.drawerGeometry = null;
+});
+
 describe('GlobeScene upload spot selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.uploadWorkspaceState = undefined;
     mocks.isUpdatingWorkspace = false;
-    mocks.isRenderedPanelExpanded = false;
-    mocks.matches = [{ routeId: '/_panel/upload', search: { workspaceId: 'workspace-1' } }];
+    mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: { workspaceId: 'workspace-1' } }];
     mocks.addSpotState.isActive = false;
     mocks.addSpotState.tempPin = null;
   });
@@ -155,7 +170,7 @@ describe('GlobeScene upload spot selection', () => {
   });
 
   it('stores the selected pre-workspace spot in the upload URL', () => {
-    mocks.matches = [{ routeId: '/_panel/upload', search: {} }];
+    mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: {} }];
     render(<GlobeScene />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Select Pipeline' }));
@@ -184,8 +199,7 @@ describe('GlobeScene Add Spot flow', () => {
     vi.clearAllMocks();
     mocks.uploadWorkspaceState = undefined;
     mocks.isUpdatingWorkspace = false;
-    mocks.isRenderedPanelExpanded = false;
-    mocks.matches = [{ routeId: '/_panel/upload', search: { workspaceId: 'workspace-1' } }];
+    mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: { workspaceId: 'workspace-1' } }];
     mocks.addSpotState.isActive = true;
     mocks.addSpotState.tempPin = [151, -34];
   });
@@ -209,7 +223,6 @@ describe('GlobeScene selected spot ownership', () => {
     vi.clearAllMocks();
     mocks.uploadWorkspaceState = undefined;
     mocks.isUpdatingWorkspace = false;
-    mocks.isRenderedPanelExpanded = false;
     mocks.matches = [];
     mocks.addSpotState.isActive = false;
     mocks.addSpotState.tempPin = null;
@@ -229,7 +242,7 @@ describe('GlobeScene selected spot ownership', () => {
   });
 
   it('centers the map on the spot chosen via the upload workspace, not just the route', () => {
-    mocks.matches = [{ routeId: '/_panel/upload', search: { workspaceId: 'workspace-1' } }];
+    mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: { workspaceId: 'workspace-1' } }];
     mocks.uploadWorkspaceState = { workspace: { spotId: null } };
     const { rerender } = render(<GlobeScene />);
 
@@ -245,7 +258,7 @@ describe('GlobeScene selected spot ownership', () => {
 
   it('falls back to the seed spotId from the upload URL before the workspace query resolves', () => {
     mocks.matches = [{
-      routeId: '/_panel/upload',
+      routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' },
       search: { workspaceId: 'workspace-1', spotId: 'seed-spot' },
     }];
     mocks.uploadWorkspaceState = undefined;
@@ -256,7 +269,7 @@ describe('GlobeScene selected spot ownership', () => {
 
   it('uses the upload URL spot while the workspace query still has the previous spot', () => {
     mocks.matches = [{
-      routeId: '/_panel/upload',
+      routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' },
       search: { workspaceId: 'workspace-1', spotId: 'new-spot' },
     }];
     mocks.uploadWorkspaceState = { workspace: { spotId: 'old-spot' } };
@@ -266,7 +279,7 @@ describe('GlobeScene selected spot ownership', () => {
   });
 
   it('keeps gallery mode when a photographer selects a map marker', () => {
-    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { panelMode: 'galleryWorkspace' } }];
+    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
     render(<GlobeScene />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Select Pipeline' }));
@@ -283,13 +296,13 @@ describe('GlobeScene map interaction policy', () => {
     vi.clearAllMocks();
     mocks.uploadWorkspaceState = undefined;
     mocks.isUpdatingWorkspace = false;
-    mocks.isRenderedPanelExpanded = true;
     mocks.matches = [{ routeId: '/_panel/', search: {} }];
     mocks.addSpotState.isActive = false;
     mocks.addSpotState.tempPin = null;
   });
 
   it('keeps expanded browsing interactive and compacts it when camera exploration starts', () => {
+    mocks.browsingExpanded = true;
     render(<GlobeScene />);
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'interactive');
@@ -297,8 +310,8 @@ describe('GlobeScene map interaction policy', () => {
     expect(mocks.setBrowsingPanelExpanded).toHaveBeenCalledWith(false);
   });
 
-  it('passes background policy to the map when a route-required workspace publishes an expanded snapshot', () => {
-    mocks.matches = [{ routeId: '/_panel/cart', staticData: { panelMode: 'workspace' } }];
+  it('passes background policy to the map for a route-required workspace', () => {
+    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' } }];
     render(<GlobeScene />);
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'background');
@@ -308,7 +321,7 @@ describe('GlobeScene map interaction policy', () => {
   });
 
   it('keeps expanded gallery interactive and compacts its preference when camera exploration starts', () => {
-    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { panelMode: 'galleryWorkspace' } }];
+    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
     render(<GlobeScene />);
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'interactive');
@@ -316,22 +329,22 @@ describe('GlobeScene map interaction policy', () => {
     expect(mocks.setGalleryPanelExpanded).toHaveBeenCalledWith(false);
   });
 
-  it('keeps compact browsing interactive when the rendered panel snapshot is compact', () => {
-    mocks.isRenderedPanelExpanded = false;
+  it('keeps compact browsing interactive', () => {
+    mocks.browsingExpanded = false;
     render(<GlobeScene />);
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'interactive');
   });
 
-  it('keeps Add Spot interactive even when the rendered panel snapshot is expanded', () => {
+  it('keeps Add Spot interactive regardless of the browse preference', () => {
     mocks.addSpotState.isActive = true;
     render(<GlobeScene />);
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'interactive');
   });
 
-  it('keeps upload spot selection interactive even when the rendered panel snapshot is expanded', () => {
-    mocks.matches = [{ routeId: '/_panel/upload', search: { workspaceId: 'workspace-1' } }];
+  it('keeps upload spot selection interactive regardless of the browse preference', () => {
+    mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: { workspaceId: 'workspace-1' } }];
     render(<GlobeScene />);
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'interactive');
@@ -355,17 +368,18 @@ describe('GlobeScene sidebar occlusion', () => {
     Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
   });
 
-  it('reserves the compact panel width for the camera when the panel is not expanded', () => {
-    mocks.isRenderedPanelExpanded = false;
+  it('projects the measured drawer overlap instead of estimating from semantic shell state', () => {
+    mocks.browsingExpanded = false;
+    mocks.drawerGeometry = {
+      left: 1200,
+      top: 0,
+      right: 2000,
+      bottom: 900,
+      width: 800,
+      height: 900,
+    };
     render(<GlobeScene />);
 
-    expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-sidebar-occluded-px', '500');
-  });
-
-  it('reserves the expanded panel width for the camera when the panel is expanded', () => {
-    mocks.isRenderedPanelExpanded = true;
-    render(<GlobeScene />);
-
-    expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-sidebar-occluded-px', '1500');
+    expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-right-occluded-px', '800');
   });
 });

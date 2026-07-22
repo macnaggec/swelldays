@@ -63,8 +63,8 @@ export interface GlobeMapProps {
   onSpotSelect: (spot: MapSpotProjection) => void;
   motionPolicy: GlobeMotionPolicy;
   interactionPolicy?: GlobeInteractionPolicy;
-  /** Px of the right edge of the viewport currently covered by the side panel — reserved as camera padding so a focused spot centers in the visible part of the map. */
-  sidebarOccludedPx?: number;
+  /** Px unavailable at the viewport's right edge — reserved as camera padding so a focused spot centers in the visible map area. */
+  rightOccludedPx?: number;
   isCoordinatePickerActive?: boolean;
   showNavigationControl?: boolean;
   tempPin?: LngLat | null;
@@ -84,7 +84,7 @@ export function GlobeMapComponent({
   onSpotSelect,
   motionPolicy,
   interactionPolicy = 'interactive',
-  sidebarOccludedPx = 0,
+  rightOccludedPx = 0,
   isCoordinatePickerActive = false,
   showNavigationControl = true,
   tempPin = null,
@@ -174,7 +174,7 @@ export function GlobeMapComponent({
     }
 
     const currentZoom = map.getZoom();
-    const padding = { top: showPreview ? 300 : 0, right: sidebarOccludedPx };
+    const padding = { top: showPreview ? 300 : 0, right: rightOccludedPx };
     const center: [number, number] = [spot.coords.lng, spot.coords.lat];
 
     if (currentZoom >= 12) {
@@ -194,7 +194,7 @@ export function GlobeMapComponent({
       duration: 1000,
       essential: true,
     });
-  }, [sidebarOccludedPx]);
+  }, [rightOccludedPx]);
 
   const focusSpotById = useCallback((spotId: string, showPreview: boolean) => {
     const spot = spots.find((candidate) => candidate.id === spotId);
@@ -249,17 +249,22 @@ export function GlobeMapComponent({
     }
   }, [focusSpotById, selectedSpotId]);
 
-  const prevSidebarOccludedPxRef = useRef(sidebarOccludedPx);
+  const previousRightOccludedPxRef = useRef(rightOccludedPx);
 
   useEffect(() => {
-    const previousOccludedPx = prevSidebarOccludedPxRef.current;
-    prevSidebarOccludedPxRef.current = sidebarOccludedPx;
+    const previousOccludedPx = previousRightOccludedPxRef.current;
+    previousRightOccludedPxRef.current = rightOccludedPx;
 
-    if (previousOccludedPx === sidebarOccludedPx) return;
+    if (previousOccludedPx === rightOccludedPx) return;
     if (!selectedSpotId) return;
 
-    focusSpotById(selectedSpotId, lastShowPreviewRef.current);
-  }, [sidebarOccludedPx, selectedSpotId, focusSpotById]);
+    mapInstanceRef.current?.setPadding({
+      top: lastShowPreviewRef.current ? 300 : 0,
+      right: rightOccludedPx,
+      bottom: 0,
+      left: 0,
+    });
+  }, [rightOccludedPx, selectedSpotId]);
 
   useEffect(() => {
     return () => {

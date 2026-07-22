@@ -6,7 +6,7 @@
 }
 
 .header {
-  padding: 8px 12px 20px;
+  padding: 8px var(--wa-panel-content-inset) 20px;
 }
 
 .emptyRoot {
@@ -56,6 +56,12 @@
   gap: 8px;
 }
 
+.toolbar[data-expanded] {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--wa-panel-grid-gap);
+}
+
 .toolbarMain {
   display: flex;
   align-items: center;
@@ -68,8 +74,7 @@
 }
 
 .toolbarMainExpanded {
-  width: 25vw;
-  flex-shrink: 0;
+  display: contents;
 }
 
 .toolbarPrimary {
@@ -97,13 +102,17 @@
   margin-left: auto;
 }
 
+.toolbar[data-expanded] .toolbarTrailing {
+  grid-column: auto / -1;
+}
+
 .actionButton {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
-  height: 2.25rem;
+  height: var(--wa-control-height-default);
   padding: 0 10px;
   border: 1px solid var(--wa-glass-border-media-overlay);
   border-radius: 20px;
@@ -116,6 +125,10 @@
   line-height: 1.4;
   white-space: nowrap;
   cursor: pointer;
+}
+
+.toolbar[data-expanded] .actionButton {
+  justify-self: start;
 }
 
 .actionButton:hover {
@@ -140,9 +153,13 @@
 .floatingControls {
   position: fixed;
   top: 14px;
-  right: calc(25vw + 8px);
   z-index: var(--wa-z-controls);
   display: flex;
   gap: 6px;
   align-items: center;
+  visibility: hidden;
+}
+
+.floatingControls[data-positioned] {
+  visibility: visible;
 }
