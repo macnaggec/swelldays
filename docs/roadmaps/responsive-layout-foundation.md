@@ -310,6 +310,11 @@ For every implementation task:
   - Scope: Show the date sidebar only when measured gallery width supports it. Provide sticky date headings and a date-jump control below that capability — this below-capability path is the compact default, not an edge case, under mobile-first sequencing.
   - Invariant and verifier: Date navigation remains reachable and never steals unusable gallery width; gallery integration and browser checks own verification. All five completion gates must pass.
 
+- [ ] **F12h — Refactor: automate the reference matrix as a Playwright visual-regression gate**
+  - Depends on: F12b. May land anywhere before M07; landing before M00 gives Phase M slices free visual-regression coverage.
+  - Scope: Implement the approved spec in `.scratch/responsive-layout-foundation/issues/02-playwright-visual-regression-gate.md`: migrate the 14 state recipes to Playwright Test (`npm run test:visual`, separate from vitest and the five gates), assert with `toHaveScreenshot` (masked map canvas, reduced motion), pin capture data with a dedicated seeded database, commit baselines, and delete the superseded CDP harness in the same slice. Final baseline set requires in-session visual verification, so run this in a main session rather than dispatching to the headless coder.
+  - Invariant and verifier: A change to any captured layout state cannot land unnoticed and costs no review effort when nothing changed; the Playwright snapshot suite owns verification, and a deliberate layout change must fail it while map-camera movement alone must not. All five completion gates must pass. Once landed, M07, T05, D00, and D03 consume `npm run test:visual` as the matrix execution vehicle.
+
 ### Phase M — compact/mobile experience (promoted by the 2026-07-22 pivot)
 
 - [ ] **M00 — Add compact bottom-sheet mechanics**
