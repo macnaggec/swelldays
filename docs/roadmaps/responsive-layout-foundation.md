@@ -290,7 +290,7 @@ For every implementation task:
   - Scope: Migrate the remaining raw width queries — `src/features/AddSpot/ui/AddSpotPanel.module.css` (`max-width: 480px`) and `src/shared/ui/CarouselLightbox/CarouselLightbox.module.css` (`max-width: 760px`) — to container-owned or shell-owned styling. Extend `check-style-boundaries` so no feature or shared CSS outside the sanctioned shell projections can declare a viewport width query.
   - Invariant and verifier: No unpoliced viewport breakpoint exists in feature or shared CSS; `check-style-boundaries` owns verification.
 
-- [ ] **F12d — Refactor: establish band-transition continuity at the shell seam**
+- [x] **F12d — Refactor: establish band-transition continuity at the shell seam**
   - Depends on: F03, F05, F06.
   - Scope: Define the contract for live capability-band crossings (window resize, device rotation, split view): route, in-progress drafts, focus context, scroll intent, and session preferences must survive a presentation swap. Implement the preservation mechanism in the shell and policy layers now, exercised with simulated capability changes, since only the wide-band presentation is mounted.
   - Invariant and verifier: Crossing a capability band cannot discard user state; a shell-seam integration test that swaps capability bands owns verification. The band verification tasks (M07, T05, D03) must re-verify with real rotation and resize. Under mobile-first sequencing this contract is the primary axis, since compact↔wide crossings become the first live presentation swap.

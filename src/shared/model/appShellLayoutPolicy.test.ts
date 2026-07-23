@@ -193,6 +193,51 @@ describe('deriveAppShellLayoutPolicy — compact', () => {
   });
 });
 
+describe('deriveAppShellLayoutPolicy — band-crossing continuity', () => {
+  const routeIntents = [
+    'browse',
+    'galleryWorkspace',
+    'routeWorkspace',
+    'mapInput',
+    'fullPage',
+    'immersiveMapInput',
+  ] satisfies AppRouteIntent[];
+  const preferenceCombos = [
+    { browseExpanded: false, galleryExpanded: false },
+    { browseExpanded: true, galleryExpanded: true },
+  ];
+
+  it('re-deriving after crossing bands returns a deep-equal policy for every route intent', () => {
+    for (const routeIntent of routeIntents) {
+      for (const preferences of preferenceCombos) {
+        const first = deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'wide', preferences });
+        deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'constrained', preferences });
+        deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'compact', preferences });
+        const last = deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'wide', preferences });
+
+        expect(first).toEqual(last);
+      }
+    }
+  });
+
+  it('derivation never mutates the preferences input', () => {
+    for (const routeIntent of routeIntents) {
+      for (const preferences of preferenceCombos) {
+        const frozenPreferences = Object.freeze({ ...preferences });
+        const originalPreferences = { ...frozenPreferences };
+
+        expect(() => {
+          deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'wide', preferences: frozenPreferences });
+          deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'constrained', preferences: frozenPreferences });
+          deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'compact', preferences: frozenPreferences });
+        }).not.toThrow();
+
+        expect(frozenPreferences).toEqual(originalPreferences);
+      }
+    }
+  });
+});
+
 describe('deriveDesktopFoundationAppShellLayoutPolicy', () => {
   it.each([
     'browse',

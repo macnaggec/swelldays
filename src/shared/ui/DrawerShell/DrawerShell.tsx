@@ -35,6 +35,13 @@ interface DrawerShellProps {
   children?: ReactNode;
 }
 
+/**
+ * Band-transition continuity contract (F12d): the drawer surface and its children keep
+ * their element identity across every non-hidden presentation/state/modality change, so
+ * focus, scroll position, and in-progress component state survive a capability-band
+ * presentation swap. Presentation changes are attribute/animation changes only — never
+ * a different element tree.
+ */
 export function DrawerShell({
   presentation,
   state,
@@ -45,11 +52,20 @@ export function DrawerShell({
 }: DrawerShellProps) {
   const surfaceRef = useRef<HTMLElement>(null);
 
+  const latestRestoreFocusRef = useRef(restoreFocusRef);
+  useEffect(() => {
+    latestRestoreFocusRef.current = restoreFocusRef;
+  });
+
   useEffect(() => () => {
-    const focusTarget = restoreFocusRef?.current;
+    const focusTarget = latestRestoreFocusRef.current?.current;
     if (!focusTarget?.isConnected) return;
+    // Reclaim focus only when the drawer held it: removing the surface drops focus to
+    // body. Focus resting on another live control must never be stolen (F12d).
+    const activeElement = document.activeElement;
+    if (activeElement && activeElement !== document.body) return;
     focusTarget.focus({ preventScroll: true });
-  }, [restoreFocusRef]);
+  }, []);
 
   useLayoutEffect(() => {
     const surface = surfaceRef.current;

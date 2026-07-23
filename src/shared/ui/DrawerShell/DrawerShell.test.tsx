@@ -1,4 +1,5 @@
 import { act, screen } from '@testing-library/react';
+import { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { DrawerShell, useDrawerGeometry } from './index';
@@ -69,5 +70,77 @@ describe('DrawerShell geometry projection', () => {
 
     act(() => queuedFrames.shift()?.(16));
     expect(screen.getByTestId('drawer-geometry').textContent).toBe('360:0:1440:900:1080:900');
+  });
+});
+
+describe('DrawerShell focus continuity', () => {
+  it('leaves focus untouched when the surface unmounts while focus is outside the drawer', () => {
+    const triggerRef = createRef<HTMLButtonElement>();
+
+    const { rerender } = render(
+      <>
+        <input aria-label="Outside field" />
+        <button ref={triggerRef}>Drawer trigger</button>
+        <DrawerShell
+          presentation="persistent"
+          state="compact"
+          modality="nonmodal"
+          restoreFocusRef={triggerRef}
+        >
+          Drawer content
+        </DrawerShell>
+      </>,
+    );
+
+    screen.getByLabelText('Outside field').focus();
+
+    rerender(
+      <>
+        <input aria-label="Outside field" />
+        <button ref={triggerRef}>Drawer trigger</button>
+      </>,
+    );
+
+    expect(document.activeElement).toBe(screen.getByLabelText('Outside field'));
+    expect(document.activeElement).not.toBe(screen.getByRole('button', { name: 'Drawer trigger' }));
+  });
+
+  it('does not move focus when restoreFocusRef identity changes while the drawer stays mounted', () => {
+    const refA = createRef<HTMLButtonElement>();
+    const refB = createRef<HTMLButtonElement>();
+
+    const { rerender } = render(
+      <>
+        <button ref={refA}>Drawer trigger A</button>
+        <button ref={refB}>Drawer trigger B</button>
+        <DrawerShell
+          presentation="persistent"
+          state="compact"
+          modality="nonmodal"
+          restoreFocusRef={refA}
+        >
+          <input aria-label="Draft note" />
+        </DrawerShell>
+      </>,
+    );
+
+    screen.getByLabelText('Draft note').focus();
+
+    rerender(
+      <>
+        <button ref={refA}>Drawer trigger A</button>
+        <button ref={refB}>Drawer trigger B</button>
+        <DrawerShell
+          presentation="persistent"
+          state="compact"
+          modality="nonmodal"
+          restoreFocusRef={refB}
+        >
+          <input aria-label="Draft note" />
+        </DrawerShell>
+      </>,
+    );
+
+    expect(document.activeElement).toBe(screen.getByLabelText('Draft note'));
   });
 });
