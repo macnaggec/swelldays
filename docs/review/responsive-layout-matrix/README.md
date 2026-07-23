@@ -66,3 +66,10 @@ deviceScaleFactor 1 to match the F00 baseline density.
 The F00 defect record carries over: the expanded browse/gallery toolbars
 overflow at 1280×800 and clip at 1440×900. D00 owns the fix; these captures
 document the defect, they do not approve it.
+
+User-reported refinement (2026-07-23): the overflowing browse (feed) pills
+have no scroll affordance and are **unreachable**; the gallery toolbar
+overflows identically but scrolls horizontally, so its pills stay reachable.
+Screenshots cannot show this difference — D00 must verify reachability on
+both surfaces, not just containment. Tracked in
+`.scratch/responsive-layout-foundation/issues/01-expanded-toolbar-pills-unreachable.md`.
