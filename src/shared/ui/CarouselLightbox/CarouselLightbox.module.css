@@ -1,5 +1,6 @@
 .inner {
-  padding: clamp(1.25rem, 5vw, 4.5rem);
+  container: lightbox / inline-size;
+  padding: clamp(1rem, 5vw, 4.5rem);
 }
 
 .content {
@@ -47,7 +48,7 @@
   display: grid;
   width: fit-content;
   max-width: 100%;
-  max-height: min(68vh, calc(100dvh - 9rem));
+  max-height: calc(100dvh - 2rem);
   place-items: center;
 }
 
@@ -69,7 +70,7 @@
   width: auto;
   max-width: 100%;
   height: auto;
-  max-height: min(68vh, calc(100dvh - 9rem));
+  max-height: calc(100dvh - 2rem);
   object-fit: contain;
 }
 
@@ -171,6 +172,9 @@ video.media {
   z-index: 2;
   padding: 0;
   pointer-events: none;
+  /* Prev/next chips are redundant on touch: swipe and indicators cover
+     navigation, and the anchors would overflow the viewport. */
+  display: none;
 }
 
 .controlAnchor {
@@ -190,8 +194,10 @@ video.media {
 
 .controlRail {
   position: absolute;
-  top: 0;
-  left: calc(100% + var(--lightbox-media-control-gap));
+  /* Keep the rail reachable: overlay it on the media instead of hanging it
+     off-screen past the right edge. */
+  top: 0.5rem;
+  right: 0.5rem;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -300,27 +306,19 @@ video.media {
   border-radius: 999px;
 }
 
-@media (max-width: 760px) {
-  .inner {
-    padding: 1rem;
-  }
-
+@container lightbox (min-width: 760px) {
   .mediaFrame,
   .media {
-    max-height: calc(100dvh - 2rem);
+    max-height: min(68vh, calc(100dvh - 9rem));
   }
 
-  /* Prev/next chips are redundant on touch: swipe and indicators cover
-     navigation, and the anchors would overflow the viewport. */
   .mediaControls {
-    display: none;
+    display: block;
   }
 
-  /* Keep the rail reachable: overlay it on the media instead of hanging it
-     off-screen past the right edge. */
   .controlRail {
-    top: 0.5rem;
-    right: 0.5rem;
-    left: auto;
+    top: 0;
+    right: auto;
+    left: calc(100% + var(--lightbox-media-control-gap));
   }
 }

@@ -382,11 +382,15 @@ describe('CarouselLightbox', () => {
     );
     expect(cssRule('.staticChrome')).toContain('pointer-events: none');
     expect(cssRule('.controlRail')).toContain('position: absolute');
-    expect(cssRule('.controlRail')).toContain('top: 0');
-    expect(cssRule('.controlRail')).toContain(
+    expect(cssRule('.controlRail')).toContain('top: 0.5rem');
+    expect(cssRule('.controlRail')).toContain('right: 0.5rem');
+    expect(cssRule('.controlRail')).not.toContain('transform:');
+    // Above the compact band the rail hangs beside the media, inside the
+    // lightbox container query rather than a viewport breakpoint.
+    const wideLightboxCss = carouselLightboxCss.split('@container lightbox (min-width: 760px)')[1] ?? '';
+    expect(wideLightboxCss).toContain(
       'left: calc(100% + var(--lightbox-media-control-gap))',
     );
-    expect(cssRule('.controlRail')).not.toContain('transform:');
     expect(cssRule('.indicators')).toContain('position: absolute');
     expect(cssRule('.indicators')).toContain('top: calc(100% + 0.75rem)');
   });

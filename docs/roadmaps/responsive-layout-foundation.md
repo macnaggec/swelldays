@@ -285,7 +285,7 @@ For every implementation task:
   - Scope: Convert the F00 manual reference matrix into a repeatable scripted browser harness (viewport × drawer intent × drawer state) with stored capture artifacts. Define the viewport axis mobile-first: compact (390×844, 430×932, portrait and landscape), constrained (768×1024, 1024×768), and wide (1280×800, 1440×900, 1920×1080). Capture the wide-band states now as the desktop-parity baseline; compact and constrained slots are filled as their phases land. Cover browse, gallery, session detail, cart, account, collections, earnings, upload/map-input, loading, empty, error, and dialog states.
   - Invariant and verifier: Browser-owned layout invariants are re-runnable by any session against stored references instead of re-derived by hand; the scripted matrix and its artifacts own verification. All later verification tasks (M07, T05, D00, D03) must consume this harness rather than one-off inspection.
 
-- [ ] **F12c — Fix: retire the stray viewport breakpoints**
+- [x] **F12c — Fix: retire the stray viewport breakpoints**
   - Depends on: F11, F12.
   - Scope: Migrate the remaining raw width queries — `src/features/AddSpot/ui/AddSpotPanel.module.css` (`max-width: 480px`) and `src/shared/ui/CarouselLightbox/CarouselLightbox.module.css` (`max-width: 760px`) — to container-owned or shell-owned styling. Extend `check-style-boundaries` so no feature or shared CSS outside the sanctioned shell projections can declare a viewport width query.
   - Invariant and verifier: No unpoliced viewport breakpoint exists in feature or shared CSS; `check-style-boundaries` owns verification.

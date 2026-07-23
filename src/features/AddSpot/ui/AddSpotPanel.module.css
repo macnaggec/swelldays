@@ -25,11 +25,3 @@
   color: var(--wa-text-muted);
   line-height: 1.45;
 }
-
-@media (max-width: 480px) {
-  .panel {
-    top: 8px;
-    width: calc(100vw - 16px);
-    max-height: calc(100dvh - 16px);
-  }
-}

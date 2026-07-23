@@ -501,6 +501,13 @@ const rules = [
     include: file => file.endsWith('.css'),
     exclude: file => file === 'src/shared/ui/design-system/motion.module.css',
   },
+  {
+    id: 'no-viewport-width-breakpoints',
+    message: 'Viewport width queries are forbidden in feature and shared CSS; use container queries or shell/policy-owned presentation.',
+    pattern: /@media[^{]*\bwidth\b/,
+    include: file => file.endsWith('.css'),
+    exclude: isDesignSystemOwner,
+  },
 ];
 
 const files = listFiles(srcRoot).filter(isCodeOrCss);
