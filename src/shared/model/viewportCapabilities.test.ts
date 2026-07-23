@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getViewportCapabilitiesSnapshot,
+  indeterminateViewportCapabilities,
   useViewportCapabilities,
 } from './viewportCapabilities';
 
@@ -88,6 +89,12 @@ describe('viewport capabilities', () => {
     expect(capabilities.primaryPointer).toBe('coarse');
     expect(capabilities.supportsHover).toBe(true);
     expect(capabilities.prefersReducedMotion).toBe(true);
+  });
+
+  it('falls back to the compact base band without hover or fine pointer when indeterminate', () => {
+    expect(indeterminateViewportCapabilities.sizeBand).toBe('compact');
+    expect(indeterminateViewportCapabilities.supportsHover).toBe(false);
+    expect(indeterminateViewportCapabilities.primaryPointer).toBe('coarse');
   });
 
   it('updates subscribers when viewport or media capabilities change', () => {

@@ -20,13 +20,19 @@ export interface ViewportCapabilities {
   viewportWidthPx: number;
 }
 
-const serverSnapshot: ViewportCapabilities = {
-  sizeBand: 'wide',
+/**
+ * The base band assumed when viewport capabilities are indeterminate — server
+ * render, first paint, restored sessions, or unknown embedding contexts. Compact
+ * with no hover and a coarse pointer, so wider bands, hover, and fine pointer are
+ * always additive enhancements over a working base rather than prerequisites.
+ */
+export const indeterminateViewportCapabilities: ViewportCapabilities = {
+  sizeBand: 'compact',
   heightBand: 'regular',
-  primaryPointer: 'fine',
-  supportsHover: true,
+  primaryPointer: 'coarse',
+  supportsHover: false,
   prefersReducedMotion: false,
-  viewportWidthPx: 1280,
+  viewportWidthPx: 390,
 };
 
 let cachedSnapshot: ViewportCapabilities | undefined;
@@ -80,6 +86,6 @@ export function useViewportCapabilities(): ViewportCapabilities {
   return useSyncExternalStore(
     subscribeViewportCapabilities,
     getViewportCapabilitiesSnapshot,
-    () => serverSnapshot,
+    () => indeterminateViewportCapabilities,
   );
 }

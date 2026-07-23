@@ -4,6 +4,7 @@ import {
   deriveDesktopFoundationAppShellLayoutPolicy,
 } from './appShellLayoutPolicy';
 import type { AppRouteIntent } from './appRouteIntent';
+import { indeterminateViewportCapabilities } from './viewportCapabilities';
 
 const compactPreferences = {
   browseExpanded: false,
@@ -235,6 +236,21 @@ describe('deriveAppShellLayoutPolicy — band-crossing continuity', () => {
         expect(frozenPreferences).toEqual(originalPreferences);
       }
     }
+  });
+});
+
+describe('deriveAppShellLayoutPolicy — indeterminate fallback is usable', () => {
+  it('derives a mountable browse presentation from the indeterminate capability band', () => {
+    const policy = deriveAppShellLayoutPolicy({
+      routeIntent: 'browse',
+      sizeBand: indeterminateViewportCapabilities.sizeBand,
+      preferences: compactPreferences,
+    });
+
+    expect(policy.navigation).not.toBe('hidden');
+    expect(policy.drawer.presentation).not.toBe('hidden');
+    expect(policy.drawer.control).not.toBe('none');
+    expect(policy.map.interaction).toBe('interactive');
   });
 });
 

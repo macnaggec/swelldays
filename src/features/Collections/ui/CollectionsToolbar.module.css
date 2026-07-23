@@ -1,5 +1,6 @@
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--mantine-spacing-xs);
@@ -44,7 +45,7 @@
 }
 
 .spotSelect {
-  flex: 0 0 min(220px, 44vw);
+  flex: 0 0 100%;
 }
 
 .spotSelect :global(.mantine-Input-input) {
@@ -63,12 +64,12 @@
   color: rgba(255, 255, 255, 0.58);
 }
 
-@container panel (max-width: 520px) {
+@container panel (min-width: 520px) {
   .toolbar {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .spotSelect {
-    flex-basis: 100%;
+    flex-basis: min(220px, 44vw);
   }
 }

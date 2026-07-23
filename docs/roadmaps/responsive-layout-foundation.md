@@ -295,7 +295,7 @@ For every implementation task:
   - Scope: Define the contract for live capability-band crossings (window resize, device rotation, split view): route, in-progress drafts, focus context, scroll intent, and session preferences must survive a presentation swap. Implement the preservation mechanism in the shell and policy layers now, exercised with simulated capability changes, since only the wide-band presentation is mounted.
   - Invariant and verifier: Crossing a capability band cannot discard user state; a shell-seam integration test that swaps capability bands owns verification. The band verification tasks (M07, T05, D03) must re-verify with real rotation and resize. Under mobile-first sequencing this contract is the primary axis, since compact↔wide crossings become the first live presentation swap.
 
-- [ ] **F12e — Refactor: make compact the base band**
+- [x] **F12e — Refactor: make compact the base band**
   - Depends on: F03, F12d.
   - Scope: Make the compact presentation the policy fallback when viewport capabilities are indeterminate (first paint, restored sessions, unknown embedding contexts), and audit every capability gate for progressive enhancement: hover, fine pointer, and wider bands must be additive enhancements over a working compact base, never prerequisites. Codify the `min-width` container-query convention as a static rule so no consumer can author a wide-first override cascade.
   - Invariant and verifier: No code path requires a wide viewport or hover capability to produce a usable presentation; policy unit tests own the fallback branch and `check-style-boundaries` owns the min-width convention. All five completion gates must pass.

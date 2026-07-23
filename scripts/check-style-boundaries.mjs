@@ -508,6 +508,13 @@ const rules = [
     include: file => file.endsWith('.css'),
     exclude: isDesignSystemOwner,
   },
+  {
+    id: 'container-queries-are-compact-first',
+    message: 'Container queries must be compact-first: use min-width so wider layouts are additive over the base. A max-width container query authors a wide-first override cascade.',
+    pattern: /@container[^{]*max-width/,
+    include: file => file.endsWith('.css'),
+    exclude: isDesignSystemOwner,
+  },
 ];
 
 const files = listFiles(srcRoot).filter(isCodeOrCss);
