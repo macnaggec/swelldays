@@ -40,10 +40,13 @@ function renderSidePanelForPolicy(policy: AppShellLayoutPolicy) {
 
 describe('SidePanel band-transition continuity', () => {
   it('a wide→constrained routeWorkspace crossing preserves subtree, draft, focus, and scroll', () => {
-    const wide = deriveAppShellLayoutPolicy({ routeIntent: 'routeWorkspace', sizeBand: 'wide', preferences });
+    const wide = deriveAppShellLayoutPolicy({
+      routeIntent: 'routeWorkspace', sizeBand: 'wide', heightBand: 'regular', preferences,
+    });
     const constrained = deriveAppShellLayoutPolicy({
       routeIntent: 'routeWorkspace',
       sizeBand: 'constrained',
+      heightBand: 'regular',
       preferences,
     });
 
@@ -84,8 +87,12 @@ describe('SidePanel band-transition continuity', () => {
   });
 
   it('a wide→constrained browse crossing preserves the expansion preference and rendered expansion', () => {
-    const wide = deriveAppShellLayoutPolicy({ routeIntent: 'browse', sizeBand: 'wide', preferences });
-    const constrained = deriveAppShellLayoutPolicy({ routeIntent: 'browse', sizeBand: 'constrained', preferences });
+    const wide = deriveAppShellLayoutPolicy({
+      routeIntent: 'browse', sizeBand: 'wide', heightBand: 'regular', preferences,
+    });
+    const constrained = deriveAppShellLayoutPolicy({
+      routeIntent: 'browse', sizeBand: 'constrained', heightBand: 'regular', preferences,
+    });
 
     expect(wide.drawer.state).toBe('expanded');
     expect(constrained.drawer.state).toBe('expanded');

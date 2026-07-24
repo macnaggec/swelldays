@@ -25,6 +25,7 @@ describe('deriveAppShellLayoutPolicy — wide', () => {
     const policy = deriveAppShellLayoutPolicy({
       routeIntent,
       sizeBand: 'wide',
+      heightBand: 'regular',
       preferences: {
         browseExpanded: routeIntent === 'browse' ? preferredExpanded : false,
         galleryExpanded: routeIntent === 'galleryWorkspace' ? preferredExpanded : false,
@@ -55,6 +56,7 @@ describe('deriveAppShellLayoutPolicy — wide', () => {
     const policy = deriveAppShellLayoutPolicy({
       routeIntent,
       sizeBand: 'wide',
+      heightBand: 'regular',
       preferences: compactPreferences,
     });
 
@@ -74,6 +76,7 @@ describe('deriveAppShellLayoutPolicy — wide', () => {
     const policy = deriveAppShellLayoutPolicy({
       routeIntent,
       sizeBand: 'wide',
+      heightBand: 'regular',
       preferences: compactPreferences,
     });
 
@@ -104,6 +107,7 @@ describe('deriveAppShellLayoutPolicy — constrained', () => {
     const policy = deriveAppShellLayoutPolicy({
       routeIntent,
       sizeBand: 'constrained',
+      heightBand: 'regular',
       preferences: compactPreferences,
     });
 
@@ -121,6 +125,7 @@ describe('deriveAppShellLayoutPolicy — constrained', () => {
     const policy = deriveAppShellLayoutPolicy({
       routeIntent: 'fullPage',
       sizeBand: 'constrained',
+      heightBand: 'regular',
       preferences: compactPreferences,
     });
 
@@ -142,6 +147,7 @@ describe('deriveAppShellLayoutPolicy — compact', () => {
     const policy = deriveAppShellLayoutPolicy({
       routeIntent: 'browse',
       sizeBand: 'compact',
+      heightBand: 'regular',
       preferences: { ...compactPreferences, browseExpanded },
     });
 
@@ -171,6 +177,7 @@ describe('deriveAppShellLayoutPolicy — compact', () => {
     const policy = deriveAppShellLayoutPolicy({
       routeIntent,
       sizeBand: 'compact',
+      heightBand: 'regular',
       preferences: compactPreferences,
     });
 
@@ -185,12 +192,80 @@ describe('deriveAppShellLayoutPolicy — compact', () => {
     const policy = deriveAppShellLayoutPolicy({
       routeIntent: 'fullPage',
       sizeBand: 'compact',
+      heightBand: 'regular',
       preferences: compactPreferences,
     });
 
     expect(policy.navigation).toBe('hidden');
     expect(policy.drawer.presentation).toBe('hidden');
     expect(policy.map.interaction).toBe('hidden');
+  });
+});
+
+describe('deriveAppShellLayoutPolicy — height band', () => {
+  it.each([
+    [false, 'collapsed'],
+    [true, 'full'],
+  ] as const)('never gives a short compact browse drawer a bottom sheet (browseExpanded %s)', (
+    browseExpanded,
+    expectedState,
+  ) => {
+    const policy = deriveAppShellLayoutPolicy({
+      routeIntent: 'browse',
+      sizeBand: 'compact',
+      heightBand: 'short',
+      preferences: { ...compactPreferences, browseExpanded },
+    });
+
+    expect(policy.drawer.presentation).toBe('sideOverlay');
+    expect(policy.drawer.state).toBe(expectedState);
+  });
+
+  it.each([
+    'mapInput',
+    'immersiveMapInput',
+  ] as const)('never gives a short compact %s drawer a bottom sheet', (routeIntent) => {
+    const policy = deriveAppShellLayoutPolicy({
+      routeIntent,
+      sizeBand: 'compact',
+      heightBand: 'short',
+      preferences: compactPreferences,
+    });
+
+    expect(policy.drawer.presentation).toBe('sideOverlay');
+  });
+
+  it('keeps the bottom sheet at regular height (boundary guard)', () => {
+    const policy = deriveAppShellLayoutPolicy({
+      routeIntent: 'browse',
+      sizeBand: 'compact',
+      heightBand: 'regular',
+      preferences: compactPreferences,
+    });
+
+    expect(policy.drawer.presentation).toBe('bottomSheet');
+  });
+
+  it('never breaks the constrained side band at short height', () => {
+    const policy = deriveAppShellLayoutPolicy({
+      routeIntent: 'browse',
+      sizeBand: 'constrained',
+      heightBand: 'short',
+      preferences: compactPreferences,
+    });
+
+    expect(policy.drawer.presentation).toBe('sideOverlay');
+  });
+
+  it('never downgrades wide at short height', () => {
+    const policy = deriveAppShellLayoutPolicy({
+      routeIntent: 'browse',
+      sizeBand: 'wide',
+      heightBand: 'short',
+      preferences: compactPreferences,
+    });
+
+    expect(policy.drawer.presentation).toBe('persistent');
   });
 });
 
@@ -211,10 +286,14 @@ describe('deriveAppShellLayoutPolicy — band-crossing continuity', () => {
   it('re-deriving after crossing bands returns a deep-equal policy for every route intent', () => {
     for (const routeIntent of routeIntents) {
       for (const preferences of preferenceCombos) {
-        const first = deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'wide', preferences });
-        deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'constrained', preferences });
-        deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'compact', preferences });
-        const last = deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'wide', preferences });
+        const first = deriveAppShellLayoutPolicy({
+          routeIntent, sizeBand: 'wide', heightBand: 'regular', preferences,
+        });
+        deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'constrained', heightBand: 'regular', preferences });
+        deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'compact', heightBand: 'regular', preferences });
+        const last = deriveAppShellLayoutPolicy({
+          routeIntent, sizeBand: 'wide', heightBand: 'regular', preferences,
+        });
 
         expect(first).toEqual(last);
       }
@@ -228,9 +307,15 @@ describe('deriveAppShellLayoutPolicy — band-crossing continuity', () => {
         const originalPreferences = { ...frozenPreferences };
 
         expect(() => {
-          deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'wide', preferences: frozenPreferences });
-          deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'constrained', preferences: frozenPreferences });
-          deriveAppShellLayoutPolicy({ routeIntent, sizeBand: 'compact', preferences: frozenPreferences });
+          deriveAppShellLayoutPolicy({
+            routeIntent, sizeBand: 'wide', heightBand: 'regular', preferences: frozenPreferences,
+          });
+          deriveAppShellLayoutPolicy({
+            routeIntent, sizeBand: 'constrained', heightBand: 'regular', preferences: frozenPreferences,
+          });
+          deriveAppShellLayoutPolicy({
+            routeIntent, sizeBand: 'compact', heightBand: 'regular', preferences: frozenPreferences,
+          });
         }).not.toThrow();
 
         expect(frozenPreferences).toEqual(originalPreferences);
@@ -244,6 +329,7 @@ describe('deriveAppShellLayoutPolicy — indeterminate fallback is usable', () =
     const policy = deriveAppShellLayoutPolicy({
       routeIntent: 'browse',
       sizeBand: indeterminateViewportCapabilities.sizeBand,
+      heightBand: 'regular',
       preferences: compactPreferences,
     });
 
@@ -269,6 +355,7 @@ describe('deriveDesktopFoundationAppShellLayoutPolicy', () => {
     })).toEqual(deriveAppShellLayoutPolicy({
       routeIntent,
       sizeBand: 'wide',
+      heightBand: 'regular',
       preferences: compactPreferences,
     }));
   });

@@ -9,6 +9,7 @@ export interface AppShellLayoutPreferences {
 export interface AppShellLayoutPolicyInput {
   routeIntent: AppRouteIntent;
   sizeBand: ViewportCapabilities['sizeBand'];
+  heightBand: ViewportCapabilities['heightBand'];
   preferences: AppShellLayoutPreferences;
 }
 
@@ -51,7 +52,7 @@ const hiddenLayoutPolicy: AppShellLayoutPolicy = {
 };
 
 export function deriveAppShellLayoutPolicy(
-  { routeIntent, sizeBand, preferences }: AppShellLayoutPolicyInput,
+  { routeIntent, sizeBand, heightBand, preferences }: AppShellLayoutPolicyInput,
 ): AppShellLayoutPolicy {
   if (routeIntent === 'fullPage') return hiddenLayoutPolicy;
 
@@ -87,6 +88,10 @@ export function deriveAppShellLayoutPolicy(
       : routeIntent === 'galleryWorkspace' || routeIntent === 'routeWorkspace'
         ? 'fullScreen'
         : 'bottomSheet';
+  const heightAdjustedPresentation =
+    drawerPresentation === 'bottomSheet' && heightBand === 'short'
+      ? 'sideOverlay'
+      : drawerPresentation;
   const drawerControl = routeIntent === 'browse'
     || (routeIntent === 'galleryWorkspace' && sizeBand !== 'compact')
     ? 'expandCollapse'
@@ -114,7 +119,7 @@ export function deriveAppShellLayoutPolicy(
           ? 'compactBar'
           : 'topBar',
     drawer: {
-      presentation: drawerPresentation,
+      presentation: heightAdjustedPresentation,
       state: drawerState,
       control: drawerControl,
       modality: isModal ? 'modal' : 'nonmodal',
@@ -137,7 +142,7 @@ export function deriveAppShellLayoutPolicy(
 }
 
 export function deriveDesktopFoundationAppShellLayoutPolicy(
-  input: Omit<AppShellLayoutPolicyInput, 'sizeBand'>,
+  input: Omit<AppShellLayoutPolicyInput, 'sizeBand' | 'heightBand'>,
 ): AppShellLayoutPolicy {
-  return deriveAppShellLayoutPolicy({ ...input, sizeBand: 'wide' });
+  return deriveAppShellLayoutPolicy({ ...input, sizeBand: 'wide', heightBand: 'regular' });
 }
