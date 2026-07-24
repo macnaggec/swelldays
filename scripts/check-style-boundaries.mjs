@@ -174,7 +174,17 @@ const requiredResponsiveLayoutTokens = [
   '--wa-safe-area-bottom',
   '--wa-safe-area-left',
   '--wa-z-panel-chrome',
+  '--wa-z-modal-content',
+  '--wa-z-modal-interrupt',
 ];
+
+// Modal-tier z-index must come from a semantic role token, never a portal
+// mount-order default: the content surface (lightbox) and the interrupt above
+// it (auth) each declare their tier so an interrupt always outranks content.
+const requiredModalRoleTokenByFile = new Map([
+  ['src/shared/ui/CarouselLightbox/CarouselLightbox.tsx', 'var(--wa-z-modal-content)'],
+  ['src/features/Auth/AuthModalProvider.tsx', 'var(--wa-z-modal-interrupt)'],
+]);
 
 const requiredResponsiveTokensByFile = new Map([
   ['src/shared/ui/DrawerShell/DrawerShell.module.css', [
@@ -531,6 +541,17 @@ for (const token of requiredResponsiveLayoutTokens) {
     line: 1,
     rule: 'required-responsive-layout-token',
     message: `Missing responsive layout token ${token}.`,
+  });
+}
+
+for (const [file, requiredToken] of requiredModalRoleTokenByFile) {
+  const contents = readFileSync(path.join(root, file), 'utf8');
+  if (contents.includes(requiredToken)) continue;
+  violations.push({
+    file,
+    line: 1,
+    rule: 'modal-tier-z-index-from-role-token',
+    message: `Modal-tier z-index must come from ${requiredToken}, not a portal mount-order default.`,
   });
 }
 

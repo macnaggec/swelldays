@@ -398,6 +398,7 @@ const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
       centered
       padding={0}
       withCloseButton={false}
+      zIndex="var(--wa-z-modal-content)"
       classNames={{
         inner: classes.inner,
         content: classes.content,
