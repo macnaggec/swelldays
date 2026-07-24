@@ -188,3 +188,11 @@ For every technical entity mentioned, immediately say what it corresponds to on 
 If any sentence fails these checks, rewrite it before outputting.
 
 **When delivering a multi-part explanation, output one piece at a time and wait for explicit confirmation before continuing.** Do not output the next piece on the same turn as asking "ready for the next piece?"
+
+## 6. UI Verification & Change Control
+
+**No visual browser verification.** Never verify UI by screenshots or pixel-driven browser navigation — it burns tokens and is unreliable. Allowed checks: console/server logs, DOM reads, network requests, computed styles via JS. When something can only be confirmed visually, stop and give the user a short numbered checklist: which page to open, what action to perform, what they should see.
+
+**Announce UI changes before implementing.** Before changing anything the user can see in the browser, state in 1–3 plain sentences what will visually change (which element, how it will look or behave differently) and wait for an explicit OK. Internal changes with zero visual effect need no gate — but say "no visual change" explicitly.
+
+**Explanation register.** The user does not read the code and does not recognize variable, hook, or component names. Explanations start from the browser UI ("the photo grid", "the date sidebar") and describe the data flow in plain human terms, highly abstracted and brief. Code identifiers appear only when the user asks to go deeper; clickable file links (§5) remain welcome as evidence. This sharpens §5: on-screen grounding is not an addition to identifier-first phrasing — it replaces it.
