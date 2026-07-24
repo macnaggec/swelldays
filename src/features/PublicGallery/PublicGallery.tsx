@@ -3,16 +3,20 @@ import { SimpleGrid, Skeleton } from '@mantine/core';
 import { useMediaFavorites, type PublicMedia } from 'entities/Media';
 import { useSpotMediaFeed, useSpotPreview } from 'entities/Spot';
 import { buildGalleryRows } from 'shared/lib/buildGalleryRows';
+import { galleryColumns, type GalleryDensity } from 'shared/lib/galleryColumns';
+import { useMeasuredWidth } from 'shared/hooks';
 import { VirtualGallery, type VirtualGalleryHandle } from 'shared/ui/VirtualGallery/VirtualGallery';
 import { useCartToggle } from 'entities/Commerce';
 import PublicCard, { PublicCardAction } from './ui/cards/PublicCard';
 import MediaLightbox from './ui/MediaLightbox';
 import { GalleryDateSidebar } from './ui/GalleryDateSidebar';
 import { usePublicGalleryActions } from './model/usePublicGalleryActions';
-import { usePanelGalleryColumns } from './model/usePanelGalleryColumns';
 import { EMPTY_BROWSE_FILTERS, type BrowseFilters } from 'shared/model/browseFilters';
 import { PanelScrollChrome } from 'shared/ui/PanelScrollChrome';
 import { GalleryEmptyState } from './ui/GalleryEmptyState';
+
+/** Neutral placeholder count for the loading skeleton, rendered before the gallery is mounted and measured. */
+const LOADING_SKELETON_COLUMNS = 3;
 
 export interface PublicGalleryProps {
   expanded: boolean;
@@ -49,7 +53,10 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
 
   // Panel width drives column count and card density: compact packs a dense grid
   // with actions moved to the lightbox; expanded keeps the roomy card layout.
-  const columns = usePanelGalleryColumns(expanded);
+  const galleryViewportRef = useRef<HTMLDivElement>(null);
+  const measuredWidth = useMeasuredWidth(galleryViewportRef);
+  const density: GalleryDensity = expanded ? 'comfortable' : 'compact';
+  const columns = galleryColumns(measuredWidth, density);
 
   // ========================================================================
   // LIGHTBOX STATE
@@ -128,7 +135,7 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
       <>
         <PanelScrollChrome />
         <SimpleGrid
-          cols={columns}
+          cols={LOADING_SKELETON_COLUMNS}
           spacing="var(--wa-panel-grid-gap)"
           px="var(--wa-panel-content-inset)"
           mt="md"
@@ -168,31 +175,33 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   return (
     <>
       <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex', gap: 4 }}>
-        <VirtualGallery
-          ref={galleryRef}
-          rows={rows}
-          columns={columns}
-          dense={!expanded}
-          renderCard={(item) => {
-            const { actions, activeActions, isOwn } = getCardActions(item, false);
-            const isPurchased = item.viewerEntitlement.purchaseState === 'purchased';
-            return (
-              <PublicCard
-                mediaItem={item}
-                actions={actions}
-                activeActions={activeActions}
-                onAction={handleCardAction}
-                onCardClick={() => handleCardClick(item.id)}
-                showOwnerBadge={isOwn}
-                showPurchasedBadge={isPurchased}
-                dense={!expanded}
-              />
-            );
-          }}
-          onFirstVisibleIndexChange={setFirstVisibleIndex}
-          onEndReached={hasNextPage ? fetchNextPage : undefined}
-          isFetchingMore={isFetchingNextPage}
-        />
+        <div ref={galleryViewportRef} style={{ flex: 1, minWidth: 0, display: 'flex' }}>
+          <VirtualGallery
+            ref={galleryRef}
+            rows={rows}
+            columns={columns}
+            dense={!expanded}
+            renderCard={(item) => {
+              const { actions, activeActions, isOwn } = getCardActions(item, false);
+              const isPurchased = item.viewerEntitlement.purchaseState === 'purchased';
+              return (
+                <PublicCard
+                  mediaItem={item}
+                  actions={actions}
+                  activeActions={activeActions}
+                  onAction={handleCardAction}
+                  onCardClick={() => handleCardClick(item.id)}
+                  showOwnerBadge={isOwn}
+                  showPurchasedBadge={isPurchased}
+                  dense={!expanded}
+                />
+              );
+            }}
+            onFirstVisibleIndexChange={setFirstVisibleIndex}
+            onEndReached={hasNextPage ? fetchNextPage : undefined}
+            isFetchingMore={isFetchingNextPage}
+          />
+        </div>
         {expanded && (
           <GalleryDateSidebar
             highlights={highlights}

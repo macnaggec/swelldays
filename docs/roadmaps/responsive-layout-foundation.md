@@ -300,7 +300,7 @@ For every implementation task:
   - Scope: Make the compact presentation the policy fallback when viewport capabilities are indeterminate (first paint, restored sessions, unknown embedding contexts), and audit every capability gate for progressive enhancement: hover, fine pointer, and wider bands must be additive enhancements over a working compact base, never prerequisites. Codify the `min-width` container-query convention as a static rule so no consumer can author a wide-first override cascade.
   - Invariant and verifier: No code path requires a wide viewport or hover capability to produce a usable presentation; policy unit tests own the fallback branch and `check-style-boundaries` owns the min-width convention. All five completion gates must pass.
 
-- [ ] **F12f — Build the measured virtual-gallery adapter**
+- [x] **F12f — Build the measured virtual-gallery adapter**
   - Depends on: F06, F09, F11.
   - Scope: Replace viewport and mirrored panel-width arithmetic with one measured-width adapter and one pure column policy. Feed the same column result to row construction and rendering. The column policy must express the full band range (one column at compact widths through six at wide) so Phase M consumes it without modification.
   - Invariant and verifier: Row chunking and rendered columns cannot disagree; pure policy tests plus a resize/rechunk integration test own verification. All five completion gates must pass.
