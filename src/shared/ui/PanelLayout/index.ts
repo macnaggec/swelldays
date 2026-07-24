@@ -1,1 +1,1 @@
-export { PanelLayout, PanelLayoutFooter } from './PanelLayout';
+export { PanelLayout, PanelLayoutFooter, PanelLayoutRail } from './PanelLayout';

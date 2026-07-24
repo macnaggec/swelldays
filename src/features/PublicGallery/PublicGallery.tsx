@@ -7,9 +7,12 @@ import { galleryColumns, type GalleryDensity } from 'shared/lib/galleryColumns';
 import { useMeasuredWidth } from 'shared/hooks';
 import { VirtualGallery, type VirtualGalleryHandle } from 'shared/ui/VirtualGallery/VirtualGallery';
 import { useCartToggle } from 'entities/Commerce';
+import { PanelLayoutRail } from 'shared/ui/PanelLayout';
 import PublicCard, { PublicCardAction } from './ui/cards/PublicCard';
 import MediaLightbox from './ui/MediaLightbox';
 import { GalleryDateSidebar } from './ui/GalleryDateSidebar';
+import { GalleryDateJumpHeading } from './ui/GalleryDateJumpHeading';
+import { showsDateRail, toDayHighlights } from './model/galleryDateHighlights';
 import { usePublicGalleryActions } from './model/usePublicGalleryActions';
 import { EMPTY_BROWSE_FILTERS, type BrowseFilters } from 'shared/model/browseFilters';
 import { PanelScrollChrome } from 'shared/ui/PanelScrollChrome';
@@ -51,10 +54,10 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
     hasShare: !!onShare,
   });
 
-  // Panel width drives column count and card density: compact packs a dense grid
-  // with actions moved to the lightbox; expanded keeps the roomy card layout.
-  const galleryViewportRef = useRef<HTMLDivElement>(null);
-  const measuredWidth = useMeasuredWidth(galleryViewportRef);
+  // Measured gallery width drives column count and card density: compact packs
+  // a dense grid with actions moved to the lightbox; expanded keeps the roomy
+  // card layout.
+  const [measuredWidth, galleryViewportRef] = useMeasuredWidth();
   const density: GalleryDensity = expanded ? 'comfortable' : 'compact';
   const columns = galleryColumns(measuredWidth, density);
 
@@ -94,6 +97,22 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
 
   const galleryRef = useRef<VirtualGalleryHandle>(null);
   const [firstVisibleIndex, setFirstVisibleIndex] = useState(0);
+
+  // Container-aware date navigation (F12g): a wide gallery gets the pinned
+  // date rail; below that capability the dividers become sticky headings that
+  // double as a date-jump menu.
+  const railVisible = showsDateRail(measuredWidth);
+  const dayHighlights = useMemo(() => toDayHighlights(highlights), [highlights]);
+  const handleDateJump = useCallback(
+    (rowIndex: number) => galleryRef.current?.scrollToIndex(rowIndex, { align: 'start' }),
+    [],
+  );
+  const renderJumpDivider = useCallback(
+    (date: Date) => (
+      <GalleryDateJumpHeading date={date} dayHighlights={dayHighlights} onJump={handleDateJump} />
+    ),
+    [dayHighlights, handleDateJump],
+  );
 
   // ========================================================================
   // ACTION HANDLERS
@@ -174,13 +193,15 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
 
   return (
     <>
-      <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex', gap: 4 }}>
+      <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex' }}>
         <div ref={galleryViewportRef} style={{ flex: 1, minWidth: 0, display: 'flex' }}>
           <VirtualGallery
             ref={galleryRef}
             rows={rows}
             columns={columns}
             dense={!expanded}
+            stickyDividers={!railVisible}
+            renderDivider={railVisible ? undefined : renderJumpDivider}
             renderCard={(item) => {
               const { actions, activeActions, isOwn } = getCardActions(item, false);
               const isPurchased = item.viewerEntitlement.purchaseState === 'purchased';
@@ -202,12 +223,14 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
             isFetchingMore={isFetchingNextPage}
           />
         </div>
-        {expanded && (
-          <GalleryDateSidebar
-            highlights={highlights}
-            firstVisibleIndex={firstVisibleIndex}
-            galleryRef={galleryRef}
-          />
+        {railVisible && (
+          <PanelLayoutRail>
+            <GalleryDateSidebar
+              highlights={highlights}
+              firstVisibleIndex={firstVisibleIndex}
+              galleryRef={galleryRef}
+            />
+          </PanelLayoutRail>
         )}
       </div>
 

@@ -305,9 +305,9 @@ For every implementation task:
   - Scope: Replace viewport and mirrored panel-width arithmetic with one measured-width adapter and one pure column policy. Feed the same column result to row construction and rendering. The column policy must express the full band range (one column at compact widths through six at wide) so Phase M consumes it without modification.
   - Invariant and verifier: Row chunking and rendered columns cannot disagree; pure policy tests plus a resize/rechunk integration test own verification. All five completion gates must pass.
 
-- [ ] **F12g — Make date navigation container-aware**
+- [x] **F12g — Make date navigation container-aware**
   - Depends on: F12f.
-  - Scope: Show the date sidebar only when measured gallery width supports it. Provide sticky date headings and a date-jump control below that capability — this below-capability path is the compact default, not an edge case, under mobile-first sequencing.
+  - Scope: Show the date sidebar only when measured gallery width supports it. Provide sticky date headings and a date-jump control below that capability — this below-capability path is the compact default, not an edge case, under mobile-first sequencing. Rail behavior pinned by user requirements (2026-07-24): the rail is panel chrome, not scrolled content — it stays pinned while the media grid scrolls beneath it; the active date highlight follows scrolling as that date's media enters the viewport; when dates exceed available height the rail scrolls independently with its native scrollbar fully hidden. Prerequisite fix folded into this slice: since F09/F10 the panel owns scrolling, but VirtualGallery still attaches its virtualizer, scroll listener, and scrollToIndex to its own non-scrolling box — freezing the highlight and making date-jump a no-op; resolve the real scroll owner instead.
   - Invariant and verifier: Date navigation remains reachable and never steals unusable gallery width; gallery integration and browser checks own verification. All five completion gates must pass.
 
 - [ ] **F12h — Refactor: automate the reference matrix as a Playwright visual-regression gate**
@@ -429,7 +429,7 @@ For every implementation task:
 
 - [ ] **D00 — Correct desktop toolbar containment**
   - Depends on: Gate 3 approval, F12b.
-  - Scope: Fix the existing expanded-toolbar overflow while preserving the intended search, upload, and filter relationship. Remove CSS-property runtime assertions that currently pass despite visible clipping.
+  - Scope: Fix the existing expanded-toolbar overflow while preserving the intended search, upload, and filter relationship. Remove CSS-property runtime assertions that currently pass despite visible clipping. Target layout pinned by user requirements (2026-07-24): the pills share one row with the search bar and upload button, right-aligned; when width is insufficient the pills wrap to their own row directly below that row; toolbar content never overflows the panel horizontally and the panel never scrolls horizontally (see `.scratch/responsive-layout-foundation/issues/01-expanded-toolbar-pills-unreachable.md`).
   - Invariant and verifier: Toolbar controls remain inside the drawer at 1280, 1440, and 1920; the scripted reference matrix (F12b) owns behavior and static rules own token usage. All five completion gates must pass.
 
 - [ ] **D01 — Remove all superseded layout authorities**

@@ -7,12 +7,35 @@
   container-name: panel;
 }
 
-.scroller {
+.body {
   flex: 1 1 auto;
   min-height: 0;
+  display: flex;
+}
+
+.scroller {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   position: relative;
+}
+
+/* Pinned beside the scroller: rail content keeps its place while the panel
+   content scrolls, and overflowing rail content scrolls on its own with the
+   native scrollbar hidden. */
+.rail {
+  flex: 0 0 auto;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+.rail:empty {
+  display: none;
 }
 
 .content {

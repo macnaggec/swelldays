@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { getVisibleCalendarDayKey } from 'shared/lib/dateUtils';
 import type { VirtualGalleryHandle } from 'shared/ui/VirtualGallery/VirtualGallery';
+import { activeDayIndex, toDayHighlights, type GalleryDateHighlight } from '../model/galleryDateHighlights';
 import styles from './GalleryDateSidebar.module.css';
 
 interface GalleryDateSidebarProps {
-  highlights: { date: Date; rowIndex: number }[];
+  highlights: GalleryDateHighlight[];
   firstVisibleIndex: number;
   galleryRef: React.RefObject<VirtualGalleryHandle | null>;
 }
@@ -12,15 +12,7 @@ interface GalleryDateSidebarProps {
 const SIDEBAR_MAX = 12;
 
 export function GalleryDateSidebar({ highlights, firstVisibleIndex, galleryRef }: GalleryDateSidebarProps) {
-  const dayHighlights = useMemo(() => {
-    const seen = new Set<string>();
-    return highlights.filter(({ date }) => {
-      const key = getVisibleCalendarDayKey(date);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [highlights]);
+  const dayHighlights = useMemo(() => toDayHighlights(highlights), [highlights]);
 
   const useMonths = dayHighlights.length > SIDEBAR_MAX;
 
@@ -37,14 +29,10 @@ export function GalleryDateSidebar({ highlights, firstVisibleIndex, galleryRef }
       });
   }, [dayHighlights, useMonths]);
 
-  const activeHighlightIndex = useMemo(() => {
-    let active = 0;
-    for (let i = 0; i < dayHighlights.length; i++) {
-      if (dayHighlights[i]!.rowIndex <= firstVisibleIndex) active = i;
-      else break;
-    }
-    return active;
-  }, [firstVisibleIndex, dayHighlights]);
+  const activeHighlightIndex = useMemo(
+    () => activeDayIndex(dayHighlights, firstVisibleIndex),
+    [firstVisibleIndex, dayHighlights],
+  );
 
   const activeSidebarIndex = useMemo(() => {
     if (!useMonths) return activeHighlightIndex;

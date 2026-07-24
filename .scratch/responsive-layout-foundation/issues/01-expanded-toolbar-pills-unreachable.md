@@ -36,6 +36,15 @@ which is why the reachability difference was unrecorded until now.
   assembled with search/upload in the expanded toolbar inside
   `src/widgets/SidePanel/SidePanel.tsx`.
 
+## Desired layout (user, 2026-07-24)
+
+- Pills share one row with the search bar and upload button, right-aligned
+  within the panel — never extending past the viewport edge.
+- When the panel is too narrow for the shared row, the pills wrap to their
+  own row directly below the [search bar + upload button] row.
+- The panel must never scroll horizontally.
+- Fix deferred by user decision ("pills later") — lands with D00.
+
 ## Ownership
 
 Roadmap task **D00 — Correct desktop toolbar containment**

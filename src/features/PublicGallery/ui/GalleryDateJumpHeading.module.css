@@ -1,0 +1,30 @@
+/* Mirrors VirtualGallery's divider row so the jump control reads as the same
+   date heading, plus an affordance chevron. */
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  height: var(--wa-panel-section-chrome-height);
+  padding: 0 var(--wa-panel-content-inset);
+  border: none;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.headingText {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  color: var(--mantine-color-dimmed);
+}
+
+.headingIcon {
+  color: var(--mantine-color-dimmed);
+}
+
+.dropdown {
+  max-height: 280px;
+  overflow-y: auto;
+}

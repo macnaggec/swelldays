@@ -1,5 +1,5 @@
-import { act, screen } from '@testing-library/react';
-import { useRef } from 'react';
+import { act, fireEvent, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { buildGalleryRows } from 'shared/lib/buildGalleryRows';
@@ -56,9 +56,25 @@ function stubResizeObserver() {
 }
 
 function WidthProbe() {
-  const ref = useRef<HTMLDivElement>(null);
-  const width = useMeasuredWidth(ref);
+  const [width, ref] = useMeasuredWidth();
   return <div ref={ref} data-testid="width">{width}</div>;
+}
+
+/**
+ * Mirrors the gallery's loading guard: the measured element is absent on first
+ * render and appears only once `revealed` flips. A RefObject effect would have
+ * run against the null ref and never re-observed the later node.
+ */
+function DeferredMountProbe() {
+  const [width, ref] = useMeasuredWidth();
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <>
+      <button onClick={() => setRevealed(true)}>reveal</button>
+      {revealed && <div ref={ref} />}
+      <span data-testid="width">{width}</span>
+    </>
+  );
 }
 
 const SAME_DAY_ITEMS = Array.from({ length: 7 }, (_, i) => ({
@@ -67,8 +83,8 @@ const SAME_DAY_ITEMS = Array.from({ length: 7 }, (_, i) => ({
 }));
 
 function RechunkHarness() {
-  const ref = useRef<HTMLDivElement>(null);
-  const columns = galleryColumns(useMeasuredWidth(ref), 'comfortable');
+  const [width, ref] = useMeasuredWidth();
+  const columns = galleryColumns(width, 'comfortable');
   const rows = buildGalleryRows(SAME_DAY_ITEMS, columns);
 
   return (
@@ -102,6 +118,26 @@ describe('useMeasuredWidth adapter', () => {
     resizeObserver.emit(480);
 
     expect(screen.getByTestId('width').textContent).toBe('480');
+  });
+
+  it('measures an element that mounts after the first render (behind a loading guard)', () => {
+    stubResizeObserver();
+
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(
+      DOMRect.fromRect({ width: 300, height: 0, x: 0, y: 0 }),
+    );
+
+    render(<DeferredMountProbe />);
+
+    // Element absent on first render → nothing to measure yet.
+    expect(screen.getByTestId('width').textContent).toBe('0');
+
+    act(() => {
+      fireEvent.click(screen.getByText('reveal'));
+    });
+
+    // Callback ref attaches the observer as the node mounts → measured immediately.
+    expect(screen.getByTestId('width').textContent).toBe('300');
   });
 });
 

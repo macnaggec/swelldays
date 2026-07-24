@@ -21,6 +21,7 @@ const mediaItem: PublicMedia = {
 
 const galleryState = vi.hoisted(() => ({
   flatItems: [] as PublicMedia[],
+  measuredWidth: 0,
 }));
 
 vi.mock('entities/Spot', () => ({
@@ -62,8 +63,20 @@ vi.mock('shared/ui/VirtualGallery/VirtualGallery', () => ({
   }),
 }));
 
+vi.mock('shared/hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('shared/hooks')>()),
+  useMeasuredWidth: () => [galleryState.measuredWidth, () => {}] as const,
+}));
+
 vi.mock('./ui/GalleryDateSidebar', () => ({
   GalleryDateSidebar: () => <div data-testid="gallery-date-sidebar" />,
+}));
+
+// The rail portal needs a PanelLayout ancestor; render its children in place so
+// the width-gating contract stays observable without mounting the whole panel.
+vi.mock('shared/ui/PanelLayout', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('shared/ui/PanelLayout')>()),
+  PanelLayoutRail: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 vi.mock('./ui/MediaLightbox', () => ({
@@ -73,6 +86,23 @@ vi.mock('./ui/MediaLightbox', () => ({
 describe('PublicGallery', () => {
   beforeEach(() => {
     galleryState.flatItems = [mediaItem];
+    galleryState.measuredWidth = 0;
+  });
+
+  it('shows the date rail when the measured gallery width supports it', () => {
+    galleryState.measuredWidth = 900;
+
+    render(<PublicGallery expanded spotId="spot-1" />);
+
+    expect(screen.getByTestId('gallery-date-sidebar')).toBeInTheDocument();
+  });
+
+  it('hides the date rail below the width capability instead of stealing gallery width', () => {
+    galleryState.measuredWidth = 420;
+
+    render(<PublicGallery expanded spotId="spot-1" />);
+
+    expect(screen.queryByTestId('gallery-date-sidebar')).not.toBeInTheDocument();
   });
 
   it('renders published media without a gallery-local selection toolbar', () => {

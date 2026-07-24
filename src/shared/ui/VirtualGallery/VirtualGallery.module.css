@@ -33,6 +33,16 @@
 
 /* Date section header — thin one-line label; day grouping without a heavy band.
    12px inset matches the panel toolbar chrome (PanelScrollChrome). */
+/* Active sticky divider row — pinned to the scrollport top while its section
+   scrolls beneath; opaque so passing cards never show through. */
+.stickyRow {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  width: 100%;
+  background: var(--mantine-color-body);
+}
+
 .divider {
   display: flex;
   align-items: center;

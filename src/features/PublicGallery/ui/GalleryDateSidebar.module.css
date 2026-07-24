@@ -1,17 +1,15 @@
+/* Lives in the panel's pinned rail (PanelLayoutRail): stays put while the
+   media grid scrolls, and the rail owns overflow when dates exceed the
+   panel height. min-height keeps the border spanning the full rail. */
 .sidebar {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 36px;
-  overflow-y: auto;
+  min-height: 100%;
   padding: 4px 0;
   gap: 2px;
   border-left: 1px solid var(--mantine-color-default-border);
-  scrollbar-width: none;
-}
-
-.sidebar::-webkit-scrollbar {
-  display: none;
 }
 
 .sidebarYear {
