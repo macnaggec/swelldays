@@ -56,9 +56,11 @@
   gap: 8px;
 }
 
+/* Expanded: search, upload, and pills share one row with the pills
+   right-aligned; when the row can't fit the pills they wrap to their own
+   row below (user-pinned layout, 2026-07-24 — see D00). */
 .toolbar[data-expanded] {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex-wrap: wrap;
   gap: var(--wa-panel-grid-gap);
 }
 
@@ -73,8 +75,15 @@
   min-width: 0;
 }
 
+/* Expanded: search + upload form one bounded block capped to a single card's
+   width, so the search field stops stretching to fill the whole row. */
 .toolbarMainExpanded {
-  display: contents;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: var(--wa-gallery-tile-comfortable);
 }
 
 .toolbarPrimary {
@@ -102,8 +111,12 @@
   margin-left: auto;
 }
 
+/* Pills right-align in the shared row and wrap below when the remainder can't
+   fit them, instead of overflowing the panel. */
 .toolbar[data-expanded] .toolbarTrailing {
-  grid-column: auto / -1;
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .actionButton {
@@ -125,10 +138,6 @@
   line-height: 1.4;
   white-space: nowrap;
   cursor: pointer;
-}
-
-.toolbar[data-expanded] .actionButton {
-  justify-self: start;
 }
 
 .actionButton:hover {

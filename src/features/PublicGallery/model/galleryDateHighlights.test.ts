@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   DATE_RAIL_MIN_GALLERY_WIDTH_PX,
   activeDayIndex,
+  groupDaysByMonth,
   showsDateRail,
   toDayHighlights,
 } from './galleryDateHighlights';
@@ -35,6 +36,28 @@ describe('activeDayIndex', () => {
 
   it('returns 0 for an empty highlight list', () => {
     expect(activeDayIndex([], 3)).toBe(0);
+  });
+});
+
+describe('groupDaysByMonth', () => {
+  it('folds days into month sections in scroll order, newest month first', () => {
+    const days = [
+      { date: new Date('2026-07-21T12:00:00.000Z'), rowIndex: 0 },
+      { date: new Date('2026-07-18T12:00:00.000Z'), rowIndex: 4 },
+      { date: new Date('2026-06-25T12:00:00.000Z'), rowIndex: 8 },
+      { date: new Date('2026-06-20T12:00:00.000Z'), rowIndex: 12 },
+    ];
+
+    const groups = groupDaysByMonth(days);
+
+    expect(groups.map((g) => g.key)).toEqual(['2026-6', '2026-5']);
+    expect(groups.map((g) => g.days.length)).toEqual([2, 2]);
+    // First shot of each month is the newest day, at the smallest row index.
+    expect(groups.map((g) => g.days[0]!.rowIndex)).toEqual([0, 8]);
+  });
+
+  it('returns an empty list of sections for no days', () => {
+    expect(groupDaysByMonth([])).toEqual([]);
   });
 });
 

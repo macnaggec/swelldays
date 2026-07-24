@@ -80,12 +80,12 @@ describe('PanelRouteLayout', () => {
     ).toBe(true);
   });
 
-  it('uses the same three-column geometry as the expanded session feed', () => {
-    expect(cssRule('.toolbar[data-expanded]')).toContain(
-      'grid-template-columns: repeat(3, minmax(0, 1fr))',
-    );
+  it('shares one wrapping row between search, action, and right-aligned pills', () => {
+    expect(cssRule('.toolbar[data-expanded]')).toContain('flex-wrap: wrap');
     expect(cssRule('.toolbar[data-expanded]')).toContain('gap: var(--wa-panel-grid-gap)');
-    expect(cssRule('.toolbarMainExpanded')).toContain('display: contents');
+    expect(cssRule('.toolbarMainExpanded')).toContain('max-width: var(--wa-gallery-tile-comfortable)');
+    expect(cssRule('.toolbarTrailing')).toContain('margin-left: auto');
+    expect(cssRule('.toolbar[data-expanded] .toolbarTrailing')).toContain('justify-content: flex-end');
   });
 
   it('gives the search field and action stronger contrast than passive controls', () => {

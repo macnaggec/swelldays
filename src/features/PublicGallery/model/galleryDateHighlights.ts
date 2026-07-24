@@ -48,3 +48,37 @@ export function activeDayIndex(dayHighlights: GalleryDateHighlight[], firstVisib
   }
   return active;
 }
+
+/** Calendar-month identity used to fold the rail's days into month sections. */
+export function monthKeyOf(date: Date): string {
+  return `${date.getFullYear()}-${date.getMonth()}`;
+}
+
+/** One month section of the date rail: its days (newest first) and where its first shot sits. */
+export interface GalleryMonthGroup {
+  key: string;
+  /** The month's newest day — labels the section header. */
+  monthDate: Date;
+  days: GalleryDateHighlight[];
+}
+
+/**
+ * Folds day highlights into month sections in scroll order (newest month first).
+ * The rail keeps exactly the in-view month's section unfolded; every other
+ * month shows only its header until scrolled or tapped into view.
+ */
+export function groupDaysByMonth(dayHighlights: GalleryDateHighlight[]): GalleryMonthGroup[] {
+  const groups: GalleryMonthGroup[] = [];
+  const byKey = new Map<string, GalleryMonthGroup>();
+  for (const day of dayHighlights) {
+    const key = monthKeyOf(day.date);
+    let group = byKey.get(key);
+    if (!group) {
+      group = { key, monthDate: day.date, days: [] };
+      byKey.set(key, group);
+      groups.push(group);
+    }
+    group.days.push(day);
+  }
+  return groups;
+}

@@ -57,7 +57,7 @@ export function FilterPills({ active, onChange, favoritesOnly = false, onFavorit
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
       {renderPill('Today', 'today')}
       {renderPill('Yesterday', 'yesterday')}
       {renderPill('Last 7 Days', 'last7')}

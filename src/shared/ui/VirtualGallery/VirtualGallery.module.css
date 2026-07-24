@@ -1,18 +1,14 @@
-/* Virtualizer scroll container */
+/* Virtualizer container. The panel scroll owner (PanelLayout) scrolls this
+   content — the container itself must NOT declare overflow: that would make it
+   the sticky/scrollport anchor for the scroll chrome and sticky dividers while
+   never actually scrolling, detaching them from the real scroller. */
 .container {
   flex: 1;
-  height: 100%;
   box-sizing: border-box;
-  overflow-y: auto;
   position: relative;
   min-width: 0;
-  scrollbar-width: none;
   /* Clear the FloatingAction button that sits absolutely at the drawer bottom */
   padding-bottom: calc(var(--mantine-spacing-xl) + 52px);
-}
-
-.container::-webkit-scrollbar {
-  display: none;
 }
 
 /* Sticky toolbar — hides on scroll down, reveals on scroll up */

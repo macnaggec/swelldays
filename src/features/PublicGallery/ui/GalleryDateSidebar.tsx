@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import type { VirtualGalleryHandle } from 'shared/ui/VirtualGallery/VirtualGallery';
-import { activeDayIndex, toDayHighlights, type GalleryDateHighlight } from '../model/galleryDateHighlights';
+import {
+  activeDayIndex,
+  groupDaysByMonth,
+  monthKeyOf,
+  toDayHighlights,
+  type GalleryDateHighlight,
+} from '../model/galleryDateHighlights';
 import styles from './GalleryDateSidebar.module.css';
 
 interface GalleryDateSidebarProps {
@@ -9,76 +15,63 @@ interface GalleryDateSidebarProps {
   galleryRef: React.RefObject<VirtualGalleryHandle | null>;
 }
 
-const SIDEBAR_MAX = 12;
-
 export function GalleryDateSidebar({ highlights, firstVisibleIndex, galleryRef }: GalleryDateSidebarProps) {
   const dayHighlights = useMemo(() => toDayHighlights(highlights), [highlights]);
+  const months = useMemo(() => groupDaysByMonth(dayHighlights), [dayHighlights]);
 
-  const useMonths = dayHighlights.length > SIDEBAR_MAX;
+  // Exactly one month is unfolded: the month whose media is currently in view.
+  // On load the gallery sits at its newest month, so that month opens first;
+  // tapping a month scrolls its first shot into view, which makes it the open
+  // one, and scrolling across a month boundary hands the open state over.
+  const activeIdx = activeDayIndex(dayHighlights, firstVisibleIndex);
+  const activeDay = dayHighlights[activeIdx];
+  const openKey = activeDay ? monthKeyOf(activeDay.date) : months[0]?.key;
 
-  const sidebarGroups = useMemo(() => {
-    if (!useMonths) return dayHighlights.map((h, i) => ({ ...h, originalIndex: i }));
-    const seen = new Set<string>();
-    return dayHighlights
-      .map((h, i) => ({ ...h, originalIndex: i }))
-      .filter(({ date }) => {
-        const key = `${date.getFullYear()}-${date.getMonth()}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-  }, [dayHighlights, useMonths]);
+  const jumpTo = (rowIndex: number) => galleryRef.current?.scrollToIndex(rowIndex, { align: 'start' });
 
-  const activeHighlightIndex = useMemo(
-    () => activeDayIndex(dayHighlights, firstVisibleIndex),
-    [firstVisibleIndex, dayHighlights],
-  );
-
-  const activeSidebarIndex = useMemo(() => {
-    if (!useMonths) return activeHighlightIndex;
-    let active = 0;
-    const activeRowIndex = dayHighlights[activeHighlightIndex]?.rowIndex ?? 0;
-    for (let i = 0; i < sidebarGroups.length; i++) {
-      if (sidebarGroups[i]!.rowIndex <= activeRowIndex) active = i;
-      else break;
-    }
-    return active;
-  }, [useMonths, sidebarGroups, activeHighlightIndex, dayHighlights]);
-
-  const activeBtnRef = useRef<HTMLButtonElement>(null);
+  // Keep the active day in the independently-scrolling rail's visible window.
+  const activeDayRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    activeBtnRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [activeSidebarIndex]);
+    activeDayRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [activeIdx]);
 
   if (dayHighlights.length === 0) return null;
 
   return (
     <nav className={styles.sidebar} aria-label="Jump to date">
-      {sidebarGroups.map(({ date, rowIndex }, i) => {
-        const isActive = i === activeSidebarIndex;
-        const prevDate = i > 0 ? sidebarGroups[i - 1]!.date : null;
-        const showYear = !prevDate || date.getFullYear() !== prevDate.getFullYear();
+      {months.map((month, mi) => {
+        const isOpen = month.key === openKey;
+        const prevMonth = mi > 0 ? months[mi - 1] : null;
+        const showYear = !prevMonth || month.monthDate.getFullYear() !== prevMonth.monthDate.getFullYear();
 
         return (
-          <React.Fragment key={date.toISOString()}>
-            {showYear && (
-              <span className={styles.sidebarYear}>{date.getFullYear()}</span>
-            )}
+          <React.Fragment key={month.key}>
+            {showYear && <span className={styles.sidebarYear}>{month.monthDate.getFullYear()}</span>}
             <button
-              ref={isActive ? activeBtnRef : undefined}
-              className={`${styles.sidebarBtn} ${isActive ? styles.sidebarBtnActive : ''}`}
-              onClick={() => galleryRef.current?.scrollToIndex(rowIndex, { align: 'start' })}
-              title={date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+              className={`${styles.monthHeader} ${isOpen ? styles.monthHeaderOpen : ''}`}
+              aria-expanded={isOpen}
+              onClick={() => jumpTo(month.days[0]!.rowIndex)}
+              title={month.monthDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
             >
-              <span className={styles.sidebarMonth}>
-                {date.toLocaleDateString(undefined, { month: 'short' })}
-              </span>
-              {!useMonths && (
-                <span className={styles.sidebarDay}>
-                  {date.toLocaleDateString(undefined, { day: 'numeric' })}
-                </span>
-              )}
+              {month.monthDate.toLocaleDateString(undefined, { month: 'short' })}
             </button>
+
+            {isOpen && month.days.map((day) => {
+              const isActiveDay = day.rowIndex === activeDay?.rowIndex;
+              return (
+                <button
+                  key={day.date.toISOString()}
+                  ref={isActiveDay ? activeDayRef : undefined}
+                  className={`${styles.sidebarBtn} ${isActiveDay ? styles.sidebarBtnActive : ''}`}
+                  onClick={() => jumpTo(day.rowIndex)}
+                  title={day.date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                >
+                  <span className={styles.sidebarDay}>
+                    {day.date.toLocaleDateString(undefined, { day: 'numeric' })}
+                  </span>
+                </button>
+              );
+            })}
           </React.Fragment>
         );
       })}
