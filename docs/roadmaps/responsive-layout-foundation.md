@@ -382,8 +382,22 @@ For every implementation task:
 
 - [ ] **M03 — Implement compact full-screen gallery**
   - Depends on: M00, M01, F12f, F12g.
-  - Scope: Add full-screen gallery presentation, measured two/one-column density, sticky date headings, date-jump control, and lightbox coordination.
-  - Invariant and verifier: Gallery, virtual scrolling, date navigation, and lightbox remain usable at compact widths and large text; integration and browser checks own verification. All five completion gates must pass.
+  - Scope: Add full-screen gallery presentation, measured two/one-column density, sticky date headings, date navigation, and lightbox coordination.
+
+    Date-navigation shape pinned by design discussion (2026-07-25), superseding the earlier bare "date-jump control". Two elements, one job each:
+
+    - **A sticky date label in the panel chrome** — not in scrolled content — reporting the date of whatever sits at the top of the grid, and doubling as the tap target that opens the picker. Orientation and navigation become one affordance instead of one control stamped per date group; in-grid separators are plain, non-interactive text. The wide-band compact panel has the same defect today, specified separately in `.scratch/responsive-layout-foundation/issues/03-compact-date-navigation-duplicated-and-occluded.md` — it depends on F12m and should land first, since this task inherits whatever chrome-ownership model exists by then.
+    - **A transient trailing-edge scrubber** for coarse traversal. It overlays rather than occupying layout, so unlike the expanded-mode rail it costs no gallery width — which is why the F12g width gate does not exclude it. It must be **inset from the screen edges**: a track starting at the true edge is ambiguous with the system back-swipe gesture (left edge on iOS, both on Android) and the OS wins, producing a control that fails at exactly the starting position people reach for.
+
+    Scrubber for flying, picker for landing — roughly 390px of travel across a long archive puts about a month under each finger contact, so precise targeting stays the picker's job. Full-screen is what makes the scrubber viable here: no sheet to drag means one vertical gesture owner and a stable track length. **If the gallery is ever presented in a bottom sheet instead, the scrubber rotates to horizontal** — vertical there is claimed by sheet-drag and scroll, and the track would rescale as the sheet moves between snaps. At the collapsed snap of any sheet presentation, show no date navigation at all.
+
+    Two cells remain explicit product decisions, not defaults. Resolve both before implementing:
+
+    | Open question | Options | What decides it |
+    |---|---|---|
+    | Traverse vs browse | Scrubber alone, or a labelled month chip strip beside it | A strip's labels are readable at rest, so users learn what months exist without interacting; a scrubber reveals a date only while dragging. Guessed *traverse* (users arrive with a date in mind) — a guess about real usage, not something the interaction design settles. |
+    | Picker granularity | Days or months | How dense a typical capture day is. Sparse days make a day list long and tedious; dense days make month-level jumping too coarse. |
+  - Invariant and verifier: Gallery, virtual scrolling, date navigation, and lightbox remain usable at compact widths and large text; integration and browser checks own verification. The scrubber's edge inset and the sheet-rotation rule are behavioral, so they are owned by focused integration and browser checks, not by CSS-declaration assertions. All five completion gates must pass.
 
 - [ ] **M04 — Implement compact full-screen route workspaces**
   - Depends on: M00, M01, F09, F10.
