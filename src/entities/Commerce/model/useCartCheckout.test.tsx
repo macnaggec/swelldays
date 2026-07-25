@@ -123,4 +123,23 @@ describe('useCartCheckout', () => {
     expect(mocks.openAuthModal).toHaveBeenCalledTimes(1);
     expect(mocks.mutationInput).toBeUndefined();
   });
+
+  it('completes checkout once the buyer signs in', async () => {
+    mocks.isAuthenticated = false;
+    const { result } = renderHook(() => useCartCheckout());
+
+    await act(async () => {
+      result.current.handleCheckout();
+    });
+
+    expect(mocks.mutationInput).toBeUndefined();
+
+    const { onAuthenticated } = mocks.openAuthModal.mock.calls[0]?.[0] as { onAuthenticated: () => void };
+
+    await act(async () => {
+      onAuthenticated();
+    });
+
+    expect(mocks.mutationInput).toEqual({ itemIds: ['media-1'] });
+  });
 });

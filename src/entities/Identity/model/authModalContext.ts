@@ -1,7 +1,15 @@
 import { createContext, useContext } from 'react';
 
+export interface AuthModalOpenOptions {
+  /**
+   * Runs once after a successful sign-in from this interrupt, so an auth-gated
+   * action completes without the user re-triggering it. Discarded on dismissal.
+   */
+  onAuthenticated?: () => void;
+}
+
 export interface AuthModalContextValue {
-  open: () => void;
+  open: (options?: AuthModalOpenOptions) => void;
   close: () => void;
 }
 

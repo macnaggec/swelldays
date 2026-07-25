@@ -45,6 +45,25 @@ describe('useMediaFavorites', () => {
     expect(mocks.mutate).not.toHaveBeenCalled();
   });
 
+  it('completes the favorite once the viewer signs in', async () => {
+    mocks.authenticated = false;
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: PropsWithChildren) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    const { result } = renderHook(() => useMediaFavorites(), { wrapper });
+
+    act(() => result.current.toggleFavorite({ id: 'media-1' } as never));
+
+    const { onAuthenticated } = mocks.openAuth.mock.calls[0]?.[0] as { onAuthenticated: () => void };
+    expect(mocks.mutate).not.toHaveBeenCalled();
+
+    await act(async () => {
+      onAuthenticated();
+    });
+
+    expect(mocks.mutate).toHaveBeenCalledOnce();
+    expect(mocks.mutate).toHaveBeenCalledWith({ mediaItemId: 'media-1', favorited: true }, expect.anything());
+  });
+
   it('marks media favorited before persistence finishes', async () => {
     let resolveMutation!: (value: unknown) => void;
     mocks.mutate.mockImplementation(() => new Promise((resolve) => { resolveMutation = resolve; }));

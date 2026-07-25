@@ -57,13 +57,16 @@ export function useMediaFavorites() {
 
   const favoriteIds = new Set(ids);
   const toggleFavorite = (item: PublicMedia) => {
+    const favorited = !favoriteIds.has(item.id);
+    const submit = () => {
+      optimisticItems.set(item.id, item);
+      mutation.mutate({ mediaItemId: item.id, favorited });
+    };
     if (!isAuthenticated) {
-      openAuthModal();
+      openAuthModal({ onAuthenticated: submit });
       return;
     }
-    const favorited = !favoriteIds.has(item.id);
-    optimisticItems.set(item.id, item);
-    mutation.mutate({ mediaItemId: item.id, favorited });
+    submit();
   };
 
   return { favoriteIds, toggleFavorite, isLoading, isPending: mutation.isPending };

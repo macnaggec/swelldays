@@ -41,11 +41,12 @@ export function useCartCheckout(): CartCheckout {
   });
 
   const handleCheckout = () => {
+    const submit = () => checkout.mutate({ itemIds: items.map((i) => i.id) });
     if (!isAuthenticated) {
-      openAuthModal();
+      openAuthModal({ onAuthenticated: submit });
       return;
     }
-    checkout.mutate({ itemIds: items.map((i) => i.id) });
+    submit();
   };
 
   return {

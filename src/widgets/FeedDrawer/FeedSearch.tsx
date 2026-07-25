@@ -42,7 +42,7 @@ export function FeedSearch({ placeholder, onSpotSelect, activeSpot: activeSpotOv
         );
       }
       return (
-        <Text size="sm" c="dimmed" style={{ cursor: 'pointer' }} onClick={openAuthModal}>
+        <Text size="sm" c="dimmed" style={{ cursor: 'pointer' }} onClick={() => openAuthModal()}>
           Sign in to add as a new spot
         </Text>
       );
