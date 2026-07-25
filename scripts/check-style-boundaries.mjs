@@ -262,6 +262,14 @@ const sessionLifecycleInvalidationCallers = new Set([
   'src/features/Upload/model/usePublishUploadSession.ts',
 ]);
 
+// Surfaces migrated off their own chrome mount by F12m. PanelGalleryLayout and
+// its seven consumers keep their private scroll owner and mount until F12n.
+const panelStickyChromeMigratedSurfaces = new Set([
+  'src/features/PublicGallery/PublicGallery.tsx',
+  'src/shared/ui/VirtualGallery/VirtualGallery.tsx',
+  'src/widgets/SidePanel/SessionFeed.tsx',
+]);
+
 const rules = [
   {
     id: 'no-route-panel-css-modules',
@@ -339,13 +347,19 @@ const rules = [
   {
     id: 'panel-layout-owns-standard-scrolling',
     message: 'Standard panel scrolling belongs to shared/ui/PanelLayout, not DrawerShell or browse/session content.',
-    pattern: /data-panel-scroll-owner|overflowY|overflow-y:\s*auto|overscroll-behavior/,
+    pattern: /data-panel-scroll-owner|overflowY|overflowX|overflow-y:\s*auto|overflow-x:\s*(?:auto|hidden|scroll)|overscroll-behavior/,
     include: file => (
       file === 'src/shared/ui/DrawerShell/DrawerShell.tsx'
       || file === 'src/shared/ui/DrawerShell/DrawerShell.module.css'
       || file === 'src/widgets/SidePanel/SessionFeed.tsx'
       || file === 'src/widgets/SidePanel/SessionFeed.module.css'
     ),
+  },
+  {
+    id: 'panel-sticky-chrome-has-one-mount',
+    message: 'Panel content surfaces may read usePanelScrollChromeState but must not mount <PanelScrollChrome />; SidePanel mounts it once in PanelLayout\'s sticky-chrome slot. (PanelGalleryLayout remains a recorded exception until roadmap task F12n.)',
+    pattern: /<PanelScrollChrome[\s/>]/,
+    include: file => panelStickyChromeMigratedSurfaces.has(file),
   },
   {
     id: 'panel-layout-owns-footer-placement',

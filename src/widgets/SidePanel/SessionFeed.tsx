@@ -5,7 +5,6 @@ import { IconPhoto, IconMapPin } from '@tabler/icons-react';
 import { useSessionFeed, type SurfSessionItem } from 'entities/SurfSession';
 import type { BrowseFilters } from 'shared/model/browseFilters';
 import { formatDateRange } from 'shared/lib/dateUtils';
-import { PanelScrollChrome } from 'shared/ui/PanelScrollChrome';
 import { DRAWER_SHELL_TRANSITION } from 'shared/ui/DrawerShell';
 import { PanelCollectionGrid } from 'shared/ui/PanelCollectionGrid';
 import styles from './SessionFeed.module.css';
@@ -75,7 +74,6 @@ export function SessionFeed({
 
   return (
     <div className={styles.feed}>
-      <PanelScrollChrome />
       {isLoading ? (
         <PanelCollectionGrid
           className={styles.grid}

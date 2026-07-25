@@ -45,10 +45,12 @@ interface SidePanelProps {
   header?: ReactNode;
   /** Allows rich headers, such as cart controls, to span the full top row. */
   headerFullWidth?: boolean;
-  /** Full-width row below the top bar, above the scrollable body (e.g. search in State A). */
+  /**
+   * Pinned search/filter row for the panel. Mounted once into PanelLayout's
+   * sticky-chrome slot inside the panel scroll owner, where it hides on scroll
+   * down and reveals on scroll up.
+   */
   subheader?: ReactNode;
-  /** Hides panel chrome when gallery-like panel content scrolls down, reveals it on scroll up. */
-  hideSubheaderOnScroll?: boolean;
   children?: ReactNode;
 }
 
@@ -64,7 +66,6 @@ export function SidePanel({
   header,
   headerFullWidth,
   subheader,
-  hideSubheaderOnScroll,
   children,
 }: SidePanelProps) {
   const scrollPositionByTargetRef = useRef<WeakMap<HTMLElement, ScrollPosition>>(new WeakMap());
@@ -105,55 +106,55 @@ export function SidePanel({
 
   return (
     <PanelScrollChromeProvider value={subheader}>
-      <DrawerShell
-        presentation={drawerPresentation}
-        state={expanded ? 'expanded' : 'compact'}
-        modality={drawerModality}
-        restoreFocusRef={restoreFocusRef}
-      >
-        <PanelLayout
-          onScrollCapture={handleBodyScrollCapture}
-          header={(
-          <div className={styles.panelTop}>
-            {!headerFullWidth && (
-              onBack || onExpandToggle ? (
-                <button
-                  className={`${styles.topBtn} ${backLabel ? styles.topBtnLabeled : ''}`}
-                  onClick={onBack ?? onExpandToggle}
-                  disabled={backDisabled}
-                  aria-label={onBack ? backLabel ?? 'Back' : expanded ? 'Collapse panel' : 'Expand panel'}
-                >
-                  {onBack ? (
-                    <>
-                      <IconChevronLeft size={16} />
-                      {backLabel && <span>{backLabel}</span>}
-                    </>
-                  ) : expanded ? (
-                    <IconMinimize size={16} />
-                  ) : (
-                    <IconMaximize size={16} />
-                  )}
-                </button>
-              ) : (
-                <div aria-hidden="true" />
-              )
-            )}
-
-            {header && (
-              <div className={headerFullWidth ? styles.headerSlotFull : styles.headerSlot}>
-                {header}
-              </div>
-            )}
-            {!headerFullWidth && <div aria-hidden="true" />}
-          </div>
-          )}
-          stickyChrome={!hideSubheaderOnScroll && subheader ? <PanelScrollChrome /> : undefined}
+      <PanelScrollChromeStateProvider value={scrollChromeState}>
+        <DrawerShell
+          presentation={drawerPresentation}
+          state={expanded ? 'expanded' : 'compact'}
+          modality={drawerModality}
+          restoreFocusRef={restoreFocusRef}
         >
-          <PanelScrollChromeStateProvider value={scrollChromeState}>
+          <PanelLayout
+            onScrollCapture={handleBodyScrollCapture}
+            header={(
+            <div className={styles.panelTop}>
+              {!headerFullWidth && (
+                onBack || onExpandToggle ? (
+                  <button
+                    className={`${styles.topBtn} ${backLabel ? styles.topBtnLabeled : ''}`}
+                    onClick={onBack ?? onExpandToggle}
+                    disabled={backDisabled}
+                    aria-label={onBack ? backLabel ?? 'Back' : expanded ? 'Collapse panel' : 'Expand panel'}
+                  >
+                    {onBack ? (
+                      <>
+                        <IconChevronLeft size={16} />
+                        {backLabel && <span>{backLabel}</span>}
+                      </>
+                    ) : expanded ? (
+                      <IconMinimize size={16} />
+                    ) : (
+                      <IconMaximize size={16} />
+                    )}
+                  </button>
+                ) : (
+                  <div aria-hidden="true" />
+                )
+              )}
+
+              {header && (
+                <div className={headerFullWidth ? styles.headerSlotFull : styles.headerSlot}>
+                  {header}
+                </div>
+              )}
+              {!headerFullWidth && <div aria-hidden="true" />}
+            </div>
+            )}
+            stickyChrome={subheader ? <PanelScrollChrome /> : undefined}
+          >
             {children}
-          </PanelScrollChromeStateProvider>
-        </PanelLayout>
-      </DrawerShell>
+          </PanelLayout>
+        </DrawerShell>
+      </PanelScrollChromeStateProvider>
     </PanelScrollChromeProvider>
   );
 }

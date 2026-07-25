@@ -15,7 +15,6 @@ import { GalleryDateJumpHeading } from './ui/GalleryDateJumpHeading';
 import { showsDateRail, toDayHighlights } from './model/galleryDateHighlights';
 import { usePublicGalleryActions } from './model/usePublicGalleryActions';
 import { EMPTY_BROWSE_FILTERS, type BrowseFilters } from 'shared/model/browseFilters';
-import { PanelScrollChrome } from 'shared/ui/PanelScrollChrome';
 import { GalleryEmptyState } from './ui/GalleryEmptyState';
 
 /** Neutral placeholder count for the loading skeleton, rendered before the gallery is mounted and measured. */
@@ -151,19 +150,16 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
 
   if (isLoading) {
     return (
-      <>
-        <PanelScrollChrome />
-        <SimpleGrid
-          cols={LOADING_SKELETON_COLUMNS}
-          spacing="var(--wa-panel-grid-gap)"
-          px="var(--wa-panel-content-inset)"
-          mt="md"
-        >
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} height={120} radius="sm" />
-          ))}
-        </SimpleGrid>
-      </>
+      <SimpleGrid
+        cols={LOADING_SKELETON_COLUMNS}
+        spacing="var(--wa-panel-grid-gap)"
+        px="var(--wa-panel-content-inset)"
+        mt="md"
+      >
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} height={120} radius="sm" />
+        ))}
+      </SimpleGrid>
     );
   }
 
@@ -179,15 +175,12 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
           : 'Published photos and clips will show up here. Use Upload above to add the first set.';
 
     return (
-      <>
-        <PanelScrollChrome />
-        <GalleryEmptyState
-          title={emptyMessage ?? (hasActiveFilters ? 'No shots match this view' : 'No shots here yet')}
-          description={description}
-          actionLabel={hasActiveFilters ? 'Show all media' : undefined}
-          onAction={hasActiveFilters ? onClearFilters : undefined}
-        />
-      </>
+      <GalleryEmptyState
+        title={emptyMessage ?? (hasActiveFilters ? 'No shots match this view' : 'No shots here yet')}
+        description={description}
+        actionLabel={hasActiveFilters ? 'Show all media' : undefined}
+        onAction={hasActiveFilters ? onClearFilters : undefined}
+      />
     );
   }
 

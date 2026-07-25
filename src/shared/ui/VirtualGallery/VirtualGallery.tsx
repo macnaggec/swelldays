@@ -4,7 +4,7 @@ import { Loader } from '@mantine/core';
 import type { GalleryRow } from 'shared/lib/buildGalleryRows';
 import type { CardContext } from 'shared/ui/BaseGallery/BaseGallery';
 import SelectionCheckbox from 'shared/ui/BaseGallery/SelectionCheckbox';
-import { PanelScrollChrome, usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
+import { usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
 import styles from './VirtualGallery.module.css';
 
 const DIVIDER_HEIGHT = 32;
@@ -202,7 +202,6 @@ function VirtualGalleryInner<T extends { id: string }>(
       data-dense={dense || undefined}
       style={{ '--gallery-cols': columns } as React.CSSProperties}
     >
-      <PanelScrollChrome />
       {toolbar && (
         <div
           className={styles.toolbar}

@@ -383,7 +383,6 @@ function PanelFrame({ children }: { children: ReactNode }) {
               headerFullWidth={Boolean(cartMatch)}
               header={header}
               subheader={subheader}
-              hideSubheaderOnScroll={Boolean(subheader && (spotMatch || isDefaultIndex || allGalleryMatch))}
             >
               {children}
             </SidePanel>

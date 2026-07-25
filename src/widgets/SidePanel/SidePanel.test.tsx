@@ -70,10 +70,8 @@ describe('SidePanel', () => {
   it('gives browse content one declared scroll owner with sticky chrome inside it', () => {
     render(
       <SidePanel
-        hideSubheaderOnScroll
         subheader={<div>Search and filters</div>}
       >
-        <PanelScrollChrome />
         <div>Session cards</div>
       </SidePanel>,
     );
@@ -97,10 +95,8 @@ describe('SidePanel', () => {
   it('hides the full-width subheader when descendant panel content scrolls down and reveals it on scroll up', () => {
     render(
       <SidePanel
-        hideSubheaderOnScroll
         subheader={<div>Search and filters</div>}
       >
-        <PanelScrollChrome />
         <div
           data-testid="media-list"
           style={{ height: 120, overflowY: 'auto' }}
@@ -123,10 +119,8 @@ describe('SidePanel', () => {
   it('does not reveal the subheader for a tiny opposite scroll correction during momentum', () => {
     render(
       <SidePanel
-        hideSubheaderOnScroll
         subheader={<div>Search and filters</div>}
       >
-        <PanelScrollChrome />
         <div
           data-testid="media-list"
           style={{ height: 120, overflowY: 'auto' }}
@@ -143,6 +137,25 @@ describe('SidePanel', () => {
     fireEvent.scroll(mediaList, { target: { scrollTop: 79 } });
 
     expect(subheader).toHaveAttribute('data-hidden');
+  });
+
+  it('keeps one chrome mount in the scroll owner when content declares its own overflow context', () => {
+    render(
+      <SidePanel subheader={<div>Search and filters</div>}>
+        <div data-testid="feed" style={{ overflowX: 'hidden' }}>
+          <div>Session cards</div>
+        </div>
+      </SidePanel>,
+    );
+
+    const chromeElements = document.querySelectorAll<HTMLElement>('[data-panel-scroll-chrome]');
+    const drawer = screen.getByRole('complementary', { name: 'Content drawer' });
+    const scrollOwner = drawer.querySelector<HTMLElement>('[data-panel-scroll-owner]');
+    const feed = screen.getByTestId('feed');
+
+    expect(chromeElements).toHaveLength(1);
+    expect(scrollOwner).toContainElement(chromeElements[0]!);
+    expect(feed).not.toContainElement(chromeElements[0]!);
   });
 
   it('keeps sticky search chrome transparent above scrolled content', () => {
