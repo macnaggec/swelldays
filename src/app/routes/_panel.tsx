@@ -143,11 +143,12 @@ function PanelFrame({ children }: { children: ReactNode }) {
   const showsBrowseResults = isDefaultIndex || Boolean(spotMatch && !sessionDetailMatch) || Boolean(allGalleryMatch);
 
   const handleFavoritesChange = useCallback((value: boolean) => {
+    const submit = () => setFavoriteSpotsOnly(value);
     if (!isAuthenticated) {
-      openAuthModal();
+      openAuthModal({ onAuthenticated: submit });
       return;
     }
-    setFavoriteSpotsOnly(value);
+    submit();
   }, [isAuthenticated, openAuthModal, setFavoriteSpotsOnly]);
 
   const cartFrom = cartMatch
@@ -157,16 +158,23 @@ function PanelFrame({ children }: { children: ReactNode }) {
   const { spotId } = useParams({ strict: false });
 
   const handleUpload = useCallback(() => {
+    // The workspace query is gated on authentication, so a visitor signing in
+    // here has no draft loaded yet. Landing on /upload without a workspaceId is
+    // correct: the upload route resolves the active draft itself and replaces
+    // the location once that query settles.
+    const submit = () => {
+      void navigate({
+        to: '/upload',
+        search: activeWorkspace
+          ? { workspaceId: activeWorkspace.id }
+          : { spotId: spotId ?? undefined },
+      });
+    };
     if (!isAuthenticated) {
-      openAuthModal();
+      openAuthModal({ onAuthenticated: submit });
       return;
     }
-    void navigate({
-      to: '/upload',
-      search: activeWorkspace
-        ? { workspaceId: activeWorkspace.id }
-        : { spotId: spotId ?? undefined },
-    });
+    submit();
   }, [activeWorkspace, isAuthenticated, navigate, openAuthModal, spotId]);
 
   const { spot: activeSpot } = useSelectedSpot();

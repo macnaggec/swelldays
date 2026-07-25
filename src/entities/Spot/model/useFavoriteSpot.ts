@@ -30,12 +30,14 @@ export function useFavoriteSpot(spotId: string | null) {
   const toggleFavorite = () => {
     if (!spotId) return;
 
+    const submit = () => toggle.mutate(spotId);
+
     if (!isAuthenticated) {
-      openAuthModal();
+      openAuthModal({ onAuthenticated: submit });
       return;
     }
 
-    toggle.mutate(spotId);
+    submit();
   };
 
   return { isFavorited, toggleFavorite, isPending: toggle.isPending };

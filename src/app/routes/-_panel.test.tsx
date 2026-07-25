@@ -249,6 +249,26 @@ describe('Panel upload entry', () => {
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
+  it('carries the visitor through to upload once they sign in', () => {
+    mocks.params = { spotId: 'spot-current' };
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<Component />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
+
+    const { onAuthenticated } = mocks.openAuth.mock.calls[0]?.[0] as { onAuthenticated: () => void };
+    expect(mocks.navigate).not.toHaveBeenCalled();
+
+    act(() => {
+      onAuthenticated();
+    });
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: '/upload',
+      search: { spotId: 'spot-current' },
+    });
+  });
+
   it('navigates straight to /upload carrying the current spot, without creating a draft', () => {
     mocks.isAuthenticated = true;
     mocks.params = { spotId: 'spot-current' };
@@ -893,6 +913,23 @@ describe('Panel favorites filter', () => {
 
     expect(mocks.openAuth).toHaveBeenCalledTimes(1);
     expect(favorites).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('applies the filter the visitor asked for once they sign in', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<Component />);
+
+    const favorites = screen.getByRole('button', { name: 'Favorites' });
+    fireEvent.click(favorites);
+
+    const { onAuthenticated } = mocks.openAuth.mock.calls[0]?.[0] as { onAuthenticated: () => void };
+    expect(favorites).toHaveAttribute('aria-pressed', 'false');
+
+    act(() => {
+      onAuthenticated();
+    });
+
+    expect(screen.getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('keeps the favorite-spots filter available and active after switching to gallery', () => {

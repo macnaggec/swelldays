@@ -93,6 +93,24 @@ describe('useFavoriteSpot', () => {
     expect(mocks.toggleInput).toBeUndefined();
   });
 
+  it('completes the favorite once the viewer signs in', async () => {
+    mocks.isAuthenticated = false;
+    const { result } = renderHook(() => useFavoriteSpot('spot-1'));
+
+    await act(async () => {
+      result.current.toggleFavorite();
+    });
+
+    const { onAuthenticated } = mocks.openAuthModal.mock.calls[0]?.[0] as { onAuthenticated: () => void };
+    expect(mocks.toggleInput).toBeUndefined();
+
+    await act(async () => {
+      onAuthenticated();
+    });
+
+    expect(mocks.toggleInput).toBe('spot-1');
+  });
+
   it('does nothing when no spot is selected', async () => {
     const { result } = renderHook(() => useFavoriteSpot(null));
 
