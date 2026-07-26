@@ -17,7 +17,7 @@ import {
   PanelScrollChromeProvider,
   PanelScrollChromeStateProvider,
 } from 'shared/ui/PanelScrollChrome';
-import { PanelLayout } from 'shared/ui/PanelLayout';
+import { PanelLayout, PanelChromeSlot } from 'shared/ui/PanelLayout';
 import styles from './SidePanel.module.css';
 
 const SCROLL_DIRECTION_THRESHOLD_PX = 8;
@@ -142,9 +142,9 @@ export function SidePanel({
               )}
 
               {header && (
-                <div className={headerFullWidth ? styles.headerSlotFull : styles.headerSlot}>
+                <PanelChromeSlot className={headerFullWidth ? styles.headerSlotFull : styles.headerSlot}>
                   {header}
-                </div>
+                </PanelChromeSlot>
               )}
               {!headerFullWidth && <div aria-hidden="true" />}
             </div>

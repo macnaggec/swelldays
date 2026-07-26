@@ -6,6 +6,8 @@ import {
   type UIEventHandler,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useMeasuredWidth } from 'shared/hooks/useMeasuredWidth';
+import { useSettledLayout } from 'shared/ui/DrawerShell/panelSettledWidth';
 import styles from './PanelLayout.module.css';
 
 const PanelLayoutFooterTargetContext = createContext<HTMLElement | null>(null);
@@ -29,10 +31,35 @@ export function PanelLayout({
   const [footerTarget, setFooterTarget] = useState<HTMLDivElement | null>(null);
   const [railTarget, setRailTarget] = useState<HTMLDivElement | null>(null);
 
+  // Everything in the panel — search row, filter pills, cards — lays itself out once,
+  // at the width the drawer is heading for, instead of being re-flowed on every frame
+  // of the drawer's width animation. Without this the search row wraps its pills onto
+  // extra lines part-way through the open and snaps back to one line at the end, which
+  // reads as a whole-app breakpoint change rather than one panel resizing.
+  const [measuredWidth, measureRef] = useMeasuredWidth();
+  const { boxWidth, contentWidth, transitioning } = useSettledLayout(measuredWidth);
+
+  // Closing, these differ, and the panel needs both at once. Its *box* stays wide so
+  // cards still travelling across the space being given up are not clipped away; its
+  // *chrome* — header, search row, card area, footer — takes the width it will settle
+  // at, so each moves to its final place along with the panel instead of holding the
+  // old arrangement and snapping when the panel arrives. Opening, the two are equal and
+  // this does nothing.
+  const rootStyle: Record<string, string> = {};
+  if (boxWidth !== null) rootStyle.width = `${boxWidth}px`;
+  if (transitioning && contentWidth !== null && boxWidth !== null && contentWidth < boxWidth) {
+    rootStyle['--wa-panel-content-width'] = `${contentWidth}px`;
+  }
+
   return (
     <PanelLayoutFooterTargetContext.Provider value={footerTarget}>
       <PanelLayoutRailTargetContext.Provider value={railTarget}>
-        <div className={styles.root} data-panel-layout>
+        <div
+          className={styles.root}
+          data-panel-layout
+          ref={measureRef}
+          style={Object.keys(rootStyle).length === 0 ? undefined : rootStyle}
+        >
           {header && <div data-panel-layout-header>{header}</div>}
           {metadata && <div data-panel-layout-metadata>{metadata}</div>}
 

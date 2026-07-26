@@ -6,10 +6,32 @@ import { useSessionFeed, type SurfSessionItem } from 'entities/SurfSession';
 import type { BrowseFilters } from 'shared/model/browseFilters';
 import { formatDateRange } from 'shared/lib/dateUtils';
 import { DRAWER_SHELL_TRANSITION } from 'shared/ui/DrawerShell';
-import { PanelCollectionGrid } from 'shared/ui/PanelCollectionGrid';
+import { PanelCollectionGrid, usePanelCollectionColumns } from 'shared/ui/PanelCollectionGrid';
 import styles from './SessionFeed.module.css';
 
 // ─── Session card
+
+/**
+ * A card in its grid slot, which glides between slots when the panel re-columns.
+ *
+ * Its own component rather than inline markup so it sits *inside* the grid and can read
+ * the column count from it: the glide only happens if the card re-renders when the
+ * count changes, and a card rendered by this file's parent would be skipped by React
+ * and jump instead. `layoutDependency` then limits re-measuring to exactly that change,
+ * so ordinary feed updates do not pay for it.
+ */
+function FeedCardSlot({ session, onClick }: { session: SurfSessionItem; onClick: () => void }) {
+  const columns = usePanelCollectionColumns();
+  return (
+    <motion.div
+      layout="position"
+      layoutDependency={columns}
+      transition={{ layout: DRAWER_SHELL_TRANSITION }}
+    >
+      <SessionCard session={session} onClick={onClick} />
+    </motion.div>
+  );
+}
 
 function SessionCard({ session, onClick }: { session: SurfSessionItem; onClick: () => void }) {
   return (
@@ -95,16 +117,11 @@ export function SessionFeed({
         <>
           <PanelCollectionGrid className={styles.grid}>
             {sessions.map((s) => (
-              <motion.div
+              <FeedCardSlot
                 key={s.id}
-                layout="position"
-                transition={{ layout: DRAWER_SHELL_TRANSITION }}
-              >
-                <SessionCard
-                  session={s}
-                  onClick={() => onSessionClick?.(s)}
-                />
-              </motion.div>
+                session={s}
+                onClick={() => onSessionClick?.(s)}
+              />
             ))}
           </PanelCollectionGrid>
 

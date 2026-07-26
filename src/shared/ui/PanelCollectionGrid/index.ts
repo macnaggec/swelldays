@@ -1,1 +1,1 @@
-export { PanelCollectionGrid } from './PanelCollectionGrid';
+export { PanelCollectionGrid, usePanelCollectionColumns } from './PanelCollectionGrid';

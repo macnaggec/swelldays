@@ -1,14 +1,24 @@
-/** Card density for the public gallery, matching the drawer policy's contentDensity vocabulary. */
-export type GalleryDensity = 'compact' | 'comfortable';
+/**
+ * Tile-size role for a measured grid. `compact` and `comfortable` mirror the drawer
+ * policy's contentDensity; `panelCard` is the panel collection-card role, which caps
+ * lower because session cards stay at three columns however wide the panel gets.
+ */
+export type GalleryDensity = 'compact' | 'comfortable' | 'panelCard';
 
-/** Target tile edge in px per density. Compact packs a dense grid; comfortable keeps roomy cards. */
-export const GALLERY_TARGET_TILE_PX: Record<GalleryDensity, number> = {
-  compact: 120,
-  comfortable: 340,
+interface DensitySpec {
+  /** Target tile edge in px. */
+  readonly targetTilePx: number;
+  /** Upper column bound for this role. */
+  readonly maxColumns: number;
+}
+
+export const GALLERY_DENSITY: Record<GalleryDensity, DensitySpec> = {
+  compact: { targetTilePx: 120, maxColumns: 6 },
+  comfortable: { targetTilePx: 340, maxColumns: 6 },
+  panelCard: { targetTilePx: 340, maxColumns: 3 },
 };
 
 export const GALLERY_MIN_COLUMNS = 1;
-export const GALLERY_MAX_COLUMNS = 6;
 
 /**
  * Pure column count from a measured gallery width.
@@ -20,8 +30,9 @@ export const GALLERY_MAX_COLUMNS = 6;
  */
 export function galleryColumns(measuredWidthPx: number, density: GalleryDensity): number {
   if (measuredWidthPx <= 0) return GALLERY_MIN_COLUMNS;
+  const { targetTilePx, maxColumns } = GALLERY_DENSITY[density];
   return Math.min(
-    GALLERY_MAX_COLUMNS,
-    Math.max(GALLERY_MIN_COLUMNS, Math.round(measuredWidthPx / GALLERY_TARGET_TILE_PX[density])),
+    maxColumns,
+    Math.max(GALLERY_MIN_COLUMNS, Math.round(measuredWidthPx / targetTilePx)),
   );
 }

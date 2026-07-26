@@ -147,7 +147,6 @@ export const StepModeModal: FC<StepModeModalProps> = memo(({
               />
             }
             renderCard={renderCard}
-            columns={3}
           />
         </Box>
       </div>

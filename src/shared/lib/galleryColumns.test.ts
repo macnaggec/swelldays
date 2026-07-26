@@ -30,4 +30,33 @@ describe('galleryColumns', () => {
     const width = 1000;
     expect(galleryColumns(width, 'compact')).toBeGreaterThanOrEqual(galleryColumns(width, 'comfortable'));
   });
+
+  describe('panelCard density', () => {
+    it('is 1 column at every captured compact-panel grid width', () => {
+      expect(galleryColumns(296, 'panelCard')).toBe(1);
+      expect(galleryColumns(336, 'panelCard')).toBe(1);
+      expect(galleryColumns(456, 'panelCard')).toBe(1);
+    });
+
+    it('is 3 columns at every captured expanded-panel grid width', () => {
+      expect(galleryColumns(936, 'panelCard')).toBe(3);
+      expect(galleryColumns(1056, 'panelCard')).toBe(3);
+      expect(galleryColumns(1416, 'panelCard')).toBe(3);
+    });
+
+    it('steps at the 1/2 and 2/3 column boundaries', () => {
+      expect(galleryColumns(509, 'panelCard')).toBe(1);
+      expect(galleryColumns(510, 'panelCard')).toBe(2);
+      expect(galleryColumns(849, 'panelCard')).toBe(2);
+      expect(galleryColumns(850, 'panelCard')).toBe(3);
+    });
+
+    it('caps at 3 columns for a very large width', () => {
+      expect(galleryColumns(5000, 'panelCard')).toBe(3);
+    });
+
+    it('floors to 1 column when width is zero', () => {
+      expect(galleryColumns(0, 'panelCard')).toBe(1);
+    });
+  });
 });

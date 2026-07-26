@@ -2,6 +2,11 @@
   position: sticky;
   top: 0;
   flex-shrink: 0;
+  /* Mounted bare in the scroll owner so its stickiness works, so it cannot inherit the
+     destination width from a wrapper and takes it directly. Set by PanelLayout only
+     while the panel is closing; otherwise this simply fills the panel as before. */
+  width: var(--wa-panel-content-width, 100%);
+  box-sizing: border-box;
   padding: 8px var(--wa-panel-content-inset);
   overflow: visible;
   transform: translateY(0);

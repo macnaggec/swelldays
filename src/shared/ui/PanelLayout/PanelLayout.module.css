@@ -17,6 +17,11 @@
   flex: 1 1 auto;
   min-width: 0;
   overflow-y: auto;
+  /* While the panel is opening, its content is already sized to the width it will
+     settle at, so for ~0.28s it is wider than the visible surface. Clip that rather
+     than flashing a horizontal scrollbar that disappears a moment later. At rest the
+     content fits and this does nothing. */
+  overflow-x: hidden;
   overscroll-behavior: contain;
   position: relative;
 }
@@ -42,6 +47,20 @@
   min-height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+/*
+ * Set only while the panel is closing, when the box it occupies and the width it is
+ * heading for stop agreeing. Everything the user reads as panel chrome takes the
+ * destination width so it travels to its final place with the panel; the box around it
+ * stays wide so cards crossing the space being given up remain visible. Absent at rest
+ * and while opening, where the fallback simply fills the panel as before.
+ */
+.root > [data-panel-layout-header],
+.root > [data-panel-layout-metadata],
+.content,
+.footer {
+  width: var(--wa-panel-content-width, 100%);
 }
 
 .footer {

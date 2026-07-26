@@ -241,10 +241,11 @@ const requiredPanelLayoutStyles = [
   ['panel container-query context', /container-type:\s*inline-size/],
 ];
 
-const requiredPanelCollectionGridStyles = [
-  ['single-column baseline', /grid-template-columns:\s*minmax\(0,\s*1fr\)/],
-  ['two-column panel capability', /@container\s+panel\s*\(min-width:\s*600px\)/],
-  ['three-column panel capability', /@container\s+panel\s*\(min-width:\s*900px\)/],
+// The component owns the count (F12k); the stylesheet must not re-column.
+const forbiddenPanelCollectionGridStyles = [
+  ['column ownership', /grid-template-columns/],
+  ['panel container-query re-columning', /@container\s+panel/],
+  ['drawer-state column override', /\[data-drawer-state/],
 ];
 
 const isServerNonTestFile = (file) => (
@@ -421,6 +422,13 @@ const rules = [
     message: 'Ordinary panel collection columns belong to shared/ui/PanelCollectionGrid.',
     pattern: /grid-template-columns/,
     include: file => ordinaryPanelCollectionCssConsumers.has(file),
+  },
+  {
+    id: 'panel-collection-columns-have-one-owner',
+    message: 'Only shared/ui/PanelCollectionGrid/PanelCollectionGrid.tsx may set gridTemplateColumns; every panel collection grid derives its column count from that component.',
+    pattern: /gridTemplateColumns/,
+    include: file => file.endsWith('.tsx'),
+    exclude: file => file === 'src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.tsx',
   },
   {
     id: 'panel-local-responsiveness-uses-container-queries',
@@ -601,13 +609,13 @@ const panelCollectionGridStyles = readFileSync(
   path.join(root, 'src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.module.css'),
   'utf8',
 );
-for (const [requirement, pattern] of requiredPanelCollectionGridStyles) {
-  if (pattern.test(panelCollectionGridStyles)) continue;
+for (const [requirement, pattern] of forbiddenPanelCollectionGridStyles) {
+  if (!pattern.test(panelCollectionGridStyles)) continue;
   violations.push({
     file: 'src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.module.css',
     line: 1,
-    rule: 'panel-collection-grid-required-styles',
-    message: `PanelCollectionGrid is missing ${requirement}.`,
+    rule: 'panel-collection-grid-forbidden-styles',
+    message: `PanelCollectionGrid must not re-column via ${requirement}; the component owns the count.`,
   });
 }
 

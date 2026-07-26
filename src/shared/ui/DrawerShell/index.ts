@@ -7,6 +7,7 @@ export {
   getDrawerGeometrySnapshot,
   subscribeDrawerGeometry,
   useDrawerAdjacentInlineEndInset,
+  useDrawerMoving,
   useDrawerGeometry,
   type DrawerGeometry,
 } from './geometry';

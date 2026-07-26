@@ -1,7 +1,9 @@
 import {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
+  useState,
   type ReactNode,
   type RefObject,
 } from 'react';
@@ -9,8 +11,9 @@ import { motion } from 'framer-motion';
 import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
 import { PANEL_WIDTH_VW } from 'shared/model/panelExpansionStore';
 import { materialClasses } from 'shared/ui/design-system';
-import { publishDrawerGeometry } from './geometry';
+import { publishDrawerGeometry, publishDrawerMotion } from './geometry';
 import { DRAWER_SHELL_TRANSITION } from './motion';
+import { PanelSettledWidthContext } from './panelSettledWidth';
 import styles from './DrawerShell.module.css';
 
 export type DrawerShellPresentation = Exclude<
@@ -57,6 +60,29 @@ export function DrawerShell({
     latestRestoreFocusRef.current = restoreFocusRef;
   });
 
+  const [transitioning, setTransitioning] = useState(false);
+  const [renderedState, setRenderedState] = useState(state);
+  if (renderedState !== state) {
+    setRenderedState(state);
+    setTransitioning(true);
+  }
+
+  // The surface's width the last time it was standing still, and which state that was.
+  // Every destination is an exact multiple of it, because the two states are pure
+  // fractions of the viewport with nothing added.
+  const [resting, setResting] = useState({ state, width: 0 });
+
+  // Read by the measurement loop, which is mounted once and must not be torn down and
+  // rebuilt whenever either value changes. Synced before paint, so the loop's next
+  // frame already knows the surface has started moving.
+  const transitioningRef = useRef(false);
+  const stateRef = useRef(state);
+  useLayoutEffect(() => {
+    transitioningRef.current = transitioning;
+    stateRef.current = state;
+    publishDrawerMotion(transitioning);
+  }, [transitioning, state]);
+
   useEffect(() => () => {
     const focusTarget = latestRestoreFocusRef.current?.current;
     if (!focusTarget?.isConnected) return;
@@ -74,7 +100,17 @@ export function DrawerShell({
     let pendingFrame: number | null = null;
     const measure = () => {
       pendingFrame = null;
-      publishDrawerGeometry(surface.getBoundingClientRect());
+      const bounds = surface.getBoundingClientRect();
+      publishDrawerGeometry(bounds);
+      // Only a measurement taken while standing still describes a settled width; the
+      // ones taken mid-toggle are the animation passing through. This also picks up a
+      // browser-window resize, which changes the settled width without any toggle.
+      if (transitioningRef.current) return;
+      setResting((current) => (
+        current.width === bounds.width && current.state === stateRef.current
+          ? current
+          : { state: stateRef.current, width: bounds.width }
+      ));
     };
     const scheduleMeasurement = () => {
       if (pendingFrame !== null) return;
@@ -89,10 +125,27 @@ export function DrawerShell({
       observer.disconnect();
       if (pendingFrame !== null) cancelAnimationFrame(pendingFrame);
       publishDrawerGeometry(null);
+      publishDrawerMotion(false);
     };
   }, []);
 
   const isModal = modality === 'modal';
+
+  // Published to panel content so it can lay out at the destination width rather than
+  // riding the surface's per-frame width animation. `transitioning` brackets exactly
+  // the span in which the two disagree.
+  // `transitioning` must turn true in the same render that changes `state`, not a frame
+  // later from onAnimationStart: for that one frame consumers would otherwise see the
+  // destination scale while still trusting a measurement taken at the old width, and
+  // size themselves from the two mixed together.
+  const destinationWidth = resting.width > 0
+    ? resting.width * (PANEL_WIDTH_VW[state] / PANEL_WIDTH_VW[resting.state])
+    : 0;
+
+  const settledWidth = useMemo(
+    () => ({ destinationWidth, transitioning }),
+    [destinationWidth, transitioning],
+  );
 
   return (
     <motion.aside
@@ -107,8 +160,14 @@ export function DrawerShell({
       initial={false}
       animate={{ width: state === 'expanded' ? `${PANEL_WIDTH_VW.expanded}vw` : `${PANEL_WIDTH_VW.compact}vw` }}
       transition={{ width: DRAWER_SHELL_TRANSITION }}
+      onAnimationComplete={() => {
+        transitioningRef.current = false;
+        setTransitioning(false);
+      }}
     >
-      {children}
+      <PanelSettledWidthContext.Provider value={settledWidth}>
+        {children}
+      </PanelSettledWidthContext.Provider>
     </motion.aside>
   );
 }

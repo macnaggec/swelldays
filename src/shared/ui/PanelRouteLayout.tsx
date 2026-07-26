@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useDrawerAdjacentInlineEndInset } from 'shared/ui/DrawerShell';
+import { useDrawerAdjacentInlineEndInset, useDrawerMoving } from 'shared/ui/DrawerShell';
 import styles from './PanelRouteLayout.module.css';
 
 interface PanelRouteLayoutProps {
@@ -109,6 +109,13 @@ export function PanelRouteActionButton({
 
 export function FloatingPanelControls({ children }: { children: ReactNode }) {
   const inlineEndInset = useDrawerAdjacentInlineEndInset(8);
+  const drawerMoving = useDrawerMoving();
+
+  // These sit beside the panel rather than in it, so there is no honest place for them
+  // while it is moving: following the travelling edge drags them across the map, and
+  // taking the final inset puts them where the panel is going while it is still where
+  // it was. They wait until it has arrived, then appear.
+  if (drawerMoving) return null;
 
   return (
     <div

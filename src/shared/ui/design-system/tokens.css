@@ -20,7 +20,7 @@
   --wa-panel-grid-gap: 12px;
   --wa-panel-chrome-height: 52px;
   --wa-panel-section-chrome-height: 32px;
-  /* Comfortable gallery card edge; mirrors GALLERY_TARGET_TILE_PX.comfortable
+  /* Comfortable gallery card edge; mirrors GALLERY_DENSITY.comfortable.targetTilePx
      (src/shared/lib/galleryColumns.ts) so the search toolbar caps to one card. */
   --wa-gallery-tile-comfortable: 340px;
 

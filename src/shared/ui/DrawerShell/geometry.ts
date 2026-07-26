@@ -60,6 +60,35 @@ export function useDrawerGeometry() {
   );
 }
 
+let drawerMoving = false;
+const motionListeners = new Set<() => void>();
+
+/**
+ * Whether the drawer surface is currently animating between its two states.
+ *
+ * Published separately from geometry because controls placed *beside* the drawer are
+ * not part of it and cannot follow it convincingly: they have no width of their own to
+ * animate, so tracking the moving edge would drag them across the screen, and jumping
+ * to the final inset puts them in the panel's future position while it is still in its
+ * old one. They wait instead, and appear once the panel has arrived.
+ */
+export function publishDrawerMotion(moving: boolean) {
+  if (drawerMoving === moving) return;
+  drawerMoving = moving;
+  motionListeners.forEach((listener) => listener());
+}
+
+export function useDrawerMoving() {
+  return useSyncExternalStore(
+    (listener) => {
+      motionListeners.add(listener);
+      return () => motionListeners.delete(listener);
+    },
+    () => drawerMoving,
+    () => false,
+  );
+}
+
 export function useDrawerAdjacentInlineEndInset(gapPx = 0) {
   const geometry = useDrawerGeometry();
   const { viewportWidthPx } = useViewportCapabilities();
