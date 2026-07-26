@@ -1,71 +1,113 @@
-# Scripted responsive-layout reference matrix (F12b)
+# Responsive-layout reference matrix — visual-regression gate (F12b → F12h)
 
-This directory holds the capture artifacts produced by the scripted browser
-harness in `scripts/reference-matrix/`. It supersedes hand-derived inspection:
-any session can re-run the matrix against the local dev server and compare the
-result to the stored references. Roadmap tasks M07, T05, D00, and D03 must
-consume this harness rather than one-off inspection.
+The reference matrix is an automated Playwright snapshot suite. A re-run answers
+"did any captured layout state change?" deterministically and at no review cost
+when nothing changed, instead of a human or agent comparing screenshots by eye.
+Roadmap tasks M07, T05, D00, and D03 consume `npm run test:visual` as their
+execution vehicle.
 
-The manual F00 captures in `../responsive-layout-reference/` remain the
-historical desktop reference; the artifacts here are the scripted, going-forward
-baseline.
+**Status: the harness is in place; baselines have not been captured yet.** Until
+a session runs `--update-snapshots` and commits the result, the suite has nothing
+to compare against, and roadmap task F12h stays open. The superseded CDP harness
+in `scripts/reference-matrix/` is therefore still present and still runnable —
+it is deleted in the same slice that commits the first baselines, so the repo is
+never left with no working visual verification at all.
 
-## Running the harness
+## Running it
 
 ```bash
-npm run capture:reference-matrix              # wide band (default)
-node scripts/reference-matrix/capture.mjs --band compact,constrained,wide
-node scripts/reference-matrix/capture.mjs --state browse-compact --band wide
+npm run capture:db:up && npm run capture:seed && npm run test:visual
 ```
 
-Requirements:
+First-time setup:
 
-- `npm run dev` serving http://localhost:3000 against the seeded dev database;
-- `REFERENCE_EMAIL` / `REFERENCE_PASSWORD` in `.env` (dev-only credentials for
-  the seeded capture account `surf@surf.com`; never committed);
-- Google Chrome (override the binary with `CHROME_BIN` if needed).
+1. `cp .env.capture.example .env.capture` and fill in `VITE_MAPBOX_ACCESS_TOKEN`
+   with a real token — `GlobeMapComponent` throws without one. Everything else
+   in the file works as shipped.
+2. `npx playwright install chromium` (Chromium only; no other browser is used).
+3. `npm run capture:db:up` starts the capture database.
+4. `npm run capture:seed` resets its schema and writes the capture records.
 
-## Matrix axes
+The capture database uses tmpfs, so stopping it discards the data: re-run
+`capture:seed` after every `capture:db:up`.
 
-The viewport axis is mobile-first (roadmap F12b). Wide-band artifacts are the
-desktop-parity baseline captured when the harness landed; compact and
-constrained slots are filled as their phases (M, T) land.
+Updating baselines is always explicit:
+
+```bash
+npm run test:visual -- --update-snapshots
+```
+
+Review the image diff before committing. A baseline change is a claim that the
+layout *should* look different now — if you cannot say which change caused it,
+do not commit it.
+
+## Why this is not one of the five gates
+
+The five project gates are hermetic and fast. This suite needs a dev server, a
+browser, and a seeded database, so it runs as its own command. vitest keeps
+owning unit and integration tests; folding this in would make gate 5
+non-hermetic.
+
+## Axes
+
+The viewport axis is the Playwright project list in `playwright.config.ts`, one
+project per captured viewport. It is mobile-first (roadmap F12b): wide is the
+desktop-parity baseline, and the compact and constrained projects activate as
+Phases M and T mount their presentations — enabling a band adds projects rather
+than editing recipes.
 
 | Band | Viewports | Status |
 |---|---|---|
 | compact | 390×844, 844×390, 430×932, 932×430 | pending Phase M |
 | constrained | 768×1024, 1024×768 | pending Phase T |
-| wide | 1280×800, 1440×900, 1920×1080 | captured (desktop-parity baseline) |
+| wide | 1280×800, 1440×900, 1920×1080 | projects active, baselines pending |
 
-The state axis is defined in `scripts/reference-matrix/matrix.mjs`; each
-state's `run` function is its executable reproduction recipe (the scripted
-equivalent of the F00 README "Reproduction" column). The 14 states cover
-browse compact/expanded, gallery compact/expanded, session detail, cart,
-account, collections, earnings, upload/map-input, loading, empty, error, and
-dialog.
+The state axis lives in `tests/visual/matrix.spec.ts`. Each test is one state's
+reproduction recipe — the executable form of the F00 README "Reproduction"
+column. The 14 states cover browse compact/expanded, gallery compact/expanded,
+session detail, cart, account, collections, earnings, upload/map-input, loading,
+empty, error, and dialog.
 
-Artifacts are stored as `<band>/<width>x<height>/<state>.jpg`, captured at
-deviceScaleFactor 1 to match the F00 baseline density.
+Baselines are stored at `tests/visual/__screenshots__/<project>/<state>.png` —
+deliberately outside `docs/`, which is gitignored, so they commit normally. The
+historical F12b JPEG artifacts under this directory needed `git add -f`; that
+convention does not carry forward. One baseline store, not two.
 
-## Determinism notes
+## What makes a diff trustworthy
 
-- Each run uses a fresh headless-Chrome profile, so the cart is empty and the
-  in-memory expansion preferences start at their defaults; every state begins
-  with a hard navigation.
-- The `loading` state throttles the network and captures the first frame after
-  the app shell mounts; it is intentionally a best-effort capture of the
-  loading lifecycle, not a pixel-stable frame.
-- The map camera animates (globe → fitted region) after the feed loads, so the
-  visible map region may differ between runs depending on flight timing. The
-  matrix owns drawer/panel layout invariants, not map-camera framing.
-- Seeded records the reproductions depend on (Canggu session, non-draft upload
-  workspace) are listed in `matrix.mjs` under `SEEDED`.
+A visual gate is only worth having if a diff means the layout changed. Four
+sources of noise are removed at their source rather than absorbed by a
+tolerance:
+
+- **Capture data.** Records come from a dedicated seeded database
+  (`tests/visual/seed.ts`), never the dev database. Baselines captured against
+  data you edit while working would rot on their own and report regressions that
+  never happened.
+- **Timestamps.** Every seeded date is fixed and in the past, so nothing
+  re-renders differently tomorrow, and no seeded session ever matches the
+  "Today" filter that the `empty-today` state depends on.
+- **The map.** The Mapbox canvas is masked in every screenshot. The camera
+  flight lands differently between runs; the matrix owns drawer and panel
+  layout, not map framing.
+- **Images.** Cloudinary requests are fulfilled locally with a placeholder
+  carrying the same intrinsic dimensions as the seeded rows, so the suite never
+  depends on an external host and every tile occupies the real asset's box.
+
+`maxDiffPixelRatio` is 0. If local font rendering proves noisy, loosen it
+deliberately and record why — never silently.
+
+The `loading` state holds its API responses open until after the capture rather
+than racing a throttled network, so it is a stable frame instead of whichever
+frame the throttle happened to land on. This replaces the CDP harness's
+best-effort throttled capture, which was explicitly not pixel-stable and could
+not have been asserted against.
 
 ## Known wide-band defects excluded from parity
 
 The F00 defect record carries over: the expanded browse/gallery toolbars
 overflow at 1280×800 and clip at 1440×900. D00 owns the fix; these captures
-document the defect, they do not approve it.
+document the defect, they do not approve it. Capture the first baselines with
+the defect present, so D00's fix shows up as the deliberate diff it is.
 
 User-reported refinement (2026-07-23): the overflowing browse (feed) pills
 have no scroll affordance and are **unreachable**; the gallery toolbar
@@ -73,3 +115,10 @@ overflows identically but scrolls horizontally, so its pills stay reachable.
 Screenshots cannot show this difference — D00 must verify reachability on
 both surfaces, not just containment. Tracked in
 `.scratch/responsive-layout-foundation/issues/01-expanded-toolbar-pills-unreachable.md`.
+
+## Related
+
+- `../responsive-layout-reference/` — the manual F00 captures, kept as the
+  historical desktop reference.
+- `docs/roadmaps/responsive-layout-foundation.md` — F12b (scripted matrix) and
+  F12h (this gate).

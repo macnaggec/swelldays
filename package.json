@@ -17,11 +17,15 @@
     "test:client": "vitest --project client",
     "test:server": "vitest --project server",
     "test:integration": "vitest --project integration",
-    "lint": "eslint src",
+    "lint": "eslint src tests playwright.config.ts",
     "check:style-boundaries": "node scripts/check-style-boundaries.mjs",
     "capture:reference-matrix": "node scripts/reference-matrix/capture.mjs",
     "test:db:up": "docker compose -f docker-compose.test.yml up -d --wait",
-    "test:db:down": "docker compose -f docker-compose.test.yml down"
+    "test:db:down": "docker compose -f docker-compose.test.yml down",
+    "test:visual": "node --env-file=.env.capture node_modules/@playwright/test/cli.js test",
+    "capture:db:up": "docker compose -f docker-compose.capture.yml up -d --wait",
+    "capture:db:down": "docker compose -f docker-compose.capture.yml down",
+    "capture:seed": "node --env-file=.env.capture node_modules/prisma/build/index.js migrate reset --force --skip-generate --skip-seed && node --env-file=.env.capture --import tsx tests/visual/seed.ts"
   },
   "dependencies": {
     "@fontsource/geist-sans": "^5.2.5",
@@ -69,6 +73,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

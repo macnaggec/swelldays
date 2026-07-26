@@ -159,3 +159,11 @@ dist
 
 # Transient implementation contract written by /dispatch-task
 .scratch/CONTRACT.md
+
+# Visual-regression capture run (roadmap F12h). Baselines under
+# tests/visual/__screenshots__/ are committed on purpose; everything below is
+# per-run output or local credentials.
+.env.capture
+tests/visual/.auth/
+test-results/
+playwright-report/

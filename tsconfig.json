@@ -30,7 +30,9 @@
   },
   "include": [
     "src",
-    "vitest.d.ts"
+    "vitest.d.ts",
+    "tests",
+    "playwright.config.ts"
   ],
   "exclude": [
     "node_modules",

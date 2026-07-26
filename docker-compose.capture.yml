@@ -1,0 +1,19 @@
+services:
+  postgres-capture:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: capture
+      POSTGRES_PASSWORD: capture
+      POSTGRES_DB: surfdb_capture
+    ports:
+      # 5432 is the dev database and 5433 the integration test database; the
+      # capture database is deliberately separate from both so visual baselines
+      # never depend on records the user edits while working in the app.
+      - "5434:5432"
+    tmpfs:
+      - /var/lib/postgresql/data   # in-memory — wiped on stop, reseeded on start
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U capture -d surfdb_capture"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
