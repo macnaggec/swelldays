@@ -43,11 +43,14 @@ export function PanelLayout({
               data-panel-scroll-owner
               onScrollCapture={onScrollCapture}
             >
-              {stickyChrome && (
-                <div data-panel-layout-sticky-chrome>
-                  {stickyChrome}
-                </div>
-              )}
+              {/*
+                * Rendered as a direct child of the scroll owner on purpose: a
+                * `position: sticky` child is constrained to its parent's box, so
+                * wrapping it in an element only as tall as the chrome itself
+                * leaves zero travel to stick within and the row scrolls away
+                * with the content instead of pinning.
+                */}
+              {stickyChrome}
               <div className={styles.content} data-panel-layout-content>
                 {children}
               </div>
