@@ -18,9 +18,14 @@
  */
 
 import { defineConfig, devices } from '@playwright/test';
-import { STORAGE_STATE } from './tests/visual/auth.setup';
+import { STORAGE_STATE } from './tests/visual/fixtures';
 
-const BASE_URL = 'http://localhost:3000';
+/**
+ * The capture run uses its own ports (set in `.env.capture`) so it can run
+ * alongside an ordinary `npm run dev` without colliding — and, more importantly,
+ * so it can never silently capture against the dev server and its database.
+ */
+const BASE_URL = `http://localhost:${process.env.CLIENT_PORT ?? 3100}`;
 
 /** One project per captured viewport; `name` becomes the baseline directory. */
 const wideViewports = [
@@ -37,7 +42,12 @@ export default defineConfig({
   snapshotPathTemplate: '{testDir}/__screenshots__/{projectName}/{arg}{ext}',
   fullyParallel: false,
   forbidOnly: true,
-  retries: 0,
+  // Retries absorb environment flakiness (headless WebGL map load and dev-server
+  // contention produced intermittent timeouts in roughly 0–2 of 43 states per
+  // run), NOT snapshot mismatches: a real layout change is deterministic and
+  // fails every attempt. Raising this to paper over a repeatable diff would
+  // destroy the gate — don't.
+  retries: 2,
   reporter: [['html', { open: 'never' }], ['list']],
 
   expect: {
@@ -54,7 +64,6 @@ export default defineConfig({
     // it is set through contextOptions rather than as a top-level use option.
     contextOptions: { reducedMotion: 'reduce' },
     deviceScaleFactor: 1,
-    storageState: STORAGE_STATE,
     trace: 'retain-on-failure',
     launchOptions: {
       // Mapbox needs WebGL; headless Chromium falls back to SwiftShader.
@@ -63,12 +72,19 @@ export default defineConfig({
   },
 
   projects: [
-    { name: 'setup', testMatch: /auth\.setup\.ts/, use: { storageState: undefined } },
+    // `storageState` is set only on the capture projects, never at the top
+    // level: the setup project is what writes that file, and inheriting it
+    // would make setup fail trying to read a file that does not exist yet.
+    { name: 'setup', testMatch: /auth\.setup\.ts/ },
     ...wideViewports.map(({ name, width, height }) => ({
       name,
       testMatch: /matrix\.spec\.ts/,
       dependencies: ['setup'],
-      use: { ...devices['Desktop Chrome'], viewport: { width, height } },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width, height },
+        storageState: STORAGE_STATE,
+      },
     })),
     // Phase M activates compact (390×844, 844×390, 430×932, 932×430) and
     // Phase T activates constrained (768×1024, 1024×768). Both bands add

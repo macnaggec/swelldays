@@ -13,9 +13,7 @@
  */
 
 import { test as setup, expect } from '@playwright/test';
-import { readCaptureCredentials } from './fixtures';
-
-export const STORAGE_STATE = 'tests/visual/.auth/capture.json';
+import { readCaptureCredentials, STORAGE_STATE } from './fixtures';
 
 setup('authenticate the capture account', async ({ page, baseURL }) => {
   if (!baseURL) throw new Error('baseURL must be configured for the capture projects.');

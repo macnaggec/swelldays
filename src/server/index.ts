@@ -86,7 +86,11 @@ const runReconciler = () => reconcileUploadAttempts().catch((err) => logger.erro
 runReconciler();
 setInterval(runReconciler, RECONCILE_INTERVAL_MS);
 
-serve({ fetch: app.fetch, port: 3001 }, () => {
-  console.log('Server running on http://localhost:3001');
+// Configurable so a second instance (e.g. the visual-capture run, which needs a
+// different database) can run alongside an ordinary dev server. Default unchanged.
+const serverPort = Number(process.env.SERVER_PORT ?? 3001);
+
+serve({ fetch: app.fetch, port: serverPort }, () => {
+  console.log(`Server running on http://localhost:${serverPort}`);
 });
 

@@ -12,6 +12,16 @@
  * and the `empty-today` recipe depends on no seeded session matching today.
  */
 
+/**
+ * Where the signed-in session cookie is persisted between the setup project and
+ * the capture projects.
+ *
+ * It lives here rather than in `auth.setup.ts` because `playwright.config.ts`
+ * needs it: importing it from the setup file would execute that file's `setup()`
+ * registration in config context, which Playwright rejects.
+ */
+export const STORAGE_STATE = 'tests/visual/.auth/capture.json';
+
 export const CAPTURE_IDS = {
   cangguSpotId: '6f712023-7ad5-48a2-b1a5-077bffd1e654',
   cangguSessionId: '7356deba-0497-4132-9704-0ba26891a52d',

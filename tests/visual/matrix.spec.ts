@@ -9,7 +9,7 @@
  * rather than editing recipes.
  *
  * Determinism rules that keep a baseline meaningful:
- *  - the Mapbox canvas is masked, because the camera flight lands differently
+ *  - the Mapbox canvas is hidden, because the camera flight lands differently
  *    between runs and would otherwise report a layout regression on every pass;
  *  - Cloudinary images are fulfilled locally, so the gate never depends on an
  *    external host and every tile has the same intrinsic 1600×1067 box;
@@ -38,12 +38,38 @@ async function stubRemoteImages(page: Page): Promise<void> {
   );
 }
 
+/**
+ * Hide everything whose pixels depend on where the map camera happens to be.
+ *
+ * Playwright's `mask` cannot be used here: `.globeContainer` is
+ * `position: absolute; inset: 0`, so the map fills the viewport and the panel
+ * floats above it. A mask paints over the element's bounding box regardless of
+ * stacking, so masking the canvas blanks the entire UI — including the layout
+ * this suite exists to compare.
+ *
+ * `visibility: hidden` keeps every box in place, so nothing reflows: only the
+ * camera-dependent pixels go, and the globe container's own background colour
+ * remains as a stable backdrop.
+ */
+async function hideMapPixels(page: Page): Promise<void> {
+  // Injected after navigation rather than via addInitScript: an init script runs
+  // before the document exists, so appending to `document.documentElement` there
+  // silently does nothing and the map renders into the baseline.
+  await page.addStyleTag({
+    content: `
+      .mapboxgl-canvas,
+      .mapboxgl-marker,
+      .mapboxgl-ctrl-bottom-left,
+      .mapboxgl-ctrl-bottom-right { visibility: hidden !important; }
+    `,
+  });
+}
+
 /** Screenshot options shared by every state. */
-function captureOptions(page: Page) {
+function captureOptions() {
   return {
     fullPage: false,
     animations: 'disabled' as const,
-    mask: [page.locator('.mapboxgl-canvas')],
   };
 }
 
@@ -54,7 +80,16 @@ function captureOptions(page: Page) {
  */
 async function settle(page: Page): Promise<void> {
   await expect(page.locator('#root').locator('*').first()).toBeAttached();
+  await hideMapPixels(page);
   await expect(page.getByRole('complementary')).toBeVisible();
+  // GlobeMap renders a spinner overlay while the map is still loading. Whether
+  // the capture races it varies between runs, so wait it out: its presence or
+  // absence would otherwise be the difference between two "identical" runs.
+  // The selector matches the CSS-module classes GlobeMap declares, which keep
+  // their authored names in the generated class.
+  await expect(
+    page.locator('[class*="globeContainer"] [class*="loading"]'),
+  ).toHaveCount(0, { timeout: 30_000 });
 }
 
 /**
@@ -81,64 +116,64 @@ test('browse-compact', async ({ page }) => {
   await page.goto('/');
   await settle(page);
   await ensurePanelExpansion(page, 'compact');
-  await expect(page).toHaveScreenshot('browse-compact.png', captureOptions(page));
+  await expect(page).toHaveScreenshot('browse-compact.png', captureOptions());
 });
 
 test('browse-expanded', async ({ page }) => {
   await page.goto('/');
   await settle(page);
   await ensurePanelExpansion(page, 'expanded');
-  await expect(page).toHaveScreenshot('browse-expanded.png', captureOptions(page));
+  await expect(page).toHaveScreenshot('browse-expanded.png', captureOptions());
 });
 
 test('gallery-compact', async ({ page }) => {
   await page.goto('/gallery');
   await settle(page);
   await ensurePanelExpansion(page, 'compact');
-  await expect(page).toHaveScreenshot('gallery-compact.png', captureOptions(page));
+  await expect(page).toHaveScreenshot('gallery-compact.png', captureOptions());
 });
 
 test('gallery-expanded', async ({ page }) => {
   await page.goto('/gallery');
   await settle(page);
   await ensurePanelExpansion(page, 'expanded');
-  await expect(page).toHaveScreenshot('gallery-expanded.png', captureOptions(page));
+  await expect(page).toHaveScreenshot('gallery-expanded.png', captureOptions());
 });
 
 test('session-detail', async ({ page }) => {
   await page.goto(`/${CAPTURE_IDS.cangguSpotId}/session/${CAPTURE_IDS.cangguSessionId}`);
   await settle(page);
-  await expect(page).toHaveScreenshot('session-detail.png', captureOptions(page));
+  await expect(page).toHaveScreenshot('session-detail.png', captureOptions());
 });
 
 test('cart', async ({ page }) => {
   await page.goto('/cart');
   await settle(page);
-  await expect(page).toHaveScreenshot('cart.png', captureOptions(page));
+  await expect(page).toHaveScreenshot('cart.png', captureOptions());
 });
 
 test('account', async ({ page }) => {
   await page.goto('/me');
   await settle(page);
-  await expect(page).toHaveScreenshot('account.png', captureOptions(page));
+  await expect(page).toHaveScreenshot('account.png', captureOptions());
 });
 
 test('collections', async ({ page }) => {
   await page.goto('/me/collections');
   await settle(page);
-  await expect(page).toHaveScreenshot('collections.png', captureOptions(page));
+  await expect(page).toHaveScreenshot('collections.png', captureOptions());
 });
 
 test('earnings', async ({ page }) => {
   await page.goto('/me/earnings');
   await settle(page);
-  await expect(page).toHaveScreenshot('earnings.png', captureOptions(page));
+  await expect(page).toHaveScreenshot('earnings.png', captureOptions());
 });
 
 test('upload-map-input', async ({ page }) => {
   await page.goto('/upload');
   await settle(page);
-  await expect(page).toHaveScreenshot('upload-map-input.png', captureOptions(page));
+  await expect(page).toHaveScreenshot('upload-map-input.png', captureOptions());
 });
 
 /**
@@ -159,7 +194,8 @@ test('loading', async ({ page }) => {
 
   await page.goto('/', { waitUntil: 'commit' });
   await expect(page.locator('#root').locator('*').first()).toBeAttached();
-  await expect(page).toHaveScreenshot('loading.png', captureOptions(page));
+  await hideMapPixels(page);
+  await expect(page).toHaveScreenshot('loading.png', captureOptions());
 
   release();
   await page.unroute('**/api/trpc/**');
@@ -169,14 +205,14 @@ test('empty-today', async ({ page }) => {
   await page.goto('/');
   await settle(page);
   await page.getByRole('button', { name: 'Today' }).click();
-  await expect(page).toHaveScreenshot('empty-today.png', captureOptions(page));
+  await expect(page).toHaveScreenshot('empty-today.png', captureOptions());
 });
 
 test('error-upload-workspace', async ({ page }) => {
   await page.goto(`/upload?workspaceId=${CAPTURE_IDS.unavailableWorkspaceId}`);
   await settle(page);
   await expect(page.getByText('This upload workspace is unavailable')).toBeVisible();
-  await expect(page).toHaveScreenshot('error-upload-workspace.png', captureOptions(page));
+  await expect(page).toHaveScreenshot('error-upload-workspace.png', captureOptions());
 });
 
 test('dialog-delete-account', async ({ page }) => {
@@ -184,5 +220,5 @@ test('dialog-delete-account', async ({ page }) => {
   await settle(page);
   await page.getByRole('button', { name: 'Delete account' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
-  await expect(page).toHaveScreenshot('dialog-delete-account.png', captureOptions(page));
+  await expect(page).toHaveScreenshot('dialog-delete-account.png', captureOptions());
 });

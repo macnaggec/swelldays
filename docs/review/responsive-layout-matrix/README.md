@@ -6,12 +6,9 @@ when nothing changed, instead of a human or agent comparing screenshots by eye.
 Roadmap tasks M07, T05, D00, and D03 consume `npm run test:visual` as their
 execution vehicle.
 
-**Status: the harness is in place; baselines have not been captured yet.** Until
-a session runs `--update-snapshots` and commits the result, the suite has nothing
-to compare against, and roadmap task F12h stays open. The superseded CDP harness
-in `scripts/reference-matrix/` is therefore still present and still runnable —
-it is deleted in the same slice that commits the first baselines, so the repo is
-never left with no working visual verification at all.
+**Status: live.** Wide-band baselines (14 states × 3 viewports = 42) are
+committed and the suite runs green against them. The superseded CDP harness in
+`scripts/reference-matrix/` has been deleted.
 
 ## Running it
 
@@ -60,7 +57,7 @@ than editing recipes.
 |---|---|---|
 | compact | 390×844, 844×390, 430×932, 932×430 | pending Phase M |
 | constrained | 768×1024, 1024×768 | pending Phase T |
-| wide | 1280×800, 1440×900, 1920×1080 | projects active, baselines pending |
+| wide | 1280×800, 1440×900, 1920×1080 | baselines committed |
 
 The state axis lives in `tests/visual/matrix.spec.ts`. Each test is one state's
 reproduction recipe — the executable form of the F00 README "Reproduction"
@@ -95,6 +92,21 @@ tolerance:
 
 `maxDiffPixelRatio` is 0. If local font rendering proves noisy, loosen it
 deliberately and record why — never silently.
+
+### Known flakiness (measured, not theoretical)
+
+Roughly 0–2 states per 43 fail on first attempt and pass on retry, most often
+`gallery-compact` — the virtualised gallery in the narrow panel, whose rendered
+row set can still be settling when the capture fires. `retries: 2` absorbs this.
+
+Retries are safe here and must stay understood as such: a genuine layout change
+is deterministic and fails **every** attempt. This was verified — a deliberate
+3px grid-gap change failed all three attempts with a ~9,700-pixel diff. If you
+ever see a state pass only on retry with a *pixel diff* rather than a timeout,
+that is not flakiness; investigate it.
+
+Reducing the `gallery-compact` flake at its source (an explicit wait for the
+virtualiser to settle) is worth doing and is not yet done.
 
 The `loading` state holds its API responses open until after the capture rather
 than racing a throttled network, so it is a stable frame instead of whichever

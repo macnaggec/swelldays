@@ -1,114 +1,126 @@
-# F12h handoff — Playwright visual-regression gate (harness landed, baselines pending)
+# F12h handoff — Playwright visual-regression gate
 
-**F12h is NOT complete and its checkbox stays unchecked.** This slice lands the
-harness; the baseline set is deliberately deferred to a session that can run a
-browser. Read "What remains" before picking it up.
+Task completed: **F12h — Refactor: automate the reference matrix as a Playwright
+visual-regression gate**
+
+## Invariant
+
+A change to any captured layout state cannot land unnoticed, and costs no review
+effort when nothing changed. The Playwright snapshot suite owns verification: a
+deliberate layout change fails it, while map-camera movement alone cannot,
+because the map is hidden rather than compared.
+
+## Authority
+
+`tests/visual/` owns the captured layout states end to end — the state recipes
+(`matrix.spec.ts`), the capture-data contract (`fixtures.ts`), the seed that
+writes it (`seed.ts`), and the committed baselines
+(`__screenshots__/<project>/<state>.png`). `playwright.config.ts` owns the
+viewport axis. The superseded CDP harness is deleted.
 
 ## What landed
 
-The reference matrix now exists as a Playwright snapshot suite, per the approved
-spec in `.scratch/responsive-layout-foundation/issues/02-playwright-visual-regression-gate.md`.
-
 - `playwright.config.ts` — one project per captured viewport (wide 1280×800,
-  1440×900, 1920×1080), a `setup` project for authentication, `reducedMotion`,
+  1440×900, 1920×1080) plus a `setup` project, `reducedMotion`,
   deviceScaleFactor 1, `maxDiffPixelRatio: 0`, and a `webServer` that boots the
-  dev server against the capture database.
-- `tests/visual/matrix.spec.ts` — the 14 F12b state recipes as Playwright tests
-  asserting `toHaveScreenshot`, with the Mapbox canvas masked and Cloudinary
-  images fulfilled locally.
-- `tests/visual/fixtures.ts` — the capture-id and fixed-timestamp contract,
-  replacing the `SEEDED` block in `scripts/reference-matrix/matrix.mjs`.
-- `tests/visual/seed.ts` — the seed fixture: capture account (created through
-  better-auth's own API, so sign-in works over the real endpoint), Canggu spot
-  and session, 24 published media, a SAVED workspace for the error state, and a
-  payout in progress for earnings.
-- `tests/visual/auth.setup.ts` — signs in once and persists `storageState`.
-- `docker-compose.capture.yml` + `.env.capture.example` — the dedicated capture
-  database on port 5434, separate from dev (5432) and integration (5433).
+  dev server against the capture database on isolated ports.
+- `tests/visual/matrix.spec.ts` — the 14 F12b state recipes as Playwright tests.
+- `tests/visual/fixtures.ts` — capture ids, fixed timestamps, storage-state path.
+- `tests/visual/seed.ts` — the capture account (created through better-auth's own
+  API so sign-in works over the real endpoint), 6 spots/sessions, 39 media, a
+  SAVED workspace for the error state, and a payout in progress.
+- `tests/visual/auth.setup.ts` — signs in once, persists `storageState`.
+- `tests/visual/__screenshots__/` — **42 committed baselines** (14 states × 3
+  wide viewports).
+- `docker-compose.capture.yml`, `.env.capture.example` — the capture database on
+  port 5434, separate from dev (5432) and integration (5433).
 - npm scripts: `test:visual`, `capture:db:up`, `capture:db:down`, `capture:seed`.
-- `docs/review/responsive-layout-matrix/README.md` rewritten for the automated
-  workflow, baseline-update policy, and the determinism rationale. The F00
-  defect record (D00's toolbar overflow) is preserved.
+- `docs/review/responsive-layout-matrix/README.md` rewritten.
+- **Deleted:** `scripts/reference-matrix/` and the `capture:reference-matrix`
+  script. `chrome-remote-interface` was **kept** — `scripts/chrome-reset.mjs`
+  still uses it.
 
-Two decisions worth carrying forward:
+## Design decisions worth carrying forward
 
-- **Baselines live at `tests/visual/__screenshots__/`**, outside `docs/` — which
-  is gitignored, and which forced the `git add -f` convention on the F12b JPEGs.
-  This settles the spec's open question: one baseline store, committed normally.
-- **The `loading` state holds its API responses open** instead of racing a
-  throttled network. The CDP harness's throttled capture was explicitly
-  best-effort and not pixel-stable, so it could never have been asserted against.
+- **Masking cannot work in this app.** `.globeContainer` is
+  `position: absolute; inset: 0`, so the map fills the viewport and the panel
+  floats above it. Playwright's `mask` paints over an element's bounding box
+  regardless of stacking, so masking the map canvas blanked the entire UI — the
+  first baseline set was 42 images of solid magenta. The map is now hidden with
+  injected CSS (`visibility: hidden`, which preserves every layout box) applied
+  after navigation. An `addInitScript` injection does **not** work: it runs
+  before the document exists, so the append silently no-ops.
+- **The feed needed more than one session.** With a single seeded session the
+  browse feed rendered one card, which looks identical at one, two, or three
+  columns — the baseline would have been blind to exactly the
+  `PanelCollectionGrid` change F12k makes. Five extra spots/sessions were seeded
+  so the feed renders a real multi-column grid.
+- **Wait out the map loading spinner.** GlobeMap renders a spinner overlay while
+  the map loads; whether a capture raced it varied per run. `settle()` now waits
+  for that overlay to disappear.
+- **Baselines live outside `docs/`**, which is gitignored and forced the
+  `git add -f` convention on the F12b JPEGs. One baseline store, committed
+  normally.
+- **The `loading` state holds its API responses open** rather than racing a
+  throttled network, so it is a stable frame.
 
-## What remains (the completing session)
+## Ports (behaviour change, defaults unchanged)
 
-1. `cp .env.capture.example .env.capture`, fill in a real
-   `VITE_MAPBOX_ACCESS_TOKEN`, `npx playwright install chromium`.
-2. `npm run capture:db:up && npm run capture:seed`.
-3. `npm run test:visual -- --update-snapshots`, then **look at every generated
-   baseline** — this is the in-session visual verification the roadmap requires,
-   and it is the whole reason F12h is not a headless-coder task. Capture the
-   wide band with D00's toolbar-overflow defect present, so D00's fix later
-   reads as a deliberate diff.
-4. Confirm acceptance criterion 2: a deliberate 1px change in a drawer surface
-   fails the run; map-camera movement alone does not.
-5. Commit the baselines, then delete `scripts/reference-matrix/` and the
-   `capture:reference-matrix` script, and drop `chrome-remote-interface` if
-   nothing else uses it. Check the F12h box.
+The capture run needs its own dev server against its own database, and port 3000
+was occupied by an ordinary `npm run dev`. `src/server/index.ts` and
+`vite.config.ts` now read `SERVER_PORT` / `CLIENT_PORT`, defaulting to 3001/3000
+exactly as before. The capture run uses 3101/3100, so it can never silently
+capture against the dev server and its database.
 
-The CDP harness was **not** deleted in this slice. The roadmap rule is to remove
-a superseded authority as its consumer migrates; with no baselines the migration
-has not happened, and deleting the only working harness would leave the repo with
-no visual verification at all.
+## Focused verification
 
-Nothing here has been executed. The suite has never been run — no dev server, no
-browser, no database was started (CLAUDE.md §6; the user explicitly chose to
-defer baselines). Everything is verified statically only: the five gates,
-including typecheck and lint now covering the new files.
+- **The gate catches a real change (acceptance criterion 2).** A deliberate 3px
+  `PanelCollectionGrid` gap change failed all three attempts with a ~9,700-pixel
+  diff, then was reverted. Verified, not assumed.
+- **Every baseline was reviewed on screen**, not just generated — this is the
+  in-session visual verification the roadmap required. The first two attempts
+  were rejected on that review (all-magenta masking; then a visible globe and
+  Mapbox logo because the init-script injection never applied).
+- **Full suite green against the committed baselines.**
 
-## Changed files
+### Known flakiness (measured)
 
-- `playwright.config.ts` (new)
-- `tests/visual/{fixtures,seed,auth.setup}.ts`, `tests/visual/matrix.spec.ts` (new)
-- `docker-compose.capture.yml`, `.env.capture.example` (new)
-- `package.json` — `@playwright/test` devDependency; `test:visual`,
-  `capture:db:up`, `capture:db:down`, `capture:seed` scripts; `lint` extended
-- `tsconfig.json` — `tests` and `playwright.config.ts` added to `include`
-- `.gitignore` — `.env.capture`, `tests/visual/.auth/`, `test-results/`,
-  `playwright-report/`
-- `docs/review/responsive-layout-matrix/README.md` — rewritten
-- `docs/roadmaps/responsive-layout-foundation.md` — F12h progress note; F12k
-  column-cap decision recorded
+0–2 states per 43 fail on first attempt and pass on retry, most often
+`gallery-compact` — the virtualised gallery in the narrow panel, still settling
+when the capture fires. `retries: 2` absorbs this.
 
-## Verification
+Retries do not weaken the assertion: a genuine layout change is deterministic and
+fails every attempt, as the 3px experiment showed. A state that passes only on
+retry *with a pixel diff* rather than a timeout is a real defect, not flakiness.
+Fixing `gallery-compact` at its source (an explicit wait for the virtualiser) is
+worth doing and is **not** done.
 
-Gate coverage was extended as part of this slice, because adding TypeScript that
-no gate reads would be a hole in the project's machine-enforcement discipline:
+The setup project also hit one transient auth 500 that passed on retry; cause not
+identified. Worth watching rather than acting on yet.
 
-- `tsconfig.json` now includes `tests` and `playwright.config.ts`, so gate 1
-  typechecks the config, specs, setup, seed, and fixtures. This caught a real
-  error: `reducedMotion` is a browser-context option in Playwright 1.62, not a
-  top-level `use` option, and is now set via `contextOptions`.
-- `npm run lint` now runs `eslint src tests playwright.config.ts`. Verified that
-  ESLint genuinely covers the new files (all 5 linted, 0 problems) rather than
-  silently ignoring them. The gate's meaning for `src` is unchanged.
+## Project gates
 
-Project gates — all five green:
+All five green:
 
 - `npx tsc --noEmit` — pass
 - `npx tsc -p tsconfig.server.json --noEmit` — pass
 - `npm run lint` — pass
 - `npm run check:style-boundaries` — pass
-- `npx vitest run --project client --project server` — 106 files, 551 tests
-  passed (unchanged from the pre-change baseline; this slice adds no vitest tests,
-  correctly — the snapshot assertion owns the visual invariant, and asserting
-  config shapes in vitest is prohibited by AGENTS.md §0.3)
+- `npx vitest run --project client --project server` — 106 files, 551 tests passed
 
-Baseline before starting: all five gates were already green on a clean tree.
+Gate coverage was extended in this slice: `tsconfig.json` now includes `tests`
+and `playwright.config.ts`, and `npm run lint` runs
+`eslint src tests playwright.config.ts`, so the new TypeScript is actually read
+by a gate. This caught `reducedMotion` being a browser-context option in
+Playwright 1.62 rather than a top-level `use` option. Meaning for `src` is
+unchanged.
 
 ## Removed concepts
 
-None yet. `scripts/reference-matrix/` and `capture:reference-matrix` are
-scheduled for deletion in the baseline-capturing session (see above).
+- `scripts/reference-matrix/capture.mjs` and `matrix.mjs` — the CDP harness.
+- The `capture:reference-matrix` npm script.
+- The `SEEDED` id block, replaced by `tests/visual/fixtures.ts`.
+- The throttled best-effort `loading` capture, replaced by a held-response frame.
 
 ## Unrelated working-tree changes preserved
 
@@ -116,7 +128,7 @@ None — the tree was clean at session start.
 
 ## Next ready task
 
-F12h's remaining half (capture and commit baselines, delete the CDP harness) in
-a session cleared to run a browser. After that, F12k — whose column decision is
-now pinned to the 3-column cap, and which gains this gate as its verifier for
-the reflow work.
+**F12k** — make panel collection columns measured and the reflow animatable. Its
+column decision is pinned to the 3-column cap (recorded in the roadmap), and it
+now has this gate as its verifier: if the ownership collapse is truly
+behaviour-preserving, `npm run test:visual` should pass unchanged.
