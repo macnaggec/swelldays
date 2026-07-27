@@ -43,7 +43,7 @@ describe('PanelGalleryLayout', () => {
     expect(galleryCards.closest('[data-panel-scroll-owner]')).not.toBeNull();
   });
 
-  it('renders route-owned panel chrome inside the gallery scroll owner', () => {
+  it('renders route-owned panel chrome inside the panel scroll owner', () => {
     renderInPanelLayout(
       <PanelScrollChromeProvider value={<div>Collection tabs</div>}>
         <PanelGalleryLayout>
@@ -52,6 +52,17 @@ describe('PanelGalleryLayout', () => {
       </PanelScrollChromeProvider>,
     );
 
-    expect(screen.getByText('Collection tabs').closest('[data-panel-gallery-scroller]')).not.toBeNull();
+    expect(screen.getByText('Collection tabs').closest('[data-panel-scroll-owner]')).not.toBeNull();
+  });
+
+  it('keeps meta content outside the panel scroll owner while gallery children stay inside it', () => {
+    renderInPanelLayout(
+      <PanelGalleryLayout meta={<span>Session metadata</span>}>
+        <div>Gallery cards</div>
+      </PanelGalleryLayout>,
+    );
+
+    expect(screen.getByText('Session metadata').closest('[data-panel-scroll-owner]')).toBeNull();
+    expect(screen.getByText('Gallery cards').closest('[data-panel-scroll-owner]')).not.toBeNull();
   });
 });

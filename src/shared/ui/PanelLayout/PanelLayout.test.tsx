@@ -2,7 +2,7 @@ import { act, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { PanelSettledWidthContext } from 'shared/ui/DrawerShell/panelSettledWidth';
-import { PanelLayout, PanelLayoutRail } from './PanelLayout';
+import { PanelLayout, PanelLayoutMetadata, PanelLayoutRail } from './PanelLayout';
 
 /** As in PanelCollectionGrid.test.tsx: drives a chosen contentRect width on demand. */
 function stubResizeObserver() {
@@ -148,5 +148,33 @@ describe('PanelLayoutRail', () => {
     );
 
     expect(screen.queryByText('Date rail')).toBeNull();
+  });
+});
+
+describe('PanelLayoutMetadata', () => {
+  it('pins metadata content between the header and the scroller, outside the scroll owner', () => {
+    render(
+      <PanelLayout>
+        <div>Scrolled content</div>
+        <PanelLayoutMetadata>
+          <span>Session metadata</span>
+        </PanelLayoutMetadata>
+      </PanelLayout>,
+    );
+
+    const metadata = screen.getByText('Session metadata');
+    expect(metadata.closest('[data-panel-layout-metadata]')).not.toBeNull();
+    expect(metadata.closest('[data-panel-scroll-owner]')).toBeNull();
+    expect(screen.getByText('Scrolled content').closest('[data-panel-scroll-owner]')).not.toBeNull();
+  });
+
+  it('renders nothing when mounted outside a PanelLayout', () => {
+    render(
+      <PanelLayoutMetadata>
+        <span>Session metadata</span>
+      </PanelLayoutMetadata>,
+    );
+
+    expect(screen.queryByText('Session metadata')).toBeNull();
   });
 });

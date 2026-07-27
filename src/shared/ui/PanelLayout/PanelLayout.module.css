@@ -43,6 +43,14 @@
   display: none;
 }
 
+.metadata {
+  flex: 0 0 auto;
+}
+
+.metadata:empty {
+  display: none;
+}
+
 .content {
   min-height: 100%;
   display: flex;

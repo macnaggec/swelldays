@@ -1,2 +1,2 @@
-export { PanelLayout, PanelLayoutFooter, PanelLayoutRail } from './PanelLayout';
+export { PanelLayout, PanelLayoutFooter, PanelLayoutMetadata, PanelLayoutRail } from './PanelLayout';
 export { PanelChromeSlot } from './PanelChromeSlot';

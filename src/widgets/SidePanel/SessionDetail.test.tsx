@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { useCartStore } from 'entities/Commerce/model/cartStore';
+import { PanelLayout } from 'shared/ui/PanelLayout';
 import { SessionDetail } from './SessionDetail';
 
 const mocks = vi.hoisted(() => {
@@ -111,7 +112,9 @@ describe('SessionDetail', () => {
 
     render(
       <MantineProvider>
-        <SessionDetail session={session} />
+        <PanelLayout>
+          <SessionDetail session={session} />
+        </PanelLayout>
       </MantineProvider>,
     );
 

@@ -264,7 +264,8 @@ const sessionLifecycleInvalidationCallers = new Set([
 ]);
 
 // Surfaces migrated off their own chrome mount by F12m. PanelGalleryLayout and
-// its seven consumers keep their private scroll owner and mount until F12n.
+// its seven consumers keep their chrome mount until F12n-b; F12n-a retired
+// their private scroll owner.
 const panelStickyChromeMigratedSurfaces = new Set([
   'src/features/PublicGallery/PublicGallery.tsx',
   'src/shared/ui/VirtualGallery/VirtualGallery.tsx',
@@ -354,11 +355,13 @@ const rules = [
       || file === 'src/shared/ui/DrawerShell/DrawerShell.module.css'
       || file === 'src/widgets/SidePanel/SessionFeed.tsx'
       || file === 'src/widgets/SidePanel/SessionFeed.module.css'
+      || file === 'src/shared/ui/PanelGalleryLayout.tsx'
+      || file === 'src/shared/ui/PanelGalleryLayout.module.css'
     ),
   },
   {
     id: 'panel-sticky-chrome-has-one-mount',
-    message: 'Panel content surfaces may read usePanelScrollChromeState but must not mount <PanelScrollChrome />; SidePanel mounts it once in PanelLayout\'s sticky-chrome slot. (PanelGalleryLayout remains a recorded exception until roadmap task F12n.)',
+    message: 'Panel content surfaces may read usePanelScrollChromeState but must not mount <PanelScrollChrome />; SidePanel mounts it once in PanelLayout\'s sticky-chrome slot. (PanelGalleryLayout remains a recorded exception until roadmap task F12n-b.)',
     pattern: /<PanelScrollChrome[\s/>]/,
     include: file => panelStickyChromeMigratedSurfaces.has(file),
   },

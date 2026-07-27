@@ -12,10 +12,10 @@ import styles from './PanelLayout.module.css';
 
 const PanelLayoutFooterTargetContext = createContext<HTMLElement | null>(null);
 const PanelLayoutRailTargetContext = createContext<HTMLElement | null>(null);
+const PanelLayoutMetadataTargetContext = createContext<HTMLElement | null>(null);
 
 interface PanelLayoutProps {
   header?: ReactNode;
-  metadata?: ReactNode;
   stickyChrome?: ReactNode;
   onScrollCapture?: UIEventHandler<HTMLDivElement>;
   children?: ReactNode;
@@ -23,13 +23,13 @@ interface PanelLayoutProps {
 
 export function PanelLayout({
   header,
-  metadata,
   stickyChrome,
   onScrollCapture,
   children,
 }: PanelLayoutProps) {
   const [footerTarget, setFooterTarget] = useState<HTMLDivElement | null>(null);
   const [railTarget, setRailTarget] = useState<HTMLDivElement | null>(null);
+  const [metadataTarget, setMetadataTarget] = useState<HTMLDivElement | null>(null);
 
   // Everything in the panel — search row, filter pills, cards — lays itself out once,
   // at the width the drawer is heading for, instead of being re-flowed on every frame
@@ -54,48 +54,50 @@ export function PanelLayout({
   return (
     <PanelLayoutFooterTargetContext.Provider value={footerTarget}>
       <PanelLayoutRailTargetContext.Provider value={railTarget}>
-        <div
-          className={styles.root}
-          data-panel-layout
-          ref={measureRef}
-          style={Object.keys(rootStyle).length === 0 ? undefined : rootStyle}
-        >
-          {header && <div data-panel-layout-header>{header}</div>}
-          {metadata && <div data-panel-layout-metadata>{metadata}</div>}
+        <PanelLayoutMetadataTargetContext.Provider value={metadataTarget}>
+          <div
+            className={styles.root}
+            data-panel-layout
+            ref={measureRef}
+            style={Object.keys(rootStyle).length === 0 ? undefined : rootStyle}
+          >
+            {header && <div data-panel-layout-header>{header}</div>}
+            <div ref={setMetadataTarget} className={styles.metadata} data-panel-layout-metadata />
 
-          <div className={styles.body} data-panel-layout-body>
-            <div
-              className={styles.scroller}
-              data-panel-layout-scroller
-              data-panel-scroll-owner
-              onScrollCapture={onScrollCapture}
-            >
-              {/*
-                * Rendered as a direct child of the scroll owner on purpose: a
-                * `position: sticky` child is constrained to its parent's box, so
-                * wrapping it in an element only as tall as the chrome itself
-                * leaves zero travel to stick within and the row scrolls away
-                * with the content instead of pinning.
-                */}
-              {stickyChrome}
-              <div className={styles.content} data-panel-layout-content>
-                {children}
+            <div className={styles.body} data-panel-layout-body>
+              <div
+                className={styles.scroller}
+                data-panel-layout-scroller
+                data-panel-scroll-owner
+                onScrollCapture={onScrollCapture}
+              >
+                {/*
+                  * Rendered as a direct child of the scroll owner on purpose: a
+                  * `position: sticky` child is constrained to its parent's box, so
+                  * wrapping it in an element only as tall as the chrome itself
+                  * leaves zero travel to stick within and the row scrolls away
+                  * with the content instead of pinning.
+                  */}
+                {stickyChrome}
+                <div className={styles.content} data-panel-layout-content>
+                  {children}
+                </div>
               </div>
+
+              <div
+                ref={setRailTarget}
+                className={styles.rail}
+                data-panel-layout-rail
+              />
             </div>
 
             <div
-              ref={setRailTarget}
-              className={styles.rail}
-              data-panel-layout-rail
+              ref={setFooterTarget}
+              className={styles.footer}
+              data-panel-layout-footer
             />
           </div>
-
-          <div
-            ref={setFooterTarget}
-            className={styles.footer}
-            data-panel-layout-footer
-          />
-        </div>
+        </PanelLayoutMetadataTargetContext.Provider>
       </PanelLayoutRailTargetContext.Provider>
     </PanelLayoutFooterTargetContext.Provider>
   );
@@ -116,4 +118,14 @@ export function PanelLayoutRail({ children }: { children: ReactNode }) {
 export function PanelLayoutFooter({ children }: { children: ReactNode }) {
   const footerTarget = useContext(PanelLayoutFooterTargetContext);
   return footerTarget ? createPortal(children, footerTarget) : null;
+}
+
+/**
+ * Pinned metadata region between the panel header and the scroll owner:
+ * content portaled here stays put while panel content scrolls. Renders
+ * nothing when mounted outside a PanelLayout.
+ */
+export function PanelLayoutMetadata({ children }: { children: ReactNode }) {
+  const metadataTarget = useContext(PanelLayoutMetadataTargetContext);
+  return metadataTarget ? createPortal(children, metadataTarget) : null;
 }

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { PanelLayoutFooter } from './PanelLayout';
+import { PanelLayoutFooter, PanelLayoutMetadata } from './PanelLayout';
 import { PanelScrollChrome } from './PanelScrollChrome';
 import styles from './PanelGalleryLayout.module.css';
 
@@ -13,16 +13,16 @@ export function PanelGalleryLayout({ meta, footer, children }: PanelGalleryLayou
   return (
     <div className={styles.root}>
       {meta && (
-        <div className={styles.meta} data-panel-gallery-meta>
-          {meta}
-        </div>
+        <PanelLayoutMetadata>
+          <div className={styles.meta} data-panel-gallery-meta>
+            {meta}
+          </div>
+        </PanelLayoutMetadata>
       )}
 
-      <div className={styles.scroller} data-panel-gallery-scroller>
-        <PanelScrollChrome />
-        <div className={styles.galleryInset} data-panel-gallery-inset>
-          {children}
-        </div>
+      <PanelScrollChrome />
+      <div className={styles.galleryInset} data-panel-gallery-inset>
+        {children}
       </div>
 
       {footer && <PanelLayoutFooter>{footer}</PanelLayoutFooter>}
