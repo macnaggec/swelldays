@@ -1,5 +1,5 @@
 import { GlobeScene } from 'views/GlobeScene';
-import { LeftStrip } from 'widgets/LeftStrip';
+import { AppNavigation } from 'widgets/AppNavigation';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 
 export function AppShell() {
@@ -8,7 +8,7 @@ export function AppShell() {
   return (
     <>
       {layoutPolicy.map.interaction !== 'hidden' && <GlobeScene />}
-      {layoutPolicy.navigation === 'leftStrip' && <LeftStrip />}
+      <AppNavigation presentation={layoutPolicy.navigation} />
     </>
   );
 }

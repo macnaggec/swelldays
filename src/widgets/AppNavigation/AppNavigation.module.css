@@ -1,10 +1,15 @@
 .root {
   position: fixed;
-  top: var(--wa-shell-edge-clearance);
-  left: var(--wa-shell-edge-clearance);
+  top: calc(var(--wa-safe-area-top) + var(--wa-shell-edge-clearance));
+  left: calc(var(--wa-safe-area-left) + var(--wa-shell-edge-clearance));
   z-index: var(--wa-z-floating-chrome);
   display: flex;
   align-items: center;
+}
+
+.root[data-navigation-presentation='topBar'] {
+  left: auto;
+  right: calc(var(--wa-safe-area-right) + var(--wa-shell-edge-clearance));
 }
 
 .stack {
@@ -14,6 +19,11 @@
   padding: 8px;
   border-radius: var(--wa-radius-chrome);
   align-items: center;
+}
+
+.root[data-navigation-presentation='topBar'] .stack,
+.root[data-navigation-presentation='compactBar'] .stack {
+  flex-direction: row;
 }
 
 .button {

@@ -46,8 +46,8 @@ const isMigratedMaterialSurface = (file) => (
   || file.startsWith('src/entities/SurfSession/ui/')
   || file.startsWith('src/widgets/SidePanel/SessionFeed')
   || file.startsWith('src/widgets/SidePanel/SidePanel')
-  || file.startsWith('src/widgets/LeftStrip/LeftStrip')
-  || file === 'src/widgets/LeftStrip/CartControl.tsx'
+  || file.startsWith('src/widgets/AppNavigation/AppNavigation')
+  || file === 'src/widgets/AppNavigation/CartControl.tsx'
   || file.startsWith('src/views/GlobeScene/')
   || file === 'src/widgets/GlobeMap/LocationPicker.module.css'
   || /^src\/app\/routes\/_panel.*\.tsx$/.test(file)
@@ -208,9 +208,12 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-motion-easing-standard',
     '--wa-z-panel-chrome',
   ]],
-  ['src/widgets/LeftStrip/LeftStrip.module.css', [
+  ['src/widgets/AppNavigation/AppNavigation.module.css', [
     '--wa-shell-edge-clearance',
     '--wa-control-size-navigation',
+    '--wa-safe-area-top',
+    '--wa-safe-area-left',
+    '--wa-safe-area-right',
   ]],
   ['src/widgets/SidePanel/SidePanel.module.css', [
     '--wa-panel-chrome-height',
@@ -329,6 +332,22 @@ const rules = [
       file === 'src/shared/model/appShellPresentation.tsx'
       || file === 'src/app/routes/__root.tsx'
     ),
+  },
+  {
+    id: 'app-navigation-is-mounted-once-by-the-shell',
+    message: 'Navigation is mounted once by AppShell from the shell policy; features and routes must not mount a navigation presentation.',
+    pattern: /\bAppNavigation\b/,
+    include: isRuntimeTypeScript,
+    exclude: file => (
+      file === 'src/app/AppShell.tsx'
+      || file.startsWith('src/widgets/AppNavigation/')
+    ),
+  },
+  {
+    id: 'no-legacy-navigation-placement-vocabulary',
+    message: 'Navigation is named by role, not placement: use AppNavigation with the policy presentation instead of LeftStrip.',
+    pattern: /\bLeftStrip\b/,
+    include: file => /\.tsx?$/.test(file),
   },
   {
     id: 'no-legacy-rendered-panel-snapshot',
@@ -509,7 +528,7 @@ const rules = [
     id: 'no-local-shell-edge-clearance',
     message: 'Shell-external chrome must use --wa-shell-edge-clearance.',
     pattern: /\b(?:top|left):\s*12px/,
-    include: file => file === 'src/widgets/LeftStrip/LeftStrip.module.css',
+    include: file => file === 'src/widgets/AppNavigation/AppNavigation.module.css',
   },
   {
     id: 'no-local-panel-chrome-layer',
@@ -536,7 +555,7 @@ const rules = [
     message: 'Responsive shell and panel controls must use semantic control-dimension tokens.',
     pattern: /(?:width|height):\s*(?:32px|36px|44px|2\.25rem)|--upload-control-height:\s*36px/,
     include: file => (
-      file === 'src/widgets/LeftStrip/LeftStrip.module.css'
+      file === 'src/widgets/AppNavigation/AppNavigation.module.css'
       || file === 'src/widgets/SidePanel/SidePanel.module.css'
       || file === 'src/shared/ui/PanelRouteLayout.module.css'
       || file === 'src/features/Upload/ui/UploadSidebar.module.css'

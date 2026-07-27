@@ -36,11 +36,13 @@ vi.mock('views/GlobeScene', () => ({
   GlobeScene: () => <div data-testid="globe-scene" />,
 }));
 
-vi.mock('widgets/LeftStrip', () => ({
-  LeftStrip: () => <div data-testid="left-strip" />,
+vi.mock('widgets/AppNavigation', () => ({
+  AppNavigation: ({ presentation }: { presentation: string }) => (
+    presentation === 'hidden' ? null : <div data-testid="app-navigation" />
+  ),
 }));
 
-describe('AppShell Add Spot chrome', () => {
+describe('AppShell navigation chrome', () => {
   beforeEach(() => {
     useAddSpotStore.getState().exit();
     mocks.matches = [];
@@ -50,9 +52,9 @@ describe('AppShell Add Spot chrome', () => {
     useAddSpotStore.getState().exit();
   });
 
-  it('hides the left chrome throughout the add-spot flow', () => {
+  it('hides the navigation chrome throughout the add-spot flow', () => {
     const { unmount } = renderAppShell();
-    expect(screen.getByTestId('left-strip')).toBeInTheDocument();
+    expect(screen.getByTestId('app-navigation')).toBeInTheDocument();
     unmount();
 
     act(() => {
@@ -62,11 +64,11 @@ describe('AppShell Add Spot chrome', () => {
     const hidden = renderAppShell();
 
     expect(screen.getByTestId('globe-scene')).toBeInTheDocument();
-    expect(screen.queryByTestId('left-strip')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('app-navigation')).not.toBeInTheDocument();
     hidden.unmount();
   });
 
-  it('unmounts the globe scene and hides the left chrome on full-page overlay routes (e.g. admin)', () => {
+  it('unmounts the globe scene and hides the navigation chrome on full-page overlay routes (e.g. admin)', () => {
     mocks.matches = [
       { routeId: '/_page', staticData: { appRouteIntent: 'fullPage' } },
       { routeId: '/_page/admin' },
@@ -75,6 +77,6 @@ describe('AppShell Add Spot chrome', () => {
     renderAppShell();
 
     expect(screen.queryByTestId('globe-scene')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('left-strip')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('app-navigation')).not.toBeInTheDocument();
   });
 });
