@@ -243,6 +243,12 @@ const requiredPanelLayoutStyles = [
   ['one vertical scroll owner', /overflow-y:\s*auto/],
   ['scroll overscroll containment', /overscroll-behavior:\s*contain/],
   ['panel container-query context', /container-type:\s*inline-size/],
+  // The scroll owner stacks the chrome row and the content as flex items, and
+  // the content flexes into what the row leaves. A `min-height: 100%` content
+  // box measures the scroller and ignores the row above it, so the panel
+  // overflows by the row's height and scrolls when its cards already fit.
+  ['chrome-aware scroll stacking', /\.scroller\s*{[^}]*flex-direction:\s*column/s],
+  ['content that flexes rather than claiming full height', /\.content\s*{[^}]*flex:\s*1\s+0\s+auto/s],
 ];
 
 // The component owns the count (F12k); the stylesheet must not re-column.

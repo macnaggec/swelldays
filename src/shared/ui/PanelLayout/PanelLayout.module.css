@@ -16,6 +16,15 @@
 .scroller {
   flex: 1 1 auto;
   min-width: 0;
+  /* Stacks the pinned chrome row and the content as flex items so the content
+     fills whatever height the row leaves. It used to be an ordinary block whose
+     content declared `min-height: 100%`, which measures the scroller's full
+     height and ignores the row sitting above it — so every panel carrying a
+     chrome row overflowed by exactly that row's height and scrolled a little
+     even when its cards fit. With one card that leftover scroll was the whole
+     range, and using it hid the search row. */
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   /* While the panel is opening, its content is already sized to the width it will
      settle at, so for ~0.28s it is wider than the visible surface. Clip that rather
@@ -52,7 +61,10 @@
 }
 
 .content {
-  min-height: 100%;
+  /* Fills the height the chrome row leaves and grows past it when the cards are
+     taller — the flex equivalent of the `min-height: 100%` this replaces, minus
+     that declaration's blindness to the row above it. */
+  flex: 1 0 auto;
   display: flex;
   flex-direction: column;
 }
