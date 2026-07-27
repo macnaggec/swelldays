@@ -8,28 +8,30 @@ import {
 import { createPortal } from 'react-dom';
 import { useMeasuredWidth } from 'shared/hooks/useMeasuredWidth';
 import { useSettledLayout } from 'shared/ui/DrawerShell/panelSettledWidth';
+import { usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
 import styles from './PanelLayout.module.css';
 
 const PanelLayoutFooterTargetContext = createContext<HTMLElement | null>(null);
 const PanelLayoutRailTargetContext = createContext<HTMLElement | null>(null);
 const PanelLayoutMetadataTargetContext = createContext<HTMLElement | null>(null);
+const PanelLayoutStickyChromeTargetContext = createContext<HTMLElement | null>(null);
 
 interface PanelLayoutProps {
   header?: ReactNode;
-  stickyChrome?: ReactNode;
   onScrollCapture?: UIEventHandler<HTMLDivElement>;
   children?: ReactNode;
 }
 
 export function PanelLayout({
   header,
-  stickyChrome,
   onScrollCapture,
   children,
 }: PanelLayoutProps) {
   const [footerTarget, setFooterTarget] = useState<HTMLDivElement | null>(null);
   const [railTarget, setRailTarget] = useState<HTMLDivElement | null>(null);
   const [metadataTarget, setMetadataTarget] = useState<HTMLDivElement | null>(null);
+  const [stickyChromeTarget, setStickyChromeTarget] = useState<HTMLDivElement | null>(null);
+  const { hidden } = usePanelScrollChromeState();
 
   // Everything in the panel — search row, filter pills, cards — lays itself out once,
   // at the width the drawer is heading for, instead of being re-flowed on every frame
@@ -55,48 +57,55 @@ export function PanelLayout({
     <PanelLayoutFooterTargetContext.Provider value={footerTarget}>
       <PanelLayoutRailTargetContext.Provider value={railTarget}>
         <PanelLayoutMetadataTargetContext.Provider value={metadataTarget}>
-          <div
-            className={styles.root}
-            data-panel-layout
-            ref={measureRef}
-            style={Object.keys(rootStyle).length === 0 ? undefined : rootStyle}
-          >
-            {header && <div data-panel-layout-header>{header}</div>}
-            <div ref={setMetadataTarget} className={styles.metadata} data-panel-layout-metadata />
+          <PanelLayoutStickyChromeTargetContext.Provider value={stickyChromeTarget}>
+            <div
+              className={styles.root}
+              data-panel-layout
+              ref={measureRef}
+              style={Object.keys(rootStyle).length === 0 ? undefined : rootStyle}
+            >
+              {header && <div data-panel-layout-header>{header}</div>}
+              <div ref={setMetadataTarget} className={styles.metadata} data-panel-layout-metadata />
 
-            <div className={styles.body} data-panel-layout-body>
-              <div
-                className={styles.scroller}
-                data-panel-layout-scroller
-                data-panel-scroll-owner
-                onScrollCapture={onScrollCapture}
-              >
-                {/*
-                  * Rendered as a direct child of the scroll owner on purpose: a
-                  * `position: sticky` child is constrained to its parent's box, so
-                  * wrapping it in an element only as tall as the chrome itself
-                  * leaves zero travel to stick within and the row scrolls away
-                  * with the content instead of pinning.
-                  */}
-                {stickyChrome}
-                <div className={styles.content} data-panel-layout-content>
-                  {children}
+              <div className={styles.body} data-panel-layout-body>
+                <div
+                  className={styles.scroller}
+                  data-panel-layout-scroller
+                  data-panel-scroll-owner
+                  onScrollCapture={onScrollCapture}
+                >
+                  {/*
+                    * Rendered as a direct child of the scroll owner on purpose: a
+                    * `position: sticky` child is constrained to its parent's box, so
+                    * wrapping it in an element only as tall as the chrome itself
+                    * leaves zero travel to stick within and the row scrolls away
+                    * with the content instead of pinning.
+                    */}
+                  <div
+                    ref={setStickyChromeTarget}
+                    className={styles.stickyChrome}
+                    data-panel-scroll-chrome
+                    data-hidden={hidden || undefined}
+                  />
+                  <div className={styles.content} data-panel-layout-content>
+                    {children}
+                  </div>
                 </div>
+
+                <div
+                  ref={setRailTarget}
+                  className={styles.rail}
+                  data-panel-layout-rail
+                />
               </div>
 
               <div
-                ref={setRailTarget}
-                className={styles.rail}
-                data-panel-layout-rail
+                ref={setFooterTarget}
+                className={styles.footer}
+                data-panel-layout-footer
               />
             </div>
-
-            <div
-              ref={setFooterTarget}
-              className={styles.footer}
-              data-panel-layout-footer
-            />
-          </div>
+          </PanelLayoutStickyChromeTargetContext.Provider>
         </PanelLayoutMetadataTargetContext.Provider>
       </PanelLayoutRailTargetContext.Provider>
     </PanelLayoutFooterTargetContext.Provider>
@@ -128,4 +137,15 @@ export function PanelLayoutFooter({ children }: { children: ReactNode }) {
 export function PanelLayoutMetadata({ children }: { children: ReactNode }) {
   const metadataTarget = useContext(PanelLayoutMetadataTargetContext);
   return metadataTarget ? createPortal(children, metadataTarget) : null;
+}
+
+/**
+ * The panel's pinned search/filter row: content portaled here mounts in the one
+ * sticky row PanelLayout renders directly inside the scroll owner, so it pins
+ * while content scrolls and hides on scroll down. Renders nothing when mounted
+ * outside a PanelLayout.
+ */
+export function PanelLayoutStickyChrome({ children }: { children: ReactNode }) {
+  const stickyChromeTarget = useContext(PanelLayoutStickyChromeTargetContext);
+  return stickyChromeTarget ? createPortal(children, stickyChromeTarget) : null;
 }

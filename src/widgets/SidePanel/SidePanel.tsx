@@ -12,12 +12,8 @@ import {
   type DrawerShellModality,
   type DrawerShellPresentation,
 } from 'shared/ui/DrawerShell';
-import {
-  PanelScrollChrome,
-  PanelScrollChromeProvider,
-  PanelScrollChromeStateProvider,
-} from 'shared/ui/PanelScrollChrome';
-import { PanelLayout, PanelChromeSlot } from 'shared/ui/PanelLayout';
+import { PanelScrollChromeStateProvider } from 'shared/ui/PanelScrollChrome';
+import { PanelLayout, PanelChromeSlot, PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
 import styles from './SidePanel.module.css';
 
 const SCROLL_DIRECTION_THRESHOLD_PX = 8;
@@ -105,17 +101,16 @@ export function SidePanel({
   }, []);
 
   return (
-    <PanelScrollChromeProvider value={subheader}>
-      <PanelScrollChromeStateProvider value={scrollChromeState}>
-        <DrawerShell
-          presentation={drawerPresentation}
-          state={expanded ? 'expanded' : 'compact'}
-          modality={drawerModality}
-          restoreFocusRef={restoreFocusRef}
-        >
-          <PanelLayout
-            onScrollCapture={handleBodyScrollCapture}
-            header={(
+    <PanelScrollChromeStateProvider value={scrollChromeState}>
+      <DrawerShell
+        presentation={drawerPresentation}
+        state={expanded ? 'expanded' : 'compact'}
+        modality={drawerModality}
+        restoreFocusRef={restoreFocusRef}
+      >
+        <PanelLayout
+          onScrollCapture={handleBodyScrollCapture}
+          header={(
             <div className={styles.panelTop}>
               {!headerFullWidth && (
                 onBack || onExpandToggle ? (
@@ -149,12 +144,11 @@ export function SidePanel({
               {!headerFullWidth && <div aria-hidden="true" />}
             </div>
             )}
-            stickyChrome={subheader ? <PanelScrollChrome /> : undefined}
-          >
-            {children}
-          </PanelLayout>
-        </DrawerShell>
-      </PanelScrollChromeStateProvider>
-    </PanelScrollChromeProvider>
+        >
+          {subheader && <PanelLayoutStickyChrome>{subheader}</PanelLayoutStickyChrome>}
+          {children}
+        </PanelLayout>
+      </DrawerShell>
+    </PanelScrollChromeStateProvider>
   );
 }

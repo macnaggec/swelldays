@@ -4,9 +4,9 @@ import { useRef, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { render } from 'test/setup/render';
 import { SidePanel } from './SidePanel';
-import { PanelScrollChrome, PanelScrollChromeProvider } from 'shared/ui/PanelScrollChrome';
+import { PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
 
-const sidePanelCss = readFileSync('src/shared/ui/PanelScrollChrome.module.css', 'utf8');
+const sidePanelCss = readFileSync('src/shared/ui/PanelLayout/PanelLayout.module.css', 'utf8');
 const designTokensCss = readFileSync('src/shared/ui/design-system/tokens.css', 'utf8');
 
 function cssRule(selector: string) {
@@ -159,17 +159,17 @@ describe('SidePanel', () => {
   });
 
   it('keeps sticky search chrome transparent above scrolled content', () => {
-    expect(cssRule('.chrome')).not.toMatch(/(?:^|; )background:/);
-    expect(cssRule('.chrome[data-over-content]')).toBe('');
-    expect(cssRule('.chrome')).not.toContain('--wa-panel-control-background:');
-    expect(cssRule('.chrome')).not.toContain('--wa-panel-control-backdrop:');
+    expect(cssRule('.stickyChrome')).not.toMatch(/(?:^|; )background:/);
+    expect(cssRule('.stickyChrome[data-over-content]')).toBe('');
+    expect(cssRule('.stickyChrome')).not.toContain('--wa-panel-control-background:');
+    expect(cssRule('.stickyChrome')).not.toContain('--wa-panel-control-backdrop:');
     expect(designTokensCss).toContain('--wa-panel-control-background:');
     expect(designTokensCss).toContain('--wa-panel-control-backdrop:');
   });
 
   it('gives Mantine controls projected into any gallery chrome the shared control glass', () => {
-    const rule = cssRule('.chrome :global(.mantine-Tabs-list)');
-    expect(sidePanelCss).toContain('.chrome :global(.mantine-Input-input),');
+    const rule = cssRule('.stickyChrome :global(.mantine-Tabs-list)');
+    expect(sidePanelCss).toContain('.stickyChrome :global(.mantine-Input-input),');
     expect(rule).toContain('background: var(--wa-panel-control-background)');
     expect(rule).toContain('backdrop-filter: var(--wa-panel-control-backdrop)');
     expect(rule).toContain('border: 1px solid var(--wa-glass-border-media-overlay)');
@@ -178,9 +178,9 @@ describe('SidePanel', () => {
   it('shares the same hidden state with descendant gallery chrome', () => {
     render(
       <SidePanel>
-        <PanelScrollChromeProvider value={<div>Collection filters</div>}>
-          <PanelScrollChrome />
-        </PanelScrollChromeProvider>
+        <PanelLayoutStickyChrome>
+          <div>Collection filters</div>
+        </PanelLayoutStickyChrome>
         <div
           data-testid="collection-list"
           style={{ height: 120, overflowY: 'auto' }}

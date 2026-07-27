@@ -5,7 +5,7 @@ import { useTabNavigation } from 'shared/hooks';
 import { useTRPC } from 'shared/lib/trpc';
 import type { SurfSessionItem } from 'entities/SurfSession';
 import { CollectionsToolbar } from 'features/Collections';
-import { PanelScrollChromeProvider } from 'shared/ui/PanelScrollChrome';
+import { PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
 
 const TAB_ROUTES = {
   uploads: '/me/collections',
@@ -74,10 +74,9 @@ function CollectionsLayout() {
   );
 
   return (
-    <PanelScrollChromeProvider value={toolbar}>
-      <CollectionsContext.Provider value={contextValue}>
-        <Outlet />
-      </CollectionsContext.Provider>
-    </PanelScrollChromeProvider>
+    <CollectionsContext.Provider value={contextValue}>
+      <PanelLayoutStickyChrome>{toolbar}</PanelLayoutStickyChrome>
+      <Outlet />
+    </CollectionsContext.Provider>
   );
 }

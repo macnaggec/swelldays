@@ -2,7 +2,12 @@ import { act, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { PanelSettledWidthContext } from 'shared/ui/DrawerShell/panelSettledWidth';
-import { PanelLayout, PanelLayoutMetadata, PanelLayoutRail } from './PanelLayout';
+import {
+  PanelLayout,
+  PanelLayoutMetadata,
+  PanelLayoutRail,
+  PanelLayoutStickyChrome,
+} from './PanelLayout';
 
 /** As in PanelCollectionGrid.test.tsx: drives a chosen contentRect width on demand. */
 function stubResizeObserver() {
@@ -148,6 +153,37 @@ describe('PanelLayoutRail', () => {
     );
 
     expect(screen.queryByText('Date rail')).toBeNull();
+  });
+});
+
+describe('PanelLayoutStickyChrome', () => {
+  it('pins content published deep inside children directly in the scroll owner', () => {
+    render(
+      <PanelLayout>
+        <div>
+          <div>
+            <PanelLayoutStickyChrome>
+              <div>Search and filters</div>
+            </PanelLayoutStickyChrome>
+          </div>
+        </div>
+        <div>Scrolled content</div>
+      </PanelLayout>,
+    );
+
+    const chrome = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
+    expect(chrome).not.toBeNull();
+    expect(chrome?.parentElement?.hasAttribute('data-panel-scroll-owner')).toBe(true);
+  });
+
+  it('renders nothing when mounted outside a PanelLayout', () => {
+    render(
+      <PanelLayoutStickyChrome>
+        <div>Search and filters</div>
+      </PanelLayoutStickyChrome>,
+    );
+
+    expect(screen.queryByText('Search and filters')).toBeNull();
   });
 });
 

@@ -201,11 +201,6 @@ const requiredResponsiveTokensByFile = new Map([
   ['src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.module.css', [
     '--wa-panel-grid-gap',
   ]],
-  ['src/shared/ui/PanelScrollChrome.module.css', [
-    '--wa-motion-duration-chrome',
-    '--wa-motion-easing-standard',
-    '--wa-z-panel-chrome',
-  ]],
   ['src/shared/ui/VirtualGallery/VirtualGallery.module.css', [
     '--wa-panel-grid-gap',
     '--wa-panel-section-chrome-height',
@@ -222,6 +217,15 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-control-size-compact',
     '--wa-motion-duration-control',
     '--wa-motion-easing-standard',
+  ]],
+  // Followed the sticky chrome row here when F12n-b collapsed the two chrome
+  // paths onto one seam: the motion and layer tokens were required of
+  // PanelScrollChrome.module.css before that file was deleted, and the rule
+  // must travel with the declarations, not die with the filename.
+  ['src/shared/ui/PanelLayout/PanelLayout.module.css', [
+    '--wa-motion-duration-chrome',
+    '--wa-motion-easing-standard',
+    '--wa-z-panel-chrome',
   ]],
   ['src/shared/ui/PanelRouteLayout.module.css', ['--wa-control-height-default']],
   ['src/features/Upload/ui/UploadSidebar.module.css', ['--wa-control-height-default']],
@@ -261,15 +265,6 @@ const isRuntimeTypeScript = (file) => (
 const sessionLifecycleInvalidationCallers = new Set([
   'src/entities/SurfSession/model/usePublishedSession.ts',
   'src/features/Upload/model/usePublishUploadSession.ts',
-]);
-
-// Surfaces migrated off their own chrome mount by F12m. PanelGalleryLayout and
-// its seven consumers keep their chrome mount until F12n-b; F12n-a retired
-// their private scroll owner.
-const panelStickyChromeMigratedSurfaces = new Set([
-  'src/features/PublicGallery/PublicGallery.tsx',
-  'src/shared/ui/VirtualGallery/VirtualGallery.tsx',
-  'src/widgets/SidePanel/SessionFeed.tsx',
 ]);
 
 const rules = [
@@ -361,9 +356,13 @@ const rules = [
   },
   {
     id: 'panel-sticky-chrome-has-one-mount',
-    message: 'Panel content surfaces may read usePanelScrollChromeState but must not mount <PanelScrollChrome />; SidePanel mounts it once in PanelLayout\'s sticky-chrome slot. (PanelGalleryLayout remains a recorded exception until roadmap task F12n-b.)',
-    pattern: /<PanelScrollChrome[\s/>]/,
-    include: file => panelStickyChromeMigratedSurfaces.has(file),
+    message: 'Only PanelLayout may render the panel\'s sticky chrome row; publish content through PanelLayoutStickyChrome.',
+    pattern: /<PanelScrollChrome[\s/>]|data-panel-scroll-chrome/,
+    include: file => (
+      (isRuntimeTypeScript(file) || file.endsWith('.module.css'))
+      && file !== 'src/shared/ui/PanelLayout/PanelLayout.tsx'
+      && file !== 'src/shared/ui/PanelLayout/PanelLayout.module.css'
+    ),
   },
   {
     id: 'panel-layout-owns-footer-placement',

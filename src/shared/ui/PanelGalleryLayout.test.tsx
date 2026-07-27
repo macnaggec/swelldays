@@ -2,9 +2,8 @@ import { screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { render } from 'test/setup/render';
-import { PanelLayout } from './PanelLayout';
+import { PanelLayout, PanelLayoutStickyChrome } from './PanelLayout';
 import { PanelGalleryLayout } from './PanelGalleryLayout';
-import { PanelScrollChromeProvider } from './PanelScrollChrome';
 
 function renderInPanelLayout(children: ReactNode) {
   return render(<PanelLayout>{children}</PanelLayout>);
@@ -45,13 +44,17 @@ describe('PanelGalleryLayout', () => {
 
   it('renders route-owned panel chrome inside the panel scroll owner', () => {
     renderInPanelLayout(
-      <PanelScrollChromeProvider value={<div>Collection tabs</div>}>
+      <>
+        <PanelLayoutStickyChrome>
+          <div>Collection tabs</div>
+        </PanelLayoutStickyChrome>
         <PanelGalleryLayout>
           <div>Gallery cards</div>
         </PanelGalleryLayout>
-      </PanelScrollChromeProvider>,
+      </>,
     );
 
+    expect(screen.getByText('Collection tabs').closest('[data-panel-scroll-chrome]')).not.toBeNull();
     expect(screen.getByText('Collection tabs').closest('[data-panel-scroll-owner]')).not.toBeNull();
   });
 
