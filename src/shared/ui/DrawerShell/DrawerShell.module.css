@@ -14,3 +14,16 @@
   display: flex;
   flex-direction: column;
 }
+
+/* A bottom sheet spans the full viewport width at every snap; only its vertical
+   position animates (see DrawerShell.tsx), so this is a fixed override rather than
+   part of that animation. */
+.surface[data-drawer-presentation='bottomSheet'] {
+  width: 100%;
+}
+
+.dragHandle {
+  flex-shrink: 0;
+  height: 24px;
+  cursor: grab;
+}

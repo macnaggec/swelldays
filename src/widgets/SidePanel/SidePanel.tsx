@@ -10,7 +10,7 @@ import { IconChevronLeft, IconMaximize, IconMinimize } from '@tabler/icons-react
 import {
   DrawerShell,
   type DrawerShellModality,
-  type DrawerShellPresentation,
+  type DrawerShellPanelPresentation,
 } from 'shared/ui/DrawerShell';
 import { PanelScrollChromeStateProvider } from 'shared/ui/PanelScrollChrome';
 import { PanelLayout, PanelChromeSlot, PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
@@ -24,7 +24,7 @@ interface ScrollPosition {
 }
 
 interface SidePanelProps {
-  drawerPresentation?: DrawerShellPresentation;
+  drawerPresentation?: DrawerShellPanelPresentation;
   drawerModality?: DrawerShellModality;
   restoreFocusRef?: RefObject<HTMLElement | null>;
   /** Expands the panel to cover most of the viewport width. */

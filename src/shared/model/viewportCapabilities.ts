@@ -18,6 +18,7 @@ export interface ViewportCapabilities {
   supportsHover: boolean;
   prefersReducedMotion: boolean;
   viewportWidthPx: number;
+  viewportHeightPx: number;
 }
 
 /**
@@ -33,6 +34,7 @@ export const indeterminateViewportCapabilities: ViewportCapabilities = {
   supportsHover: false,
   prefersReducedMotion: false,
   viewportWidthPx: 390,
+  viewportHeightPx: 844,
 };
 
 let cachedSnapshot: ViewportCapabilities | undefined;
@@ -43,7 +45,8 @@ function snapshotsMatch(left: ViewportCapabilities, right: ViewportCapabilities)
     && left.primaryPointer === right.primaryPointer
     && left.supportsHover === right.supportsHover
     && left.prefersReducedMotion === right.prefersReducedMotion
-    && left.viewportWidthPx === right.viewportWidthPx;
+    && left.viewportWidthPx === right.viewportWidthPx
+    && left.viewportHeightPx === right.viewportHeightPx;
 }
 
 function subscribeViewportCapabilities(onStoreChange: () => void) {
@@ -74,6 +77,7 @@ export function getViewportCapabilitiesSnapshot(): ViewportCapabilities {
     supportsHover: window.matchMedia('(hover: hover)').matches,
     prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     viewportWidthPx,
+    viewportHeightPx,
   };
 
   if (cachedSnapshot && snapshotsMatch(cachedSnapshot, nextSnapshot)) return cachedSnapshot;

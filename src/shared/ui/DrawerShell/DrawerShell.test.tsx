@@ -1,8 +1,22 @@
-import { act, screen } from '@testing-library/react';
-import { createRef } from 'react';
+import { act, fireEvent, screen } from '@testing-library/react';
+import { createRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
-import { DrawerShell, useDrawerGeometry } from './index';
+import { DrawerShell, useDrawerGeometry, useRegisterSheetScrollOwner } from './index';
+import { resolveSheetSnapHeights, SHEET_PEEK_HEIGHT_PX, SHEET_SNAPS } from './sheetSnapPolicy';
+
+/** Panel content carrying state a rebuilt subtree would silently discard. */
+function DraftField() {
+  const [draft, setDraft] = useState('');
+
+  return (
+    <input
+      aria-label="Draft note"
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+    />
+  );
+}
 
 function GeometryProbe() {
   const geometry = useDrawerGeometry();
@@ -142,5 +156,166 @@ describe('DrawerShell focus continuity', () => {
     );
 
     expect(document.activeElement).toBe(screen.getByLabelText('Draft note'));
+  });
+});
+
+function ScrollOwnerProbe() {
+  const registerScrollOwner = useRegisterSheetScrollOwner();
+  return <div data-testid="scroll-owner" ref={registerScrollOwner} />;
+}
+
+describe('DrawerShell bottom-sheet geometry', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it.each([...SHEET_SNAPS])('publishes drawer geometry whose visible height matches the resolved %s height', (snap) => {
+    const heights = resolveSheetSnapHeights({ viewportHeightPx: 844, peekHeightPx: SHEET_PEEK_HEIGHT_PX });
+    const queuedFrames: FrameRequestCallback[] = [];
+
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      queuedFrames.push(callback);
+      return queuedFrames.length;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    render(
+      <>
+        <DrawerShell
+          presentation="bottomSheet"
+          modality="nonmodal"
+          snap={snap}
+          onSnapChange={() => {}}
+        >
+          Sheet content
+        </DrawerShell>
+        <GeometryProbe />
+      </>,
+    );
+
+    const sheet = screen.getByRole('complementary', { name: 'Content drawer' });
+    const visibleHeight = heights[snap];
+    vi.spyOn(sheet, 'getBoundingClientRect').mockImplementation(() => (
+      DOMRect.fromRect({ x: 0, y: 844 - visibleHeight, width: 390, height: visibleHeight })
+    ));
+
+    act(() => queuedFrames.shift()?.(0));
+
+    expect(screen.getByTestId('drawer-geometry').textContent).toBe(
+      `0:${844 - visibleHeight}:390:844:390:${visibleHeight}`,
+    );
+  });
+});
+
+describe('DrawerShell scroll-to-snap coupling', () => {
+  it('promotes the sheet and resets scrollTop when the list scrolls past the top while below full', () => {
+    const onSnapChange = vi.fn();
+
+    render(
+      <DrawerShell
+        presentation="bottomSheet"
+        modality="nonmodal"
+        snap="half"
+        onSnapChange={onSnapChange}
+      >
+        <ScrollOwnerProbe />
+      </DrawerShell>,
+    );
+
+    const scrollOwner = screen.getByTestId('scroll-owner');
+    scrollOwner.scrollTop = 40;
+    fireEvent.scroll(scrollOwner);
+
+    expect(onSnapChange).toHaveBeenCalledWith('full');
+    expect(scrollOwner.scrollTop).toBe(0);
+  });
+
+  it('does not promote the sheet when the list scrolls while the sheet is already full', () => {
+    const onSnapChange = vi.fn();
+
+    render(
+      <DrawerShell
+        presentation="bottomSheet"
+        modality="nonmodal"
+        snap="full"
+        onSnapChange={onSnapChange}
+      >
+        <ScrollOwnerProbe />
+      </DrawerShell>,
+    );
+
+    const scrollOwner = screen.getByTestId('scroll-owner');
+    scrollOwner.scrollTop = 40;
+    fireEvent.scroll(scrollOwner);
+
+    expect(onSnapChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('DrawerShell presentation swap continuity', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps the surface, panel content, draft, and focus intact when swapping from a panel presentation to bottomSheet', () => {
+    const queuedFrames: FrameRequestCallback[] = [];
+
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      queuedFrames.push(callback);
+      return queuedFrames.length;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    const { rerender, unmount } = render(
+      <DrawerShell presentation="persistent" state="compact" modality="nonmodal">
+        <DraftField />
+      </DrawerShell>,
+    );
+    act(() => queuedFrames.shift()?.(0));
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    const draft = screen.getByLabelText<HTMLInputElement>('Draft note');
+    fireEvent.change(draft, { target: { value: 'half-written note' } });
+    draft.focus();
+
+    act(() => {
+      rerender(
+        <DrawerShell
+          presentation="bottomSheet"
+          modality="nonmodal"
+          snap="peek"
+          onSnapChange={() => {}}
+        >
+          <DraftField />
+        </DrawerShell>,
+      );
+    });
+    act(() => queuedFrames.shift()?.(0));
+
+    expect(screen.getByRole('complementary', { name: 'Content drawer' })).toBe(surface);
+    // The substance of F12d: a rebuilt subtree would silently reset the draft to '' and
+    // drop focus to body, which a surface-identity assertion alone cannot see.
+    expect(screen.getByLabelText('Draft note')).toBe(draft);
+    expect(draft.value).toBe('half-written note');
+    expect(document.activeElement).toBe(draft);
+    // framer-motion's own animation engine settles this swap's y transition through its
+    // real timing, independent of the stubbed frame loop above (which only serves this
+    // component's own measurement loop). Unmounting before the test ends cancels that
+    // in-flight animation rather than leaving it to resolve after the assertion.
+    unmount();
   });
 });

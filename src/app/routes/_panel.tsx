@@ -371,7 +371,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
               />
             </FloatingPanelControls>
           )}
-          {layoutPolicy.drawer.presentation !== 'hidden' && (
+          {layoutPolicy.drawer.presentation !== 'hidden' && layoutPolicy.drawer.presentation !== 'bottomSheet' && (
             <SidePanel
               drawerPresentation={layoutPolicy.drawer.presentation}
               drawerModality={layoutPolicy.drawer.modality === 'modal' ? 'modal' : 'nonmodal'}

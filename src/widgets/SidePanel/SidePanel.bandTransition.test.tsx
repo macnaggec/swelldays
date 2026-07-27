@@ -22,8 +22,8 @@ function DraftField() {
 
 // Mirrors the policy→props mapping in src/app/routes/_panel.tsx.
 function renderSidePanelForPolicy(policy: AppShellLayoutPolicy) {
-  if (policy.drawer.presentation === 'hidden') {
-    throw new Error('a band crossing must keep the drawer mounted');
+  if (policy.drawer.presentation === 'hidden' || policy.drawer.presentation === 'bottomSheet') {
+    throw new Error('a band crossing must keep the drawer mounted in its panel form');
   }
 
   return (

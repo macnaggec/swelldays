@@ -348,6 +348,12 @@ const rules = [
     include: file => file === 'src/widgets/SidePanel/SidePanel.module.css',
   },
   {
+    id: 'drawer-shell-owns-sheet-snap-geometry',
+    message: 'Bottom-sheet snap positions and heights belong to shared/ui/DrawerShell; consume the shell instead of declaring snap geometry.',
+    pattern: /\bSHEET_SNAP_FRACTIONS\b|\bSHEET_PEEK_HEIGHT_PX\b|\bresolveSheetSnapHeights\b|\bnearestSheetSnap\b|\[data-drawer-snap/,
+    include: file => /\.(?:css|tsx?)$/.test(file) && !file.startsWith('src/shared/ui/DrawerShell/'),
+  },
+  {
     id: 'panel-layout-owns-standard-scrolling',
     message: 'Standard panel scrolling belongs to shared/ui/PanelLayout, not DrawerShell or browse/session content.',
     pattern: /data-panel-scroll-owner|overflowY|overflowX|overflow-y:\s*auto|overflow-x:\s*(?:auto|hidden|scroll)|overscroll-behavior/,

@@ -97,6 +97,16 @@ describe('viewport capabilities', () => {
     expect(indeterminateViewportCapabilities.primaryPointer).toBe('coarse');
   });
 
+  it('reports the stubbed viewport height and keeps snapshot identity when it is unchanged', () => {
+    Object.defineProperty(window, 'innerHeight', { value: 812, configurable: true });
+
+    const first = getViewportCapabilitiesSnapshot();
+    expect(first.viewportHeightPx).toBe(812);
+
+    const second = getViewportCapabilitiesSnapshot();
+    expect(second).toBe(first);
+  });
+
   it('updates subscribers when viewport or media capabilities change', () => {
     Object.defineProperty(window, 'innerWidth', { value: 1200, configurable: true });
     const reducedMotion = createMediaQuery('(prefers-reduced-motion: reduce)', false);

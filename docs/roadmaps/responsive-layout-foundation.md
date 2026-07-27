@@ -390,10 +390,17 @@ For every implementation task:
 
 ### Phase M — compact/mobile experience (promoted by the 2026-07-22 pivot)
 
-- [ ] **M00 — Add compact bottom-sheet mechanics**
+- [x] **M00 — Add compact bottom-sheet mechanics**
   - Depends on: F12d, F12e.
   - Scope: Extend DrawerShell with collapsed and full compact presentations using transform-based motion, snap points, drag gestures with scroll-versus-drag arbitration, dynamic viewport units, safe areas, overscroll containment, and focus restoration. The gesture and snap-point semantics are new to the shell contract — renegotiating DrawerShell's internal interface here is expected and acceptable; the external policy-facing interface must not leak sheet geometry to routes or features.
   - Invariant and verifier: Sheet state, geometry, modality, and accessibility remain synchronized; shell integration tests own verification. All five completion gates must pass.
+  - Completed 2026-07-27, mechanics only — **nothing mounts the sheet and nothing changes on screen at any width**. `SidePanel`'s presentation prop is narrowed and the `_panel.tsx` guard excludes `bottomSheet`, so "not mounted yet" is a compile-time fact M02 deletes rather than a comment. See `docs/review/responsive-layout-m00-handoff.md`.
+
+    **Three snaps, not two, pinned by user requirements (2026-07-27):** `peek` (the search row and upload control — these *are* the sheet at its smallest, not separate floating controls), `half` at 34% of the dynamic viewport, and `full` at 90%, leaving a small map strip as in Google Maps. Promotion to `full` happens by *scrolling* the list, not only by dragging; return is by handle drag, flick, or pulling down while the list is at its top. `peek` is the one snap sized by its own content, so it is a constant until M02 mounts that content and can measure it.
+
+    Two defects found in review and fixed in this slice: the sheet branch wrapped `children` in an extra provider, which rebuilt the whole panel subtree on a band crossing and silently discarded the draft, focus, and scroll position F12d exists to preserve (the continuity test asserted only the surface element and used a plain text child, so it could not see this — it now asserts child node identity, value, and focus, and was verified to fail against the old code); and four snap-geometry values were exported from the barrel while the new static rule forbids every module outside the folder from naming them.
+
+    **Blocks M02:** `deriveDrawerViewportOcclusionPx` is horizontal-only (`left`/`right`), so it describes a panel beside the map, not a sheet below it. When the sheet mounts, a selected spot will centre underneath it rather than in the visible map strip — contradicting the pinned "spot marker centers on the rest of map area" requirement. The measured bounds already carry `top`/`bottom`; only the projection needs extending.
 
 - [ ] **M01 — Implement compact navigation**
   - Depends on: M00.
