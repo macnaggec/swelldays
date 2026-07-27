@@ -136,6 +136,12 @@ wide-band reference matrix has therefore been red since F12k and needs its own
 decision: refresh the baselines if F12k's visual result was approved, or treat
 the diff as a defect. Not folded into this slice.
 
+Resolved separately in `4670b3e`: the user inspected the reference/actual/diff
+images, judged the difference not a defect, and approved refreshing those nine
+baselines and widening `maxDiffPixelRatio` from 0 to 0.002. Chromium font flags
+were tried first as a root-cause fix and were no-ops in headless Chromium, so
+they were reverted. The suite is now 41 passed / 0 failed.
+
 Unrelated working-tree changes preserved: none — the only pre-existing edit was
 the roadmap split that created this task, committed with the slice.
 
