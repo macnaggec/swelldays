@@ -52,9 +52,30 @@ export default defineConfig({
 
   expect: {
     toHaveScreenshot: {
-      // Start at zero and loosen deliberately, never silently: a tolerance added
-      // to quiet a real diff is how a visual gate stops being one.
-      maxDiffPixelRatio: 0,
+      // Started at zero. Loosened to 0.002 on 2026-07-27 with the user's
+      // explicit approval, after they inspected the diffs and judged them not a
+      // defect — this is the "deliberately, never silently" case the original
+      // note anticipated, not a tolerance added to quiet a real diff.
+      //
+      // Evidence: three states (browse-expanded, gallery-compact,
+      // upload-map-input) differed from their baselines by ~0.0005–0.0008 of
+      // pixels at every viewport, confined to glyph edges in the filter pills
+      // and card titles — the screens are indistinguishable side by side. Part
+      // of that was repeatable (identical pixel counts across all three
+      // attempts) and part wandered between attempts (505/426/512), and the
+      // extra state that went flaky moved from run to run. Chromium font flags
+      // (--font-render-hinting=none, --disable-font-subpixel-positioning,
+      // --disable-lcd-text) were tried first as a root-cause fix and changed
+      // nothing: headless Chromium already renders text without LCD subpixel
+      // smoothing, so they were no-ops and were reverted rather than left as
+      // dead configuration.
+      //
+      // 0.002 sits ~2.5x above the largest observed jitter and ~30x below the
+      // smallest real difference this suite has produced: genuine layout
+      // changes measured 0.06–0.29 (a mid-animation panel width, a wrong column
+      // count). It must never be raised to absorb a diff whose cause is
+      // unexplained — diagnose that instead.
+      maxDiffPixelRatio: 0.002,
     },
   },
 
