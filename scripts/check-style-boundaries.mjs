@@ -291,14 +291,44 @@ const rules = [
     message: 'Read viewport size and media capabilities through shared/model/viewportCapabilities.',
     pattern: /\b(?:innerWidth|innerHeight|matchMedia)\b/,
     include: isRuntimeTypeScript,
-    exclude: file => file === 'src/shared/model/viewportCapabilities.ts',
+    exclude: file => (
+      file === 'src/shared/model/viewportCapabilities.ts'
+      || file === 'src/shared/model/viewportMetrics.ts'
+    ),
   },
   {
     id: 'app-shell-layout-policy-has-one-owner',
     message: 'Derive shell presentation through shared/model/appShellLayoutPolicy.',
-    pattern: /\b(?:deriveAppChromePolicy|derivePanelTargetPolicy|deriveGlobeInteractionPolicy)\b/,
+    pattern: /\b(?:deriveAppChromePolicy|derivePanelTargetPolicy|deriveGlobeInteractionPolicy|deriveDesktopFoundationAppShellLayoutPolicy)\b/,
     include: isRuntimeTypeScript,
     exclude: file => file === 'src/shared/model/appShellLayoutPolicy.ts',
+  },
+  {
+    id: 'app-shell-policy-is-reached-through-the-presentation-seam',
+    message: 'Derive shell presentation through shared/model/appShellPresentation, which applies the mounted-band gate.',
+    pattern: /\bderiveAppShellLayoutPolicy\b/,
+    include: isRuntimeTypeScript,
+    exclude: file => (
+      file === 'src/shared/model/appShellPresentation.tsx'
+      || file === 'src/shared/model/appShellLayoutPolicy.ts'
+    ),
+  },
+  {
+    id: 'activation-matrix-vocabulary-is-confined-to-the-policy-provider',
+    message: 'The activation matrix is temporary scaffolding owned by the policy provider; consumers read the semantic policy through useAppShellLayoutPolicy.',
+    pattern: /\b(?:ACTIVE_CELLS|ActivationCell|isCellActive|resolveShellLayoutPolicy)\b/,
+    include: isRuntimeTypeScript,
+    exclude: file => file === 'src/shared/model/appShellPresentation.tsx',
+  },
+  {
+    id: 'app-shell-policy-provider-is-mounted-at-the-composition-root',
+    message: 'Mount the shell policy provider once at the composition root.',
+    pattern: /\bAppShellLayoutPolicyProvider\b/,
+    include: isRuntimeTypeScript,
+    exclude: file => (
+      file === 'src/shared/model/appShellPresentation.tsx'
+      || file === 'src/app/routes/__root.tsx'
+    ),
   },
   {
     id: 'no-legacy-rendered-panel-snapshot',

@@ -11,8 +11,8 @@ The work originally proceeded desktop-first. On 2026-07-22 the sequencing was pi
 1. Preserve and validate the corrected desktop experience. *(Done — F00 and desktop parity through F12.)*
 2. Establish the responsive architecture and migrate desktop onto it without intentional visual change. *(Done — F01–F12.)*
 3. Complete the band-agnostic shared foundation and the mobile-first pivot refactors (remainder of Phase F).
-4. Design and implement a coherent compact/mobile experience first (Phase M).
-5. Only after mobile is approved and stable, design and implement a coherent constrained/tablet experience (Phase T).
+4. Design and implement a coherent mobile experience first: compact at any height plus constrained-short environments such as landscape phones (Phase M).
+5. Only after mobile is approved and stable, design and implement the constrained-regular/tablet experience (Phase T).
 6. Only after tablet is approved and stable, complete and re-verify the wide/desktop experience and close out enforcement (Phase D).
 
 Do not begin with a generic 12/6/4 grid or a pile of media queries. Column grids are one implementation detail. First model the app shell, drawer lifecycle, layout capabilities, sources of truth, and ownership seams.
@@ -66,30 +66,35 @@ The target architecture must establish explicit ownership for these facts:
 
 1. **Product intent and user preference** — which panel experience the route needs and what expansion state the user prefers.
 2. **Responsive policy** — how viewport capabilities and product intent map to a presentation such as persistent panel, overlay drawer, full-screen workspace, or bottom sheet.
-3. **Rendered geometry** — the actual drawer bounds and map occlusion after layout and animation. Prefer measured rendered geometry over mirrored `vw` constants.
-4. **Panel-local layout** — spacing, chrome, scroll ownership, footer clearance, and card layout inside a drawer. Use container queries when layout depends on drawer width rather than viewport width.
-5. **Virtualized layout** — one measured-width adapter and one pure column/row policy must feed both row chunking and rendered columns.
-6. **Design tokens** — spacing roles, size bands, typography, radii, motion, safe areas, and control dimensions. Name tokens by semantic role, not by a component or raw pixel value.
+3. **Viewport metrics** — continuous layout-viewport and visual-viewport measurements used by geometry consumers. These are measurements, not capabilities, and must not share a subscription with semantic size/input bands.
+4. **Rendered geometry** — the actual drawer bounds and map occlusion after layout and animation. Prefer measured rendered geometry over mirrored `vw` constants.
+5. **Panel-local layout** — spacing, chrome, scroll ownership, footer clearance, and card layout inside a drawer. Use container queries when layout depends on drawer width rather than viewport width.
+6. **Virtualized layout** — one measured-width adapter and one pure column/row policy must feed both row chunking and rendered columns.
+7. **Design tokens** — spacing roles, size bands, typography, radii, motion, safe areas, and control dimensions. Name tokens by semantic role, not by a component or raw pixel value.
 
-Keep these authorities distinct. User preference is not rendered state. A breakpoint is not drawer geometry. A URL or route is not layout state. A CSS projection is not the authority for domain/product intent.
+Keep these authorities distinct. User preference is not rendered state. A capability band is not a viewport measurement. A breakpoint is not drawer geometry. A URL or route is not layout state. A CSS projection is not the authority for domain/product intent.
 
 ## Expected module shape
 
 Propose the smallest deep interface that can hide the responsive system. The exact names are yours to justify, but the design should contain the equivalent of:
 
 - a pure layout-policy module that derives semantic app-shell and drawer presentation from route intent, user preference, and viewport capabilities;
-- one viewport-capability adapter, rather than `window.innerWidth` and `matchMedia` calls scattered through features;
+- one app-level policy projection at the composition root that gathers route intent, user preference, and viewport capabilities once, then exposes the current read-only semantic policy through a small consumer interface;
+- one discrete viewport-capability owner for size band, height band, pointer, hover, and reduced motion, rather than `window.innerWidth` and `matchMedia` calls scattered through features;
+- one separate continuous viewport-metrics owner for layout-viewport and visual-viewport geometry;
 - a drawer-shell module that owns animation, focus/overlay semantics, scroll containment, safe areas, and measurement of rendered bounds;
 - a panel-layout module that owns panel inset, chrome slots, scroll owner, footer slot, and container-query context;
 - a grid module for ordinary panel collections and a measured adapter for virtualized collections;
 - a geometry projection consumed by the globe so selected spots stay centered in the actually visible map region.
 
-Do not create ports or adapters that have only one hypothetical implementation. Internal seams are allowed for testing, but do not expose them through the external interface.
+The policy consumer must not gather or accept route intent, preferences, raw capabilities, breakpoints, or viewport pixels: those are implementation details behind the seam. Do not create ports or adapters that have only one hypothetical implementation. The browser capability and metrics owners are concrete modules, not pluggable ports. Internal seams are allowed for testing, but do not expose them through the external interface.
 
 ## Source-of-truth rules
 
 - CSS owns presentation and container-responsive styling.
 - TypeScript owns product policy and behavior that changes what is mounted, interactive, persisted, or announced to assistive technology.
+- CSS media features own purely visual pointer, hover, and reduced-motion adaptations. The TypeScript capability projection exists only for JavaScript behavior and animation systems that cannot consume CSS.
+- Discrete capabilities and continuous viewport metrics are separate projections. Capability consumers must not re-render for every pixel of a resize.
 - The DOM owns rendered geometry. Measure it when another subsystem, such as the globe camera, needs the actual occluded pixels.
 - If the same breakpoint must be consumed by CSS and TypeScript, create one authoritative contract with a generated or mechanically verified projection. Do not manually duplicate numbers.
 - Feature and route modules may consume semantic layout interfaces; they may not own raw breakpoints, drawer-width formulas, or panel gutters.
@@ -98,6 +103,8 @@ Do not create ports or adapters that have only one hypothetical implementation. 
 ## Responsive design requirements
 
 Define a behavior matrix before implementation. Use semantic capability bands internally, even if the product discussion calls them desktop, tablet, and mobile.
+
+Phase ownership follows capability cells rather than width names: Phase M owns `compact × {short, regular}` and `constrained × short`; Phase T owns `constrained × regular`; Phase D owns the wide cells. A landscape phone must not be deferred to the tablet phase merely because its CSS-pixel width falls in the constrained band.
 
 For every band and every drawer intent, specify:
 
@@ -123,7 +130,7 @@ Before proposing tests, classify each invariant according to `AGENTS.md`.
 - Runtime measurement and drawer/globe coordination: integration tests at that seam.
 - CSS token ownership and forbidden raw breakpoints/gutters: static style-boundary rules.
 - Type contracts and dependency direction: TypeScript and ESLint/architecture rules.
-- User-visible layouts and interactions: browser/component visual checks at a deliberate viewport-and-drawer-state matrix.
+- User-visible layouts and interactions: semantic DOM, computed-style, geometry, accessibility, and interaction checks at a deliberate viewport-and-drawer-state matrix. If an invariant can only be judged visually, provide the user a short manual checklist instead of using screenshot or pixel comparison.
 - Scroll, focus, back, overlay, and map-occlusion behavior: focused integration or end-to-end tests.
 
 Do not add runtime tests that merely assert CSS property names, class names, or TypeScript shapes. Do not mock one internal layout layer only to verify that it forwards a typed field.
@@ -148,9 +155,9 @@ Stop and wait for explicit approval. Do not edit files before approval.
 
 ### Gate 2 — mobile-foundation approval (pivoted 2026-07-22)
 
-The desktop-parity portion of the original Gate 2 was delivered by F00–F12. After the remaining Phase F tasks, implement the compact/mobile experience first through the approved interfaces. Remove superseded viewport math and duplicated authorities as each slice migrates; do not layer a new system on top of the old one indefinitely. Run the complete project gate set after every implementation slice.
+The desktop-parity portion of the original Gate 2 was delivered by F00–F12. After the remaining Phase F tasks, implement the mobile capability cells first — compact at any height plus constrained-short landscape-phone environments — through the approved interfaces. Remove superseded viewport math and duplicated authorities as each slice migrates; do not layer a new system on top of the old one indefinitely. Run the complete project gate set after every implementation slice.
 
-Demonstrate a coherent compact experience across the important drawer intents and provide code evidence for each behavior. Then stop and request explicit approval before implementing constrained presentation.
+Demonstrate one coherent mobile experience across every Phase M capability cell and important drawer intent, and provide code evidence for each behavior. Then stop and request explicit approval before implementing constrained-regular/tablet presentation.
 
 ### Gate 3 — tablet, then desktop closeout
 
@@ -166,7 +173,7 @@ All of these must pass before any implementation slice is complete:
 4. `npm run check:style-boundaries`
 5. `npx vitest run --project client --project server`
 
-Also run the approved visual/responsive verification matrix. Report pre-existing failures immediately and do not build on a red base without explicit direction.
+Also run the approved responsive verification matrix using semantic DOM, computed-style, geometry, accessibility, interaction, console, and network assertions. Do not use screenshot or pixel comparison. When appearance cannot be verified through those signals, stop and provide the user a short manual checklist. Report pre-existing failures immediately and do not build on a red base without explicit direction.
 
 ## Explicit non-goals for the foundation slice
 
@@ -174,10 +181,10 @@ Also run the approved visual/responsive verification matrix. Report pre-existing
 - No speculative theme editor or user-configurable spacing system.
 - No new framework or styling-library migration.
 - No broad visual redesign unrelated to responsiveness.
-- No constrained (tablet) presentation before the compact/mobile foundation is approved, and no Phase D desktop closeout before tablet is approved.
+- No constrained-regular/tablet presentation before the Phase M mobile foundation is approved, and no Phase D desktop closeout before tablet is approved.
 - No preserving duplicated layout state merely because migration is disruptive.
 
-The goal is a durable seam: future tablet/mobile work should mostly add policy and presentation adapters behind a stable interface, not force edits across routes, features, galleries, and globe logic.
+The goal is a durable seam: future tablet/mobile work should mostly add policy branches and presentations behind a stable interface, not force edits across routes, features, galleries, and globe logic.
 
 ## Separate-session implementation roadmap
 
@@ -196,6 +203,7 @@ At the start of every session:
    - the files and concepts in scope;
    - the owning verification, following `AGENTS.md` §0.3.
 5. If the baseline is not already known green in the current session, run the complete gate set before implementation. Stop and report any pre-existing failure.
+6. If the task changes anything visible in the browser, describe the visual or interaction change in 1–3 plain sentences and stop for explicit user approval before implementation. Internal tasks with no visual effect must state that explicitly and may continue.
 
 For every implementation task:
 
@@ -388,7 +396,9 @@ For every implementation task:
   - Scope: Reconcile the two content-provisioning paths into one seam, fold the seven screens' chrome into the `stickyChrome` slot, delete their local mounts, and extend the F12m static rule to a global invariant: only `PanelLayout`/`SidePanel` may render `<PanelScrollChrome />`.
   - Invariant and verifier: The search/filter row has exactly one mount across all nine panel screens and one content seam, and no surface can reintroduce a mount. Static rules own the single-mount constraint; the seven screens are re-verified for chrome reveal and content correctness via focused integration and browser checks. All five completion gates must pass.
 
-### Phase M — compact/mobile experience (promoted by the 2026-07-22 pivot)
+### Phase M — mobile experience: compact plus constrained-short (promoted by the 2026-07-22 pivot)
+
+**Verification correction for all unchecked tasks (2026-07-27):** F12b/F12h remain an accurate historical record of how wide-band references were captured, but their instructions for M07/T05/D00/D03 to consume screenshot comparison are superseded by the current `AGENTS.md` §6 prohibition on screenshot and pixel-driven verification. Unchecked tasks use semantic DOM, computed-style, geometry, accessibility, focus, scroll, interaction, console, and network assertions. When an appearance decision has no reliable non-visual signal, the implementing session stops with a short manual checklist for the user.
 
 - [x] **M00 — Add compact bottom-sheet mechanics**
   - Depends on: F12d, F12e.
@@ -400,21 +410,47 @@ For every implementation task:
 
     Two defects found in review and fixed in this slice: the sheet branch wrapped `children` in an extra provider, which rebuilt the whole panel subtree on a band crossing and silently discarded the draft, focus, and scroll position F12d exists to preserve (the continuity test asserted only the surface element and used a plain text child, so it could not see this — it now asserts child node identity, value, and focus, and was verified to fail against the old code); and four snap-geometry values were exported from the barrel while the new static rule forbids every module outside the folder from naming them.
 
-    **Blocks M02:** `deriveDrawerViewportOcclusionPx` is horizontal-only (`left`/`right`), so it describes a panel beside the map, not a sheet below it. When the sheet mounts, a selected spot will centre underneath it rather than in the visible map strip — contradicting the pinned "spot marker centers on the rest of map area" requirement. The measured bounds already carry `top`/`bottom`; only the projection needs extending.
+    **Blocks M02 (tracked as M00b below):** `deriveDrawerViewportOcclusionPx` is horizontal-only (`left`/`right`), so it describes a panel beside the map, not a sheet below it. When the sheet mounts, a selected spot will centre underneath it rather than in the visible map strip — contradicting the pinned "spot marker centers on the rest of map area" requirement. The measured bounds already carry `top`/`bottom`; only the projection needs extending.
 
-- [ ] **M01 — Implement compact navigation**
-  - Depends on: M00.
-  - Scope: Add the compact top navigation while reusing the existing account and cart authorities.
-  - Invariant and verifier: Every primary destination remains reachable without duplicated navigation state; accessibility and browser navigation checks own verification. All five completion gates must pass.
+- [x] **M00a — Refactor: establish one live policy projection and split metrics from capabilities**
+  - Depends on: F02, F12e, F12l, M00. Must land before M01, which is the first task whose presentation depends on the detected band being real.
+  - Root cause (two coupled defects in the detection system, found while scoping M01 on 2026-07-27):
 
-- [ ] **M02 — Implement compact browse sheet**
-  - Depends on: M00, M01, F12, F12e.
-  - Scope: Add map-visible collapsed browse, full browse snap, in-sheet search/actions/filters, one-column sessions, swipe/expand behavior, and preference preservation.
+    **Nothing consumes the detector.** `viewportCapabilities.ts` has been the sole owner of band detection since F02, CSS carries no viewport width query at all (`no-viewport-width-breakpoints`), and F12l made the policy able to express every `sizeBand × heightBand` cell. But all three shell decision points — `AppShell.tsx`, `_panel.tsx`, `GlobeScene.tsx` — call `deriveDesktopFoundationAppShellLayoutPolicy`, which hardcodes `wide`/`regular`. The app therefore never asks what it is running on, and the same "which band is live" decision exists as three independent copies in unrelated files, so each Phase M/T activation would have to edit all three.
+
+    **The detector mixes two change rates on one channel.** `ViewportCapabilities` carries `viewportWidthPx`/`viewportHeightPx` alongside the discrete bands, so every pixel of a window drag produces a new snapshot and re-renders every consumer — including the ones that only need "compact or wide". Raw viewport size is a continuous measurement consumed for geometry (drawer-adjacent inset, sheet snap heights, map occlusion), not a capability; per the source-of-truth rules, measurement and capability are different facts and must not share a subscription.
+  - Scope:
+    1. Split the current browser reader into two concrete modules, not pluggable ports:
+       - a discrete capability snapshot (`sizeBand`, `heightBand`, `primaryPointer`, `supportsHover`, `prefersReducedMotion`) that listens for the underlying browser changes but publishes only when one of those semantic values changes;
+       - a continuous viewport-metrics snapshot (`layoutViewportWidthPx`, `layoutViewportHeightPx`) that publishes per resize and is explicitly the future owner M05 extends with visual-viewport geometry.
+    2. Migrate the three pixel consumers (`DrawerShell.tsx`, `DrawerShell/geometry.ts`, `GlobeScene.tsx`) to the metrics module; leave the pure modules that merely take pixel parameters (`sheetSnapPolicy`, `drawerViewportOcclusion`) untouched.
+    3. Add one app-level policy provider at the composition root, wrapping both `AppShell` and the route `Outlet`. It alone gathers route intent, panel preferences, and real viewport capabilities, calls the pure policy module, and exposes the current read-only `AppShellLayoutPolicy` through a small consumer hook. `AppShell`, `_panel.tsx`, and `GlobeScene` consume that hook; they no longer resolve or assemble policy inputs themselves.
+    4. Keep an explicit temporary activation matrix inside that provider, separate from the target policy:
+       - one cell per `sizeBand × heightBand × routeIntent`, activating navigation and the drawer/map/chrome lifecycle together as one coherent presentation.
+       A cell not yet implemented uses the complete wide/regular lifecycle rather than mixing individual target-policy fields with fallback fields. **Navigation is not separately activatable** (decision 2026-07-27): a live mobile navigation cell over a wide-fallback drawer is itself the field-level hybrid this rule forbids — the mobile top bar would sit over the 25vw desktop panel, about 98px on a 390px phone. M01 and T00 therefore build their navigation presentations without activating anything; M02 and T01 activate navigation with the browse lifecycle. Initially only wide cells are active, so behavior is unchanged at every width. Phase M activates `compact × {short, regular}` plus `constrained × short`; Phase T activates `constrained × regular`; D01 deletes the matrix once every cell is mounted.
+    5. Delete `deriveDesktopFoundationAppShellLayoutPolicy`.
+  - Interface constraint: Policy consumers learn only the semantic `AppShellLayoutPolicy`. They must not accept or know route intent, preference fields, capability bands, activation-matrix state, breakpoints, or viewport pixels. This is an in-process deep module; do not introduce a provider port, adapter interface, or dependency injection for its single composition-root implementation.
+  - Invariant and verifier: The app has one current semantic shell-policy projection, and an unmounted presentation cannot become live implicitly. Every cell changes as one coherent navigation/drawer/map/chrome lifecycle rather than a field-level hybrid, with no independent navigation exemption. Pixel size cannot re-enter the capability snapshot: TypeScript owns that because the capability type no longer carries pixels. Static rules (same commit): only the composition-root provider may call `deriveAppShellLayoutPolicy`; policy consumers may only use the semantic consumer hook; direct viewport reads remain confined to the capability/metrics owners; activation-matrix vocabulary is confined to the provider; and the deleted desktop-foundation wrapper joins the banned legacy vocabulary. Focused tests at the module interfaces own: navigation activation, every mounted versus unmounted `sizeBand × heightBand × routeIntent` branch, the prohibition on hybrid lifecycles, consistent policy consumption across shell/panel/globe, and the split's behavioral point that a resize within the same capability cell does not notify capability subscribers. No visual change at any width; the five project gates plus the existing wide-band DOM/geometry behavior checks own verification.
+
+- [ ] **M00b — Generalize measured drawer occlusion into map camera insets**
+  - Depends on: M00a. Must land before M02 mounts the bottom sheet.
+  - Root cause: `deriveDrawerViewportOcclusionPx` and `GlobeMap` expose one right-edge pixel value. That models a panel beside the map, but a compact bottom sheet occludes the map from the bottom. Mounting M02 without changing this contract would center the selected spot underneath the sheet rather than in the visible map strip.
+  - Scope: Replace the right-edge-only projection with semantic camera insets (`top`, `right`, `bottom`, `left`) derived from the measured drawer bounds, continuous viewport metrics, and the policy-owned drawer presentation/edge. Keep the arithmetic behind the projection so `GlobeScene` and `GlobeMap` do not infer drawer placement. Change `GlobeMap` to consume the inset projection and compose it with its existing selected-spot preview inset without restarting a full camera flight on every geometry frame. Preserve current wide-band behavior exactly.
+  - Invariant and verifier: A selected spot centers in the actually visible map rectangle for both an inline-end panel and a block-end sheet, including while the surface animates. Pure projection tests own edge arithmetic; the drawer/globe integration seam owns live inset updates and the no-restarted-flight behavior; wide-band DOM/geometry checks own parity. Static enforcement updates the legacy right-only vocabulary so it cannot return. No visual change until M02 mounts the compact presentation. All five completion gates must pass.
+
+- [ ] **M01 — Implement mobile navigation**
+  - Depends on: M00, M00a.
+  - Scope: Add the mobile navigation presentations while reusing the existing account and cart authorities: the top bar for compact cells and the touch-tuned compact bar for constrained-short landscape phones. **Build only — activate no cell.** Decision 2026-07-27: navigation does not activate independently of the surface it sits over. Activating the compact navigation cell while the drawer/map/chrome cells stay on the wide fallback would put the mobile top bar over the 25vw desktop panel — about 98px on a 390px phone — which is a field-level hybrid no one designed, exactly what M00a's matrix exists to forbid. M02 activates navigation together with the compact browse lifecycle. This task therefore mounts nothing at any width; the presentations are verified in isolation.
+  - Invariant and verifier: Every primary destination remains reachable without duplicated navigation state, and no navigation cell is live before the surface beneath it is; component and accessibility checks own the presentations in isolation, and the matrix's own tests own the still-inactive cells. No visual change at any width. All five completion gates must pass.
+
+- [ ] **M02 — Implement mobile browse presentations**
+  - Depends on: M00, M00b, M01, F12, F12e.
+  - Scope: Implement the Phase M browse cells as coherent mobile experiences: map-visible bottom-sheet snaps for compact-regular, and the touch-tuned side-sheet presentation selected for short-height cells (compact-short and constrained-short landscape phones). Include in-surface search/actions/filters, measured session density, swipe/expand behavior where the presentation supports it, and preference preservation. Activate each Phase M `browse` lifecycle cell only after its drawer, map interaction, and chrome behavior are complete, and activate the matching M01 navigation cell in the same step — this is the first task at which anything mobile becomes visible.
   - Invariant and verifier: The map and drawer remain intentionally interactive for each snap; sheet, back, swipe, and map browser checks own verification. All five completion gates must pass.
 
-- [ ] **M03 — Implement compact full-screen gallery**
+- [ ] **M03 — Implement mobile gallery presentations**
   - Depends on: M00, M01, F12f, F12g.
-  - Scope: Add full-screen gallery presentation, measured two/one-column density, sticky date headings, date navigation, and lightbox coordination.
+  - Scope: Implement the Phase M gallery cells: full-screen gallery for compact cells and the deliberate short-height companion presentation selected by policy for constrained-short landscape phones. Preserve measured density, sticky date headings, date navigation, and lightbox coordination in both. Activate each Phase M `galleryWorkspace` lifecycle cell only after the whole surface is complete.
 
     Date-navigation shape pinned by design discussion (2026-07-25), superseding the earlier bare "date-jump control". Two elements, one job each:
 
@@ -429,60 +465,60 @@ For every implementation task:
     |---|---|---|
     | Traverse vs browse | Scrubber alone, or a labelled month chip strip beside it | A strip's labels are readable at rest, so users learn what months exist without interacting; a scrubber reveals a date only while dragging. Guessed *traverse* (users arrive with a date in mind) — a guess about real usage, not something the interaction design settles. |
     | Picker granularity | Days or months | How dense a typical capture day is. Sparse days make a day list long and tedious; dense days make month-level jumping too coarse. |
-  - Invariant and verifier: Gallery, virtual scrolling, date navigation, and lightbox remain usable at compact widths and large text; integration and browser checks own verification. The scrubber's edge inset and the sheet-rotation rule are behavioral, so they are owned by focused integration and browser checks, not by CSS-declaration assertions. All five completion gates must pass.
+  - Invariant and verifier: Gallery, virtual scrolling, date navigation, and lightbox remain usable in every Phase M capability cell and at large text; integration plus semantic DOM, geometry, focus, and interaction checks own verification. The scrubber's edge inset and the sheet-rotation rule are behavioral, so they are owned by focused integration and interaction checks, not by CSS-declaration assertions. All five completion gates must pass.
 
-- [ ] **M04 — Implement compact full-screen route workspaces**
+- [ ] **M04 — Implement mobile route workspaces**
   - Depends on: M00, M01, F09, F10.
-  - Scope: Migrate session detail, cart, account, collections, and earnings to the compact full-screen shell lifecycle.
+  - Scope: Migrate session detail, cart, account, collections, and earnings to the Phase M workspace lifecycles: full-screen in compact cells and the policy-selected short-height workspace for constrained-short landscape phones. Activate each Phase M `routeWorkspace` cell only after back, modality, map, and chrome behavior are complete.
   - Invariant and verifier: Back, focus, scrolling, footer clearance, loading, empty, and error behavior remain consistent; focused integration and browser checks own verification. All five completion gates must pass.
 
-- [ ] **M05 — Implement compact map-input and virtual-keyboard behavior**
-  - Depends on: M00, M01, F10.
-  - Scope: Present upload and Add Spot as map-aware bottom sheets. Use the visual viewport so focused inputs and primary footer actions remain visible while the software keyboard is open.
-  - Invariant and verifier: Keyboard appearance cannot hide the active field or action and cannot corrupt measured map occlusion; visual-viewport integration and browser checks own verification. All five completion gates must pass.
+- [ ] **M05 — Implement mobile map-input and virtual-keyboard behavior**
+  - Depends on: M00b, M01, F10.
+  - Scope: Present upload and Add Spot through the Phase M map-aware surfaces: bottom sheets where height permits and the policy-selected side-sheet presentation in short-height cells. Extend M00a's continuous viewport-metrics owner with visual-viewport width, height, and offsets; it is the sole module allowed to read `window.visualViewport`. DrawerShell consumes that semantic geometry so focused inputs and primary footer actions remain visible while the software keyboard is open. Do not add keyboard state or visual-viewport pixels to the discrete capability snapshot, route state, or feature stores. Activate each Phase M `mapInput` and `immersiveMapInput` cell only after its complete drawer/map/chrome lifecycle is ready.
+  - Invariant and verifier: Keyboard appearance cannot hide the active field or action, cannot notify discrete capability consumers unless a semantic band actually changes, and cannot corrupt measured map occlusion. A focused viewport-metrics/DrawerShell integration test owns keyboard resize and offset behavior; semantic DOM, geometry, focus, and interaction checks own the user flow. Static enforcement confines `visualViewport` reads to the metrics owner. All five completion gates must pass.
 
 - [ ] **M06 — Complete input, safe-area, and reduced-motion behavior**
   - Depends on: M02, M03, M04, M05.
-  - Scope: Apply coarse-pointer dimensions, remove hover-only dependencies, verify fine-pointer behavior, consolidate safe-area use, and make drawer, chrome, gallery, validation, lightbox, and globe motion honor the central capability.
-  - Invariant and verifier: Input modality changes affordances but not product policy; capability integration and browser emulation own verification. All five completion gates must pass.
+  - Scope: Apply coarse-pointer dimensions, remove hover-only dependencies, verify fine-pointer behavior, consolidate safe-area use, and make drawer, chrome, gallery, validation, lightbox, and globe motion honor the user's preference. Keep the ownership split explicit: CSS media features own purely visual pointer/hover/reduced-motion styling; the TypeScript capability snapshot is consumed only by JavaScript interaction and animation systems that cannot consume CSS. Do not route CSS presentation through React props merely to claim one capability owner.
+  - Invariant and verifier: Input modality changes affordances but not product policy, and every motion system honors reduced motion through the owner native to that system. CSS/static checks own visual capability styling and token use; capability integration plus semantic DOM, computed-style, focus, and interaction checks own JavaScript behavior. All five completion gates must pass.
 
-- [ ] **M07 — Verify compact experience and request Gate 2 approval**
+- [ ] **M07 — Verify mobile experience and request Gate 2 approval**
   - Depends on: M06, F12b.
-  - Scope: Verify portrait, landscape, short height, keyboard open, coarse/fine pointer, reduced motion, safe areas, long content, loading, empty, error, overlay, dialog, lightbox, and map-occlusion states at compact widths. Verify live compact↔wide band crossings under the F12d continuity contract. Extend the F12b scripted matrix with the compact-band states.
-  - Invariant and verifier: Compact presentation is a coherent product experience rather than shrunken desktop, and wide-band desktop parity has not regressed (F12b baseline); the scripted matrix and complete gate set own verification.
-  - Stop: Present evidence and wait for explicit Gate 2 approval. Do not implement constrained presentation.
+  - Scope: Verify every Phase M capability cell (`compact × {short, regular}` and `constrained × short`) across portrait, landscape, keyboard open, coarse/fine pointer, reduced motion, safe areas, long content, loading, empty, error, overlay, dialog, lightbox, and map-occlusion states. Verify live crossings among mobile cells and compact/constrained-short↔wide under the F12d continuity contract. Reuse F12b's state and viewport inventory, but replace screenshot comparison for all future-band verification with semantic DOM, computed-style, geometry, accessibility, focus, scroll, and interaction assertions. The completed F12h screenshots remain historical wide-band artifacts; current sessions do not use screenshot or pixel comparison as a gate. Any appearance-only judgment becomes a short user checklist.
+  - Invariant and verifier: Phase M is one coherent mobile product experience rather than shrunken desktop, and wide-band behavior/geometry has not regressed. The non-visual responsive matrix, user checklist where necessary, and complete project gate set own verification.
+  - Stop: Present the evidence and the two still-open constrained-regular decisions from F12l (tablet-portrait presentation and tablet feed density). Wait for explicit Gate 2 approval and those decisions before implementing constrained-regular presentation.
 
-### Phase T — constrained/tablet experience
+### Phase T — constrained-regular/tablet experience
 
 - [ ] **T00 — Enable constrained policy and navigation**
-  - Depends on: Gate 2 approval (compact/mobile).
-  - Scope: Activate constrained-band policy and replace the desktop left strip with the approved compact navigation presentation.
-  - Invariant and verifier: Navigation changes through shell policy without feature conditionals; policy tests plus keyboard, active-state, coarse-pointer, and fine-pointer browser checks own verification.
+  - Depends on: Gate 2 approval (Phase M mobile).
+  - Scope: Implement the approved constrained-regular navigation. **Build only — activate no cell**, for the same reason M01 does not: a tablet menu over the wide fallback panel is a field-level hybrid. T01 activates the `constrained × regular` navigation cell together with the constrained browse lifecycle. Constrained-short remains owned by the approved Phase M experience.
+  - Invariant and verifier: Navigation changes through shell policy without feature conditionals, and no navigation cell is live before the surface beneath it is; policy tests plus keyboard, active-state, coarse-pointer, and fine-pointer checks own the presentation in isolation. No visual change at any width.
 
 - [ ] **T01 — Implement constrained browse presentation**
   - Depends on: T00.
-  - Scope: Add the nonmodal side overlay, usable width limits, interactive map, in-drawer search/upload/filters, and one/two-column session density.
+  - Scope: Add the constrained-regular nonmodal side overlay, usable width limits, interactive map, in-drawer search/upload/filters, and one/two-column session density. Activate the `constrained × regular × browse` lifecycle cell only after its complete drawer/map/chrome behavior is ready.
   - Invariant and verifier: Browse remains usable without hiding the map or leaking controls outside the viewport; focused browser interaction and containment checks own verification.
 
 - [ ] **T02 — Implement constrained gallery workspace**
   - Depends on: T00, F12f, F12g.
-  - Scope: Add the approved gallery overlay, measured 2–4-column policy, preserved gallery preference, and conditional date navigation.
+  - Scope: Add the approved constrained-regular gallery overlay, measured 2–4-column policy, preserved gallery preference, and conditional date navigation. Activate the `constrained × regular × galleryWorkspace` lifecycle cell only after the whole surface is ready.
   - Invariant and verifier: Gallery layout responds only to its measured container and preserves virtual scroll anchoring; gallery integration and browser checks own verification.
 
 - [ ] **T03 — Implement constrained route-workspace modality**
   - Depends on: T00, F09, F10.
-  - Scope: Present session detail, cart, account, collections, and earnings as modal/inert side workspaces with route-owned back behavior, focus trap, Escape handling, and focus restoration.
+  - Scope: Present session detail, cart, account, collections, and earnings as constrained-regular modal/inert side workspaces with route-owned back behavior, focus trap, Escape handling, and focus restoration. Activate the `constrained × regular × routeWorkspace` cell only after its complete modality, map, and chrome lifecycle is ready.
   - Invariant and verifier: Background interaction and accessibility semantics match the rendered modality; focus/back integration tests own verification.
 
 - [ ] **T04 — Implement constrained map-input workflows**
   - Depends on: T00, F09, F10.
-  - Scope: Present upload and Add Spot through the approved nonmodal constrained layout while keeping the map interactive and drafts non-destructive on back.
+  - Scope: Present upload and Add Spot through the approved nonmodal constrained-regular layout while keeping the map interactive and drafts non-destructive on back. Activate the `constrained × regular × mapInput` and `constrained × regular × immersiveMapInput` cells only after their complete drawer/map/chrome lifecycles are ready.
   - Invariant and verifier: Map selection, draft lifecycle, footer reachability, and coarse-pointer controls remain correct; focused integration and browser checks own verification.
 
-- [ ] **T05 — Verify constrained experience and request Gate 3 approval**
+- [ ] **T05 — Verify constrained-regular experience and request Gate 3 approval**
   - Depends on: T01, T02, T03, T04, F12d.
-  - Scope: Verify portrait, landscape, short-height, coarse/fine pointer, keyboard navigation, reduced motion, long content, loading, empty, error, overlay, dialog, and map-occlusion states. Verify live band crossings with real rotation, window resize, and split view against the F12d continuity contract: route, drafts, focus, scroll intent, and preferences must survive the compact↔constrained and constrained↔wide presentation swaps in both directions. Extend the F12b scripted matrix with the constrained-band states.
-  - Invariant and verifier: Constrained presentation is a coherent product experience rather than scaled desktop or stretched mobile; the scripted matrix and complete gate set own verification.
+  - Scope: Verify constrained-regular portrait and landscape, coarse/fine pointer, keyboard navigation, reduced motion, long content, loading, empty, error, overlay, dialog, and map-occlusion states. Verify live crossings into constrained-short, compact, and wide with rotation, window resize, and split view against the F12d continuity contract: route, drafts, focus, scroll intent, and preferences must survive every presentation swap in both directions. Extend M07's non-visual responsive matrix with the constrained-regular states; use semantic DOM, computed-style, geometry, accessibility, focus, scroll, and interaction assertions, with a short user checklist for appearance-only judgments.
+  - Invariant and verifier: Constrained-regular presentation is a coherent tablet/small-window product experience rather than scaled desktop or stretched mobile; the non-visual responsive matrix, user checklist where necessary, and complete project gate set own verification.
   - Stop: Present evidence and wait for explicit Gate 3 approval. Do not begin the Phase D desktop closeout.
 
 ### Phase D — wide/desktop completion and closeout
@@ -490,11 +526,11 @@ For every implementation task:
 - [ ] **D00 — Correct desktop toolbar containment**
   - Depends on: Gate 3 approval, F12b.
   - Scope: Fix the existing expanded-toolbar overflow while preserving the intended search, upload, and filter relationship. Remove CSS-property runtime assertions that currently pass despite visible clipping. Target layout pinned by user requirements (2026-07-24): the pills share one row with the search bar and upload button, right-aligned; when width is insufficient the pills wrap to their own row directly below that row; toolbar content never overflows the panel horizontally and the panel never scrolls horizontally (see `.scratch/responsive-layout-foundation/issues/01-expanded-toolbar-pills-unreachable.md`).
-  - Invariant and verifier: Toolbar controls remain inside the drawer at 1280, 1440, and 1920; the scripted reference matrix (F12b) owns behavior and static rules own token usage. All five completion gates must pass.
+  - Invariant and verifier: Toolbar controls remain inside the drawer at 1280, 1440, and 1920. DOM bounding-box and scroll-width assertions own containment and wrapping; a short user checklist owns appearance; static rules own token usage. All five completion gates must pass.
 
 - [ ] **D01 — Remove all superseded layout authorities**
   - Depends on: D00, F07, F08, F10, F12c, F12f, F12g, and every Phase M and Phase T task.
-  - Scope: Delete fixed panel-width exports, rendered-expanded snapshots, mirrored gallery padding/sidebar allowances, feature-facing expanded props, hardcoded footer clearance, floating-control viewport math, obsolete split policy code, and any migration adapters introduced during the mobile-first pivot.
+  - Scope: Delete fixed panel-width exports, rendered-expanded snapshots, mirrored gallery padding/sidebar allowances, feature-facing expanded props, hardcoded footer clearance, floating-control viewport math, obsolete split policy code, M00a's now-fully-populated activation matrix, and any other migration adapters introduced during the mobile-first pivot. The composition-root provider remains and now projects the target policy directly.
   - Invariant and verifier: No migrated consumer can access raw drawer geometry or viewport breakpoints; import scans, TypeScript, ESLint, and style-boundary rules own verification. All five completion gates must pass.
 
 - [ ] **D02 — Final enforcement and legacy scan**
@@ -504,8 +540,8 @@ For every implementation task:
 
 - [ ] **D03 — Final responsive verification and completion**
   - Depends on: D02.
-  - Scope: Run the full compact/constrained/wide matrix across portrait, landscape, short height, keyboard open, coarse/fine pointer, hover, reduced motion, safe areas, loading, empty, error, dialogs, lightboxes, full-page routes, every drawer intent, selected-spot camera centering, and live band transitions in both directions (F12d contract) including rotation and split view. Re-verify the wide band against the F12b desktop-parity baseline: transitions, preference restoration, scroll ownership, sticky/fixed controls, focus restoration, dialogs, reduced motion, map interaction, and measured camera occlusion. The F12b scripted matrix, extended through M07 and T05, is the execution vehicle.
-  - Invariant and verifier: Every approved behavior is present in every band, every source-of-truth rule is enforced, and all five completion gates are green.
+  - Scope: Run the full compact/constrained/wide non-visual matrix across portrait, landscape, short height, keyboard open, coarse/fine pointer, hover, reduced motion, safe areas, loading, empty, error, dialogs, lightboxes, full-page routes, every drawer intent, selected-spot camera centering, and live band transitions in both directions (F12d contract) including rotation and split view. Re-verify the wide band against the behavior and geometry inventory established by F12b: transitions, preference restoration, scroll ownership, sticky/fixed controls, focus restoration, dialogs, reduced motion, map interaction, and measured camera occlusion. M07's semantic DOM, computed-style, geometry, accessibility, focus, scroll, and interaction harness, extended through T05, is the execution vehicle; appearance-only judgments use a short user checklist.
+  - Invariant and verifier: Every approved behavior is present in every band, every source-of-truth rule is enforced, the user has confirmed the appearance-only checklist, and all five completion gates are green.
 
 ### Session handoff template
 

@@ -5,6 +5,7 @@ import {
   indeterminateViewportCapabilities,
   useViewportCapabilities,
 } from './viewportCapabilities';
+import { getViewportMetricsSnapshot } from './viewportMetrics';
 
 type MutableMediaQuery = MediaQueryList & {
   setMatches: (matches: boolean) => void;
@@ -97,14 +98,38 @@ describe('viewport capabilities', () => {
     expect(indeterminateViewportCapabilities.primaryPointer).toBe('coarse');
   });
 
-  it('reports the stubbed viewport height and keeps snapshot identity when it is unchanged', () => {
+  it('keeps snapshot identity across repeated reads when nothing changed', () => {
     Object.defineProperty(window, 'innerHeight', { value: 812, configurable: true });
 
     const first = getViewportCapabilitiesSnapshot();
-    expect(first.viewportHeightPx).toBe(812);
-
     const second = getViewportCapabilitiesSnapshot();
     expect(second).toBe(first);
+  });
+
+  it('keeps the same capability snapshot reference across a resize that does not cross a threshold, while the metrics channel reports the new width', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 1280, configurable: true });
+
+    const firstCapabilities = getViewportCapabilitiesSnapshot();
+    expect(getViewportMetricsSnapshot().layoutViewportWidthPx).toBe(1280);
+
+    Object.defineProperty(window, 'innerWidth', { value: 1300, configurable: true });
+
+    const secondCapabilities = getViewportCapabilitiesSnapshot();
+    expect(secondCapabilities).toBe(firstCapabilities);
+    expect(getViewportMetricsSnapshot().layoutViewportWidthPx).toBe(1300);
+  });
+
+  it('returns a new capability snapshot with the crossed band when a resize crosses a threshold', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 1280, configurable: true });
+
+    const firstCapabilities = getViewportCapabilitiesSnapshot();
+    expect(firstCapabilities.sizeBand).toBe('wide');
+
+    Object.defineProperty(window, 'innerWidth', { value: 900, configurable: true });
+
+    const secondCapabilities = getViewportCapabilitiesSnapshot();
+    expect(secondCapabilities).not.toBe(firstCapabilities);
+    expect(secondCapabilities.sizeBand).toBe('constrained');
   });
 
   it('updates subscribers when viewport or media capabilities change', () => {

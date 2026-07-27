@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
+import { useViewportMetrics } from 'shared/model/viewportMetrics';
 
 export interface DrawerGeometry {
   readonly left: number;
@@ -91,9 +91,9 @@ export function useDrawerMoving() {
 
 export function useDrawerAdjacentInlineEndInset(gapPx = 0) {
   const geometry = useDrawerGeometry();
-  const { viewportWidthPx } = useViewportCapabilities();
+  const { layoutViewportWidthPx: widthPx } = useViewportMetrics();
 
   if (!geometry) return null;
 
-  return Math.max(0, viewportWidthPx - geometry.left) + gapPx;
+  return Math.max(0, widthPx - geometry.left) + gapPx;
 }

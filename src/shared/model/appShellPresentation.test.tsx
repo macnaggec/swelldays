@@ -1,0 +1,138 @@
+import { renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AppRouteIntent } from './appRouteIntent';
+import { deriveAppShellLayoutPolicy } from './appShellLayoutPolicy';
+import type { ViewportCapabilities } from './viewportCapabilities';
+import {
+  AppShellLayoutPolicyProvider,
+  isCellActive,
+  resolveShellLayoutPolicy,
+  useAppShellLayoutPolicy,
+} from './appShellPresentation';
+
+type MutableMediaQuery = MediaQueryList & {
+  setMatches: (matches: boolean) => void;
+};
+
+const originalInnerWidth = window.innerWidth;
+const originalInnerHeight = window.innerHeight;
+
+function createMediaQuery(query: string, initialMatches: boolean): MutableMediaQuery {
+  let matches = initialMatches;
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+
+  return {
+    get matches() {
+      return matches;
+    },
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn((_type: string, listener: EventListenerOrEventListenerObject) => {
+      if (typeof listener === 'function') {
+        listeners.add(listener as (event: MediaQueryListEvent) => void);
+      }
+    }),
+    removeEventListener: vi.fn((_type: string, listener: EventListenerOrEventListenerObject) => {
+      if (typeof listener === 'function') {
+        listeners.delete(listener as (event: MediaQueryListEvent) => void);
+      }
+    }),
+    dispatchEvent: vi.fn(() => true),
+    setMatches(nextMatches: boolean) {
+      matches = nextMatches;
+      listeners.forEach((listener) => listener({ matches, media: query } as MediaQueryListEvent));
+    },
+  };
+}
+
+const sizeBands: readonly ViewportCapabilities['sizeBand'][] = ['compact', 'constrained', 'wide'];
+const heightBands: readonly ViewportCapabilities['heightBand'][] = ['short', 'regular'];
+const routeIntents: readonly AppRouteIntent[] = [
+  'browse',
+  'galleryWorkspace',
+  'routeWorkspace',
+  'mapInput',
+  'fullPage',
+  'immersiveMapInput',
+];
+
+const preferences = { browseExpanded: false, galleryExpanded: true };
+
+describe('resolveShellLayoutPolicy', () => {
+  for (const sizeBand of sizeBands) {
+    for (const heightBand of heightBands) {
+      for (const routeIntent of routeIntents) {
+        it(`resolves the ${sizeBand}/${heightBand} ${routeIntent} cell against its activation state`, () => {
+          const cell = { sizeBand, heightBand, routeIntent };
+          const active = isCellActive(cell);
+
+          const resolved = resolveShellLayoutPolicy({ routeIntent, sizeBand, heightBand, preferences });
+
+          const expected = active
+            ? deriveAppShellLayoutPolicy({ routeIntent, sizeBand, heightBand, preferences })
+            : deriveAppShellLayoutPolicy({
+              routeIntent,
+              sizeBand: 'wide',
+              heightBand: 'regular',
+              preferences,
+            });
+
+          expect(resolved).toEqual(expected);
+        });
+      }
+    }
+  }
+});
+
+describe('AppShellLayoutPolicyProvider', () => {
+  const mediaQueries = new Map<string, MutableMediaQuery>();
+
+  beforeEach(() => {
+    mediaQueries.clear();
+    vi.mocked(window.matchMedia).mockImplementation((query) => {
+      const existing = mediaQueries.get(query);
+      if (existing) return existing;
+
+      const created = createMediaQuery(query, false);
+      mediaQueries.set(query, created);
+      return created;
+    });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+  });
+
+  it('gates a compact, short-height viewport to the wide/regular policy', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 600, configurable: true });
+
+    const { result } = renderHook(() => useAppShellLayoutPolicy(), {
+      wrapper: ({ children }) => (
+        <AppShellLayoutPolicyProvider
+          routeIntent="browse"
+          browseExpanded={preferences.browseExpanded}
+          galleryExpanded={preferences.galleryExpanded}
+        >
+          {children}
+        </AppShellLayoutPolicyProvider>
+      ),
+    });
+
+    expect(result.current).toEqual(deriveAppShellLayoutPolicy({
+      routeIntent: 'browse',
+      sizeBand: 'wide',
+      heightBand: 'regular',
+      preferences,
+    }));
+  });
+
+  it('throws when used outside the provider', () => {
+    expect(() => renderHook(() => useAppShellLayoutPolicy())).toThrow(
+      'useAppShellLayoutPolicy must be used within AppShellLayoutPolicyProvider',
+    );
+  });
+});

@@ -5,8 +5,34 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { useAddSpotStore } from 'features/AddSpot';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
-import type { DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
+import { resolveAppRouteIntent, type DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
+import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { Route, usePanelFeedLayoutReadyChange, useSetPanelRouteBackAction } from './_panel';
+
+// Mirrors the two-input derivation __root.tsx performs for the real app: PanelFrame
+// no longer assembles policy inputs itself, so tests rendering it directly must supply
+// the provider the composition root would otherwise mount. A real component (rather
+// than a plain snapshot) so it stays subscribed to store updates the tests trigger by
+// clicking expand/collapse controls, matching how RootLayout stays live in the app.
+function TestShellPolicyProvider({ children }: { children: ReactNode }) {
+  const isAddSpotActive = useAddSpotStore((s) => s.isActive);
+  const browseExpanded = usePanelExpansionStore((state) => state.browsingExpanded);
+  const galleryExpanded = usePanelExpansionStore((state) => state.galleryExpanded);
+  const routeIntent = resolveAppRouteIntent(
+    mocks.matches,
+    isAddSpotActive ? 'immersiveMapInput' : undefined,
+  );
+
+  return (
+    <AppShellLayoutPolicyProvider
+      routeIntent={routeIntent}
+      browseExpanded={browseExpanded}
+      galleryExpanded={galleryExpanded}
+    >
+      {children}
+    </AppShellLayoutPolicyProvider>
+  );
+}
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
@@ -241,7 +267,7 @@ describe('Panel upload entry', () => {
 
   it('opens authentication instead of navigating to upload for an anonymous visitor', () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
 
@@ -252,7 +278,7 @@ describe('Panel upload entry', () => {
   it('carries the visitor through to upload once they sign in', () => {
     mocks.params = { spotId: 'spot-current' };
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
 
@@ -273,7 +299,7 @@ describe('Panel upload entry', () => {
     mocks.isAuthenticated = true;
     mocks.params = { spotId: 'spot-current' };
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
 
@@ -286,7 +312,7 @@ describe('Panel upload entry', () => {
   it('navigates to /upload with no spot when none is currently selected', () => {
     mocks.isAuthenticated = true;
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
 
@@ -299,7 +325,7 @@ describe('Panel upload entry', () => {
   it('does not show the panel minimize control on the cart route', () => {
     mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.queryByRole('button', { name: 'Expand panel' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Collapse panel' })).not.toBeInTheDocument();
@@ -307,7 +333,7 @@ describe('Panel upload entry', () => {
 
   it('uses the user preference while browsing normal panel routes', async () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
-    const { rerender } = render(<Component />);
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('false');
 
@@ -318,14 +344,14 @@ describe('Panel upload entry', () => {
     });
 
     mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {} }];
-    rerender(<Component />);
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
   });
 
   it('updates the user preference when the photographer toggles expand and collapse', async () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand panel' }));
 
@@ -343,7 +369,7 @@ describe('Panel upload entry', () => {
 
   it('compacts expanded browsing when the shared map action changes its preference', async () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
     fireEvent.click(screen.getByRole('button', { name: 'Report feed layout ready' }));
     fireEvent.click(screen.getByRole('button', { name: 'Expand panel' }));
     await waitFor(() => expect(screen.getByTestId('side-panel')).toHaveAttribute('data-expanded', 'true'));
@@ -356,7 +382,7 @@ describe('Panel upload entry', () => {
   it('opens the cart route in the full-size panel', () => {
     mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
   });
@@ -365,7 +391,7 @@ describe('Panel upload entry', () => {
     usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: false });
     mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel')).toHaveAttribute('data-expanded', 'true');
     expect(usePanelExpansionStore.getState()).toMatchObject({
@@ -380,7 +406,7 @@ describe('Panel upload entry', () => {
       staticData: { appRouteIntent: 'galleryWorkspace' },
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
     expect(screen.getByRole('button', { name: 'Collapse panel' })).toBeInTheDocument();
@@ -400,7 +426,7 @@ describe('Panel upload entry', () => {
       staticData: { appRouteIntent: 'galleryWorkspace' },
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('false');
     expect(screen.getByRole('button', { name: 'Favorites' })).toBeInTheDocument();
@@ -412,7 +438,7 @@ describe('Panel upload entry', () => {
       staticData: { appRouteIntent: 'galleryWorkspace' },
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
     expect(screen.getByTestId('side-panel')).toHaveAttribute('data-expanded', 'true');
 
     act(() => usePanelExpansionStore.getState().setGalleryPanelExpanded(false));
@@ -430,7 +456,7 @@ describe('Panel upload entry', () => {
     mocks.params = { spotId: 'spot-a' };
     mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    const { rerender } = render(<Component />);
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('false');
 
@@ -445,7 +471,7 @@ describe('Panel upload entry', () => {
       { routeId: '/_panel/$spotId', staticData: {} },
       { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
-    rerender(<Component />);
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
     act(() => runNextFrame?.(0));
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('false');
@@ -465,7 +491,7 @@ describe('Panel upload entry', () => {
       { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    const { rerender } = render(<Component />);
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
 
@@ -477,7 +503,7 @@ describe('Panel upload entry', () => {
     });
 
     mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {} }];
-    rerender(<Component />);
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
     fireEvent.click(screen.getByRole('button', { name: 'Report feed layout ready' }));
     act(() => runNextFrame?.(0));
 
@@ -491,7 +517,7 @@ describe('Panel upload entry', () => {
       { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-has-back')).toBe('false');
   });
@@ -499,7 +525,7 @@ describe('Panel upload entry', () => {
   it('uses compact map-input behavior on the upload route, with a chevron-only back control', async () => {
     mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('false');
     expect(screen.queryByRole('button', { name: 'Expand panel' })).not.toBeInTheDocument();
@@ -515,12 +541,12 @@ describe('Panel upload entry', () => {
   it('titles the panel "Upload" for a new upload and "Edit session" for an edit workspace', () => {
     mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    const { rerender } = render(<Component />);
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByText('Upload')).not.toBeNull();
 
     mocks.activeWorkspace = { id: 'workspace-1', kind: 'SESSION_EDIT' };
-    rerender(<Component />);
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByText('Edit session')).not.toBeNull();
   });
@@ -533,7 +559,7 @@ describe('Panel upload entry', () => {
     }));
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
     const Component = (Route as unknown as { component: ComponentType }).component;
-    const { rerender } = render(<Component />);
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand panel' }));
 
@@ -542,7 +568,7 @@ describe('Panel upload entry', () => {
 
     runNextFrame = undefined;
     mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: {} }];
-    rerender(<Component />);
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
 
@@ -555,7 +581,7 @@ describe('Panel upload entry', () => {
   it('lets the cart header span the full panel width', () => {
     mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-header-full-width')).toBe('true');
   });
@@ -563,7 +589,7 @@ describe('Panel upload entry', () => {
   it('routes cart visitors without a spot origin back to the feed', () => {
     mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Back to feed' }));
 
@@ -578,7 +604,7 @@ describe('Panel upload entry', () => {
       loaderData: null,
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Back to feed' }));
 
@@ -594,7 +620,7 @@ describe('Panel upload entry', () => {
       loaderData: null,
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Back to feed' }));
 
@@ -611,7 +637,7 @@ describe('Panel upload entry', () => {
       search: { from: 'collections' },
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Back to uploads' }));
 
@@ -631,10 +657,10 @@ describe('Panel upload entry', () => {
       loaderData: null,
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    const { rerender } = render(<Component />);
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     mocks.matches = [{ routeId: '/_panel/', staticData: {} }];
-    rerender(<Component />);
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
     expect(runNextFrame).toBeUndefined();
@@ -662,7 +688,7 @@ describe('Panel upload entry', () => {
       { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    const { rerender } = render(<Component />);
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Collapse panel' }));
     act(() => runNextFrame?.(0));
@@ -674,7 +700,7 @@ describe('Panel upload entry', () => {
       staticData: { appRouteIntent: 'routeWorkspace' },
       loaderData: null,
     }];
-    rerender(<Component />);
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
     act(() => runNextFrame?.(0));
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
 
@@ -683,7 +709,7 @@ describe('Panel upload entry', () => {
       { routeId: '/_panel/$spotId', staticData: {} },
       { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
-    rerender(<Component />);
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
     act(() => runNextFrame?.(0));
 
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('false');
@@ -697,7 +723,7 @@ describe('Panel upload entry', () => {
       { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('feed-search').getAttribute('data-active-spot')).toBe('spot-a');
 
@@ -712,7 +738,7 @@ describe('Panel upload entry', () => {
     mocks.params = { spotId: 'spot-a' };
     mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Select spot-b' }));
 
@@ -726,7 +752,7 @@ describe('Panel upload entry', () => {
     mocks.matches = [{ routeId: '/_panel/', staticData: {} }];
     mocks.params = {};
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Gallery' }));
 
@@ -740,7 +766,7 @@ describe('Panel upload entry', () => {
       { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByRole('button', { name: 'Report feed layout ready' })).toBeInTheDocument();
 
@@ -753,7 +779,7 @@ describe('Panel upload entry', () => {
     mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
     mocks.params = {};
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('public-gallery').getAttribute('data-spot-id')).toBe('all');
 
@@ -769,7 +795,7 @@ describe('Panel upload entry', () => {
     mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
     mocks.params = {};
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('public-gallery').getAttribute('data-spot-id')).toBe('all');
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
@@ -787,7 +813,7 @@ describe('Panel upload entry', () => {
     mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
     mocks.params = {};
     const Component = (Route as unknown as { component: ComponentType }).component;
-    const { rerender } = render(<Component />);
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
     expect(screen.queryByRole('button', { name: 'Report feed layout ready' })).not.toBeInTheDocument();
 
     // Picking a new spot restores real, unfiltered-by-the-old-spot content.
@@ -797,7 +823,7 @@ describe('Panel upload entry', () => {
       { routeId: '/_panel/$spotId', staticData: {} },
       { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
-    rerender(<Component />);
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByRole('button', { name: 'Report feed layout ready' })).toBeInTheDocument();
     expect(screen.queryByTestId('public-gallery')).not.toBeInTheDocument();
@@ -810,7 +836,7 @@ describe('Panel upload entry', () => {
       { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     // While a spot is selected, gallery is a dedicated workspace: expanded with an explicit fold control.
     expect(screen.getByTestId('side-panel').getAttribute('data-expanded')).toBe('true');
@@ -826,7 +852,7 @@ describe('Panel upload entry', () => {
     mocks.params = { spotId: 'spot-a' };
     mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear spot search' }));
 
@@ -835,7 +861,7 @@ describe('Panel upload entry', () => {
 
   it('hides the side panel throughout the add-spot flow, and restores once the flow exits', async () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand panel' }));
     await waitFor(() => {
@@ -871,7 +897,7 @@ describe('Panel upload entry', () => {
 
   it('restores the panel when Add Spot is cancelled before a point is picked', async () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand panel' }));
     await waitFor(() => {
@@ -906,7 +932,7 @@ describe('Panel favorites filter', () => {
 
   it('prompts for authentication without activating the filter when signed out', () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     const favorites = screen.getByRole('button', { name: 'Favorites' });
     fireEvent.click(favorites);
@@ -917,7 +943,7 @@ describe('Panel favorites filter', () => {
 
   it('applies the filter the visitor asked for once they sign in', () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     const favorites = screen.getByRole('button', { name: 'Favorites' });
     fireEvent.click(favorites);
@@ -935,11 +961,11 @@ describe('Panel favorites filter', () => {
   it('keeps the favorite-spots filter available and active after switching to gallery', () => {
     mocks.isAuthenticated = true;
     const Component = (Route as unknown as { component: ComponentType }).component;
-    const { rerender } = render(<Component />);
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Favorites' }));
     mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
-    rerender(<Component />);
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'true');
   });

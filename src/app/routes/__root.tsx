@@ -1,12 +1,15 @@
-import { createRootRouteWithContext, Outlet, useNavigate } from '@tanstack/react-router';
+import { createRootRouteWithContext, Outlet, useMatches, useNavigate } from '@tanstack/react-router';
 import type { QueryClient } from '@tanstack/react-query';
 import { Button, Center, Stack, Text, Title } from '@mantine/core';
 import { AppShell } from 'app/AppShell';
 import { AuthModalProvider } from 'features/Auth';
-import { AddSpotProvider } from 'features/AddSpot';
+import { AddSpotProvider, useAddSpotStore } from 'features/AddSpot';
 import { useCartSessionSync } from 'features/Cart';
 import classes from './__root.module.css';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
+import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
+import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
+import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: RootLayout,
@@ -17,11 +20,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootLayout() {
   useCartSessionSync();
 
+  const isAddSpotActive = useAddSpotStore((s) => s.isActive);
+  const matches = useMatches();
+  const routeIntent = resolveAppRouteIntent(
+    matches,
+    isAddSpotActive ? 'immersiveMapInput' : undefined,
+  );
+  const browseExpanded = usePanelExpansionStore((state) => state.browsingExpanded);
+  const galleryExpanded = usePanelExpansionStore((state) => state.galleryExpanded);
+
   return (
     <AuthModalProvider>
       <AddSpotProvider>
-        <AppShell />
-        <Outlet />
+        <AppShellLayoutPolicyProvider
+          routeIntent={routeIntent}
+          browseExpanded={browseExpanded}
+          galleryExpanded={galleryExpanded}
+        >
+          <AppShell />
+          <Outlet />
+        </AppShellLayoutPolicyProvider>
       </AddSpotProvider>
     </AuthModalProvider>
   );

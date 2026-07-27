@@ -26,7 +26,7 @@ import { formatDateRange } from 'shared/lib/dateUtils';
 import { useUser } from 'shared/hooks/useUser';
 import { useAuthModal } from 'features/Auth';
 import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
-import { deriveDesktopFoundationAppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
+import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import { deriveRenderedPanelState } from 'shared/model/panelLayoutPolicy';
 
 // ─── Contexts — shared with child routes ─────────────────────────────────────
@@ -123,13 +123,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
     matches,
     isAddSpotActive ? 'immersiveMapInput' : undefined,
   );
-  const layoutPolicy = deriveDesktopFoundationAppShellLayoutPolicy({
-    routeIntent: appRouteIntent,
-    preferences: {
-      browseExpanded: userPreferredExpanded,
-      galleryExpanded: galleryPreferredExpanded,
-    },
-  });
+  const layoutPolicy = useAppShellLayoutPolicy();
 
   const cartMatch = matches.find((match) => match.routeId === '/_panel/cart');
   const spotMatch = matches.find((match) => match.routeId === '/_panel/$spotId');

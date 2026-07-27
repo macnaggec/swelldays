@@ -2,7 +2,9 @@ import { act, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { useAddSpotStore } from 'features/AddSpot';
-import type { DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
+import type { AppRouteIntent, DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
+import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
+import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { AppShell } from './AppShell';
 
 const mocks = vi.hoisted(() => ({
@@ -12,6 +14,23 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@tanstack/react-router', () => ({
   useMatches: () => mocks.matches,
 }));
+
+function renderAppShell() {
+  const routeIntent: AppRouteIntent = resolveAppRouteIntent(
+    mocks.matches,
+    useAddSpotStore.getState().isActive ? 'immersiveMapInput' : undefined,
+  );
+
+  return render(
+    <AppShellLayoutPolicyProvider
+      routeIntent={routeIntent}
+      browseExpanded={false}
+      galleryExpanded={false}
+    >
+      <AppShell />
+    </AppShellLayoutPolicyProvider>,
+  );
+}
 
 vi.mock('views/GlobeScene', () => ({
   GlobeScene: () => <div data-testid="globe-scene" />,
@@ -32,7 +51,7 @@ describe('AppShell Add Spot chrome', () => {
   });
 
   it('hides the left chrome throughout the add-spot flow', () => {
-    const { unmount } = render(<AppShell />);
+    const { unmount } = renderAppShell();
     expect(screen.getByTestId('left-strip')).toBeInTheDocument();
     unmount();
 
@@ -40,7 +59,7 @@ describe('AppShell Add Spot chrome', () => {
       useAddSpotStore.getState().enter('New Spot');
       useAddSpotStore.getState().setTempPin([1, 2]);
     });
-    const hidden = render(<AppShell />);
+    const hidden = renderAppShell();
 
     expect(screen.getByTestId('globe-scene')).toBeInTheDocument();
     expect(screen.queryByTestId('left-strip')).not.toBeInTheDocument();
@@ -53,7 +72,7 @@ describe('AppShell Add Spot chrome', () => {
       { routeId: '/_page/admin' },
     ];
 
-    render(<AppShell />);
+    renderAppShell();
 
     expect(screen.queryByTestId('globe-scene')).not.toBeInTheDocument();
     expect(screen.queryByTestId('left-strip')).not.toBeInTheDocument();

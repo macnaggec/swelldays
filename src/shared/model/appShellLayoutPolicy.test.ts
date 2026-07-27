@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  deriveAppShellLayoutPolicy,
-  deriveDesktopFoundationAppShellLayoutPolicy,
-} from './appShellLayoutPolicy';
+import { deriveAppShellLayoutPolicy } from './appShellLayoutPolicy';
 import type { AppRouteIntent } from './appRouteIntent';
 import { indeterminateViewportCapabilities } from './viewportCapabilities';
 
@@ -337,26 +334,5 @@ describe('deriveAppShellLayoutPolicy — indeterminate fallback is usable', () =
     expect(policy.drawer.presentation).not.toBe('hidden');
     expect(policy.drawer.control).not.toBe('none');
     expect(policy.map.interaction).toBe('interactive');
-  });
-});
-
-describe('deriveDesktopFoundationAppShellLayoutPolicy', () => {
-  it.each([
-    'browse',
-    'galleryWorkspace',
-    'routeWorkspace',
-    'mapInput',
-    'fullPage',
-    'immersiveMapInput',
-  ] satisfies AppRouteIntent[])('mounts only the approved wide presentation for %s', (routeIntent) => {
-    expect(deriveDesktopFoundationAppShellLayoutPolicy({
-      routeIntent,
-      preferences: compactPreferences,
-    })).toEqual(deriveAppShellLayoutPolicy({
-      routeIntent,
-      sizeBand: 'wide',
-      heightBand: 'regular',
-      preferences: compactPreferences,
-    }));
   });
 });

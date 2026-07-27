@@ -2,7 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GlobeScene } from './GlobeScene';
 import type { LngLat } from 'shared/types/coordinates';
-import type { DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
+import { resolveAppRouteIntent, type DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
+import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import type { DrawerGeometry } from 'shared/ui/DrawerShell';
 
 const mocks = vi.hoisted(() => ({
@@ -131,6 +132,27 @@ beforeEach(() => {
   mocks.drawerGeometry = null;
 });
 
+function globeSceneTree() {
+  const routeIntent = resolveAppRouteIntent(
+    mocks.matches,
+    mocks.addSpotState.isActive ? 'immersiveMapInput' : undefined,
+  );
+
+  return (
+    <AppShellLayoutPolicyProvider
+      routeIntent={routeIntent}
+      browseExpanded={mocks.browsingExpanded}
+      galleryExpanded={mocks.galleryExpanded}
+    >
+      <GlobeScene />
+    </AppShellLayoutPolicyProvider>
+  );
+}
+
+function renderGlobeScene() {
+  return render(globeSceneTree());
+}
+
 describe('GlobeScene upload spot selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -143,7 +165,7 @@ describe('GlobeScene upload spot selection', () => {
 
   it('shows the photographer when saving the selected spot fails', async () => {
     mocks.updateWorkspace.mockRejectedValue(new Error('Network down'));
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     fireEvent.click(screen.getByRole('button', { name: 'Select Pipeline' }));
 
@@ -155,7 +177,7 @@ describe('GlobeScene upload spot selection', () => {
 
   it('stores the selected workspace spot in the upload URL and persists it', async () => {
     mocks.updateWorkspace.mockResolvedValue({ id: 'workspace-1' });
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     fireEvent.click(screen.getByRole('button', { name: 'Select Pipeline' }));
 
@@ -171,7 +193,7 @@ describe('GlobeScene upload spot selection', () => {
 
   it('stores the selected pre-workspace spot in the upload URL', () => {
     mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: {} }];
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     fireEvent.click(screen.getByRole('button', { name: 'Select Pipeline' }));
 
@@ -185,7 +207,7 @@ describe('GlobeScene upload spot selection', () => {
 
   it('ignores another map selection while a spot save is pending', () => {
     mocks.isUpdatingWorkspace = true;
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     expect(screen.getByRole('status').textContent).toBe('Saving spot…');
     fireEvent.click(screen.getByRole('button', { name: 'Select Pipeline' }));
@@ -205,7 +227,7 @@ describe('GlobeScene Add Spot flow', () => {
   });
 
   it('passes Add Spot coordinate-picker state to the map and owns temp pin updates from coordinate clicks', () => {
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     expect(screen.getByText('Add spot panel')).toBeInTheDocument();
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-coordinate-picker-active', 'true');
@@ -229,13 +251,13 @@ describe('GlobeScene selected spot ownership', () => {
   });
 
   it('passes the selected route spot as state without owning camera intent lifecycle', () => {
-    const { rerender } = render(<GlobeScene />);
+    const { rerender } = renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-selected-spot-id', '');
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-has-camera-intent', 'false');
 
     mocks.matches = [{ routeId: '/_panel/$spotId', params: { spotId: 'spot-1' } }];
-    rerender(<GlobeScene />);
+    rerender(globeSceneTree());
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-selected-spot-id', 'spot-1');
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-has-camera-intent', 'false');
@@ -244,14 +266,14 @@ describe('GlobeScene selected spot ownership', () => {
   it('centers the map on the spot chosen via the upload workspace, not just the route', () => {
     mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: { workspaceId: 'workspace-1' } }];
     mocks.uploadWorkspaceState = { workspace: { spotId: null } };
-    const { rerender } = render(<GlobeScene />);
+    const { rerender } = renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-selected-spot-id', '');
 
     // Resumed workspaces may have a persisted spot before the upload URL carries one,
     // so the map should still pick up the workspace-state query.
     mocks.uploadWorkspaceState = { workspace: { spotId: 'spot-1' } };
-    rerender(<GlobeScene />);
+    rerender(globeSceneTree());
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-selected-spot-id', 'spot-1');
   });
@@ -262,7 +284,7 @@ describe('GlobeScene selected spot ownership', () => {
       search: { workspaceId: 'workspace-1', spotId: 'seed-spot' },
     }];
     mocks.uploadWorkspaceState = undefined;
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-selected-spot-id', 'seed-spot');
   });
@@ -273,14 +295,14 @@ describe('GlobeScene selected spot ownership', () => {
       search: { workspaceId: 'workspace-1', spotId: 'new-spot' },
     }];
     mocks.uploadWorkspaceState = { workspace: { spotId: 'old-spot' } };
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-selected-spot-id', 'new-spot');
   });
 
   it('keeps gallery mode when a photographer selects a map marker', () => {
     mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     fireEvent.click(screen.getByRole('button', { name: 'Select Pipeline' }));
 
@@ -303,7 +325,7 @@ describe('GlobeScene map interaction policy', () => {
 
   it('keeps expanded browsing interactive and compacts it when camera exploration starts', () => {
     mocks.browsingExpanded = true;
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'interactive');
     fireEvent.click(screen.getByRole('button', { name: 'Explore map' }));
@@ -312,7 +334,7 @@ describe('GlobeScene map interaction policy', () => {
 
   it('passes background policy to the map for a route-required workspace', () => {
     mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' } }];
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'background');
     fireEvent.click(screen.getByRole('button', { name: 'Explore map' }));
@@ -322,7 +344,7 @@ describe('GlobeScene map interaction policy', () => {
 
   it('keeps expanded gallery interactive and compacts its preference when camera exploration starts', () => {
     mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'interactive');
     fireEvent.click(screen.getByRole('button', { name: 'Explore map' }));
@@ -331,21 +353,21 @@ describe('GlobeScene map interaction policy', () => {
 
   it('keeps compact browsing interactive', () => {
     mocks.browsingExpanded = false;
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'interactive');
   });
 
   it('keeps Add Spot interactive regardless of the browse preference', () => {
     mocks.addSpotState.isActive = true;
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'interactive');
   });
 
   it('keeps upload spot selection interactive regardless of the browse preference', () => {
     mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: { workspaceId: 'workspace-1' } }];
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'interactive');
   });
@@ -378,7 +400,7 @@ describe('GlobeScene sidebar occlusion', () => {
       width: 800,
       height: 900,
     };
-    render(<GlobeScene />);
+    renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-right-occluded-px', '800');
   });

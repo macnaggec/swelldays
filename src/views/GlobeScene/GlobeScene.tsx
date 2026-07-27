@@ -9,10 +9,11 @@ import type { LngLat } from 'shared/types/coordinates';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
 import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
+import { useViewportMetrics } from 'shared/model/viewportMetrics';
 import { useTRPC } from 'shared/lib/trpc';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { notify } from 'shared/lib/notifications';
-import { deriveDesktopFoundationAppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
+import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import { materialClasses } from 'shared/ui/design-system';
 import { useDrawerGeometry } from 'shared/ui/DrawerShell';
 import classes from './GlobeScene.module.css';
@@ -59,9 +60,8 @@ export function GlobeScene() {
   const setTempPin = useAddSpotStore((s) => s.setTempPin);
   const [isUserExploring, setIsUserExploring] = useState(false);
   const isDocumentHidden = useDocumentHidden();
-  const { prefersReducedMotion, viewportWidthPx } = useViewportCapabilities();
-  const browseExpanded = usePanelExpansionStore((state) => state.browsingExpanded);
-  const galleryExpanded = usePanelExpansionStore((state) => state.galleryExpanded);
+  const { prefersReducedMotion } = useViewportCapabilities();
+  const { layoutViewportWidthPx: viewportWidthPx } = useViewportMetrics();
   const setBrowsingPanelExpanded = usePanelExpansionStore((state) => state.setBrowsingPanelExpanded);
   const setGalleryPanelExpanded = usePanelExpansionStore((state) => state.setGalleryPanelExpanded);
   const matches = useMatches();
@@ -70,10 +70,7 @@ export function GlobeScene() {
     isAddSpotActive ? 'immersiveMapInput' : undefined,
   );
   const isImmersiveMapInput = routeIntent === 'immersiveMapInput';
-  const layoutPolicy = deriveDesktopFoundationAppShellLayoutPolicy({
-    routeIntent,
-    preferences: { browseExpanded, galleryExpanded },
-  });
+  const layoutPolicy = useAppShellLayoutPolicy();
   const navigate = useNavigate();
   const trpc = useTRPC();
   const queryClient = useQueryClient();

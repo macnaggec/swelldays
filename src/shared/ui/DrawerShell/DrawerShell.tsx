@@ -10,6 +10,7 @@ import {
 import { motion, useDragControls, type DragHandler } from 'framer-motion';
 import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
 import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
+import { useViewportMetrics } from 'shared/model/viewportMetrics';
 import { PANEL_WIDTH_VW } from 'shared/model/panelExpansionStore';
 import { materialClasses } from 'shared/ui/design-system';
 import { publishDrawerGeometry, publishDrawerMotion } from './geometry';
@@ -81,7 +82,8 @@ export function DrawerShell(props: DrawerShellProps) {
   const positionKey: DrawerShellState | SheetSnap =
     props.presentation === 'bottomSheet' ? props.snap : props.state;
 
-  const { viewportHeightPx, prefersReducedMotion } = useViewportCapabilities();
+  const { prefersReducedMotion } = useViewportCapabilities();
+  const { layoutViewportHeightPx: viewportHeightPx } = useViewportMetrics();
   const heights = useMemo(
     () => resolveSheetSnapHeights({ viewportHeightPx, peekHeightPx: SHEET_PEEK_HEIGHT_PX }),
     [viewportHeightPx],

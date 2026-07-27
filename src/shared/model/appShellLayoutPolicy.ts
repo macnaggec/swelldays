@@ -140,9 +140,3 @@ export function deriveAppShellLayoutPolicy(
     },
   };
 }
-
-export function deriveDesktopFoundationAppShellLayoutPolicy(
-  input: Omit<AppShellLayoutPolicyInput, 'sizeBand' | 'heightBand'>,
-): AppShellLayoutPolicy {
-  return deriveAppShellLayoutPolicy({ ...input, sizeBand: 'wide', heightBand: 'regular' });
-}
