@@ -50,7 +50,7 @@ vi.mock('widgets/GlobeMap', () => ({
     selectedSpotId?: string | null;
     tempPin?: LngLat | null;
     interactionPolicy?: 'interactive' | 'background';
-    rightOccludedPx?: number;
+    cameraInsetsPx?: { top: number; right: number; bottom: number; left: number };
   }) => (
     <div
       data-coordinate-picker-active={String(isCoordinatePickerActive)}
@@ -59,13 +59,15 @@ vi.mock('widgets/GlobeMap', () => ({
       data-selected-spot-id={selectedSpotId ?? ''}
       data-has-camera-intent={String('cameraIntent' in restProps)}
       data-interaction-policy={String(restProps.interactionPolicy)}
-      data-right-occluded-px={String(restProps.rightOccludedPx)}
+      data-camera-inset-right-px={String(restProps.cameraInsetsPx?.right)}
+      data-camera-inset-bottom-px={String(restProps.cameraInsetsPx?.bottom)}
     >
       <button onClick={() => onSpotSelect({ id: 'spot-1' })}>Select Pipeline</button>
       <button onClick={() => onCameraGestureStart?.()}>Explore map</button>
       <button onClick={() => onMapCoordinateClick?.([151.2, -33.85])}>Place pin</button>
     </div>
   ),
+  NO_MAP_CAMERA_INSETS: { top: 0, right: 0, bottom: 0, left: 0 },
 }));
 
 vi.mock('entities/Spot', () => ({
@@ -373,7 +375,7 @@ describe('GlobeScene map interaction policy', () => {
   });
 });
 
-describe('GlobeScene sidebar occlusion', () => {
+describe('GlobeScene map camera insets', () => {
   const originalInnerWidth = window.innerWidth;
 
   beforeEach(() => {
@@ -402,6 +404,7 @@ describe('GlobeScene sidebar occlusion', () => {
     };
     renderGlobeScene();
 
-    expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-right-occluded-px', '800');
+    expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-camera-inset-right-px', '800');
+    expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-camera-inset-bottom-px', '0');
   });
 });

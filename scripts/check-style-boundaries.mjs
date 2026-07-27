@@ -347,14 +347,20 @@ const rules = [
     ),
   },
   {
-    id: 'globe-occlusion-uses-measured-drawer',
-    message: 'Globe occlusion must consume measured drawer bounds and expose only generic right-edge camera occlusion to GlobeMap.',
-    pattern: /\b(?:PANEL_WIDTH_VW|isRenderedPanelExpanded|sidebarOccludedPx)\b/,
+    id: 'globe-camera-insets-use-measured-drawer',
+    message: 'The map camera must consume four-sided insets derived from measured drawer bounds, not local panel-width or expansion heuristics.',
+    pattern: /\b(?:PANEL_WIDTH_VW|isRenderedPanelExpanded)\b/,
     include: file => (
       file === 'src/views/GlobeScene/GlobeScene.tsx'
-      || file === 'src/views/GlobeScene/model/drawerViewportOcclusion.ts'
+      || file === 'src/views/GlobeScene/model/mapCameraInsets.ts'
       || file === 'src/widgets/GlobeMap/GlobeMapComponent.tsx'
     ),
+  },
+  {
+    id: 'no-legacy-right-edge-map-occlusion',
+    message: 'Map camera occlusion is a four-sided inset projection (M00b); the right-edge-only occlusion vocabulary is retired.',
+    pattern: /\b(?:rightOccludedPx|sidebarOccludedPx|deriveDrawerViewportOcclusionPx|drawerViewportOcclusion)\b/,
+    include: file => /\.tsx?$/.test(file),
   },
   {
     id: 'drawer-shell-owns-adjacent-control-placement',

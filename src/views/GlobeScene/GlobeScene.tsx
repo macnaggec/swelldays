@@ -19,7 +19,7 @@ import { useDrawerGeometry } from 'shared/ui/DrawerShell';
 import classes from './GlobeScene.module.css';
 import { deriveGlobeMotionPolicy } from './model/globeMotionPolicy';
 import { deriveGlobeSceneMode } from './model/globeSceneMode';
-import { deriveDrawerViewportOcclusionPx } from './model/drawerViewportOcclusion';
+import { deriveMapCameraInsets } from './model/mapCameraInsets';
 import { getOverviewMapBounds } from './model/overviewBoundsStrategy';
 
 function subscribeDocumentVisibility(onStoreChange: () => void) {
@@ -61,7 +61,7 @@ export function GlobeScene() {
   const [isUserExploring, setIsUserExploring] = useState(false);
   const isDocumentHidden = useDocumentHidden();
   const { prefersReducedMotion } = useViewportCapabilities();
-  const { layoutViewportWidthPx: viewportWidthPx } = useViewportMetrics();
+  const { layoutViewportWidthPx: viewportWidthPx, layoutViewportHeightPx: viewportHeightPx } = useViewportMetrics();
   const setBrowsingPanelExpanded = usePanelExpansionStore((state) => state.setBrowsingPanelExpanded);
   const setGalleryPanelExpanded = usePanelExpansionStore((state) => state.setGalleryPanelExpanded);
   const matches = useMatches();
@@ -110,9 +110,11 @@ export function GlobeScene() {
   const drawerGeometry = useDrawerGeometry();
   const isShellDrawerExpanded = layoutPolicy.drawer.state === 'expanded'
     || layoutPolicy.drawer.state === 'full';
-  const drawerOccludedPx = deriveDrawerViewportOcclusionPx({
+  const cameraInsetsPx = deriveMapCameraInsets({
     drawerBounds: drawerGeometry,
+    drawerPresentation: layoutPolicy.drawer.presentation,
     viewportWidthPx,
+    viewportHeightPx,
   });
 
   const handleSpotSelect = useCallback(async (spot: MapSpotProjection) => {
@@ -169,7 +171,7 @@ export function GlobeScene() {
         onSpotSelect={handleSpotSelect}
         motionPolicy={motionPolicy}
         interactionPolicy={interactionPolicy}
-        rightOccludedPx={drawerOccludedPx}
+        cameraInsetsPx={cameraInsetsPx}
         isCoordinatePickerActive={isImmersiveMapInput}
         showNavigationControl={layoutPolicy.map.navigationControl === 'visible'}
         tempPin={tempPin}

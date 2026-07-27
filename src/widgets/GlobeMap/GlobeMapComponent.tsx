@@ -10,6 +10,7 @@ import { useMapStore } from 'widgets/GlobeMap/model/mapStore';
 import type { GlobeMotionPolicy } from './model/globeMotionPolicy';
 import type { GlobeInteractionPolicy } from './model/globeInteractionPolicy';
 import type { MapSpotProjection } from './model/mapSpotProjection';
+import { NO_MAP_CAMERA_INSETS, type MapCameraInsets } from './model/mapCameraInsets';
 import { useGlobeAnimation } from './hooks/useGlobeAnimation';
 import { useSpotGeoJson } from './hooks/useSpotGeoJson';
 import { useMapInteraction } from './hooks/useMapInteraction';
@@ -63,8 +64,8 @@ export interface GlobeMapProps {
   onSpotSelect: (spot: MapSpotProjection) => void;
   motionPolicy: GlobeMotionPolicy;
   interactionPolicy?: GlobeInteractionPolicy;
-  /** Px unavailable at the viewport's right edge — reserved as camera padding so a focused spot centers in the visible map area. */
-  rightOccludedPx?: number;
+  /** Px of the map canvas covered by app chrome per edge — reserved as camera padding so a focused spot centers in the visible map area. */
+  cameraInsetsPx?: MapCameraInsets;
   isCoordinatePickerActive?: boolean;
   showNavigationControl?: boolean;
   tempPin?: LngLat | null;
@@ -84,7 +85,7 @@ export function GlobeMapComponent({
   onSpotSelect,
   motionPolicy,
   interactionPolicy = 'interactive',
-  rightOccludedPx = 0,
+  cameraInsetsPx = NO_MAP_CAMERA_INSETS,
   isCoordinatePickerActive = false,
   showNavigationControl = true,
   tempPin = null,
@@ -94,6 +95,10 @@ export function GlobeMapComponent({
   onCameraGestureStart,
   renderSelectedSpotContent,
 }: GlobeMapProps) {
+  // Destructured into value primitives so effect and callback dependencies stay
+  // value-based — a fresh insets object per parent render must never restart a camera
+  // flight.
+  const { top: insetTopPx, right: insetRightPx, bottom: insetBottomPx, left: insetLeftPx } = cameraInsetsPx;
   const mapRef = useRef<MapRef>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const pendingFocusRef = useRef<PendingFocus | null>(null);
@@ -174,7 +179,12 @@ export function GlobeMapComponent({
     }
 
     const currentZoom = map.getZoom();
-    const padding = { top: showPreview ? 300 : 0, right: rightOccludedPx };
+    const padding = {
+      top: (showPreview ? 300 : 0) + insetTopPx,
+      right: insetRightPx,
+      bottom: insetBottomPx,
+      left: insetLeftPx,
+    };
     const center: [number, number] = [spot.coords.lng, spot.coords.lat];
 
     if (currentZoom >= 12) {
@@ -194,7 +204,7 @@ export function GlobeMapComponent({
       duration: 1000,
       essential: true,
     });
-  }, [rightOccludedPx]);
+  }, [insetTopPx, insetRightPx, insetBottomPx, insetLeftPx]);
 
   const focusSpotById = useCallback((spotId: string, showPreview: boolean) => {
     const spot = spots.find((candidate) => candidate.id === spotId);
@@ -249,22 +259,32 @@ export function GlobeMapComponent({
     }
   }, [focusSpotById, selectedSpotId]);
 
-  const previousRightOccludedPxRef = useRef(rightOccludedPx);
+  const previousInsetsRef = useRef({
+    top: insetTopPx,
+    right: insetRightPx,
+    bottom: insetBottomPx,
+    left: insetLeftPx,
+  });
 
   useEffect(() => {
-    const previousOccludedPx = previousRightOccludedPxRef.current;
-    previousRightOccludedPxRef.current = rightOccludedPx;
+    const previousInsets = previousInsetsRef.current;
+    previousInsetsRef.current = { top: insetTopPx, right: insetRightPx, bottom: insetBottomPx, left: insetLeftPx };
 
-    if (previousOccludedPx === rightOccludedPx) return;
+    if (
+      previousInsets.top === insetTopPx
+      && previousInsets.right === insetRightPx
+      && previousInsets.bottom === insetBottomPx
+      && previousInsets.left === insetLeftPx
+    ) return;
     if (!selectedSpotId) return;
 
     mapInstanceRef.current?.setPadding({
-      top: lastShowPreviewRef.current ? 300 : 0,
-      right: rightOccludedPx,
-      bottom: 0,
-      left: 0,
+      top: (lastShowPreviewRef.current ? 300 : 0) + insetTopPx,
+      right: insetRightPx,
+      bottom: insetBottomPx,
+      left: insetLeftPx,
     });
-  }, [rightOccludedPx, selectedSpotId]);
+  }, [insetTopPx, insetRightPx, insetBottomPx, insetLeftPx, selectedSpotId]);
 
   useEffect(() => {
     return () => {

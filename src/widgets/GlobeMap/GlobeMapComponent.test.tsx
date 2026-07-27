@@ -431,7 +431,7 @@ describe('GlobeMapComponent selected spot focus', () => {
       expect(mocks.flyTo).toHaveBeenCalledWith({
         center: [115.085, -8.815],
         zoom: 12,
-        padding: { top: 300, right: 0 },
+        padding: { top: 300, right: 0, bottom: 0, left: 0 },
         duration: 1000,
         essential: true,
       });
@@ -463,7 +463,7 @@ describe('GlobeMapComponent selected spot focus', () => {
     expect(mocks.flyTo).toHaveBeenCalledWith({
       center: [115.085, -8.815],
       zoom: 12,
-      padding: { top: 300, right: 0 },
+      padding: { top: 300, right: 0, bottom: 0, left: 0 },
       duration: 1000,
       essential: true,
     });
@@ -505,7 +505,7 @@ describe('GlobeMapComponent selected spot focus', () => {
     expect(mocks.flyTo).toHaveBeenCalledWith({
       center: [115.085, -8.815],
       zoom: 12,
-      padding: { top: 300, right: 0 },
+      padding: { top: 300, right: 0, bottom: 0, left: 0 },
       duration: 1000,
       essential: true,
     });
@@ -537,7 +537,7 @@ describe('GlobeMapComponent selected spot focus', () => {
       expect(mocks.flyTo).toHaveBeenCalledWith({
         center: [115.085, -8.815],
         zoom: 12,
-        padding: { top: 300, right: 0 },
+        padding: { top: 300, right: 0, bottom: 0, left: 0 },
         duration: 1000,
         essential: true,
       });
@@ -560,7 +560,7 @@ describe('GlobeMapComponent selected spot focus', () => {
     expect(mocks.flyTo).toHaveBeenCalledWith({
       center: [115.085, -8.815],
       zoom: 12,
-      padding: { top: 0, right: 0 },
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
       duration: 1000,
       essential: true,
     });
@@ -578,7 +578,7 @@ describe('GlobeMapComponent selected spot focus', () => {
     expect(mocks.flyTo).toHaveBeenCalledWith({
       center: [115.085, -8.815],
       zoom: 12,
-      padding: { top: 300, right: 0 },
+      padding: { top: 300, right: 0, bottom: 0, left: 0 },
       duration: 1000,
       essential: true,
     });
@@ -601,7 +601,7 @@ describe('GlobeMapComponent selected spot focus', () => {
     expect(mocks.flyTo).toHaveBeenCalledWith({
       center: [115.085, -8.815],
       zoom: 12,
-      padding: { top: 0, right: 0 },
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
       duration: 1000,
       essential: true,
     });
@@ -638,14 +638,14 @@ describe('GlobeMapComponent selected spot focus', () => {
     expect(onSpotSelect).toHaveBeenCalledWith(spots[0]);
   });
 
-  it('reserves the given sidebar-occluded width as right padding so the spot centers in the visible part of the map', () => {
+  it('reserves the given right camera inset as right padding so the spot centers in the visible part of the map', () => {
     const { rerender } = render(
       <GlobeMapComponent
         spots={spots}
         selectedSpotId={null}
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        rightOccludedPx={500}
+        cameraInsetsPx={{ top: 0, right: 500, bottom: 0, left: 0 }}
       />,
     );
 
@@ -657,14 +657,46 @@ describe('GlobeMapComponent selected spot focus', () => {
         selectedSpotId="spot-1"
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        rightOccludedPx={500}
+        cameraInsetsPx={{ top: 0, right: 500, bottom: 0, left: 0 }}
       />,
     );
 
     expect(mocks.flyTo).toHaveBeenCalledWith({
       center: [115.085, -8.815],
       zoom: 12,
-      padding: { top: 300, right: 500 },
+      padding: { top: 300, right: 500, bottom: 0, left: 0 },
+      duration: 1000,
+      essential: true,
+    });
+  });
+
+  it('reserves the given bottom camera inset as bottom padding so the spot centers in the visible part of the map', () => {
+    const { rerender } = render(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId={null}
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        cameraInsetsPx={{ top: 0, right: 0, bottom: 400, left: 0 }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /load map/i }));
+
+    rerender(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId="spot-1"
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        cameraInsetsPx={{ top: 0, right: 0, bottom: 400, left: 0 }}
+      />,
+    );
+
+    expect(mocks.flyTo).toHaveBeenCalledWith({
+      center: [115.085, -8.815],
+      zoom: 12,
+      padding: { top: 300, right: 0, bottom: 400, left: 0 },
       duration: 1000,
       essential: true,
     });
@@ -715,20 +747,20 @@ describe('GlobeMapComponent selected spot popup', () => {
   });
 });
 
-describe('GlobeMapComponent right-side occlusion changes', () => {
+describe('GlobeMapComponent camera inset changes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getZoom.mockReturnValue(12);
   });
 
-  it('updates camera padding without restarting the selected-spot focus animation', () => {
+  it('updates camera padding without restarting the selected-spot focus animation when the right inset changes', () => {
     const { rerender } = render(
       <GlobeMapComponent
         spots={spots}
         selectedSpotId={null}
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        rightOccludedPx={250}
+        cameraInsetsPx={{ top: 0, right: 250, bottom: 0, left: 0 }}
       />,
     );
 
@@ -740,7 +772,7 @@ describe('GlobeMapComponent right-side occlusion changes', () => {
         selectedSpotId="spot-1"
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        rightOccludedPx={250}
+        cameraInsetsPx={{ top: 0, right: 250, bottom: 0, left: 0 }}
       />,
     );
     mocks.easeTo.mockClear();
@@ -753,7 +785,7 @@ describe('GlobeMapComponent right-side occlusion changes', () => {
         selectedSpotId="spot-1"
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        rightOccludedPx={750}
+        cameraInsetsPx={{ top: 0, right: 750, bottom: 0, left: 0 }}
       />,
     );
 
@@ -767,14 +799,60 @@ describe('GlobeMapComponent right-side occlusion changes', () => {
     expect(mocks.flyTo).not.toHaveBeenCalled();
   });
 
-  it('does not move the camera when the occlusion width changes with no spot selected', () => {
+  it('updates camera padding without restarting the selected-spot focus animation when the bottom inset changes', () => {
     const { rerender } = render(
       <GlobeMapComponent
         spots={spots}
         selectedSpotId={null}
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        rightOccludedPx={250}
+        cameraInsetsPx={{ top: 0, right: 0, bottom: 250, left: 0 }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /load map/i }));
+
+    rerender(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId="spot-1"
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        cameraInsetsPx={{ top: 0, right: 0, bottom: 250, left: 0 }}
+      />,
+    );
+    mocks.easeTo.mockClear();
+    mocks.flyTo.mockClear();
+    mocks.setPadding.mockClear();
+
+    rerender(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId="spot-1"
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        cameraInsetsPx={{ top: 0, right: 0, bottom: 750, left: 0 }}
+      />,
+    );
+
+    expect(mocks.setPadding).toHaveBeenCalledWith({
+      top: 300,
+      right: 0,
+      bottom: 750,
+      left: 0,
+    });
+    expect(mocks.easeTo).not.toHaveBeenCalled();
+    expect(mocks.flyTo).not.toHaveBeenCalled();
+  });
+
+  it('does not move the camera when insets change with no spot selected', () => {
+    const { rerender } = render(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId={null}
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        cameraInsetsPx={{ top: 0, right: 250, bottom: 0, left: 0 }}
       />,
     );
 
@@ -788,7 +866,7 @@ describe('GlobeMapComponent right-side occlusion changes', () => {
         selectedSpotId={null}
         onSpotSelect={vi.fn()}
         motionPolicy="paused"
-        rightOccludedPx={750}
+        cameraInsetsPx={{ top: 0, right: 750, bottom: 0, left: 0 }}
       />,
     );
 
