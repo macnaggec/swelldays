@@ -98,6 +98,45 @@ worth doing and is **not** done.
 The setup project also hit one transient auth 500 that passed on retry; cause not
 identified. Worth watching rather than acting on yet.
 
+### Correction (2026-07-27): both diagnoses above were wrong
+
+Fixed at source; the section above is kept because it is what the evidence looked
+like at the time.
+
+**The virtualiser was not settling — the panel was still moving.** The two states
+that failed are exactly the two whose recipe *toggles* the panel:
+`browse-expanded` (browse opens compact, so it clicks Expand) and
+`gallery-compact` (gallery opens expanded, so it clicks Collapse). The other two
+never click and never failed. `ensurePanelExpansion` returned as soon as the
+button's label flipped, which is the *start* of the width animation, not its end:
+measured immediately after, the filter-pill row sat at x≈1425–1457 in a 1280-wide
+viewport — entirely off-screen, still gliding in, and at a different x every run.
+`animations: 'disabled'` cannot help, because `DrawerShell` (width) and
+`PanelChromeSlot` (FLIP) are framer-motion, not CSS. `toHaveScreenshot`'s
+two-frame stability check then compares frames 100–250ms apart, far enough into
+the tail of a 280ms ease to match while still a fraction of a pixel short — which
+is why the diff was confined to whichever element was last in flight and was a
+different size every run. `waitForMotionToSettle` now holds until no box on the
+page has moved for three consecutive frames; the pill row then lands on
+x=852.3125 in every run.
+
+**The transient auth 500 was a boot race, not a mystery.** `webServer.url` waited
+on the client port. Vite listens in under a second while `tsx` is still loading
+the API server, so the `setup` project could post its sign-in into a proxy with
+nothing behind it. It now waits on `/api/health`, which Vite proxies, so the wait
+covers both processes. Reproduced on demand before the fix and gone after.
+
+**`loading` needed a bigger timeout, not a retry.** It is the only state using
+`waitUntil: 'commit'`, so its 5s implicit timeout starts before a single module
+has been fetched; under three viewport projects navigating at once that is not
+enough. It passes in 2.4s in isolation and timed out at 5s late in a full run.
+Now given 30s, matching the map-load wait.
+
+**`session-detail` had an unmasked camera-dependent element.** The selected-spot
+popup (`.mapboxgl-popup`, anchored to a map coordinate) was captured *present* in
+the 1280 and 1440 baselines and *absent* at 1920 — chance, not layout. It is now
+hidden alongside the markers, and all three baselines were re-recorded without it.
+
 ## Project gates
 
 All five green:

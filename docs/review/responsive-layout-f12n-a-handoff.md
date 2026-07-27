@@ -142,6 +142,15 @@ baselines and widening `maxDiffPixelRatio` from 0 to 0.002. Chromium font flags
 were tried first as a root-cause fix and were no-ops in headless Chromium, so
 they were reverted. The suite is now 41 passed / 0 failed.
 
+Followed up 2026-07-27: that refresh papered over a second, larger cause. Run at
+`--retries=0`, `browse-expanded` still failed at 1440×900 by 0.01 — five times
+the new tolerance — with the mid-animation signature (0.29, 0.29, then 0.01
+across the three stability attempts). The capture was firing while the panel was
+still animating; the two states affected are exactly the two whose recipe toggles
+it. Fixed at source in `tests/visual/matrix.spec.ts`, together with three other
+false failures. The tolerance stays at 0.002 for the genuine glyph-edge residue.
+See the correction section in `docs/review/responsive-layout-f12h-handoff.md`.
+
 Unrelated working-tree changes preserved: none — the only pre-existing edit was
 the roadmap split that created this task, committed with the slice.
 
