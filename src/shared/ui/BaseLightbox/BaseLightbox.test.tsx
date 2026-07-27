@@ -34,7 +34,7 @@ describe('BaseLightbox', () => {
       <BaseLightbox
         item={{ id: 'media-1', url: 'https://cdn.example.com/photo.jpg' }}
         onClose={vi.fn()}
-        renderFooter={() => <button type="button">Download original file</button>}
+        renderActions={() => <button type="button">Download original file</button>}
       />,
     );
 

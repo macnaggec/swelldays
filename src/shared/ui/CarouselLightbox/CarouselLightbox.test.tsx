@@ -53,7 +53,7 @@ describe('CarouselLightbox', () => {
         opened
         onClose={vi.fn()}
         renderOverlay={(index) => <span>{index === 0 ? 'First status' : 'Second status'}</span>}
-        renderFooter={() => <button type="button">Add to cart</button>}
+        renderActions={() => <button type="button">Add to cart</button>}
       />,
     );
 

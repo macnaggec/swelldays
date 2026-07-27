@@ -114,13 +114,11 @@ export interface CarouselLightboxProps {
   renderOverlay?: (itemIndex: number, context: LightboxMediaContext) => ReactNode;
   /** Receives the current carousel index; render icon actions in the floating control rail. */
   renderActions?: (currentIndex: number, context: LightboxMediaContext) => ReactNode;
-  /** Backwards-compatible action slot for existing callers. */
-  renderFooter?: (currentIndex: number, context: LightboxMediaContext) => ReactNode;
 }
 
 /**
  * CarouselLightbox — navigable multi-item modal with keyboard, swipe, and prev/next controls.
- * Callers supply renderFooter to add context-specific actions per slide.
+ * Callers supply renderActions to add context-specific actions per slide.
  */
 const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
   items,
@@ -129,7 +127,6 @@ const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
   onClose,
   renderOverlay,
   renderActions,
-  renderFooter,
 }) => {
   const [nav, setNav] = useState({ index: initialIndex, direction: 0 });
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -297,7 +294,7 @@ const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
   const mediaLoading = !!activeItem && !mediaContext.mediaReady && !mediaFailed;
   const hasMultiple = items.length > 1;
   const overlay = activeItem ? renderOverlay?.(activeIndex, mediaContext) : null;
-  const actions = activeItem ? (renderActions ?? renderFooter)?.(activeIndex, mediaContext) : null;
+  const actions = activeItem ? renderActions?.(activeIndex, mediaContext) : null;
   const motionFadeTransition = prefersReducedMotion ? reducedMotionTransition : fadeTransition;
   const motionLayoutTransition = prefersReducedMotion ? reducedMotionTransition : layoutTransition;
   const goToSlide = useCallback((index: number) => {

@@ -1,5 +1,5 @@
 import { FC, memo, useCallback } from 'react';
-import { Badge, Button, Group, Text } from '@mantine/core';
+import { ActionIcon, Badge, Group, Text, Tooltip } from '@mantine/core';
 import { IconTrash } from '@tabler/icons-react';
 import { formatPrice } from 'shared/lib/currency';
 import { formatShortDate } from 'shared/lib/dateUtils';
@@ -29,22 +29,31 @@ const CartLightbox: FC<CartLightboxProps> = memo(({ item, onClose, onRemove }) =
     <BaseLightbox
       item={lightboxItem}
       onClose={onClose}
-      renderFooter={item ? () => (
-        <Group justify="space-between" align="center">
-          <Group gap="xs">
-            <Text size="sm" fw={500}>{item.spotName}</Text>
-            <Text size="xs" c="dimmed">{formatShortDate(item.capturedAt)}</Text>
-            <Badge color="blue" variant="filled">{formatPrice(item.priceCents)}</Badge>
-          </Group>
-          <Button
+      renderOverlay={item ? () => (
+        <Group gap="xs" wrap="nowrap">
+          <Badge size="lg" color="blue" variant="filled">{formatPrice(item.priceCents)}</Badge>
+          <Text size="sm" c="white" fw={600}>{item.spotName}</Text>
+          <Text size="sm" c="white" style={{ opacity: 0.75 }}>
+            {formatShortDate(item.capturedAt)}
+          </Text>
+        </Group>
+      ) : undefined}
+      renderActions={item ? () => (
+        <Tooltip label="Remove from cart" withArrow withinPortal zIndex={4000}>
+          <ActionIcon
+            aria-label="Remove from cart"
+            data-lightbox-icon-action="true"
+            data-lightbox-icon-frame="chip"
+            data-lightbox-tooltip-layer="above-media"
             variant="subtle"
             color="red"
-            leftSection={<IconTrash size={16} />}
+            size={44}
+            radius="xl"
             onClick={handleRemove}
           >
-            Remove
-          </Button>
-        </Group>
+            <IconTrash size={24} stroke={2} />
+          </ActionIcon>
+        </Tooltip>
       ) : undefined}
     />
   );

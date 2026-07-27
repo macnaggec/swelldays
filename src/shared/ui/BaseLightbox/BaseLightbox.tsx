@@ -11,8 +11,6 @@ export interface BaseLightboxProps {
   renderOverlay?: () => ReactNode;
   /** Render icon actions in the floating control rail. */
   renderActions?: () => ReactNode;
-  /** Backwards-compatible action slot for existing single-item callers. */
-  renderFooter?: () => ReactNode;
 }
 
 /**
@@ -22,7 +20,7 @@ export interface BaseLightboxProps {
  * modal shell, media readiness, loader, and control chrome. With a single item
  * the carousel renders no navigation controls.
  */
-const BaseLightbox: FC<BaseLightboxProps> = memo(({ item, onClose, renderOverlay, renderActions, renderFooter }) => (
+const BaseLightbox: FC<BaseLightboxProps> = memo(({ item, onClose, renderOverlay, renderActions }) => (
   <CarouselLightbox
     items={item ? [item] : []}
     initialIndex={0}
@@ -30,7 +28,6 @@ const BaseLightbox: FC<BaseLightboxProps> = memo(({ item, onClose, renderOverlay
     onClose={onClose}
     renderOverlay={renderOverlay}
     renderActions={renderActions}
-    renderFooter={renderFooter}
   />
 ));
 
