@@ -70,6 +70,17 @@ export default defineConfig({
       // smoothing, so they were no-ops and were reverted rather than left as
       // dead configuration.
       //
+      // Correction (2026-07-27, later the same day): the *wandering* part was
+      // not font rendering at all — it was the panel still animating when the
+      // capture fired, and it is now fixed at source by `waitForMotionToSettle`
+      // in `matrix.spec.ts`. What this tolerance covers is only the repeatable
+      // remainder: with every surface at rest and the baselines re-recorded from
+      // that resting state, a run still differs from the one before it by 29–845
+      // pixels of glyph-edge rasterisation, measured over repeated full-suite
+      // runs at `maxDiffPixelRatio: 0`. That residue is real and irreducible
+      // here; the mid-animation part was neither, and was worth ~0.01 — five
+      // times this tolerance — on its own.
+      //
       // 0.002 sits ~2.5x above the largest observed jitter and ~30x below the
       // smallest real difference this suite has produced: genuine layout
       // changes measured 0.06–0.29 (a mid-animation panel width, a wrong column
@@ -114,7 +125,13 @@ export default defineConfig({
 
   webServer: {
     command: 'npm run dev',
-    url: BASE_URL,
+    // The API server, not the client: `npm run dev` starts both, and Vite is
+    // listening within a second while `tsx` is still loading the server. Waiting
+    // on the client alone let the `setup` project post its sign-in into a proxy
+    // with nothing behind it, which better-auth reports as a 500 — the
+    // unexplained transient auth failure recorded in the F12h handoff. Vite
+    // proxies `/api`, so this URL waits for both.
+    url: `${BASE_URL}/api/health`,
     reuseExistingServer: false,
     timeout: 120_000,
     stdout: 'pipe',

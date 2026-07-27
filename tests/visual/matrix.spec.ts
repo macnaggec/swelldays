@@ -59,6 +59,11 @@ async function hideMapPixels(page: Page): Promise<void> {
     content: `
       .mapboxgl-canvas,
       .mapboxgl-marker,
+      /* The selected-spot popup is anchored to a map coordinate, so where it
+         lands - and whether it is on screen at all - is decided by the camera,
+         exactly like a marker. The session-detail baseline captured it present
+         at one viewport and absent at the others purely by chance. */
+      .mapboxgl-popup,
       .mapboxgl-ctrl-bottom-left,
       .mapboxgl-ctrl-bottom-right { visibility: hidden !important; }
     `,
@@ -73,10 +78,84 @@ function captureOptions() {
   };
 }
 
+/** Consecutive unchanged frames that count as "everything has come to rest". */
+const MOTION_SETTLE_FRAMES = 3;
+/** A surface still moving after this long is a defect, not slow settling. */
+const MOTION_SETTLE_TIMEOUT_MS = 10_000;
+
 /**
- * Wait until the app shell has mounted and the panel surface exists.
- * `toHaveScreenshot` then holds until two consecutive frames match, which
- * absorbs the remaining paint/font settling without a fixed sleep.
+ * Hold until nothing on the page is still moving.
+ *
+ * `animations: 'disabled'` fast-forwards CSS animations and transitions only. The
+ * panel's expand/collapse is neither: `DrawerShell` animates its width and
+ * `PanelChromeSlot` FLIPs its position, both through framer-motion, which drives
+ * `style` from its own frame loop. Playwright cannot skip those to their end
+ * state, and `toHaveScreenshot`'s two-frame stability check compares frames
+ * 100–250ms apart — far enough into the tail of a 280ms ease that the two match
+ * while the surface is still a fraction of a pixel short of its resting place.
+ * That is the whole of the residual `browse-expanded` and `gallery-compact`
+ * failures: a diff confined to whichever element was last in flight, differing by
+ * a few hundred pixels and by a different count every run.
+ *
+ * Geometry is the signal rather than a motion flag from the app, because it is
+ * true of every source of movement at once — the width animation, the chrome
+ * FLIP, and the gallery virtualiser's first measured pass — and it stays true if
+ * a later slice animates something new. Only boxes are sampled, so a colour or
+ * opacity animation (which cannot move a layout) never holds the capture up.
+ */
+async function waitForMotionToSettle(page: Page): Promise<void> {
+  const stillMoving = await page.evaluate(
+    async ({ frames, timeoutMs }) => {
+      const sample = () => {
+        const geometry = new Map<Element, string>();
+        for (const element of document.querySelectorAll('body *')) {
+          const { x, y, width, height } = element.getBoundingClientRect();
+          geometry.set(element, `${x},${y},${width},${height}`);
+        }
+        return geometry;
+      };
+      const nextFrame = () => new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve());
+      });
+      const describe = (element: Element) => {
+        const classes = String(element.getAttribute('class') ?? '').split(' ')[0];
+        return `${element.tagName.toLowerCase()}${classes ? `.${classes}` : ''}`;
+      };
+
+      const deadline = performance.now() + timeoutMs;
+      let previous = sample();
+      let still = 0;
+
+      while (still < frames) {
+        await nextFrame();
+        const next = sample();
+        // A mount reads as movement too: an element absent from the previous
+        // sample has no recorded geometry, so it never matches.
+        const moved = [...next].filter(([element, box]) => previous.get(element) !== box);
+        const changed = moved.length > 0 || next.size !== previous.size;
+        previous = next;
+        still = changed ? 0 : still + 1;
+
+        if (changed && performance.now() > deadline) {
+          return moved.slice(0, 5).map(([element]) => describe(element));
+        }
+      }
+      return null;
+    },
+    { frames: MOTION_SETTLE_FRAMES, timeoutMs: MOTION_SETTLE_TIMEOUT_MS },
+  );
+
+  if (stillMoving) {
+    throw new Error(
+      `Nothing should still be moving ${MOTION_SETTLE_TIMEOUT_MS}ms after the state was reached, `
+        + `but these are: ${stillMoving.join(', ')}.`,
+    );
+  }
+}
+
+/**
+ * Wait until the app shell has mounted, the panel surface exists, and everything
+ * has stopped moving.
  */
 async function settle(page: Page): Promise<void> {
   await expect(page.locator('#root').locator('*').first()).toBeAttached();
@@ -90,6 +169,7 @@ async function settle(page: Page): Promise<void> {
   await expect(
     page.locator('[class*="globeContainer"] [class*="loading"]'),
   ).toHaveCount(0, { timeout: 30_000 });
+  await waitForMotionToSettle(page);
 }
 
 /**
@@ -106,6 +186,9 @@ async function ensurePanelExpansion(page: Page, wanted: 'expanded' | 'compact'):
   // The opposite affordance is now the one on offer: the toggle has committed.
   const settled = wanted === 'expanded' ? 'Collapse panel' : 'Expand panel';
   await expect(page.getByRole('button', { name: settled })).toBeVisible();
+  // The label flips on the state change, which is the *start* of the panel's
+  // width animation, not its end. Without this the capture lands mid-glide.
+  await waitForMotionToSettle(page);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -193,7 +276,13 @@ test('loading', async ({ page }) => {
   });
 
   await page.goto('/', { waitUntil: 'commit' });
-  await expect(page.locator('#root').locator('*').first()).toBeAttached();
+  // `commit` returns before a single module has been fetched, so this is the one
+  // state that starts its clock at the very beginning of a cold page load. Under
+  // the dev server's own load — three viewport projects navigating at once — that
+  // takes longer than the 5s implicit timeout, which is why `loading` was the
+  // state that needed a retry most often. The wait itself is unchanged; only the
+  // patience is, matched to the same order as the map-load wait in `settle`.
+  await expect(page.locator('#root').locator('*').first()).toBeAttached({ timeout: 30_000 });
   await hideMapPixels(page);
   await expect(page).toHaveScreenshot('loading.png', captureOptions());
 
@@ -205,6 +294,7 @@ test('empty-today', async ({ page }) => {
   await page.goto('/');
   await settle(page);
   await page.getByRole('button', { name: 'Today' }).click();
+  await waitForMotionToSettle(page);
   await expect(page).toHaveScreenshot('empty-today.png', captureOptions());
 });
 
@@ -220,5 +310,6 @@ test('dialog-delete-account', async ({ page }) => {
   await settle(page);
   await page.getByRole('button', { name: 'Delete account' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
+  await waitForMotionToSettle(page);
   await expect(page).toHaveScreenshot('dialog-delete-account.png', captureOptions());
 });
