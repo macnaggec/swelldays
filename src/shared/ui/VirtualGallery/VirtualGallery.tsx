@@ -101,7 +101,9 @@ function VirtualGalleryInner<T extends { id: string }>(
   }: VirtualGalleryProps<T>,
   ref: React.ForwardedRef<VirtualGalleryHandle>,
 ) {
-  const { hidden: panelChromeHidden } = usePanelScrollChromeState();
+  const { hidden: panelChromeHidden, drawerPresentation } = usePanelScrollChromeState();
+  const usesReplaceableMobileChrome = drawerPresentation === 'bottomSheet'
+    || drawerPresentation === 'sideOverlay';
 
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
   const containerRef = useCallback((node: HTMLDivElement | null) => {
@@ -219,6 +221,9 @@ function VirtualGalleryInner<T extends { id: string }>(
           // position: sticky, so it pins to the scrollport while every other
           // row keeps the virtualizer's absolute placement.
           const isActiveSticky = stickyDividers && virtualItem.index === activeStickyIndexRef.current;
+          const stickyDateReplaced = isActiveSticky
+            && usesReplaceableMobileChrome
+            && !panelChromeHidden;
 
           return (
             <div
@@ -226,6 +231,9 @@ function VirtualGalleryInner<T extends { id: string }>(
               data-index={virtualItem.index}
               ref={virtualizer.measureElement}
               className={isActiveSticky ? styles.stickyRow : undefined}
+              aria-hidden={stickyDateReplaced || undefined}
+              inert={stickyDateReplaced}
+              data-chrome-replaced={stickyDateReplaced || undefined}
               style={isActiveSticky
                 ? undefined
                 : { position: 'absolute', top: virtualItem.start, left: 0, width: '100%' }}

@@ -20,10 +20,29 @@
    part of that animation. */
 .surface[data-drawer-presentation='bottomSheet'] {
   width: 100%;
+  border-radius: var(--wa-radius-sheet) var(--wa-radius-sheet) 0 0;
+  overflow: hidden;
+}
+
+.surface[data-drawer-presentation='sideOverlay'] {
+  overflow: hidden;
 }
 
 .dragHandle {
   flex-shrink: 0;
   height: 24px;
+  box-sizing: border-box;
+  padding-top: 8px;
+  display: flex;
+  justify-content: center;
   cursor: grab;
+  touch-action: none;
+}
+
+.dragHandle::before {
+  content: '';
+  width: var(--wa-sheet-grabber-width);
+  height: var(--wa-sheet-grabber-height);
+  border-radius: var(--wa-radius-status);
+  background: var(--wa-control-indicator);
 }

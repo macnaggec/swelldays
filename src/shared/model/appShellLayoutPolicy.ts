@@ -72,8 +72,10 @@ export function deriveAppShellLayoutPolicy(
     : preferences.browseExpanded;
   const drawerState = (() => {
     if (sizeBand === 'compact') {
-      if (routeIntent === 'browse') return preferredExpanded ? 'full' : 'collapsed';
-      if (routeIntent === 'galleryWorkspace' || routeIntent === 'routeWorkspace') return 'full';
+      if (routeIntent === 'browse' || routeIntent === 'galleryWorkspace') {
+        return preferredExpanded ? 'full' : 'collapsed';
+      }
+      if (routeIntent === 'routeWorkspace') return 'full';
       return 'expanded';
     }
 
@@ -85,7 +87,7 @@ export function deriveAppShellLayoutPolicy(
     ? 'persistent'
     : sizeBand === 'constrained'
       ? 'sideOverlay'
-      : routeIntent === 'galleryWorkspace' || routeIntent === 'routeWorkspace'
+      : routeIntent === 'routeWorkspace'
         ? 'fullScreen'
         : 'bottomSheet';
   const heightAdjustedPresentation =
@@ -93,17 +95,15 @@ export function deriveAppShellLayoutPolicy(
       ? 'sideOverlay'
       : drawerPresentation;
   const drawerControl = routeIntent === 'browse'
-    || (routeIntent === 'galleryWorkspace' && sizeBand !== 'compact')
+    || routeIntent === 'galleryWorkspace'
     ? 'expandCollapse'
     : routeIntent === 'routeWorkspace'
       ? 'routeBack'
       : routeIntent === 'mapInput' || isImmersiveMapInput
         ? 'workflowBack'
         : 'none';
-  const isModal = routeIntent === 'routeWorkspace' && sizeBand !== 'wide'
-    || routeIntent === 'galleryWorkspace' && sizeBand === 'compact';
+  const isModal = routeIntent === 'routeWorkspace' && sizeBand !== 'wide';
   const mapInteraction = routeIntent === 'routeWorkspace'
-    || routeIntent === 'galleryWorkspace' && sizeBand === 'compact'
     ? 'background'
     : 'interactive';
   const panelControls = routeIntent === 'browse' || routeIntent === 'galleryWorkspace'
@@ -115,7 +115,7 @@ export function deriveAppShellLayoutPolicy(
       ? 'hidden'
       : sizeBand === 'wide'
         ? 'leftStrip'
-        : sizeBand === 'constrained'
+        : heightBand === 'short' || sizeBand === 'constrained'
           ? 'compactBar'
           : 'topBar',
     drawer: {

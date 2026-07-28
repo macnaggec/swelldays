@@ -108,8 +108,8 @@ export function GlobeScene() {
     ? 'background'
     : layoutPolicy.map.interaction;
   const drawerGeometry = useDrawerGeometry();
-  const isShellDrawerExpanded = layoutPolicy.drawer.state === 'expanded'
-    || layoutPolicy.drawer.state === 'full';
+  const canCompactPersistentDrawer = layoutPolicy.drawer.presentation === 'persistent'
+    && (layoutPolicy.drawer.state === 'expanded' || layoutPolicy.drawer.state === 'full');
   const cameraInsetsPx = deriveMapCameraInsets({
     drawerBounds: drawerGeometry,
     drawerPresentation: layoutPolicy.drawer.presentation,
@@ -154,14 +154,14 @@ export function GlobeScene() {
   }, [setTempPin]);
 
   const handleCameraGestureStart = useCallback(() => {
-    if (!isShellDrawerExpanded) return;
+    if (!canCompactPersistentDrawer) return;
 
     if (routeIntent === 'galleryWorkspace') {
       setGalleryPanelExpanded(false);
     } else if (routeIntent === 'browse') {
       setBrowsingPanelExpanded(false);
     }
-  }, [isShellDrawerExpanded, routeIntent, setBrowsingPanelExpanded, setGalleryPanelExpanded]);
+  }, [canCompactPersistentDrawer, routeIntent, setBrowsingPanelExpanded, setGalleryPanelExpanded]);
 
   return (
     <div className={classes.root}>

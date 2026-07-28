@@ -87,7 +87,7 @@ describe('resolveShellLayoutPolicy', () => {
   }
 });
 
-describe('the compact/regular browse cell', () => {
+describe('the mobile browse section shell cells', () => {
   it('resolves to the real compact policy, a bottom sheet over an interactive map', () => {
     const resolved = resolveShellLayoutPolicy({
       routeIntent: 'browse', sizeBand: 'compact', heightBand: 'regular', preferences,
@@ -100,12 +100,28 @@ describe('the compact/regular browse cell', () => {
     expect(resolved.drawer.presentation).toBe('bottomSheet');
   });
 
+  it.each([
+    ['compact', 'browse'],
+    ['compact', 'galleryWorkspace'],
+    ['constrained', 'browse'],
+    ['constrained', 'galleryWorkspace'],
+  ] as const)('activates the %s/short %s cell as a side overlay over the interactive map', (
+    sizeBand,
+    routeIntent,
+  ) => {
+    const cell = { sizeBand, heightBand: 'short', routeIntent } as const;
+    const resolved = resolveShellLayoutPolicy({ ...cell, preferences });
+
+    expect(isCellActive(cell)).toBe(true);
+    expect(resolved.navigation).toBe('compactBar');
+    expect(resolved.drawer.presentation).toBe('sideOverlay');
+    expect(resolved.drawer.modality).toBe('nonmodal');
+    expect(resolved.map.interaction).toBe('interactive');
+  });
+
   it('leaves every other compact and constrained cell falling back to the complete wide lifecycle', () => {
     const stillInactiveCells: readonly ActivationCell[] = [
-      { sizeBand: 'compact', heightBand: 'short', routeIntent: 'browse' },
       { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'browse' },
-      { sizeBand: 'constrained', heightBand: 'short', routeIntent: 'browse' },
-      { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'galleryWorkspace' },
       { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'routeWorkspace' },
       { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'mapInput' },
     ];
@@ -142,7 +158,7 @@ describe('AppShellLayoutPolicyProvider', () => {
     Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
   });
 
-  it('gates a compact, short-height viewport to the wide/regular policy', () => {
+  it('projects a compact, short-height browse viewport to the active side-overlay policy', () => {
     Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
     Object.defineProperty(window, 'innerHeight', { value: 600, configurable: true });
 
@@ -160,8 +176,8 @@ describe('AppShellLayoutPolicyProvider', () => {
 
     expect(result.current).toEqual(deriveAppShellLayoutPolicy({
       routeIntent: 'browse',
-      sizeBand: 'wide',
-      heightBand: 'regular',
+      sizeBand: 'compact',
+      heightBand: 'short',
       preferences,
     }));
   });

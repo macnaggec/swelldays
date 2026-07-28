@@ -24,9 +24,16 @@ interface ScrollPosition {
   hidden: boolean;
 }
 
+interface ScrollChromeState {
+  hidden: boolean;
+  sheetSnap: SheetSnap | undefined;
+}
+
 interface SidePanelProps {
   drawerPresentation?: DrawerShellPresentation;
   drawerModality?: DrawerShellModality;
+  /** Keeps a side overlay mounted while removing it from view and interaction. */
+  open?: boolean;
   /** Sheet position. Required when drawerPresentation is 'bottomSheet', ignored otherwise. */
   sheetSnap?: SheetSnap;
   /** Called when the sheet lands on a new snap. Required when drawerPresentation is 'bottomSheet'. */
@@ -52,12 +59,15 @@ interface SidePanelProps {
    * down and reveals on scroll up.
    */
   subheader?: ReactNode;
+  /** Navigation rendered over the compact sheet, outside its moving surface. */
+  bottomBar?: ReactNode;
   children?: ReactNode;
 }
 
 export function SidePanel({
   drawerPresentation = 'persistent',
   drawerModality = 'nonmodal',
+  open = true,
   sheetSnap,
   onSheetSnapChange,
   restoreFocusRef,
@@ -69,10 +79,17 @@ export function SidePanel({
   header,
   headerFullWidth,
   subheader,
+  bottomBar,
   children,
 }: SidePanelProps) {
   const scrollPositionByTargetRef = useRef<WeakMap<HTMLElement, ScrollPosition>>(new WeakMap());
-  const [scrollChromeState, setScrollChromeState] = useState({ hidden: false });
+  const [scrollChromeState, setScrollChromeState] = useState<ScrollChromeState>({
+    hidden: false,
+    sheetSnap,
+  });
+  if (scrollChromeState.sheetSnap !== sheetSnap) {
+    setScrollChromeState({ hidden: false, sheetSnap });
+  }
 
   const handleBodyScrollCapture = useCallback((event: UIEvent<HTMLDivElement>) => {
     const scrollTarget = event.target;
@@ -102,17 +119,22 @@ export function SidePanel({
     }
 
     setScrollChromeState((current) => {
-      return current.hidden === position.hidden ? current : { hidden: position.hidden };
+      return current.hidden === position.hidden && current.sheetSnap === sheetSnap
+        ? current
+        : { hidden: position.hidden, sheetSnap };
     });
     scrollPositionByTargetRef.current.set(scrollTarget, position);
-  }, []);
+  }, [sheetSnap]);
 
-  const showExpandToggle = Boolean(onExpandToggle) && drawerPresentation !== 'bottomSheet';
+  const showExpandToggle = Boolean(onExpandToggle)
+    && drawerPresentation !== 'bottomSheet'
+    && drawerPresentation !== 'sideOverlay';
+  const hasPanelTop = Boolean(header || onBack || showExpandToggle);
 
   const panelLayout = (
     <PanelLayout
       onScrollCapture={handleBodyScrollCapture}
-      header={(
+      header={hasPanelTop ? (
         <div className={styles.panelTop}>
           {!headerFullWidth && (
             onBack || showExpandToggle ? (
@@ -145,7 +167,7 @@ export function SidePanel({
           )}
           {!headerFullWidth && <div aria-hidden="true" />}
         </div>
-      )}
+      ) : undefined}
     >
       {subheader && <PanelLayoutStickyChrome>{subheader}</PanelLayoutStickyChrome>}
       {children}
@@ -153,7 +175,7 @@ export function SidePanel({
   );
 
   return (
-    <PanelScrollChromeStateProvider value={scrollChromeState}>
+    <PanelScrollChromeStateProvider value={{ ...scrollChromeState, drawerPresentation }}>
       {drawerPresentation === 'bottomSheet' && sheetSnap !== undefined && onSheetSnapChange !== undefined ? (
         <DrawerShell
           presentation="bottomSheet"
@@ -168,12 +190,14 @@ export function SidePanel({
         <DrawerShell
           presentation={drawerPresentation}
           state={expanded ? 'expanded' : 'compact'}
+          open={open}
           modality={drawerModality}
           restoreFocusRef={restoreFocusRef}
         >
           {panelLayout}
         </DrawerShell>
       ) : null}
+      {bottomBar}
     </PanelScrollChromeStateProvider>
   );
 }

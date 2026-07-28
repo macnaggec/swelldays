@@ -10,6 +10,7 @@ import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
+import { BrowseSheetPositionProvider } from 'shared/ui/DrawerShell';
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: RootLayout,
@@ -28,6 +29,14 @@ function RootLayout() {
   );
   const browseExpanded = usePanelExpansionStore((state) => state.browsingExpanded);
   const galleryExpanded = usePanelExpansionStore((state) => state.galleryExpanded);
+  const setBrowseExpanded = usePanelExpansionStore((state) => state.setBrowsingPanelExpanded);
+  const setGalleryExpanded = usePanelExpansionStore((state) => state.setGalleryPanelExpanded);
+  const sheetPreferredExpanded = routeIntent === 'galleryWorkspace'
+    ? galleryExpanded
+    : browseExpanded;
+  const setSheetPreferredExpanded = routeIntent === 'galleryWorkspace'
+    ? setGalleryExpanded
+    : setBrowseExpanded;
 
   return (
     <AuthModalProvider>
@@ -37,8 +46,13 @@ function RootLayout() {
           browseExpanded={browseExpanded}
           galleryExpanded={galleryExpanded}
         >
-          <AppShell />
-          <Outlet />
+          <BrowseSheetPositionProvider
+            preferredExpanded={sheetPreferredExpanded}
+            onPreferredExpandedChange={setSheetPreferredExpanded}
+          >
+            <AppShell />
+            <Outlet />
+          </BrowseSheetPositionProvider>
         </AppShellLayoutPolicyProvider>
       </AddSpotProvider>
     </AuthModalProvider>

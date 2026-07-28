@@ -28,3 +28,62 @@
   max-height: 280px;
   overflow-y: auto;
 }
+
+.dateStrip {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+
+.dateStrip::-webkit-scrollbar {
+  display: none;
+}
+
+.dateMonthGroup {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+.dateYear,
+.dateMonth,
+.dateDay {
+  flex: 0 0 auto;
+}
+
+.dateYear {
+  padding-inline: var(--mantine-spacing-xs);
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 600;
+}
+
+.dateMonth,
+.dateDay {
+  min-width: var(--wa-control-size-compact);
+  height: var(--wa-control-size-compact);
+  padding-inline: var(--mantine-spacing-xs);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-xl);
+  background: var(--mantine-color-body);
+  color: var(--mantine-color-text);
+  cursor: pointer;
+}
+
+.dateMonth {
+  font-weight: 600;
+}
+
+.dateDay[aria-current='date'] {
+  border-color: var(--mantine-primary-color-filled);
+  background: var(--mantine-primary-color-filled);
+  color: var(--mantine-color-white);
+}

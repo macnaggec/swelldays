@@ -22,6 +22,11 @@ export { DRAWER_SHELL_TRANSITION } from './motion';
  */
 export { type SheetSnap } from './sheetSnapPolicy';
 export {
+  BrowseSheetPositionProvider,
+  useBrowseSheetPosition,
+} from './browseSheetPosition';
+export { useSheetSnapTopPx } from './useSheetSnapTopPx';
+export {
   useRegisterSheetScrollOwner,
   useSheetContentScrollable,
 } from './sheetScrollCoupling';

@@ -30,7 +30,7 @@ describe('AppNavigation', () => {
     mocks.isAuthenticated = false;
     mocks.count = 2;
 
-    render(<AppNavigation presentation="leftStrip" />);
+    render(<AppNavigation presentation="leftStrip" drawerPresentation="persistent" />);
 
     expect(screen.getByTestId('cart-control')).toBeInTheDocument();
   });
@@ -39,7 +39,7 @@ describe('AppNavigation', () => {
     mocks.isAuthenticated = false;
     mocks.count = 0;
 
-    render(<AppNavigation presentation="leftStrip" />);
+    render(<AppNavigation presentation="leftStrip" drawerPresentation="persistent" />);
 
     expect(screen.queryByTestId('cart-control')).not.toBeInTheDocument();
   });
@@ -50,7 +50,7 @@ describe('AppNavigation', () => {
       mocks.isAuthenticated = true;
       mocks.count = 1;
 
-      render(<AppNavigation presentation={presentation} />);
+      render(<AppNavigation presentation={presentation} drawerPresentation="persistent" />);
 
       expect(screen.getByTestId('user-control')).toBeInTheDocument();
       expect(screen.getAllByTestId('cart-control')).toHaveLength(1);
@@ -61,7 +61,7 @@ describe('AppNavigation', () => {
     mocks.isAuthenticated = true;
     mocks.count = 1;
 
-    render(<AppNavigation presentation="hidden" />);
+    render(<AppNavigation presentation="hidden" drawerPresentation="hidden" />);
 
     expect(screen.queryByTestId('user-control')).not.toBeInTheDocument();
     expect(screen.queryByTestId('cart-control')).not.toBeInTheDocument();

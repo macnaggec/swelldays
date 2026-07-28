@@ -3,6 +3,7 @@ import { Popover } from '@mantine/core';
 import { DatePicker } from '@mantine/dates';
 import { IconCalendar, IconHeart } from '@tabler/icons-react';
 import type { BrowseDateFilter } from 'shared/model/browseFilters';
+import styles from './FilterPills.module.css';
 
 const pillStyle: React.CSSProperties = {
   background: 'var(--wa-panel-control-background, var(--wa-control-fill))',
@@ -38,9 +39,16 @@ interface FilterPillsProps {
   onChange: (filter: BrowseDateFilter) => void;
   favoritesOnly?: boolean;
   onFavoritesChange?: (favoritesOnly: boolean) => void;
+  horizontalScroll?: boolean;
 }
 
-export function FilterPills({ active, onChange, favoritesOnly = false, onFavoritesChange }: FilterPillsProps) {
+export function FilterPills({
+  active,
+  onChange,
+  favoritesOnly = false,
+  onFavoritesChange,
+  horizontalScroll = false,
+}: FilterPillsProps) {
   const [open, setOpen] = useState(false);
   const isCustom = active !== null && typeof active === 'object';
   const customLabel = isCustom
@@ -50,20 +58,28 @@ export function FilterPills({ active, onChange, favoritesOnly = false, onFavorit
   function renderPill(label: string, key: Exclude<BrowseDateFilter, null | { date: Date }>) {
     const isActive = active === key;
     return (
-      <button style={{ ...pillStyle, ...(isActive ? pillActiveStyle : {}) }} onClick={() => onChange(isActive ? null : key)}>
+      <button
+        aria-pressed={isActive}
+        style={{ ...pillStyle, ...(isActive ? pillActiveStyle : {}) }}
+        onClick={() => onChange(isActive ? null : key)}
+      >
         {label}
       </button>
     );
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+    <div
+      className={styles.root}
+      data-horizontal-scroll={horizontalScroll || undefined}
+    >
       {renderPill('Today', 'today')}
       {renderPill('Yesterday', 'yesterday')}
       {renderPill('Last 7 Days', 'last7')}
       <Popover opened={open} onChange={setOpen} position="bottom-start" shadow="md">
         <Popover.Target>
           <button
+            aria-pressed={isCustom}
             style={{ ...pillStyle, ...(isCustom ? pillActiveStyle : {}) }}
             onClick={() => isCustom ? onChange(null) : setOpen((isOpen) => !isOpen)}
           >

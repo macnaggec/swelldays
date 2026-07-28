@@ -8,7 +8,10 @@ export function AppShell() {
   return (
     <>
       {layoutPolicy.map.interaction !== 'hidden' && <GlobeScene />}
-      <AppNavigation presentation={layoutPolicy.navigation} />
+      <AppNavigation
+        presentation={layoutPolicy.navigation}
+        drawerPresentation={layoutPolicy.drawer.presentation}
+      />
     </>
   );
 }

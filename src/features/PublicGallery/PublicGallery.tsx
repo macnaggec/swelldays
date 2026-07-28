@@ -5,6 +5,7 @@ import { useSpotMediaFeed, useSpotPreview } from 'entities/Spot';
 import { buildGalleryRows } from 'shared/lib/buildGalleryRows';
 import { galleryColumns, type GalleryDensity } from 'shared/lib/galleryColumns';
 import { useMeasuredWidth } from 'shared/hooks';
+import { useLivePanelWidth } from 'shared/ui/DrawerShell/panelSettledWidth';
 import { VirtualGallery, type VirtualGalleryHandle } from 'shared/ui/VirtualGallery/VirtualGallery';
 import { useCartToggle } from 'entities/Commerce';
 import { PanelLayoutRail } from 'shared/ui/PanelLayout';
@@ -57,6 +58,11 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   // a dense grid with actions moved to the lightbox; expanded keeps the roomy
   // card layout.
   const [measuredWidth, galleryViewportRef] = useMeasuredWidth();
+  // Tracks the panel's live width while it opens or closes, so the tiles grow and
+  // shrink with it. The column count is unchanged between the two panel states here,
+  // so there is no arrangement to re-flow — only size — which is why this follows the
+  // moving width where the card feed deliberately does not.
+  const livePanelWidth = useLivePanelWidth(measuredWidth);
   const density: GalleryDensity = expanded ? 'comfortable' : 'compact';
   const columns = galleryColumns(measuredWidth, density);
 
@@ -187,7 +193,15 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   return (
     <>
       <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex' }}>
-        <div ref={galleryViewportRef} style={{ flex: 1, minWidth: 0, display: 'flex' }}>
+        <div
+          ref={galleryViewportRef}
+          style={{
+            flex: livePanelWidth === null ? 1 : '0 0 auto',
+            width: livePanelWidth === null ? undefined : `${livePanelWidth}px`,
+            minWidth: 0,
+            display: 'flex',
+          }}
+        >
           <VirtualGallery
             ref={galleryRef}
             rows={rows}

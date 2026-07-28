@@ -111,6 +111,42 @@
   margin-left: auto;
 }
 
+/* In the phone sheet, search/upload is one centered, card-width block at every
+   snap. The peek row adds 4px to the sticky chrome's existing 8px inset, giving
+   it the same 12px breathing room above and below. */
+:global([data-drawer-presentation='bottomSheet']) .toolbar {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+:global([data-drawer-presentation='bottomSheet']) .toolbar:not([data-expanded]) {
+  margin-block: 4px;
+}
+
+:global([data-drawer-presentation='bottomSheet']) .toolbarMain {
+  flex: 0 1 auto;
+  width: 100%;
+  max-width: var(--wa-gallery-tile-comfortable);
+  margin-inline: auto;
+}
+
+:global([data-drawer-presentation='bottomSheet']) .toolbarTrailing {
+  width: 100%;
+  margin-left: 0;
+}
+
+:global([data-drawer-presentation='sideOverlay']) .toolbar {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+:global([data-drawer-presentation='sideOverlay']) .toolbarMain,
+:global([data-drawer-presentation='sideOverlay']) .toolbarTrailing {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+}
+
 /* Pills right-align in the shared row and wrap below when the remainder can't
    fit them, instead of overflowing the panel. */
 .toolbar[data-expanded] .toolbarTrailing {

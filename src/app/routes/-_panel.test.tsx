@@ -4,9 +4,11 @@ import type { ComponentType, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { useAddSpotStore } from 'features/AddSpot';
+import type { BrowseDateFilter } from 'shared/model/browseFilters';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { resolveAppRouteIntent, type DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
+import { BrowseSheetPositionProvider } from 'shared/ui/DrawerShell';
 import { Route, usePanelFeedLayoutReadyChange, useSetPanelRouteBackAction } from './_panel';
 
 // Mirrors the two-input derivation __root.tsx performs for the real app: PanelFrame
@@ -18,10 +20,18 @@ function TestShellPolicyProvider({ children }: { children: ReactNode }) {
   const isAddSpotActive = useAddSpotStore((s) => s.isActive);
   const browseExpanded = usePanelExpansionStore((state) => state.browsingExpanded);
   const galleryExpanded = usePanelExpansionStore((state) => state.galleryExpanded);
+  const setBrowseExpanded = usePanelExpansionStore((state) => state.setBrowsingPanelExpanded);
+  const setGalleryExpanded = usePanelExpansionStore((state) => state.setGalleryPanelExpanded);
   const routeIntent = resolveAppRouteIntent(
     mocks.matches,
     isAddSpotActive ? 'immersiveMapInput' : undefined,
   );
+  const sheetPreferredExpanded = routeIntent === 'galleryWorkspace'
+    ? galleryExpanded
+    : browseExpanded;
+  const setSheetPreferredExpanded = routeIntent === 'galleryWorkspace'
+    ? setGalleryExpanded
+    : setBrowseExpanded;
 
   return (
     <AppShellLayoutPolicyProvider
@@ -29,7 +39,12 @@ function TestShellPolicyProvider({ children }: { children: ReactNode }) {
       browseExpanded={browseExpanded}
       galleryExpanded={galleryExpanded}
     >
-      {children}
+      <BrowseSheetPositionProvider
+        preferredExpanded={sheetPreferredExpanded}
+        onPreferredExpandedChange={setSheetPreferredExpanded}
+      >
+        {children}
+      </BrowseSheetPositionProvider>
     </AppShellLayoutPolicyProvider>
   );
 }
@@ -51,12 +66,13 @@ const mocks = vi.hoisted(() => ({
   }>,
   params: {} as { spotId?: string },
   sizeBand: 'wide' as 'compact' | 'constrained' | 'wide',
+  heightBand: 'regular' as 'short' | 'regular',
 }));
 
 vi.mock('shared/model/viewportCapabilities', () => ({
   useViewportCapabilities: () => ({
     sizeBand: mocks.sizeBand,
-    heightBand: 'regular',
+    heightBand: mocks.heightBand,
     primaryPointer: 'fine',
     supportsHover: true,
     prefersReducedMotion: false,
@@ -140,6 +156,8 @@ vi.mock('widgets/SidePanel', () => ({
     header,
     headerFullWidth,
     subheader,
+    bottomBar,
+    open,
     sheetSnap,
     onSheetSnapChange,
     children,
@@ -152,12 +170,18 @@ vi.mock('widgets/SidePanel', () => ({
     header?: ReactNode;
     headerFullWidth?: boolean;
     subheader?: ReactNode;
+    bottomBar?: ReactNode;
+    open?: boolean;
     sheetSnap?: 'peek' | 'half' | 'full';
     onSheetSnapChange?: (snap: 'peek' | 'half' | 'full') => void;
     children?: ReactNode;
   }) => (
+    <>
     <div
       data-testid="side-panel"
+      role="complementary"
+      aria-label="Content drawer"
+      aria-hidden={open === false || undefined}
       data-expanded={expanded ? 'true' : 'false'}
       data-has-back={onBack ? 'true' : 'false'}
       data-back-disabled={backDisabled ? 'true' : 'false'}
@@ -178,6 +202,8 @@ vi.mock('widgets/SidePanel', () => ({
       {subheader}
       {children}
     </div>
+      {bottomBar}
+    </>
   ),
   ScopeSwitcher: ({
     scope,
@@ -202,20 +228,52 @@ vi.mock('widgets/SidePanel', () => ({
     </div>
   ),
   FilterPills: ({
+    active,
+    onChange,
     favoritesOnly,
     onFavoritesChange,
   }: {
+    active: BrowseDateFilter;
+    onChange: (value: BrowseDateFilter) => void;
     favoritesOnly?: boolean;
     onFavoritesChange?: (value: boolean) => void;
-  }) => onFavoritesChange ? (
-    <button
-      aria-label="Favorites"
-      aria-pressed={favoritesOnly}
-      onClick={() => onFavoritesChange?.(!favoritesOnly)}
-    >
-      Favorites
-    </button>
-  ) : null,
+  }) => (
+    <div role="group" aria-label="Browse filters">
+      <button
+        aria-pressed={active === 'today'}
+        onClick={() => onChange(active === 'today' ? null : 'today')}
+      >
+        Today
+      </button>
+      <button
+        aria-pressed={active === 'yesterday'}
+        onClick={() => onChange(active === 'yesterday' ? null : 'yesterday')}
+      >
+        Yesterday
+      </button>
+      <button
+        aria-pressed={active === 'last7'}
+        onClick={() => onChange(active === 'last7' ? null : 'last7')}
+      >
+        Last 7 Days
+      </button>
+      <button
+        aria-pressed={active !== null && typeof active === 'object'}
+        onClick={() => onChange({ date: new Date('2026-07-18T12:00:00.000Z') })}
+      >
+        Date
+      </button>
+      {onFavoritesChange && (
+        <button
+          aria-label="Favorites"
+          aria-pressed={favoritesOnly}
+          onClick={() => onFavoritesChange(!favoritesOnly)}
+        >
+          Favorites
+        </button>
+      )}
+    </div>
+  ),
   SessionFeed: ({
     spotId,
     onSessionClick,
@@ -997,12 +1055,14 @@ describe('Panel compact browse sheet', () => {
     mocks.matches = [{ routeId: '/_panel/', staticData: {} }];
     mocks.params = {};
     mocks.sizeBand = 'compact';
+    mocks.heightBand = 'regular';
     usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: true });
     useAddSpotStore.getState().exit();
   });
 
   afterEach(() => {
     mocks.sizeBand = 'wide';
+    mocks.heightBand = 'regular';
     useAddSpotStore.getState().exit();
   });
 
@@ -1011,6 +1071,96 @@ describe('Panel compact browse sheet', () => {
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'half');
+  });
+
+  it('returns to the map from the bottom section bar by lowering the sheet to peek', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Map' }));
+
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'peek');
+    expect(screen.queryByRole('navigation', { name: 'Browse sections' })).not.toBeInTheDocument();
+  });
+
+  it('moves Feed and Gallery navigation out of the compact sheet header', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(screen.getByRole('navigation', { name: 'Browse sections' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Content scope' })).not.toBeInTheDocument();
+  });
+
+  it('opens Gallery from the compact bottom section bar', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gallery' }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/gallery' });
+  });
+
+  it('does not overwrite the Gallery preference when switching sections at the half snap', () => {
+    usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: false });
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gallery' }));
+
+    expect(usePanelExpansionStore.getState().galleryExpanded).toBe(false);
+  });
+
+  it('keeps the same compact sheet and section bar after Gallery opens', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'half');
+    fireEvent.click(screen.getByRole('button', { name: 'Gallery' }));
+
+    mocks.matches = [{
+      routeId: '/_panel/gallery',
+      staticData: { appRouteIntent: 'galleryWorkspace' },
+    }];
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'half');
+    expect(screen.getByRole('navigation', { name: 'Browse sections' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gallery' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByRole('group', { name: 'Content scope' })).not.toBeInTheDocument();
+  });
+
+  it('preserves one shared filter selection across sheet, section, and mobile-shell changes', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Today' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Favorites' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Map' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Land on half' }));
+
+    expect(screen.getByRole('button', { name: 'Today' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getAllByRole('group', { name: 'Browse filters' })).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gallery' }));
+    mocks.matches = [{
+      routeId: '/_panel/gallery',
+      staticData: { appRouteIntent: 'galleryWorkspace' },
+    }];
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(screen.getByRole('button', { name: 'Today' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'true');
+
+    mocks.sizeBand = 'constrained';
+    mocks.heightBand = 'short';
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Map' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gallery' }));
+
+    expect(screen.getByRole('button', { name: 'Today' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getAllByRole('group', { name: 'Browse filters' })).toHaveLength(1);
   });
 
   it('carries an expanded wide panel into the sheet when the window narrows to a phone', () => {
@@ -1061,5 +1211,60 @@ describe('Panel compact browse sheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Land on peek' }));
 
     expect(screen.queryByRole('button', { name: 'Select spot-b' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Panel short-height browse section shell', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.isAuthenticated = true;
+    mocks.matches = [{ routeId: '/_panel/', staticData: {} }];
+    mocks.params = {};
+    mocks.sizeBand = 'constrained';
+    mocks.heightBand = 'short';
+    usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: false });
+    useAddSpotStore.getState().exit();
+  });
+
+  afterEach(() => {
+    mocks.sizeBand = 'wide';
+    mocks.heightBand = 'regular';
+    useAddSpotStore.getState().exit();
+  });
+
+  it('keeps section navigation available while Map closes and Feed reopens the same panel', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    const panel = screen.getByRole('complementary', { name: 'Content drawer' });
+    fireEvent.click(screen.getByRole('button', { name: 'Map' }));
+
+    expect(screen.getByRole('navigation', { name: 'Browse sections' })).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Content drawer' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Feed' }));
+
+    expect(screen.getByRole('complementary', { name: 'Content drawer' })).toBe(panel);
+  });
+
+  it('reopens the panel for Gallery and keeps the short-height shell after its route becomes active', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    const panel = screen.getByRole('complementary', { name: 'Content drawer' });
+    fireEvent.click(screen.getByRole('button', { name: 'Map' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gallery' }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/gallery' });
+    expect(screen.getByRole('complementary', { name: 'Content drawer' })).toBe(panel);
+
+    mocks.matches = [{
+      routeId: '/_panel/gallery',
+      staticData: { appRouteIntent: 'galleryWorkspace' },
+    }];
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(screen.getByRole('complementary', { name: 'Content drawer' })).toBe(panel);
+    expect(screen.getByRole('button', { name: 'Gallery' })).toHaveAttribute('aria-current', 'page');
   });
 });

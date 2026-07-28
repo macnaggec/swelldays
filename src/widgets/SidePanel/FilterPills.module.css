@@ -1,0 +1,20 @@
+.root {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.root[data-horizontal-scroll] {
+  width: 100%;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  justify-content: safe center;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.root[data-horizontal-scroll]::-webkit-scrollbar {
+  display: none;
+}

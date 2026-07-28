@@ -1,4 +1,5 @@
 import { createContext, useContext, useState } from 'react';
+import { useDrawerGeometry } from './geometry';
 
 export interface PanelSettledWidth {
   /**
@@ -36,21 +37,6 @@ export function usePanelSettledWidth(): PanelSettledWidth | null {
   return useContext(PanelSettledWidthContext);
 }
 
-/**
- * The width this element will have once the drawer stops moving, or null when it is
- * already there (or is not inside a drawer at all).
- *
- * Takes the caller's own measured width so it can work out how much narrower than the
- * surface this element sits — padding, and anything beside it such as the gallery's
- * date rail. That gap does not scale when the panel does, so it is captured while
- * standing still and subtracted, rather than scaling the caller's own width, which
- * would overshoot by twice the gap.
- *
- * The answer arrives in the same render that the toggle is pressed. A caller that
- * instead waited for its own resize measurement would be a frame behind: for that one
- * frame it would still be arranged for the old width while already occupying the new
- * one, which is long enough to see a single card stretched across the full panel.
- */
 export interface SettledLayout {
   /**
    * Width to *occupy* while the drawer moves — the wider of where it is and where it is
@@ -66,6 +52,36 @@ export interface SettledLayout {
   contentWidth: number | null;
   /** True while the drawer is moving between its two states. */
   transitioning: boolean;
+}
+
+/**
+ * The panel's width *right now*, mid-animation, minus this element's own inset — or null
+ * when the panel is standing still.
+ *
+ * The opposite choice from `useSettledLayout`, and right for the opposite case. Content
+ * whose arrangement changes between the two panel states must not follow the moving
+ * width, or it re-flows on every frame. Content that keeps the same arrangement and only
+ * changes *size* — the photo grid, which holds its column count and simply scales its
+ * tiles — has nothing to re-flow, so following the width is what makes it grow and
+ * shrink with the panel instead of jumping to its final size and waiting to be uncovered.
+ *
+ * Subscribes to per-frame geometry, so it is deliberately a separate hook: callers of
+ * `useSettledLayout` must not be re-rendered every frame just because this exists.
+ */
+export function useLivePanelWidth(measuredWidth: number): number | null {
+  const settled = usePanelSettledWidth();
+  const geometry = useDrawerGeometry();
+  const transitioning = settled?.transitioning ?? false;
+  const destinationSurface = settled?.destinationWidth ?? 0;
+
+  const [inset, setInset] = useState(-1);
+  if (!transitioning && measuredWidth > 0 && destinationSurface > 0) {
+    const next = destinationSurface - measuredWidth;
+    if (next !== inset) setInset(next);
+  }
+
+  if (!transitioning || inset < 0 || !geometry) return null;
+  return Math.max(0, geometry.width - inset);
 }
 
 /**

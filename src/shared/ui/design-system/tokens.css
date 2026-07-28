@@ -30,6 +30,9 @@
   --wa-control-size-navigation: 44px;
   /* Compact-band navigation control. */
   --wa-control-size-navigation-compact: 36px;
+  --wa-control-width-section-navigation: 64px;
+  --wa-sheet-grabber-width: 36px;
+  --wa-sheet-grabber-height: 5px;
 
   /* Motion */
   --wa-motion-duration-control: 150ms;
@@ -123,6 +126,7 @@
   --wa-radius-control-md: 10px;
   --wa-radius-chrome: 12px;
   --wa-radius-panel: 12px;
+  --wa-radius-sheet: 16px;
   --wa-radius-dialog: 16px;
   --wa-radius-status: 16px;
 

@@ -1,6 +1,12 @@
 import { createContext, useContext } from 'react';
+import type { DrawerShellPresentation } from 'shared/ui/DrawerShell';
 
-const PanelScrollChromeStateContext = createContext({ hidden: false });
+interface PanelScrollChromeState {
+  hidden: boolean;
+  drawerPresentation?: DrawerShellPresentation;
+}
+
+const PanelScrollChromeStateContext = createContext<PanelScrollChromeState>({ hidden: false });
 
 export const PanelScrollChromeStateProvider = PanelScrollChromeStateContext.Provider;
 

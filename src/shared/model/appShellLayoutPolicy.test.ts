@@ -160,7 +160,7 @@ describe('deriveAppShellLayoutPolicy — compact', () => {
   });
 
   it.each([
-    ['galleryWorkspace', 'fullScreen', 'none', 'modal', 'background'],
+    ['galleryWorkspace', 'bottomSheet', 'expandCollapse', 'nonmodal', 'interactive'],
     ['routeWorkspace', 'fullScreen', 'routeBack', 'modal', 'background'],
     ['mapInput', 'bottomSheet', 'workflowBack', 'nonmodal', 'interactive'],
     ['immersiveMapInput', 'bottomSheet', 'workflowBack', 'nonmodal', 'interactive'],

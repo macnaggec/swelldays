@@ -47,6 +47,7 @@ const isMigratedMaterialSurface = (file) => (
   || file.startsWith('src/widgets/SidePanel/SessionFeed')
   || file.startsWith('src/widgets/SidePanel/SidePanel')
   || file.startsWith('src/widgets/AppNavigation/AppNavigation')
+  || file.startsWith('src/widgets/BrowseSectionBar/')
   || file === 'src/widgets/AppNavigation/CartControl.tsx'
   || file.startsWith('src/views/GlobeScene/')
   || file === 'src/widgets/GlobeMap/LocationPicker.module.css'
@@ -167,6 +168,9 @@ const requiredResponsiveLayoutTokens = [
   '--wa-control-height-default',
   '--wa-control-size-navigation',
   '--wa-control-size-navigation-compact',
+  '--wa-control-width-section-navigation',
+  '--wa-sheet-grabber-width',
+  '--wa-sheet-grabber-height',
   '--wa-motion-duration-control',
   '--wa-motion-duration-chrome',
   '--wa-motion-easing-standard',
@@ -177,6 +181,7 @@ const requiredResponsiveLayoutTokens = [
   '--wa-z-panel-chrome',
   '--wa-z-modal-content',
   '--wa-z-modal-interrupt',
+  '--wa-radius-sheet',
 ];
 
 // Modal-tier z-index must come from a semantic role token, never a portal
@@ -193,6 +198,9 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-safe-area-right',
     '--wa-safe-area-bottom',
     '--wa-safe-area-left',
+    '--wa-radius-sheet',
+    '--wa-sheet-grabber-width',
+    '--wa-sheet-grabber-height',
   ]],
   ['src/shared/ui/BaseGallery/BaseGallery.module.css', [
     '--wa-motion-duration-chrome',
@@ -216,6 +224,15 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-safe-area-top',
     '--wa-safe-area-left',
     '--wa-safe-area-right',
+  ]],
+  ['src/widgets/BrowseSectionBar/BrowseSectionBar.module.css', [
+    '--wa-shell-edge-clearance',
+    '--wa-control-size-navigation',
+    '--wa-control-width-section-navigation',
+    '--wa-motion-duration-control',
+    '--wa-motion-easing-standard',
+    '--wa-safe-area-bottom',
+    '--wa-z-floating-chrome',
   ]],
   ['src/widgets/SidePanel/SidePanel.module.css', [
     '--wa-panel-chrome-height',
@@ -242,6 +259,87 @@ const requiredDrawerShellStyles = [
   ['right safe-area projection', /--wa-safe-area-right/],
   ['bottom safe-area projection', /--wa-safe-area-bottom/],
   ['left safe-area projection', /--wa-safe-area-left/],
+  [
+    'semantic bottom-sheet top corners',
+    /\.surface\[data-drawer-presentation='bottomSheet'\]\s*\{[^}]*border-radius:\s*var\(--wa-radius-sheet\)\s+var\(--wa-radius-sheet\)\s+0\s+0/s,
+  ],
+  [
+    'visible bottom-sheet grabber',
+    /\.dragHandle::before\s*\{[^}]*width:\s*var\(--wa-sheet-grabber-width\)[^}]*height:\s*var\(--wa-sheet-grabber-height\)/s,
+  ],
+];
+
+const requiredDrawerShellRuntime = [
+  ['controlled sheet release without independent drag momentum', /dragMomentum=\{false\}/],
+  [
+    'short side-overlay width owned by DrawerShell',
+    /const SHORT_SIDE_OVERLAY_WIDTH_VW = 45;[\s\S]*props\.presentation === 'sideOverlay'[\s\S]*SHORT_SIDE_OVERLAY_WIDTH_VW/,
+  ],
+  [
+    'closed side-overlay interaction removal without unmounting',
+    /aria-hidden=\{panelOpen \? undefined : true\}[\s\S]*inert=\{!panelOpen\}/,
+  ],
+];
+
+const requiredCompactBrowseNavigationRuntime = [
+  ['composition-owned sheet position input', /\buseBrowseSheetPosition\b/],
+  ['DrawerShell-owned sheet-top projection', /\buseSheetSnapTopPx\b/],
+  ['full-sheet interaction removal', /\binert=\{isBrowseSheetFull\}/],
+];
+
+const requiredCompactBrowseNavigationStyles = [
+  [
+    'middle-snap placement beside the sheet',
+    /\.root\[data-navigation-presentation='topBar'\]\[data-sheet-snap='half'\]\s*\{[^}]*--wa-browse-navigation-translate-y:\s*-100%[^}]*top:\s*calc\(var\(--wa-browse-sheet-top\)\s*-\s*var\(--wa-shell-edge-clearance\)\)/s,
+  ],
+  [
+    'full-snap hiding',
+    /\.root\[data-navigation-presentation='topBar'\]\[data-sheet-snap='full'\]\s*\{[^}]*opacity:\s*0[^}]*visibility:\s*hidden/s,
+  ],
+  [
+    'semantic snap transition',
+    /\.root\[data-navigation-presentation='topBar'\]\s*\{[^}]*transition:[^}]*var\(--wa-motion-duration-chrome\)[^}]*var\(--wa-motion-easing-standard\)/s,
+  ],
+];
+
+const requiredBrowseSectionBarRuntime = [
+  [
+    'measured drawer-adjacent placement',
+    /\buseDrawerAdjacentInlineEndInset\b/,
+  ],
+];
+
+const requiredBrowseSectionBarStyles = [
+  [
+    'centering within the measured map remainder',
+    /\.root\[data-drawer-adjacent\]\s*\{[^}]*inset-inline-start:\s*calc\(\(100%\s*-\s*var\(--wa-browse-section-drawer-inset\)\)\s*\/\s*2\)/s,
+  ],
+];
+
+const requiredCompactBrowseToolbarStyles = [
+  [
+    'centered bounded bottom-sheet search controls',
+    /\[data-drawer-presentation='bottomSheet'\][^{]*\.toolbarMain\s*\{[^}]*max-width:\s*var\(--wa-gallery-tile-comfortable\)[^}]*margin-inline:\s*auto/s,
+  ],
+  [
+    'even compact bottom-sheet toolbar breathing room',
+    /\[data-drawer-presentation='bottomSheet'\][^{]*\.toolbar:not\(\[data-expanded\]\)\s*\{[^}]*margin-block:\s*4px/s,
+  ],
+  [
+    'short side-overlay toolbar stacking',
+    /\[data-drawer-presentation='sideOverlay'\][^{]*\.toolbar\s*\{[^}]*flex-direction:\s*column[^}]*align-items:\s*stretch/s,
+  ],
+];
+
+const requiredFilterPillStyles = [
+  [
+    'single-row horizontal overflow',
+    /\.root\[data-horizontal-scroll\]\s*\{[^}]*flex-wrap:\s*nowrap[^}]*overflow-x:\s*auto/s,
+  ],
+  [
+    'centered pills when they fit',
+    /\.root\[data-horizontal-scroll\]\s*\{[^}]*justify-content:\s*safe center/s,
+  ],
 ];
 
 const requiredPanelLayoutStyles = [
@@ -254,6 +352,32 @@ const requiredPanelLayoutStyles = [
   // overflows by the row's height and scrolls when its cards already fit.
   ['chrome-aware scroll stacking', /\.scroller\s*{[^}]*flex-direction:\s*column/s],
   ['content that flexes rather than claiming full height', /\.content\s*{[^}]*flex:\s*1\s+0\s+auto/s],
+];
+
+const requiredMobileGalleryDateRuntime = [
+  [
+    'drawer presentation carried by the existing panel scroll owner',
+    /PanelScrollChromeStateProvider\s+value=\{\{[^}]*\.\.\.scrollChromeState[^}]*drawerPresentation/s,
+  ],
+  [
+    'sticky date replacement driven by the existing panel chrome state',
+    /stickyDateReplaced[\s\S]*panelChromeHidden[\s\S]*drawerPresentation/,
+  ],
+  [
+    'horizontal date navigation reusing the gallery month grouping',
+    /groupDaysByMonth[\s\S]*aria-label="Dates"/,
+  ],
+];
+
+const requiredMobileGalleryDateStyles = [
+  [
+    'single-row horizontal date overflow',
+    /\.dateStrip\s*\{[^}]*flex-wrap:\s*nowrap[^}]*overflow-x:\s*auto/s,
+  ],
+  [
+    'semantic sticky-date replacement motion',
+    /\.stickyRow\s*\{[^}]*var\(--wa-motion-duration-chrome\)[^}]*var\(--wa-motion-easing-standard\)[\s\S]*\.stickyRow\[data-chrome-replaced\]\s*\{[^}]*visibility:\s*hidden/s,
+  ],
 ];
 
 // The component owns the count (F12k); the stylesheet must not re-column.
@@ -336,6 +460,33 @@ const rules = [
     ),
   },
   {
+    id: 'browse-sheet-position-provider-is-mounted-at-the-composition-root',
+    message: 'Mount the browse sheet position provider once at the composition root.',
+    pattern: /<BrowseSheetPositionProvider[\s>]/,
+    include: isRuntimeTypeScript,
+    exclude: file => file === 'src/app/routes/__root.tsx',
+  },
+  {
+    id: 'browse-sheet-position-has-bounded-consumers',
+    message: 'Only the panel route, browse section bar, and app navigation may consume the composition-owned browse sheet position.',
+    pattern: /\buseBrowseSheetPosition\b/,
+    include: isRuntimeTypeScript,
+    exclude: file => (
+      file === 'src/shared/ui/DrawerShell/browseSheetPosition.tsx'
+      || file === 'src/shared/ui/DrawerShell/index.ts'
+      || file === 'src/app/routes/_panel.tsx'
+      || file === 'src/widgets/AppNavigation/AppNavigation.tsx'
+      || file === 'src/widgets/BrowseSectionBar/BrowseSectionBar.tsx'
+    ),
+  },
+  {
+    id: 'browse-section-bar-is-mounted-by-the-panel-route',
+    message: 'Mount compact browse section navigation once from the panel route.',
+    pattern: /<BrowseSectionBar[\s>]/,
+    include: isRuntimeTypeScript,
+    exclude: file => file === 'src/app/routes/_panel.tsx',
+  },
+  {
     id: 'app-navigation-is-mounted-once-by-the-shell',
     message: 'Navigation is mounted once by AppShell from the shell policy; features and routes must not mount a navigation presentation.',
     pattern: /\bAppNavigation\b/,
@@ -407,7 +558,7 @@ const rules = [
   {
     id: 'drawer-shell-owns-sheet-snap-geometry',
     message: 'Bottom-sheet snap positions and heights belong to shared/ui/DrawerShell; consume the shell instead of declaring snap geometry.',
-    pattern: /\bSHEET_SNAP_FRACTIONS\b|\bSHEET_PEEK_HEIGHT_PX\b|\bresolveSheetSnapHeights\b|\bnearestSheetSnap\b|\[data-drawer-snap/,
+    pattern: /\bSHEET_(?:SNAP_FRACTIONS|HALF_HEIGHT_FRACTION|FULL_TOP_INSET_PX|PEEK_HEIGHT_PX)\b|\bresolveSheetSnapHeights\b|\bnearestSheetSnap\b|\[data-drawer-snap/,
     include: file => /\.(?:css|tsx?)$/.test(file) && !file.startsWith('src/shared/ui/DrawerShell/'),
   },
   {
@@ -558,6 +709,7 @@ const rules = [
     pattern: /(?:width|height):\s*(?:32px|36px|44px|2\.25rem)|--upload-control-height:\s*36px/,
     include: file => (
       file === 'src/widgets/AppNavigation/AppNavigation.module.css'
+      || file === 'src/widgets/BrowseSectionBar/BrowseSectionBar.module.css'
       || file === 'src/widgets/SidePanel/SidePanel.module.css'
       || file === 'src/shared/ui/PanelRouteLayout.module.css'
       || file === 'src/features/Upload/ui/UploadSidebar.module.css'
@@ -662,6 +814,104 @@ for (const [requirement, pattern] of requiredDrawerShellStyles) {
   });
 }
 
+const drawerShellRuntime = readFileSync(
+  path.join(root, 'src/shared/ui/DrawerShell/DrawerShell.tsx'),
+  'utf8',
+);
+for (const [requirement, pattern] of requiredDrawerShellRuntime) {
+  if (pattern.test(drawerShellRuntime)) continue;
+  violations.push({
+    file: 'src/shared/ui/DrawerShell/DrawerShell.tsx',
+    line: 1,
+    rule: 'drawer-shell-required-runtime',
+    message: `DrawerShell is missing ${requirement}.`,
+  });
+}
+
+const compactBrowseNavigationRuntime = readFileSync(
+  path.join(root, 'src/widgets/AppNavigation/AppNavigation.tsx'),
+  'utf8',
+);
+for (const [requirement, pattern] of requiredCompactBrowseNavigationRuntime) {
+  if (pattern.test(compactBrowseNavigationRuntime)) continue;
+  violations.push({
+    file: 'src/widgets/AppNavigation/AppNavigation.tsx',
+    line: 1,
+    rule: 'compact-browse-navigation-required-runtime',
+    message: `Compact browse navigation is missing ${requirement}.`,
+  });
+}
+
+const compactBrowseNavigationStyles = readFileSync(
+  path.join(root, 'src/widgets/AppNavigation/AppNavigation.module.css'),
+  'utf8',
+);
+for (const [requirement, pattern] of requiredCompactBrowseNavigationStyles) {
+  if (pattern.test(compactBrowseNavigationStyles)) continue;
+  violations.push({
+    file: 'src/widgets/AppNavigation/AppNavigation.module.css',
+    line: 1,
+    rule: 'compact-browse-navigation-required-styles',
+    message: `Compact browse navigation is missing ${requirement}.`,
+  });
+}
+
+const browseSectionBarRuntime = readFileSync(
+  path.join(root, 'src/widgets/BrowseSectionBar/BrowseSectionBar.tsx'),
+  'utf8',
+);
+for (const [requirement, pattern] of requiredBrowseSectionBarRuntime) {
+  if (pattern.test(browseSectionBarRuntime)) continue;
+  violations.push({
+    file: 'src/widgets/BrowseSectionBar/BrowseSectionBar.tsx',
+    line: 1,
+    rule: 'browse-section-bar-required-runtime',
+    message: `Browse section navigation is missing ${requirement}.`,
+  });
+}
+
+const browseSectionBarStyles = readFileSync(
+  path.join(root, 'src/widgets/BrowseSectionBar/BrowseSectionBar.module.css'),
+  'utf8',
+);
+for (const [requirement, pattern] of requiredBrowseSectionBarStyles) {
+  if (pattern.test(browseSectionBarStyles)) continue;
+  violations.push({
+    file: 'src/widgets/BrowseSectionBar/BrowseSectionBar.module.css',
+    line: 1,
+    rule: 'browse-section-bar-required-styles',
+    message: `Browse section navigation is missing ${requirement}.`,
+  });
+}
+
+const compactBrowseToolbarStyles = readFileSync(
+  path.join(root, 'src/shared/ui/PanelRouteLayout.module.css'),
+  'utf8',
+);
+for (const [requirement, pattern] of requiredCompactBrowseToolbarStyles) {
+  if (pattern.test(compactBrowseToolbarStyles)) continue;
+  violations.push({
+    file: 'src/shared/ui/PanelRouteLayout.module.css',
+    line: 1,
+    rule: 'compact-browse-toolbar-required-styles',
+    message: `Compact browse toolbar is missing ${requirement}.`,
+  });
+}
+
+const filterPillStylesPath = path.join(root, 'src/widgets/SidePanel/FilterPills.module.css');
+const filterPillStyles = statSync(filterPillStylesPath, { throwIfNoEntry: false })?.isFile()
+  ? readFileSync(filterPillStylesPath, 'utf8')
+  : '';
+for (const [requirement, pattern] of requiredFilterPillStyles) {
+  if (pattern.test(filterPillStyles)) continue;
+  violations.push({
+    file: 'src/widgets/SidePanel/FilterPills.module.css',
+    line: 1,
+    rule: 'filter-pill-required-styles',
+    message: `Filter pills are missing ${requirement}.`,
+  });
+}
+
 const panelLayoutStyles = readFileSync(
   path.join(root, 'src/shared/ui/PanelLayout/PanelLayout.module.css'),
   'utf8',
@@ -673,6 +923,35 @@ for (const [requirement, pattern] of requiredPanelLayoutStyles) {
     line: 1,
     rule: 'panel-layout-required-styles',
     message: `PanelLayout is missing ${requirement}.`,
+  });
+}
+
+const mobileGalleryDateRuntime = [
+  readFileSync(path.join(root, 'src/widgets/SidePanel/SidePanel.tsx'), 'utf8'),
+  readFileSync(path.join(root, 'src/shared/ui/VirtualGallery/VirtualGallery.tsx'), 'utf8'),
+  readFileSync(path.join(root, 'src/features/PublicGallery/ui/GalleryDateJumpHeading.tsx'), 'utf8'),
+].join('\n');
+for (const [requirement, pattern] of requiredMobileGalleryDateRuntime) {
+  if (pattern.test(mobileGalleryDateRuntime)) continue;
+  violations.push({
+    file: 'src/features/PublicGallery/ui/GalleryDateJumpHeading.tsx',
+    line: 1,
+    rule: 'mobile-gallery-date-required-runtime',
+    message: `Mobile gallery date navigation is missing ${requirement}.`,
+  });
+}
+
+const mobileGalleryDateStyles = [
+  readFileSync(path.join(root, 'src/shared/ui/VirtualGallery/VirtualGallery.module.css'), 'utf8'),
+  readFileSync(path.join(root, 'src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css'), 'utf8'),
+].join('\n');
+for (const [requirement, pattern] of requiredMobileGalleryDateStyles) {
+  if (pattern.test(mobileGalleryDateStyles)) continue;
+  violations.push({
+    file: 'src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css',
+    line: 1,
+    rule: 'mobile-gallery-date-required-styles',
+    message: `Mobile gallery date navigation is missing ${requirement}.`,
   });
 }
 

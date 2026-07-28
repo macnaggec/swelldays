@@ -37,6 +37,19 @@
   z-index: 1;
   width: 100%;
   background: var(--mantine-color-body);
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition:
+    opacity var(--wa-motion-duration-chrome) var(--wa-motion-easing-standard),
+    transform var(--wa-motion-duration-chrome) var(--wa-motion-easing-standard);
+}
+
+.stickyRow[data-chrome-replaced] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-100%);
 }
 
 .divider {

@@ -37,7 +37,7 @@ vi.mock('views/GlobeScene', () => ({
 }));
 
 vi.mock('widgets/AppNavigation', () => ({
-  AppNavigation: ({ presentation }: { presentation: string }) => (
+  AppNavigation: ({ presentation }: { presentation: string; drawerPresentation: string }) => (
     presentation === 'hidden' ? null : <div data-testid="app-navigation" />
   ),
 }));

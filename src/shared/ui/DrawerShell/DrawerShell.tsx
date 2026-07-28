@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -52,6 +53,7 @@ interface DrawerShellBaseProps {
 interface DrawerShellPanelProps extends DrawerShellBaseProps {
   presentation: DrawerShellPanelPresentation;
   state: DrawerShellState;
+  open?: boolean;
 }
 
 interface DrawerShellSheetProps extends DrawerShellBaseProps {
@@ -65,6 +67,7 @@ export type DrawerShellProps = DrawerShellPanelProps | DrawerShellSheetProps;
 // Small because dragConstraints already bounds the travel between full and peek; this
 // only softens the stop at either end rather than allowing real overshoot.
 const SHEET_DRAG_ELASTIC = 0.08;
+const SHORT_SIDE_OVERLAY_WIDTH_VW = 45;
 
 /**
  * Band-transition continuity contract (F12d): the drawer surface and its children keep
@@ -77,11 +80,18 @@ export function DrawerShell(props: DrawerShellProps) {
   const { modality, ariaLabel = 'Content drawer', restoreFocusRef, children } = props;
   const snap = props.presentation === 'bottomSheet' ? props.snap : undefined;
   const onSnapChange = props.presentation === 'bottomSheet' ? props.onSnapChange : undefined;
+  const panelOpen = props.presentation === 'bottomSheet' ? true : (props.open ?? true);
   const positionKey: DrawerShellState | SheetSnap =
     props.presentation === 'bottomSheet' ? props.snap : props.state;
+  const transitionKey = props.presentation === 'bottomSheet'
+    ? `bottomSheet:${props.snap}`
+    : `${props.presentation}:${props.state}:${panelOpen ? 'open' : 'closed'}`;
 
   const { prefersReducedMotion } = useViewportCapabilities();
-  const { layoutViewportHeightPx: viewportHeightPx } = useViewportMetrics();
+  const {
+    layoutViewportWidthPx: viewportWidthPx,
+    layoutViewportHeightPx: viewportHeightPx,
+  } = useViewportMetrics();
   const heights = useMemo(
     () => resolveSheetSnapHeights({ viewportHeightPx, peekHeightPx: SHEET_PEEK_HEIGHT_PX }),
     [viewportHeightPx],
@@ -100,16 +110,17 @@ export function DrawerShell(props: DrawerShellProps) {
   });
 
   const [transitioning, setTransitioning] = useState(false);
-  const [renderedPositionKey, setRenderedPositionKey] = useState(positionKey);
-  if (renderedPositionKey !== positionKey) {
-    setRenderedPositionKey(positionKey);
+  const [renderedTransitionKey, setRenderedTransitionKey] = useState(transitionKey);
+  if (renderedTransitionKey !== transitionKey) {
+    setRenderedTransitionKey(transitionKey);
     setTransitioning(true);
   }
 
   // The surface's width the last time it was standing still, and which position it had
-  // settled at. For the panel, every destination is an exact multiple of it, because the
-  // two states are pure fractions of the viewport with nothing added. For the sheet, the
-  // surface is full width at every snap, so this alone is already the destination.
+  // settled at. Persistent-panel destinations are exact multiples of it because their
+  // two states are pure viewport fractions. The short side overlay instead has one
+  // DrawerShell-owned viewport fraction plus its closed zero-width state. The sheet is
+  // full width at every snap, so its resting measurement is already the destination.
   const [resting, setResting] = useState<{ key: DrawerShellState | SheetSnap; width: number }>({
     key: positionKey,
     width: 0,
@@ -187,6 +198,8 @@ export function DrawerShell(props: DrawerShellProps) {
     : null;
   const destinationWidth = props.presentation === 'bottomSheet'
     ? resting.width
+    : props.presentation === 'sideOverlay'
+      ? panelOpen ? viewportWidthPx * (SHORT_SIDE_OVERLAY_WIDTH_VW / 100) : 0
     : resting.width > 0 && previousPanelVw !== null
       ? resting.width * (PANEL_WIDTH_VW[props.state] / previousPanelVw)
       : 0;
@@ -203,22 +216,24 @@ export function DrawerShell(props: DrawerShellProps) {
 
   // The panel scroll owner the sheet arbitrates with (step 8): registered by PanelLayout
   // through SheetScrollOwnerContext, never queried by attribute.
-  const [scrollOwnerElement, setScrollOwnerElement] = useState<HTMLElement | null>(null);
+  const removeScrollOwnerListenerRef = useRef<() => void>(() => {});
   const [contentScrolledFromTop, setContentScrolledFromTop] = useState(false);
 
-  useEffect(() => {
-    if (!scrollOwnerElement || snap === undefined) return;
+  const registerScrollOwner = useCallback((element: HTMLElement | null) => {
+    removeScrollOwnerListenerRef.current();
+    removeScrollOwnerListenerRef.current = () => {};
+    if (!element) return;
 
+    if (snap !== undefined && snap !== 'full') element.scrollTop = 0;
     const handleScroll = () => {
-      setContentScrolledFromTop(scrollOwnerElement.scrollTop > 0);
+      setContentScrolledFromTop(snap === 'full' && element.scrollTop > 0);
     };
-
-    scrollOwnerElement.addEventListener('scroll', handleScroll);
-    return () => {
-      scrollOwnerElement.removeEventListener('scroll', handleScroll);
-      setContentScrolledFromTop(false);
+    handleScroll();
+    element.addEventListener('scroll', handleScroll);
+    removeScrollOwnerListenerRef.current = () => {
+      element.removeEventListener('scroll', handleScroll);
     };
-  }, [scrollOwnerElement, snap]);
+  }, [snap]);
 
   const handleSheetDragEnd: DragHandler = (_event, info) => {
     const surface = surfaceRef.current;
@@ -237,7 +252,9 @@ export function DrawerShell(props: DrawerShellProps) {
     ? { y: viewportHeightPx - heights[props.snap], width: '100%' }
     : {
       y: 0,
-      width: props.state === 'expanded' ? `${PANEL_WIDTH_VW.expanded}vw` : `${PANEL_WIDTH_VW.compact}vw`,
+      width: props.presentation === 'sideOverlay'
+        ? panelOpen ? `${SHORT_SIDE_OVERLAY_WIDTH_VW}vw` : '0vw'
+        : props.state === 'expanded' ? `${PANEL_WIDTH_VW.expanded}vw` : `${PANEL_WIDTH_VW.compact}vw`,
     };
   // The property a presentation does not animate is corrected instantly: a band crossing
   // is a presentation swap, not a movement the user should watch.
@@ -253,6 +270,8 @@ export function DrawerShell(props: DrawerShellProps) {
       ref={surfaceRef}
       aria-label={ariaLabel}
       aria-modal={isModal || undefined}
+      aria-hidden={panelOpen ? undefined : true}
+      inert={!panelOpen}
       role={isModal ? 'dialog' : undefined}
       className={`${styles.surface} ${materialClasses.panel}`}
       data-drawer-presentation={props.presentation}
@@ -267,6 +286,7 @@ export function DrawerShell(props: DrawerShellProps) {
       dragListener={props.presentation === 'bottomSheet' ? !contentScrolledFromTop : undefined}
       dragConstraints={props.presentation === 'bottomSheet' ? dragConstraints : undefined}
       dragElastic={props.presentation === 'bottomSheet' ? SHEET_DRAG_ELASTIC : undefined}
+      dragMomentum={false}
       onDragEnd={props.presentation === 'bottomSheet' ? handleSheetDragEnd : undefined}
       onAnimationComplete={() => {
         transitioningRef.current = false;
@@ -289,7 +309,7 @@ export function DrawerShell(props: DrawerShellProps) {
         * arbitration effect below returns early when there is no snap.
         */}
       <PanelSettledWidthContext.Provider value={settledWidth}>
-        <SheetScrollOwnerContext.Provider value={setScrollOwnerElement}>
+        <SheetScrollOwnerContext.Provider value={registerScrollOwner}>
           <SheetContentScrollContext.Provider
             value={props.presentation === 'bottomSheet' ? props.snap === 'full' : true}
           >

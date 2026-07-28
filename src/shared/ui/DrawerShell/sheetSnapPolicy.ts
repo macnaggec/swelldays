@@ -4,21 +4,21 @@ export type SheetSnap = 'peek' | 'half' | 'full';
 export const SHEET_SNAPS: readonly SheetSnap[] = ['peek', 'half', 'full'];
 
 /**
- * Snap heights that scale with the viewport, as a fraction of its dynamic height.
- * The top snap leaves only a strip of map above it rather than a portion of the
- * screen; its fraction was set from the approved prototype.
+ * The middle snap scales with the dynamic viewport. The top snap instead leaves a
+ * fixed strip above the sheet, so the account/cart plate stays fully behind the
+ * sheet on every regular-height phone rather than reappearing on taller screens.
  */
-export const SHEET_SNAP_FRACTIONS: { readonly half: number; readonly full: number } = {
-  half: 0.34,
-  full: 0.92,
-};
+const SHEET_HALF_HEIGHT_FRACTION = 0.34;
+const SHEET_FULL_TOP_INSET_PX = 24;
 
 /**
  * Resting height of the peek snap. Sized by its own content — the search row and upload
- * control — rather than by the viewport, so it is a constant here until M02 mounts that
- * content and can measure it.
+ * control beneath the drag handle — rather than by the viewport. M02-d removed the 52px
+ * section-switcher header from that composition, reducing the approved 132px peek by the
+ * same amount. The compact search row adds 4px above and below the shared 8px chrome
+ * inset, producing the approved even 12px breathing room.
  */
-export const SHEET_PEEK_HEIGHT_PX = 132;
+export const SHEET_PEEK_HEIGHT_PX = 84;
 
 /** Sheet-top speed, px/s, above which a release reads as a flick rather than a placement. */
 export const SHEET_FLICK_VELOCITY_PX_PER_S = 400;
@@ -39,8 +39,8 @@ export function resolveSheetSnapHeights({
   peekHeightPx,
 }: SheetSnapHeightsInput): SheetSnapHeights {
   const peek = clamp(peekHeightPx, 0, viewportHeightPx);
-  const half = clamp(Math.round(viewportHeightPx * SHEET_SNAP_FRACTIONS.half), peek, viewportHeightPx);
-  const full = clamp(Math.round(viewportHeightPx * SHEET_SNAP_FRACTIONS.full), half, viewportHeightPx);
+  const half = clamp(Math.round(viewportHeightPx * SHEET_HALF_HEIGHT_FRACTION), peek, viewportHeightPx);
+  const full = clamp(viewportHeightPx - SHEET_FULL_TOP_INSET_PX, half, viewportHeightPx);
 
   return { peek, half, full };
 }

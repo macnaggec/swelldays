@@ -353,6 +353,22 @@ describe('GlobeScene map interaction policy', () => {
     expect(mocks.setGalleryPanelExpanded).toHaveBeenCalledWith(false);
   });
 
+  it('does not change the portrait browse preference when exploration starts beside the short side panel', () => {
+    const originalInnerWidth = window.innerWidth;
+    const originalInnerHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerWidth', { value: 844, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 390, configurable: true });
+    mocks.browsingExpanded = true;
+
+    renderGlobeScene();
+    fireEvent.click(screen.getByRole('button', { name: 'Explore map' }));
+
+    expect(mocks.setBrowsingPanelExpanded).not.toHaveBeenCalled();
+
+    Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+  });
+
   it('keeps compact browsing interactive', () => {
     mocks.browsingExpanded = false;
     renderGlobeScene();

@@ -10,7 +10,7 @@ import {
 } from 'entities/SurfSession';
 import { EMPTY_BROWSE_FILTERS, type BrowseDateFilter, type BrowseFilters } from 'shared/model/browseFilters';
 import { SidePanel } from 'widgets/SidePanel';
-import type { SheetSnap } from 'shared/ui/DrawerShell';
+import { useBrowseSheetPosition } from 'shared/ui/DrawerShell';
 import { useCartStore } from 'entities/Commerce';
 import { CartDrawerHeader } from 'features/Cart';
 import { useUploadStore } from 'features/Upload';
@@ -29,6 +29,7 @@ import { useAuthModal } from 'features/Auth';
 import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import { deriveRenderedPanelState } from 'shared/model/panelLayoutPolicy';
+import { BrowseSectionBar, type BrowseSection } from 'widgets/BrowseSectionBar';
 
 // ─── Contexts — shared with child routes ─────────────────────────────────────
 
@@ -212,25 +213,63 @@ function PanelFrame({ children }: { children: ReactNode }) {
     return () => cancelAnimationFrame(frame);
   }, [isExpanded, renderedPanelState.expanded]);
 
-  // Sheet position is rendered state seeded from the browse preference — never a second
-  // copy of it. Landing on a snap is the only path that writes the preference back.
-  const [sheetSnap, setSheetSnap] = useState<SheetSnap>(() => (userPreferredExpanded ? 'full' : 'half'));
-  const handleSheetSnapChange = useCallback((snap: SheetSnap) => {
-    setSheetSnap(snap);
-    setUserPreferredExpanded(snap === 'full');
-  }, [setUserPreferredExpanded]);
-
+  const { snap: sheetSnap, setSnap: handleSheetSnapChange } = useBrowseSheetPosition();
   const isBrowseSheet = layoutPolicy.drawer.presentation === 'bottomSheet';
-  // Re-seeded at the moment the surface becomes a sheet, not only at mount: narrowing the
-  // window from a wide expanded panel must open the sheet at full, or the crossing would
-  // discard the preference the F12d continuity contract exists to carry across it.
-  const [sheetWasMounted, setSheetWasMounted] = useState(isBrowseSheet);
-  if (sheetWasMounted !== isBrowseSheet) {
-    setSheetWasMounted(isBrowseSheet);
-    if (isBrowseSheet) setSheetSnap(userPreferredExpanded ? 'full' : 'half');
-  }
+  const isBrowseSectionRoute = Boolean(spotMatch || allGalleryMatch || isDefaultIndex);
+  const isShortBrowseSideOverlay = layoutPolicy.drawer.presentation === 'sideOverlay'
+    && isBrowseSectionRoute;
+  const usesFloatingBrowseSections = isBrowseSheet || isShortBrowseSideOverlay;
+  const [shortSidePanelOpen, setShortSidePanelOpen] = useState(true);
+  const renderedExpanded = isBrowseSheet
+    ? sheetSnap !== 'peek'
+    : isShortBrowseSideOverlay
+      ? true
+      : isExpanded;
 
-  const renderedExpanded = isBrowseSheet ? sheetSnap !== 'peek' : isExpanded;
+  const handleBrowseSectionChange = useCallback((scope: BrowseSection) => {
+    if (isShortBrowseSideOverlay) setShortSidePanelOpen(true);
+
+    if (allGalleryMatch || isDefaultIndex) {
+      if (
+        (scope === 'sessions' && isDefaultIndex)
+        || (scope === 'gallery' && allGalleryMatch)
+      ) return;
+
+      if (scope === 'sessions') {
+        if (!isBrowseSheet) setUserPreferredExpanded(renderedExpanded);
+        void navigate({ to: '/' });
+      } else {
+        if (!isBrowseSheet) setGalleryPreferredExpanded(renderedExpanded);
+        void navigate({ to: '/gallery' });
+      }
+      return;
+    }
+
+    if (
+      (scope === 'sessions' && !galleryMatch)
+      || (scope === 'gallery' && Boolean(galleryMatch))
+    ) return;
+
+    if (scope === 'gallery') {
+      if (!isBrowseSheet) setGalleryPreferredExpanded(renderedExpanded);
+      void navigate({ to: '/$spotId/gallery', params: { spotId: spotId! } });
+    } else {
+      if (!isBrowseSheet) setUserPreferredExpanded(renderedExpanded);
+      void navigate({ to: '/$spotId', params: { spotId: spotId! } });
+    }
+  }, [
+    allGalleryMatch,
+    isDefaultIndex,
+    isBrowseSheet,
+    isShortBrowseSideOverlay,
+    galleryMatch,
+    navigate,
+    renderedExpanded,
+    setGalleryPreferredExpanded,
+    setShortSidePanelOpen,
+    setUserPreferredExpanded,
+    spotId,
+  ]);
 
   const header: ReactNode = (() => {
     if (cartMatch) {
@@ -258,29 +297,11 @@ function PanelFrame({ children }: { children: ReactNode }) {
     }
 
     if (spotMatch || allGalleryMatch || isDefaultIndex) {
+      if (usesFloatingBrowseSections) return undefined;
       return (
         <ScopeSwitcher
           scope={galleryMatch ? 'gallery' : 'sessions'}
-          onChange={(scope) => {
-            if (allGalleryMatch || isDefaultIndex) {
-              if (scope === 'sessions') {
-                setUserPreferredExpanded(isExpanded);
-                void navigate({ to: '/' });
-              } else {
-                setGalleryPreferredExpanded(isExpanded);
-                void navigate({ to: '/gallery' });
-              }
-              return;
-            }
-
-            if (scope === 'gallery') {
-              setGalleryPreferredExpanded(isExpanded);
-              void navigate({ to: '/$spotId/gallery', params: { spotId: spotId! } });
-            } else {
-              setUserPreferredExpanded(isExpanded);
-              void navigate({ to: '/$spotId', params: { spotId: spotId! } });
-            }
-          }}
+          onChange={handleBrowseSectionChange}
         />
       );
     }
@@ -350,6 +371,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
               onChange={setDateFilter}
               favoritesOnly={filters.favoriteSpotsOnly}
               onFavoritesChange={showsBrowseResults ? handleFavoritesChange : undefined}
+              horizontalScroll={usesFloatingBrowseSections}
             />
           </>
         ) : undefined}
@@ -390,6 +412,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
             <SidePanel
               drawerPresentation={layoutPolicy.drawer.presentation}
               drawerModality={layoutPolicy.drawer.modality === 'modal' ? 'modal' : 'nonmodal'}
+              open={isShortBrowseSideOverlay ? shortSidePanelOpen : true}
               sheetSnap={isBrowseSheet ? sheetSnap : undefined}
               onSheetSnapChange={isBrowseSheet ? handleSheetSnapChange : undefined}
               expanded={renderedExpanded}
@@ -400,6 +423,20 @@ function PanelFrame({ children }: { children: ReactNode }) {
               headerFullWidth={Boolean(cartMatch)}
               header={header}
               subheader={subheader}
+              bottomBar={
+                usesFloatingBrowseSections
+                && (!isBrowseSheet || sheetSnap !== 'peek') ? (
+                <BrowseSectionBar
+                  section={galleryMatch ? 'gallery' : 'sessions'}
+                  avoidDrawer={isShortBrowseSideOverlay}
+                  onMap={() => {
+                    if (isBrowseSheet) handleSheetSnapChange('peek');
+                    else setShortSidePanelOpen(false);
+                  }}
+                  onSectionChange={handleBrowseSectionChange}
+                />
+                  ) : undefined
+              }
             >
               {children}
             </SidePanel>

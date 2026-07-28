@@ -4,6 +4,34 @@ import { render } from 'test/setup/render';
 import { FilterPills } from './FilterPills';
 
 describe('FilterPills favorites filter', () => {
+  it('exposes which date filter is selected', () => {
+    const { rerender } = render(
+      <FilterPills
+        active="today"
+        onChange={vi.fn()}
+        favoritesOnly={false}
+        onFavoritesChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Today' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Yesterday' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'Last 7 Days' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'Date' })).toHaveAttribute('aria-pressed', 'false');
+
+    rerender(
+      <FilterPills
+        active={{ date: new Date('2026-07-18T12:00:00.000Z') }}
+        onChange={vi.fn()}
+        favoritesOnly={false}
+        onFavoritesChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Today' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /Jul 18/ })).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('toggles favorites independently of the active date filter', () => {
     const onChange = vi.fn();
     const onFavoritesChange = vi.fn();

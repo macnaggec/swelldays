@@ -1,7 +1,51 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { render } from 'test/setup/render';
+import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
+import {
+  BrowseSheetPositionProvider,
+  useBrowseSheetPosition,
+} from 'shared/ui/DrawerShell';
+import { BrowseSectionBar } from 'widgets/BrowseSectionBar';
 import { SidePanel } from './SidePanel';
+
+function BrowseSheetWithSectionBar() {
+  const { snap, setSnap } = useBrowseSheetPosition();
+
+  return (
+    <SidePanel
+      drawerPresentation="bottomSheet"
+      sheetSnap={snap}
+      onSheetSnapChange={setSnap}
+      bottomBar={(
+        <BrowseSectionBar
+          section="sessions"
+          onMap={() => setSnap('peek')}
+          onSectionChange={() => {}}
+        />
+      )}
+    >
+      <div style={{ height: '2000px' }}>Tall sheet content</div>
+    </SidePanel>
+  );
+}
+
+function renderBrowseSheetWithSectionBar() {
+  return render(
+    <AppShellLayoutPolicyProvider
+      routeIntent="browse"
+      browseExpanded
+      galleryExpanded={false}
+    >
+      <BrowseSheetPositionProvider
+        preferredExpanded
+        onPreferredExpandedChange={() => {}}
+      >
+        <BrowseSheetWithSectionBar />
+      </BrowseSheetPositionProvider>
+    </AppShellLayoutPolicyProvider>,
+  );
+}
 
 describe('SidePanel bottom sheet', () => {
   it('reports the snap it was given and a new one when the prop changes', () => {
@@ -39,6 +83,21 @@ describe('SidePanel bottom sheet', () => {
     expect(screen.queryByRole('button', { name: 'Collapse panel' })).not.toBeInTheDocument();
   });
 
+  it('does not reserve a header band when compact browse has no header controls', () => {
+    render(
+      <SidePanel
+        drawerPresentation="bottomSheet"
+        sheetSnap="half"
+        onSheetSnapChange={() => {}}
+      >
+        <div>Sheet body</div>
+      </SidePanel>,
+    );
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    expect(surface.querySelector('[data-panel-layout-header]')).not.toBeInTheDocument();
+  });
+
   it('renders the expand/collapse button for the same tree in the panel presentation', () => {
     render(
       <SidePanel onExpandToggle={() => {}}>
@@ -71,5 +130,54 @@ describe('SidePanel bottom sheet', () => {
 
     fireEvent.scroll(scrollOwner!, { target: { scrollTop: 8 } });
     expect(stickyChrome).not.toHaveAttribute('data-hidden');
+  });
+
+  it('restores pinned chrome and the list top when the sheet lowers from full to half', () => {
+    const renderSheet = (sheetSnap: 'half' | 'full') => (
+      <SidePanel
+        drawerPresentation="bottomSheet"
+        sheetSnap={sheetSnap}
+        onSheetSnapChange={() => {}}
+        subheader={<div>Search and filters</div>}
+      >
+        <div style={{ height: '2000px' }}>Tall sheet content</div>
+      </SidePanel>
+    );
+    const { rerender } = render(renderSheet('full'));
+    const scrollOwner = screen.getByText('Tall sheet content').closest('[data-panel-scroll-owner]');
+    const stickyChrome = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
+    expect(scrollOwner).not.toBeNull();
+    expect(stickyChrome).not.toBeNull();
+
+    fireEvent.scroll(scrollOwner!, { target: { scrollTop: 24 } });
+    expect(stickyChrome).toHaveAttribute('data-hidden', 'true');
+
+    rerender(renderSheet('half'));
+
+    expect(scrollOwner).toHaveProperty('scrollTop', 0);
+    expect(stickyChrome).not.toHaveAttribute('data-hidden');
+  });
+
+  it('keeps section navigation mounted while hiding labels on scroll down and restoring them on scroll up', () => {
+    renderBrowseSheetWithSectionBar();
+
+    const scrollOwner = screen.getByText('Tall sheet content').closest('[data-panel-scroll-owner]');
+    expect(scrollOwner).not.toBeNull();
+
+    fireEvent.scroll(scrollOwner!, { target: { scrollTop: 24 } });
+
+    expect(screen.getByRole('navigation', { name: 'Browse sections' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Map' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Feed' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gallery' })).toBeInTheDocument();
+    expect(screen.queryByText('Map')).not.toBeInTheDocument();
+    expect(screen.queryByText('Feed')).not.toBeInTheDocument();
+    expect(screen.queryByText('Gallery')).not.toBeInTheDocument();
+
+    fireEvent.scroll(scrollOwner!, { target: { scrollTop: 8 } });
+
+    expect(screen.getByText('Map')).toBeInTheDocument();
+    expect(screen.getByText('Feed')).toBeInTheDocument();
+    expect(screen.getByText('Gallery')).toBeInTheDocument();
   });
 });
