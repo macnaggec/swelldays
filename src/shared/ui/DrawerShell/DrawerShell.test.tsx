@@ -319,3 +319,87 @@ describe('DrawerShell presentation swap continuity', () => {
     unmount();
   });
 });
+
+describe('DrawerShell presentation swap geometry', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('leaves no width from the panel presentation on the sheet when a live resize swaps them', async () => {
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+
+    const { rerender, unmount } = render(
+      <DrawerShell presentation="persistent" state="expanded" modality="nonmodal">
+        <DraftField />
+      </DrawerShell>,
+    );
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    await vi.waitFor(() => expect(surface.style.width).toBe('75vw'));
+
+    rerender(
+      <DrawerShell
+        presentation="bottomSheet"
+        modality="nonmodal"
+        snap="half"
+        onSnapChange={() => {}}
+      >
+        <DraftField />
+      </DrawerShell>,
+    );
+
+    // A sheet spans the viewport. Inheriting the panel's width would leave it a narrow
+    // column pinned to one edge — what a live window resize showed before the swap
+    // corrected both properties, while a reload looked right because it mounted as a sheet.
+    await vi.waitFor(() => expect(surface.style.width).toBe('100%'));
+
+    unmount();
+  });
+
+  it('leaves no sheet offset on the panel when the swap runs the other way', async () => {
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+
+    const { rerender, unmount } = render(
+      <DrawerShell
+        presentation="bottomSheet"
+        modality="nonmodal"
+        snap="half"
+        onSnapChange={() => {}}
+      >
+        <DraftField />
+      </DrawerShell>,
+    );
+
+    const restingOffsetPx = () => {
+      const offset = /translateY\((-?[\d.]+)px\)/.exec(surface.style.transform);
+      return offset ? Number(offset[1]) : 0;
+    };
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    await vi.waitFor(() => expect(restingOffsetPx()).toBeGreaterThan(0));
+
+    rerender(
+      <DrawerShell presentation="persistent" state="compact" modality="nonmodal">
+        <DraftField />
+      </DrawerShell>,
+    );
+
+    // Widening a phone window back to a desktop must not leave the panel pushed down the
+    // screen by the height the sheet was resting at.
+    await vi.waitFor(() => expect(restingOffsetPx()).toBe(0));
+
+    unmount();
+  });
+});

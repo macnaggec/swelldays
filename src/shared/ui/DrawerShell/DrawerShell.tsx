@@ -235,12 +235,26 @@ export function DrawerShell(props: DrawerShellProps) {
     onSnapChange(nearestSheetSnap({ heightPx, velocityPx: info.velocity.y, heights }));
   };
 
+  // Both presentations name *both* properties, even though each only animates one of
+  // them. An animated value is written to the element as an inline style and stays there;
+  // a target that mentioned only its own property would leave the other presentation's
+  // last value in place, outranking the stylesheet. Live-resizing a window from wide to
+  // compact would then show the sheet still wearing the panel's 25vw width, and only a
+  // reload — which mounts straight into the sheet — would look right.
   const animate = props.presentation === 'bottomSheet'
-    ? { y: viewportHeightPx - heights[props.snap] }
-    : { width: props.state === 'expanded' ? `${PANEL_WIDTH_VW.expanded}vw` : `${PANEL_WIDTH_VW.compact}vw` };
+    ? { y: viewportHeightPx - heights[props.snap], width: '100%' }
+    : {
+      y: 0,
+      width: props.state === 'expanded' ? `${PANEL_WIDTH_VW.expanded}vw` : `${PANEL_WIDTH_VW.compact}vw`,
+    };
+  // The property a presentation does not animate is corrected instantly: a band crossing
+  // is a presentation swap, not a movement the user should watch.
   const transition = props.presentation === 'bottomSheet'
-    ? { y: prefersReducedMotion ? { duration: 0 } : DRAWER_SHELL_TRANSITION }
-    : { width: DRAWER_SHELL_TRANSITION };
+    ? {
+      y: prefersReducedMotion ? { duration: 0 } : DRAWER_SHELL_TRANSITION,
+      width: { duration: 0 },
+    }
+    : { width: DRAWER_SHELL_TRANSITION, y: { duration: 0 } };
 
   return (
     <motion.aside
