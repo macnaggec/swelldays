@@ -50,6 +50,17 @@ const mocks = vi.hoisted(() => ({
     search?: unknown;
   }>,
   params: {} as { spotId?: string },
+  sizeBand: 'wide' as 'compact' | 'constrained' | 'wide',
+}));
+
+vi.mock('shared/model/viewportCapabilities', () => ({
+  useViewportCapabilities: () => ({
+    sizeBand: mocks.sizeBand,
+    heightBand: 'regular',
+    primaryPointer: 'fine',
+    supportsHover: true,
+    prefersReducedMotion: false,
+  }),
 }));
 
 function FeedLayoutReadyProbe() {
@@ -129,6 +140,8 @@ vi.mock('widgets/SidePanel', () => ({
     header,
     headerFullWidth,
     subheader,
+    sheetSnap,
+    onSheetSnapChange,
     children,
   }: {
     expanded?: boolean;
@@ -139,6 +152,8 @@ vi.mock('widgets/SidePanel', () => ({
     header?: ReactNode;
     headerFullWidth?: boolean;
     subheader?: ReactNode;
+    sheetSnap?: 'peek' | 'half' | 'full';
+    onSheetSnapChange?: (snap: 'peek' | 'half' | 'full') => void;
     children?: ReactNode;
   }) => (
     <div
@@ -147,7 +162,11 @@ vi.mock('widgets/SidePanel', () => ({
       data-has-back={onBack ? 'true' : 'false'}
       data-back-disabled={backDisabled ? 'true' : 'false'}
       data-header-full-width={headerFullWidth ? 'true' : 'false'}
+      data-sheet-snap={sheetSnap ?? 'none'}
     >
+      {onSheetSnapChange && (['peek', 'half', 'full'] as const).map((snap) => (
+        <button key={snap} onClick={() => onSheetSnapChange(snap)}>{`Land on ${snap}`}</button>
+      ))}
       {onExpandToggle && (
         <button
           aria-label={expanded ? 'Collapse panel' : 'Expand panel'}
@@ -968,5 +987,79 @@ describe('Panel favorites filter', () => {
     rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'true');
+  });
+});
+
+describe('Panel compact browse sheet', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.isAuthenticated = true;
+    mocks.matches = [{ routeId: '/_panel/', staticData: {} }];
+    mocks.params = {};
+    mocks.sizeBand = 'compact';
+    usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: true });
+    useAddSpotStore.getState().exit();
+  });
+
+  afterEach(() => {
+    mocks.sizeBand = 'wide';
+    useAddSpotStore.getState().exit();
+  });
+
+  it('opens the browse sheet at the position the stored preference asks for', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'half');
+  });
+
+  it('carries an expanded wide panel into the sheet when the window narrows to a phone', () => {
+    mocks.sizeBand = 'wide';
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'none');
+    // Expanded on the desktop panel *after* the page loaded, so the sheet cannot have
+    // learned this from its opening position — it has to read the preference at the crossing.
+    fireEvent.click(screen.getByRole('button', { name: 'Expand panel' }));
+
+    mocks.sizeBand = 'compact';
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'full');
+  });
+
+  it('keeps a sheet raised to full as the expanded panel after the window widens again', async () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Land on full' }));
+    mocks.sizeBand = 'wide';
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+    // The wide browse panel holds its collapsed width until the feed reports its layout,
+    // so the crossing shows the preference only once that arrives.
+    fireEvent.click(screen.getByRole('button', { name: 'Report feed layout ready' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('side-panel')).toHaveAttribute('data-expanded', 'true');
+    });
+  });
+
+  it('lets a spot chosen from search open that spot while the sheet is above its smallest position', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select spot-b' }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/$spotId', params: { spotId: 'spot-b' } });
+  });
+
+  it('offers no spot selection from search at the smallest sheet position, where only the search row is visible', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Land on peek' }));
+
+    expect(screen.queryByRole('button', { name: 'Select spot-b' })).not.toBeInTheDocument();
   });
 });

@@ -24,6 +24,7 @@ const WIDE_FALLBACK = { sizeBand: 'wide', heightBand: 'regular' } as const;
  * band is mounted.
  */
 const ACTIVE_CELLS: readonly ActivationCell[] = [
+  { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'browse' },
   { sizeBand: 'wide', heightBand: 'regular', routeIntent: 'browse' },
   { sizeBand: 'wide', heightBand: 'regular', routeIntent: 'galleryWorkspace' },
   { sizeBand: 'wide', heightBand: 'regular', routeIntent: 'routeWorkspace' },

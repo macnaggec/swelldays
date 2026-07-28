@@ -10,7 +10,8 @@ import { IconChevronLeft, IconMaximize, IconMinimize } from '@tabler/icons-react
 import {
   DrawerShell,
   type DrawerShellModality,
-  type DrawerShellPanelPresentation,
+  type DrawerShellPresentation,
+  type SheetSnap,
 } from 'shared/ui/DrawerShell';
 import { PanelScrollChromeStateProvider } from 'shared/ui/PanelScrollChrome';
 import { PanelLayout, PanelChromeSlot, PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
@@ -24,8 +25,12 @@ interface ScrollPosition {
 }
 
 interface SidePanelProps {
-  drawerPresentation?: DrawerShellPanelPresentation;
+  drawerPresentation?: DrawerShellPresentation;
   drawerModality?: DrawerShellModality;
+  /** Sheet position. Required when drawerPresentation is 'bottomSheet', ignored otherwise. */
+  sheetSnap?: SheetSnap;
+  /** Called when the sheet lands on a new snap. Required when drawerPresentation is 'bottomSheet'. */
+  onSheetSnapChange?: (snap: SheetSnap) => void;
   restoreFocusRef?: RefObject<HTMLElement | null>;
   /** Expands the panel to cover most of the viewport width. */
   expanded?: boolean;
@@ -53,6 +58,8 @@ interface SidePanelProps {
 export function SidePanel({
   drawerPresentation = 'persistent',
   drawerModality = 'nonmodal',
+  sheetSnap,
+  onSheetSnapChange,
   restoreFocusRef,
   expanded,
   onExpandToggle,
@@ -100,55 +107,73 @@ export function SidePanel({
     scrollPositionByTargetRef.current.set(scrollTarget, position);
   }, []);
 
+  const showExpandToggle = Boolean(onExpandToggle) && drawerPresentation !== 'bottomSheet';
+
+  const panelLayout = (
+    <PanelLayout
+      onScrollCapture={handleBodyScrollCapture}
+      header={(
+        <div className={styles.panelTop}>
+          {!headerFullWidth && (
+            onBack || showExpandToggle ? (
+              <button
+                className={`${styles.topBtn} ${backLabel ? styles.topBtnLabeled : ''}`}
+                onClick={onBack ?? onExpandToggle}
+                disabled={backDisabled}
+                aria-label={onBack ? backLabel ?? 'Back' : expanded ? 'Collapse panel' : 'Expand panel'}
+              >
+                {onBack ? (
+                  <>
+                    <IconChevronLeft size={16} />
+                    {backLabel && <span>{backLabel}</span>}
+                  </>
+                ) : expanded ? (
+                  <IconMinimize size={16} />
+                ) : (
+                  <IconMaximize size={16} />
+                )}
+              </button>
+            ) : (
+              <div aria-hidden="true" />
+            )
+          )}
+
+          {header && (
+            <PanelChromeSlot className={headerFullWidth ? styles.headerSlotFull : styles.headerSlot}>
+              {header}
+            </PanelChromeSlot>
+          )}
+          {!headerFullWidth && <div aria-hidden="true" />}
+        </div>
+      )}
+    >
+      {subheader && <PanelLayoutStickyChrome>{subheader}</PanelLayoutStickyChrome>}
+      {children}
+    </PanelLayout>
+  );
+
   return (
     <PanelScrollChromeStateProvider value={scrollChromeState}>
-      <DrawerShell
-        presentation={drawerPresentation}
-        state={expanded ? 'expanded' : 'compact'}
-        modality={drawerModality}
-        restoreFocusRef={restoreFocusRef}
-      >
-        <PanelLayout
-          onScrollCapture={handleBodyScrollCapture}
-          header={(
-            <div className={styles.panelTop}>
-              {!headerFullWidth && (
-                onBack || onExpandToggle ? (
-                  <button
-                    className={`${styles.topBtn} ${backLabel ? styles.topBtnLabeled : ''}`}
-                    onClick={onBack ?? onExpandToggle}
-                    disabled={backDisabled}
-                    aria-label={onBack ? backLabel ?? 'Back' : expanded ? 'Collapse panel' : 'Expand panel'}
-                  >
-                    {onBack ? (
-                      <>
-                        <IconChevronLeft size={16} />
-                        {backLabel && <span>{backLabel}</span>}
-                      </>
-                    ) : expanded ? (
-                      <IconMinimize size={16} />
-                    ) : (
-                      <IconMaximize size={16} />
-                    )}
-                  </button>
-                ) : (
-                  <div aria-hidden="true" />
-                )
-              )}
-
-              {header && (
-                <PanelChromeSlot className={headerFullWidth ? styles.headerSlotFull : styles.headerSlot}>
-                  {header}
-                </PanelChromeSlot>
-              )}
-              {!headerFullWidth && <div aria-hidden="true" />}
-            </div>
-            )}
+      {drawerPresentation === 'bottomSheet' && sheetSnap !== undefined && onSheetSnapChange !== undefined ? (
+        <DrawerShell
+          presentation="bottomSheet"
+          modality={drawerModality}
+          restoreFocusRef={restoreFocusRef}
+          snap={sheetSnap}
+          onSnapChange={onSheetSnapChange}
         >
-          {subheader && <PanelLayoutStickyChrome>{subheader}</PanelLayoutStickyChrome>}
-          {children}
-        </PanelLayout>
-      </DrawerShell>
+          {panelLayout}
+        </DrawerShell>
+      ) : drawerPresentation !== 'bottomSheet' ? (
+        <DrawerShell
+          presentation={drawerPresentation}
+          state={expanded ? 'expanded' : 'compact'}
+          modality={drawerModality}
+          restoreFocusRef={restoreFocusRef}
+        >
+          {panelLayout}
+        </DrawerShell>
+      ) : null}
     </PanelScrollChromeStateProvider>
   );
 }

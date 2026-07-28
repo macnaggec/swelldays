@@ -8,6 +8,7 @@ import {
   isCellActive,
   resolveShellLayoutPolicy,
   useAppShellLayoutPolicy,
+  type ActivationCell,
 } from './appShellPresentation';
 
 type MutableMediaQuery = MediaQueryList & {
@@ -84,6 +85,41 @@ describe('resolveShellLayoutPolicy', () => {
       }
     }
   }
+});
+
+describe('the compact/regular browse cell', () => {
+  it('resolves to the real compact policy, a bottom sheet over an interactive map', () => {
+    const resolved = resolveShellLayoutPolicy({
+      routeIntent: 'browse', sizeBand: 'compact', heightBand: 'regular', preferences,
+    });
+
+    expect(isCellActive({ sizeBand: 'compact', heightBand: 'regular', routeIntent: 'browse' })).toBe(true);
+    expect(resolved).toEqual(deriveAppShellLayoutPolicy({
+      routeIntent: 'browse', sizeBand: 'compact', heightBand: 'regular', preferences,
+    }));
+    expect(resolved.drawer.presentation).toBe('bottomSheet');
+  });
+
+  it('leaves every other compact and constrained cell falling back to the complete wide lifecycle', () => {
+    const stillInactiveCells: readonly ActivationCell[] = [
+      { sizeBand: 'compact', heightBand: 'short', routeIntent: 'browse' },
+      { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'browse' },
+      { sizeBand: 'constrained', heightBand: 'short', routeIntent: 'browse' },
+      { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'galleryWorkspace' },
+      { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'routeWorkspace' },
+      { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'mapInput' },
+    ];
+
+    for (const cell of stillInactiveCells) {
+      expect(isCellActive(cell)).toBe(false);
+      expect(resolveShellLayoutPolicy({ ...cell, preferences })).toEqual(deriveAppShellLayoutPolicy({
+        ...cell,
+        sizeBand: 'wide',
+        heightBand: 'regular',
+        preferences,
+      }));
+    }
+  });
 });
 
 describe('AppShellLayoutPolicyProvider', () => {

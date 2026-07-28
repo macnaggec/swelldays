@@ -1,8 +1,9 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { render } from 'test/setup/render';
 import { SidePanel } from './SidePanel';
+import type { SheetSnap } from 'shared/ui/DrawerShell';
 import { deriveAppShellLayoutPolicy, type AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 
@@ -35,6 +36,37 @@ function renderSidePanelForPolicy(policy: AppShellLayoutPolicy) {
       <DraftField />
       <div style={{ height: 2000 }} />
     </SidePanel>
+  );
+}
+
+// Mirrors the compact/regular browse sheet wiring in src/app/routes/_panel.tsx: the sheet
+// position is rendered state seeded once from the browsingExpanded preference, and landing
+// on a snap is the only path that writes the preference back.
+function BrowseSheetHarness() {
+  const browsingExpanded = usePanelExpansionStore((state) => state.browsingExpanded);
+  const setBrowsingExpanded = usePanelExpansionStore((state) => state.setBrowsingPanelExpanded);
+  const [sheetSnap, setSheetSnap] = useState<SheetSnap>(() => (browsingExpanded ? 'full' : 'half'));
+
+  const handleSnapChange = (snap: SheetSnap) => {
+    setSheetSnap(snap);
+    setBrowsingExpanded(snap === 'full');
+  };
+
+  return (
+    <>
+      <SidePanel
+        drawerPresentation="bottomSheet"
+        drawerModality="nonmodal"
+        sheetSnap={sheetSnap}
+        onSheetSnapChange={handleSnapChange}
+        expanded={sheetSnap !== 'peek'}
+      >
+        <DraftField />
+      </SidePanel>
+      <button onClick={() => handleSnapChange('full')}>Land the sheet on full</button>
+      <button onClick={() => handleSnapChange('half')}>Land the sheet on half</button>
+      <button onClick={() => handleSnapChange('peek')}>Land the sheet on peek</button>
+    </>
   );
 }
 
@@ -109,5 +141,85 @@ describe('SidePanel band-transition continuity', () => {
     const after = usePanelExpansionStore.getState();
     expect(after.browsingExpanded).toBe(before.browsingExpanded);
     expect(after.galleryExpanded).toBe(before.galleryExpanded);
+  });
+});
+
+describe('the compact/regular browse cell', () => {
+  beforeEach(() => {
+    usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: true });
+  });
+
+  it('mounts the browse surface as a bottom sheet rather than a panel', () => {
+    const compactBrowse = deriveAppShellLayoutPolicy({
+      routeIntent: 'browse', sizeBand: 'compact', heightBand: 'regular', preferences,
+    });
+    expect(compactBrowse.drawer.presentation).toBe('bottomSheet');
+
+    render(<BrowseSheetHarness />);
+
+    expect(screen.getByRole('complementary', { name: 'Content drawer' })).toHaveAttribute(
+      'data-drawer-presentation',
+      'bottomSheet',
+    );
+  });
+
+  it('opens at half when the stored browse preference is collapsed', () => {
+    usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: true });
+
+    render(<BrowseSheetHarness />);
+
+    expect(screen.getByRole('complementary', { name: 'Content drawer' })).toHaveAttribute(
+      'data-drawer-snap',
+      'half',
+    );
+  });
+
+  it('opens at full when the stored browse preference is expanded', () => {
+    usePanelExpansionStore.setState({ browsingExpanded: true, galleryExpanded: true });
+
+    render(<BrowseSheetHarness />);
+
+    expect(screen.getByRole('complementary', { name: 'Content drawer' })).toHaveAttribute(
+      'data-drawer-snap',
+      'full',
+    );
+  });
+
+  it('landing on full sets the stored browse preference to expanded', () => {
+    render(<BrowseSheetHarness />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Land the sheet on full' }));
+
+    expect(usePanelExpansionStore.getState().browsingExpanded).toBe(true);
+  });
+
+  it.each(['half', 'peek'] as const)('landing on %s sets the stored browse preference to collapsed', (snap) => {
+    usePanelExpansionStore.setState({ browsingExpanded: true, galleryExpanded: true });
+    render(<BrowseSheetHarness />);
+
+    fireEvent.click(screen.getByRole('button', { name: `Land the sheet on ${snap}` }));
+
+    expect(usePanelExpansionStore.getState().browsingExpanded).toBe(false);
+  });
+
+  it('crossing back to wide after landing on full renders the expanded panel', () => {
+    const { rerender } = render(<BrowseSheetHarness />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Land the sheet on full' }));
+
+    const wideAfterLanding = deriveAppShellLayoutPolicy({
+      routeIntent: 'browse',
+      sizeBand: 'wide',
+      heightBand: 'regular',
+      preferences: { browseExpanded: usePanelExpansionStore.getState().browsingExpanded, galleryExpanded: true },
+    });
+    expect(wideAfterLanding.drawer.state).toBe('expanded');
+
+    rerender(renderSidePanelForPolicy(wideAfterLanding));
+
+    expect(screen.getByRole('complementary', { name: 'Content drawer' })).toHaveAttribute(
+      'data-drawer-state',
+      'expanded',
+    );
   });
 });

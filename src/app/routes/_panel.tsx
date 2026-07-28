@@ -10,6 +10,7 @@ import {
 } from 'entities/SurfSession';
 import { EMPTY_BROWSE_FILTERS, type BrowseDateFilter, type BrowseFilters } from 'shared/model/browseFilters';
 import { SidePanel } from 'widgets/SidePanel';
+import type { SheetSnap } from 'shared/ui/DrawerShell';
 import { useCartStore } from 'entities/Commerce';
 import { CartDrawerHeader } from 'features/Cart';
 import { useUploadStore } from 'features/Upload';
@@ -211,6 +212,26 @@ function PanelFrame({ children }: { children: ReactNode }) {
     return () => cancelAnimationFrame(frame);
   }, [isExpanded, renderedPanelState.expanded]);
 
+  // Sheet position is rendered state seeded from the browse preference — never a second
+  // copy of it. Landing on a snap is the only path that writes the preference back.
+  const [sheetSnap, setSheetSnap] = useState<SheetSnap>(() => (userPreferredExpanded ? 'full' : 'half'));
+  const handleSheetSnapChange = useCallback((snap: SheetSnap) => {
+    setSheetSnap(snap);
+    setUserPreferredExpanded(snap === 'full');
+  }, [setUserPreferredExpanded]);
+
+  const isBrowseSheet = layoutPolicy.drawer.presentation === 'bottomSheet';
+  // Re-seeded at the moment the surface becomes a sheet, not only at mount: narrowing the
+  // window from a wide expanded panel must open the sheet at full, or the crossing would
+  // discard the preference the F12d continuity contract exists to carry across it.
+  const [sheetWasMounted, setSheetWasMounted] = useState(isBrowseSheet);
+  if (sheetWasMounted !== isBrowseSheet) {
+    setSheetWasMounted(isBrowseSheet);
+    if (isBrowseSheet) setSheetSnap(userPreferredExpanded ? 'full' : 'half');
+  }
+
+  const renderedExpanded = isBrowseSheet ? sheetSnap !== 'peek' : isExpanded;
+
   const header: ReactNode = (() => {
     if (cartMatch) {
       return (
@@ -281,13 +302,13 @@ function PanelFrame({ children }: { children: ReactNode }) {
 
     return (
       <PanelSearchToolbar
-        expanded={isExpanded}
+        expanded={renderedExpanded}
         primary={(
           <FeedSearch
             activeSpot={isDefaultIndex || allGalleryMatch ? null : (activeSpot ?? null)}
             onSpotSelect={
               isDefaultIndex
-                ? (isExpanded
+                ? (renderedExpanded
                   ? (spot) => void navigate({ to: '/$spotId', params: { spotId: spot.id } })
                   : undefined)
                 : allGalleryMatch
@@ -322,7 +343,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
             ) : 'Upload'}
           </PanelRouteActionButton>
         )}
-        trailing={isExpanded ? (
+        trailing={renderedExpanded ? (
           <>
             <FilterPills
               active={filters.date}
@@ -353,7 +374,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
   return (
     <PanelRouteBackActionContext.Provider value={setRouteBackAction}>
       <PanelFeedLayoutReadyContext.Provider value={handleFeedLayoutReadyChange}>
-        <PanelExpandedContext.Provider value={isExpanded}>
+        <PanelExpandedContext.Provider value={renderedExpanded}>
           {/* Compact-mode filter pills — float on the map beside the panel */}
           {layoutPolicy.chrome.panelControls === 'adjacent' && (spotMatch || isDefaultIndex || allGalleryMatch) && !isExpanded && (
             <FloatingPanelControls>
@@ -365,11 +386,13 @@ function PanelFrame({ children }: { children: ReactNode }) {
               />
             </FloatingPanelControls>
           )}
-          {layoutPolicy.drawer.presentation !== 'hidden' && layoutPolicy.drawer.presentation !== 'bottomSheet' && (
+          {layoutPolicy.drawer.presentation !== 'hidden' && (
             <SidePanel
               drawerPresentation={layoutPolicy.drawer.presentation}
               drawerModality={layoutPolicy.drawer.modality === 'modal' ? 'modal' : 'nonmodal'}
-              expanded={isExpanded}
+              sheetSnap={isBrowseSheet ? sheetSnap : undefined}
+              onSheetSnapChange={isBrowseSheet ? handleSheetSnapChange : undefined}
+              expanded={renderedExpanded}
               onExpandToggle={handlePanelExpandToggle}
               onBack={routeBackActionForPanel?.onBack ?? defaultBackAction}
               backLabel={routeBackActionForPanel?.label ?? defaultBackLabel}
