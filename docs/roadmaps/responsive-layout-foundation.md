@@ -398,6 +398,20 @@ For every implementation task:
 
 ### Phase M — mobile experience: compact plus constrained-short (promoted by the 2026-07-22 pivot)
 
+**Status 2026-07-28.** The upright phone is live: browse is a bottom sheet over an interactive map (M02-a), with the approved sheet geometry, parked list and map chrome (M02-c). What remains, in order:
+
+| Task | What it delivers | Waiting on |
+|---|---|---|
+| M02-d | Map/Feed/Gallery bar; the scope switcher leaves the panel header | — |
+| M02-b | The landscape-phone presentation | **A design decision from the user** |
+| M03 | Gallery on a phone: full screen, sticky date heading, date scrubber | Two product questions recorded in the task |
+| M04 | Session detail, cart, account, collections, earnings as phone screens | — |
+| M05 | Upload and Add Spot on a phone, incl. the software keyboard | — |
+| M06 | Touch sizing, safe areas, reduced motion across the band | — |
+| M07 | Verification, then **Gate 2 approval from the user** | — |
+
+Phase T (six tasks, ending in Gate 3) and Phase D (four tasks) follow unchanged. Two constrained-regular decisions from F12l — tablet-portrait presentation, and whether the feed is ever more than one column — are still open and are needed before T00.
+
 **Verification correction for all unchecked tasks (2026-07-27):** F12b/F12h remain an accurate historical record of how wide-band references were captured, but their instructions for M07/T05/D00/D03 to consume screenshot comparison are superseded by the current `AGENTS.md` §6 prohibition on screenshot and pixel-driven verification. Unchecked tasks use semantic DOM, computed-style, geometry, accessibility, focus, scroll, interaction, console, and network assertions. When an appearance decision has no reliable non-visual signal, the implementing session stops with a short manual checklist for the user.
 
 - [x] **M00 — Add compact bottom-sheet mechanics**
@@ -453,8 +467,26 @@ For every implementation task:
   - Invariant and verifier: On a phone held upright, browse is a bottom sheet over a live map at three resting positions, and the user's browse-extent preference survives a band crossing in both directions. Sheet position is rendered state seeded from the preference, never a second copy of it. Route-level integration tests at the real panel route own the seed, the write-back, the crossing, and the in-sheet chrome; a user checklist owns appearance.
   - Completed 2026-07-28. Sheet position lives beside the existing rendered panel state in `_panel.tsx`, seeded from `browsingExpanded` and re-seeded at the moment the surface becomes a sheet — seeding only at mount would drop the preference when a wide window narrows, which is exactly the crossing F12d exists to protect. Landing on `full` writes the preference; `peek` and `half` both mean not expanded. In-sheet chrome follows the snap rather than the wide-band expansion state (`snap !== 'peek'`), which is what puts the filter pills with the search row at `half` and `full`. `SHEET_PEEK_HEIGHT_PX` stays the 132px constant; measuring it against real content is still open. Two defects found in architect review and fixed with failing-first coverage at the real route: the spot-search select handler was still gated on the wide-band expansion value, so choosing a spot from search did nothing on a phone; and the sheet did not re-read the preference at the crossing. See `docs/review/responsive-layout-m02-a-handoff.md`.
 
-- [ ] **M02-b — Implement the short-height browse presentation**
+**Compact browse composition approved 2026-07-28.** M02-a mounted the sheet; the arrangement of what sits inside and around it was then designed against a prototype and approved by the user (three candidate compositions; the section-bar one won). M02-c and M02-d implement it in two slices, because the sheet's own behaviour and the section bar are independently reviewable. **M02-b was resequenced after them on 2026-07-28**: it is the only Phase M task still waiting on a design decision, and finishing the upright phone first keeps one coherent presentation under review at a time.
+
+- [x] **M02-c — Match the approved phone sheet: height, parked list, map chrome**
   - Depends on: M02-a.
+  - Scope: Raise the top snap so it leaves only a strip of map (`full` 0.90 → 0.92 of the dynamic viewport). Park the list below that snap: the panel's scroll owner scrolls only at `full`, which makes an upward swipe drag the sheet up rather than move the cards — no new gesture code, because `DrawerShell` already enables the drag whenever the scroll owner is at its top. Retire the now-unreachable scroll-to-promote path. Give the compact account/cart chrome its approved form: stacked vertically, 36px controls inside 44px touch targets, positioned and layered so the sheet at `full` covers it completely.
+  - Invariant and verifier: On a phone the top snap leaves a strip of map, the list scrolls only there, the pinned search/filter row hides as the list scrolls down and returns as it scrolls up, and raising the sheet covers the account/cart controls. Shell and panel integration tests own the scroll permission and the chrome reveal; `check:style-boundaries` owns the new compact control token; a user checklist owns appearance.
+  - Completed 2026-07-28. The parked list needed no gesture code: `DrawerShell` publishes whether its content may scroll (`useSheetContentScrollable`, false below the top snap), `PanelLayout` locks its scroll owner accordingly, and because a locked list can never leave `scrollTop: 0` the surface drag stays enabled — so an upward swipe raises the sheet. The scroll-to-promote path M00 built is therefore unreachable and was deleted along with `nextSheetSnapUp`. Hide-on-scroll for the search/filter row needed no work either: the panel's scroll-direction tracking and the sticky slot's `data-hidden` translate are presentation-independent, so they applied inside the sheet as soon as the list could scroll; a behavioural test now owns that. Compact account/cart chrome is stacked, 36px inside 44px touch targets from `--wa-control-size-navigation-compact`, offset below the top snap's edge and layered at `--wa-z-controls` so the sheet covers it. `SHEET_PEEK_HEIGHT_PX` is still the 132px constant. Appearance is unverified in a browser by design; the user's checklist owns it.
+
+- [ ] **M02-d — Move sections into a bottom bar**
+  - Depends on: M02-c.
+  - Scope: Add the approved Map / Feed / Gallery bar at the bottom of the compact screen, and move the Feed/Gallery switcher out of the panel header into it — the header row costs ~52px of a small screen for a control that belongs with navigation. The sheet parks above the bar. Behaviour pinned by user requirements 2026-07-28:
+    - the bar is hidden while the sheet is at `peek`, because at that position the intent is the map and the search field;
+    - tapping **Map** sends the sheet down, so the bar is also the way back to the map;
+    - while the list scrolls down the bar **shrinks to icons without labels** and returns to icons-with-labels on scroll up. It never disappears: primary navigation that vanishes costs more than the space it returns, and the bar's absence already means "the sheet is down" — a second cause would make that signal ambiguous.
+  - Open decision for the implementing session: the sheet's position becomes a fact two subtrees need (the route, to size the sheet; the bar, to send it down and to know whether to show itself). The composition root already provides the shell policy to both; the sheet position presumably joins it there as a small read/write seam. No store, no URL state.
+  - Invariant and verifier: Every section is reachable from one bar that cannot disappear while the sheet is up, and the panel header no longer carries navigation. Integration tests own the bar's visibility rules and the Map tap; a user checklist owns appearance.
+
+- [ ] **M02-b — Implement the short-height browse presentation**
+  - Depends on: M02-a. Resequenced after M02-d on 2026-07-28.
+  - **Waiting on the user:** this presentation has no design yet. Every other Phase M browse decision is settled; this one cannot start until the landscape-phone layout is chosen.
   - Scope: Design and implement the touch-tuned side-sheet presentation for `compact × short` and `constrained × short` (landscape phones), then activate those two `browse` cells. `sideOverlay` currently has no styling of its own and falls through to the wide panel's 25/75vw widths, so this task owns its width policy, modality, chrome placement, and touch tuning as a deliberate design, not as the wide panel at different numbers.
   - Invariant and verifier: A landscape phone gets a presentation designed for ~340px of usable height rather than a narrowed desktop panel, and the map stays interactive beside it. Policy and integration tests own cell activation and behavior; a user checklist owns appearance.
 

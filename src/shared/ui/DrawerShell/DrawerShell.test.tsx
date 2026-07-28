@@ -2,7 +2,12 @@ import { act, fireEvent, screen } from '@testing-library/react';
 import { createRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
-import { DrawerShell, useDrawerGeometry, useRegisterSheetScrollOwner } from './index';
+import {
+  DrawerShell,
+  useDrawerGeometry,
+  useRegisterSheetScrollOwner,
+  useSheetContentScrollable,
+} from './index';
 import { resolveSheetSnapHeights, SHEET_PEEK_HEIGHT_PX, SHEET_SNAPS } from './sheetSnapPolicy';
 
 /** Panel content carrying state a rebuilt subtree would silently discard. */
@@ -161,7 +166,14 @@ describe('DrawerShell focus continuity', () => {
 
 function ScrollOwnerProbe() {
   const registerScrollOwner = useRegisterSheetScrollOwner();
-  return <div data-testid="scroll-owner" ref={registerScrollOwner} />;
+  const contentScrollable = useSheetContentScrollable();
+  return (
+    <div
+      data-testid="scroll-owner"
+      data-content-scroll={contentScrollable ? 'allowed' : 'locked'}
+      ref={registerScrollOwner}
+    />
+  );
 }
 
 describe('DrawerShell bottom-sheet geometry', () => {
@@ -215,26 +227,27 @@ describe('DrawerShell bottom-sheet geometry', () => {
 });
 
 describe('DrawerShell scroll-to-snap coupling', () => {
-  it('promotes the sheet and resets scrollTop when the list scrolls past the top while below full', () => {
+  it('parks panel content scrolling until the sheet reaches its top snap', () => {
     const onSnapChange = vi.fn();
-
-    render(
+    const renderSheet = (snap: 'peek' | 'half' | 'full') => (
       <DrawerShell
         presentation="bottomSheet"
         modality="nonmodal"
-        snap="half"
+        snap={snap}
         onSnapChange={onSnapChange}
       >
         <ScrollOwnerProbe />
-      </DrawerShell>,
+      </DrawerShell>
     );
 
-    const scrollOwner = screen.getByTestId('scroll-owner');
-    scrollOwner.scrollTop = 40;
-    fireEvent.scroll(scrollOwner);
+    const { rerender } = render(renderSheet('peek'));
+    expect(screen.getByTestId('scroll-owner').getAttribute('data-content-scroll')).toBe('locked');
 
-    expect(onSnapChange).toHaveBeenCalledWith('full');
-    expect(scrollOwner.scrollTop).toBe(0);
+    rerender(renderSheet('half'));
+    expect(screen.getByTestId('scroll-owner').getAttribute('data-content-scroll')).toBe('locked');
+
+    rerender(renderSheet('full'));
+    expect(screen.getByTestId('scroll-owner').getAttribute('data-content-scroll')).toBe('allowed');
   });
 
   it('does not promote the sheet when the list scrolls while the sheet is already full', () => {

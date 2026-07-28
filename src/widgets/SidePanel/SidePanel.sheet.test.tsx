@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { render } from 'test/setup/render';
 import { SidePanel } from './SidePanel';
@@ -47,5 +47,29 @@ describe('SidePanel bottom sheet', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Expand panel' })).toBeInTheDocument();
+  });
+
+  it('hides the pinned chrome on downward list scroll and reveals it on upward scroll at full', () => {
+    render(
+      <SidePanel
+        drawerPresentation="bottomSheet"
+        sheetSnap="full"
+        onSheetSnapChange={() => {}}
+        subheader={<div>Search and filters</div>}
+      >
+        <div style={{ height: '2000px' }}>Tall sheet content</div>
+      </SidePanel>,
+    );
+
+    const scrollOwner = screen.getByText('Tall sheet content').closest('[data-panel-scroll-owner]');
+    const stickyChrome = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
+    expect(scrollOwner).not.toBeNull();
+    expect(stickyChrome).not.toBeNull();
+
+    fireEvent.scroll(scrollOwner!, { target: { scrollTop: 24 } });
+    expect(stickyChrome).toHaveAttribute('data-hidden', 'true');
+
+    fireEvent.scroll(scrollOwner!, { target: { scrollTop: 8 } });
+    expect(stickyChrome).not.toHaveAttribute('data-hidden');
   });
 });

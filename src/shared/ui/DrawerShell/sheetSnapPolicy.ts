@@ -3,10 +3,14 @@ export type SheetSnap = 'peek' | 'half' | 'full';
 /** The snaps in ascending order of height. */
 export const SHEET_SNAPS: readonly SheetSnap[] = ['peek', 'half', 'full'];
 
-/** Snap heights that scale with the viewport, as a fraction of its dynamic height. */
+/**
+ * Snap heights that scale with the viewport, as a fraction of its dynamic height.
+ * The top snap leaves only a strip of map above it rather than a portion of the
+ * screen; its fraction was set from the approved prototype.
+ */
 export const SHEET_SNAP_FRACTIONS: { readonly half: number; readonly full: number } = {
   half: 0.34,
-  full: 0.9,
+  full: 0.92,
 };
 
 /**
@@ -75,11 +79,4 @@ export function nearestSheetSnap({ heightPx, velocityPx, heights }: NearestSheet
     }
   }
   return nearest ?? 'peek';
-}
-
-/** The snap one step taller than `snap`, or `snap` when it is already the tallest. */
-export function nextSheetSnapUp(snap: SheetSnap): SheetSnap {
-  const index = SHEET_SNAPS.indexOf(snap);
-  const next = SHEET_SNAPS[index + 1];
-  return next ?? snap;
 }

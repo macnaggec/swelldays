@@ -28,6 +28,8 @@
   --wa-control-size-compact: 32px;
   --wa-control-height-default: 2.25rem;
   --wa-control-size-navigation: 44px;
+  /* Compact-band navigation control. */
+  --wa-control-size-navigation-compact: 36px;
 
   /* Motion */
   --wa-motion-duration-control: 150ms;

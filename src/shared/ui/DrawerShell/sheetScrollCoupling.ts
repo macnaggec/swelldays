@@ -5,6 +5,9 @@ export type RegisterSheetScrollOwner = (element: HTMLElement | null) => void;
 export const SheetScrollOwnerContext: Context<RegisterSheetScrollOwner | null> =
   createContext<RegisterSheetScrollOwner | null>(null);
 
+export const SheetContentScrollContext: Context<boolean | null> =
+  createContext<boolean | null>(null);
+
 const noopRegisterSheetScrollOwner: RegisterSheetScrollOwner = () => {};
 
 /**
@@ -15,4 +18,14 @@ const noopRegisterSheetScrollOwner: RegisterSheetScrollOwner = () => {};
 export function useRegisterSheetScrollOwner(): RegisterSheetScrollOwner {
   const register = useContext(SheetScrollOwnerContext);
   return register ?? noopRegisterSheetScrollOwner;
+}
+
+/**
+ * Whether the panel's scroll owner may scroll its content. False while an enclosing
+ * bottom sheet is below its top snap: the list is parked there, so an upward swipe
+ * drags the sheet up instead of moving the cards. True outside a sheet.
+ */
+export function useSheetContentScrollable(): boolean {
+  const contentScrollable = useContext(SheetContentScrollContext);
+  return contentScrollable ?? true;
 }

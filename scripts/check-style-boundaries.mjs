@@ -166,6 +166,7 @@ const requiredResponsiveLayoutTokens = [
   '--wa-control-size-compact',
   '--wa-control-height-default',
   '--wa-control-size-navigation',
+  '--wa-control-size-navigation-compact',
   '--wa-motion-duration-control',
   '--wa-motion-duration-chrome',
   '--wa-motion-easing-standard',
@@ -211,6 +212,7 @@ const requiredResponsiveTokensByFile = new Map([
   ['src/widgets/AppNavigation/AppNavigation.module.css', [
     '--wa-shell-edge-clearance',
     '--wa-control-size-navigation',
+    '--wa-control-size-navigation-compact',
     '--wa-safe-area-top',
     '--wa-safe-area-left',
     '--wa-safe-area-right',

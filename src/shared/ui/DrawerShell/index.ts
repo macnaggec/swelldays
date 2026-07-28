@@ -21,4 +21,7 @@ export { DRAWER_SHELL_TRANSITION } from './motion';
  * API the gate rejects at the first consumer.
  */
 export { type SheetSnap } from './sheetSnapPolicy';
-export { useRegisterSheetScrollOwner } from './sheetScrollCoupling';
+export {
+  useRegisterSheetScrollOwner,
+  useSheetContentScrollable,
+} from './sheetScrollCoupling';

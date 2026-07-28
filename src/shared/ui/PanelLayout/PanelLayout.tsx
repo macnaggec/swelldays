@@ -7,7 +7,10 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useMeasuredWidth } from 'shared/hooks/useMeasuredWidth';
-import { useRegisterSheetScrollOwner } from 'shared/ui/DrawerShell/sheetScrollCoupling';
+import {
+  useRegisterSheetScrollOwner,
+  useSheetContentScrollable,
+} from 'shared/ui/DrawerShell/sheetScrollCoupling';
 import { useSettledLayout } from 'shared/ui/DrawerShell/panelSettledWidth';
 import { usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
 import styles from './PanelLayout.module.css';
@@ -42,6 +45,7 @@ export function PanelLayout({
   const [measuredWidth, measureRef] = useMeasuredWidth();
   const { boxWidth, contentWidth, transitioning } = useSettledLayout(measuredWidth);
   const registerSheetScrollOwner = useRegisterSheetScrollOwner();
+  const contentScrollable = useSheetContentScrollable();
 
   // Closing, these differ, and the panel needs both at once. Its *box* stays wide so
   // cards still travelling across the space being given up are not clipped away; its
@@ -74,6 +78,7 @@ export function PanelLayout({
                   className={styles.scroller}
                   data-panel-layout-scroller
                   data-panel-scroll-owner
+                  data-content-scroll={contentScrollable ? undefined : 'locked'}
                   ref={registerSheetScrollOwner}
                   onScrollCapture={onScrollCapture}
                 >

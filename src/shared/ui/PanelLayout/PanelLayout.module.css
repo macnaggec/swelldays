@@ -35,6 +35,10 @@
   position: relative;
 }
 
+.scroller[data-content-scroll='locked'] {
+  overflow-y: hidden;
+}
+
 /* Pinned beside the scroller: rail content keeps its place while the panel
    content scrolls, and overflowing rail content scrolls on its own with the
    native scrollbar hidden. */

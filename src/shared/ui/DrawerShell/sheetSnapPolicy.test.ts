@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   nearestSheetSnap,
-  nextSheetSnapUp,
   resolveSheetSnapHeights,
   SHEET_PEEK_HEIGHT_PX,
 } from './sheetSnapPolicy';
@@ -11,7 +10,7 @@ describe('resolveSheetSnapHeights', () => {
     expect(resolveSheetSnapHeights({ viewportHeightPx: 844, peekHeightPx: SHEET_PEEK_HEIGHT_PX })).toEqual({
       peek: 132,
       half: 287,
-      full: 760,
+      full: 776,
     });
   });
 
@@ -19,7 +18,7 @@ describe('resolveSheetSnapHeights', () => {
     expect(resolveSheetSnapHeights({ viewportHeightPx: 932, peekHeightPx: SHEET_PEEK_HEIGHT_PX })).toEqual({
       peek: 132,
       half: 317,
-      full: 839,
+      full: 857,
     });
   });
 
@@ -35,7 +34,7 @@ describe('resolveSheetSnapHeights', () => {
 
 describe('nearestSheetSnap', () => {
   const heights = resolveSheetSnapHeights({ viewportHeightPx: 844, peekHeightPx: SHEET_PEEK_HEIGHT_PX });
-  // heights: { peek: 132, half: 287, full: 760 }
+  // heights: { peek: 132, half: 287, full: 776 }
 
   it('lands on peek when at rest exactly at the peek height', () => {
     expect(nearestSheetSnap({ heightPx: heights.peek, velocityPx: 0, heights })).toBe('peek');
@@ -55,8 +54,8 @@ describe('nearestSheetSnap', () => {
   });
 
   it('lands on the nearer neighbour at a midpoint biased toward full', () => {
-    // 524 is 237px from half (287) and 236px from full (760): full is nearer.
-    expect(nearestSheetSnap({ heightPx: 524, velocityPx: 0, heights })).toBe('full');
+    // 532 is 245px from half (287) and 244px from full (776): full is nearer.
+    expect(nearestSheetSnap({ heightPx: 532, velocityPx: 0, heights })).toBe('full');
   });
 
   it('resolves an exact tie between peek and half to the shorter snap', () => {
@@ -78,19 +77,5 @@ describe('nearestSheetSnap', () => {
 
   it('stays at peek on a downward flick already at peek', () => {
     expect(nearestSheetSnap({ heightPx: heights.peek, velocityPx: 500, heights })).toBe('peek');
-  });
-});
-
-describe('nextSheetSnapUp', () => {
-  it('steps from peek to half', () => {
-    expect(nextSheetSnapUp('peek')).toBe('half');
-  });
-
-  it('steps from half to full', () => {
-    expect(nextSheetSnapUp('half')).toBe('full');
-  });
-
-  it('saturates at full', () => {
-    expect(nextSheetSnapUp('full')).toBe('full');
   });
 });

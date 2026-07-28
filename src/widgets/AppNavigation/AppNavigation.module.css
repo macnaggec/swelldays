@@ -8,8 +8,10 @@
 }
 
 .root[data-navigation-presentation='topBar'] {
+  top: calc(var(--wa-safe-area-top) + 42px);
   left: auto;
   right: calc(var(--wa-safe-area-right) + var(--wa-shell-edge-clearance));
+  z-index: var(--wa-z-controls);
 }
 
 .stack {
@@ -21,7 +23,6 @@
   align-items: center;
 }
 
-.root[data-navigation-presentation='topBar'] .stack,
 .root[data-navigation-presentation='compactBar'] .stack {
   flex-direction: row;
 }
@@ -35,6 +36,22 @@
   border-radius: var(--wa-radius-control-md);
   cursor: pointer;
   user-select: none;
+}
+
+.root[data-navigation-presentation='topBar'] .button {
+  position: relative;
+  width: var(--wa-control-size-navigation-compact);
+  height: var(--wa-control-size-navigation-compact);
+}
+
+.root[data-navigation-presentation='topBar'] .button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--wa-control-size-navigation);
+  height: var(--wa-control-size-navigation);
+  transform: translate(-50%, -50%);
 }
 
 .button :global(svg) {

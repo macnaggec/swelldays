@@ -18,12 +18,14 @@ import { DRAWER_SHELL_TRANSITION } from './motion';
 import { PanelSettledWidthContext } from './panelSettledWidth';
 import {
   nearestSheetSnap,
-  nextSheetSnapUp,
   resolveSheetSnapHeights,
   SHEET_PEEK_HEIGHT_PX,
   type SheetSnap,
 } from './sheetSnapPolicy';
-import { SheetScrollOwnerContext } from './sheetScrollCoupling';
+import {
+  SheetContentScrollContext,
+  SheetScrollOwnerContext,
+} from './sheetScrollCoupling';
 import styles from './DrawerShell.module.css';
 
 export type DrawerShellPresentation = Exclude<
@@ -59,10 +61,6 @@ interface DrawerShellSheetProps extends DrawerShellBaseProps {
 }
 
 export type DrawerShellProps = DrawerShellPanelProps | DrawerShellSheetProps;
-
-// A deliberate pull past this reads as "the user scrolled the list", promoting the
-// sheet; settling sub-pixel jitter at the top must not.
-const SHEET_SCROLL_PROMOTE_THRESHOLD_PX = 4;
 
 // Small because dragConstraints already bounds the travel between full and peek; this
 // only softens the stop at either end rather than allowing real overshoot.
@@ -209,16 +207,10 @@ export function DrawerShell(props: DrawerShellProps) {
   const [contentScrolledFromTop, setContentScrolledFromTop] = useState(false);
 
   useEffect(() => {
-    if (!scrollOwnerElement || snap === undefined || !onSnapChange) return;
-    const activeSnap = snap;
-    const changeSnap = onSnapChange;
+    if (!scrollOwnerElement || snap === undefined) return;
 
     const handleScroll = () => {
       setContentScrolledFromTop(scrollOwnerElement.scrollTop > 0);
-      if (activeSnap === 'full') return;
-      if (scrollOwnerElement.scrollTop <= SHEET_SCROLL_PROMOTE_THRESHOLD_PX) return;
-      changeSnap(nextSheetSnapUp(activeSnap));
-      scrollOwnerElement.scrollTop = 0;
     };
 
     scrollOwnerElement.addEventListener('scroll', handleScroll);
@@ -226,7 +218,7 @@ export function DrawerShell(props: DrawerShellProps) {
       scrollOwnerElement.removeEventListener('scroll', handleScroll);
       setContentScrolledFromTop(false);
     };
-  }, [scrollOwnerElement, snap, onSnapChange]);
+  }, [scrollOwnerElement, snap]);
 
   const handleSheetDragEnd: DragHandler = (_event, info) => {
     const surface = surfaceRef.current;
@@ -289,7 +281,7 @@ export function DrawerShell(props: DrawerShellProps) {
         />
       )}
       {/*
-        * Both providers are mounted in every presentation on purpose. Wrapping the
+        * These providers are mounted in every presentation on purpose. Wrapping the
         * children only in the sheet branch would change the element type at this
         * position on a band crossing, so React would unmount and rebuild the whole
         * panel subtree — losing the draft text, focus, and scroll position F12d
@@ -298,7 +290,11 @@ export function DrawerShell(props: DrawerShellProps) {
         */}
       <PanelSettledWidthContext.Provider value={settledWidth}>
         <SheetScrollOwnerContext.Provider value={setScrollOwnerElement}>
-          {children}
+          <SheetContentScrollContext.Provider
+            value={props.presentation === 'bottomSheet' ? props.snap === 'full' : true}
+          >
+            {children}
+          </SheetContentScrollContext.Provider>
         </SheetScrollOwnerContext.Provider>
       </PanelSettledWidthContext.Provider>
     </motion.aside>
