@@ -74,7 +74,7 @@ const MediaLightbox: FC<MediaLightboxProps> = memo(({
         const dimensions = mediaReady ? formatDimensions(item.width, item.height) : null;
 
         return (
-          <Group gap="xs" wrap="nowrap">
+          <Group gap="xs" wrap="wrap">
             {mediaReady && (
               <Badge
                 size="lg"
