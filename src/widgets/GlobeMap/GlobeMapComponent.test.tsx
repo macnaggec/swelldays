@@ -431,7 +431,31 @@ describe('GlobeMapComponent selected spot focus', () => {
       expect(mocks.flyTo).toHaveBeenCalledWith({
         center: [115.085, -8.815],
         zoom: 12,
-        padding: { top: 300, right: 0, bottom: 0, left: 0 },
+        padding: { top: 0, right: 0, bottom: 0, left: 0 },
+        duration: 1000,
+        essential: true,
+      });
+    });
+  });
+
+  it('focuses an initially selected spot with the insets present when the map loads', async () => {
+    render(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId="spot-1"
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        cameraInsetsPx={{ top: 72, right: 0, bottom: 84, left: 0 }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /load map/i }));
+
+    await waitFor(() => {
+      expect(mocks.flyTo).toHaveBeenCalledWith({
+        center: [115.085, -8.815],
+        zoom: 12,
+        padding: { top: 72, right: 0, bottom: 84, left: 0 },
         duration: 1000,
         essential: true,
       });
@@ -463,7 +487,7 @@ describe('GlobeMapComponent selected spot focus', () => {
     expect(mocks.flyTo).toHaveBeenCalledWith({
       center: [115.085, -8.815],
       zoom: 12,
-      padding: { top: 300, right: 0, bottom: 0, left: 0 },
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
       duration: 1000,
       essential: true,
     });
@@ -505,7 +529,7 @@ describe('GlobeMapComponent selected spot focus', () => {
     expect(mocks.flyTo).toHaveBeenCalledWith({
       center: [115.085, -8.815],
       zoom: 12,
-      padding: { top: 300, right: 0, bottom: 0, left: 0 },
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
       duration: 1000,
       essential: true,
     });
@@ -537,7 +561,7 @@ describe('GlobeMapComponent selected spot focus', () => {
       expect(mocks.flyTo).toHaveBeenCalledWith({
         center: [115.085, -8.815],
         zoom: 12,
-        padding: { top: 300, right: 0, bottom: 0, left: 0 },
+        padding: { top: 0, right: 0, bottom: 0, left: 0 },
         duration: 1000,
         essential: true,
       });
@@ -578,7 +602,7 @@ describe('GlobeMapComponent selected spot focus', () => {
     expect(mocks.flyTo).toHaveBeenCalledWith({
       center: [115.085, -8.815],
       zoom: 12,
-      padding: { top: 300, right: 0, bottom: 0, left: 0 },
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
       duration: 1000,
       essential: true,
     });
@@ -624,13 +648,12 @@ describe('GlobeMapComponent selected spot focus', () => {
       />,
     );
 
-    // Map load triggers the one-time route-driven focus (with preview padding).
+    // Map load triggers the one-time route-driven focus.
     fireEvent.click(screen.getByRole('button', { name: /load map/i }));
     mocks.flyTo.mockClear();
     mocks.easeTo.mockClear();
 
-    // Clicking the marker for the already-selected spot must not re-focus with
-    // different (non-preview) padding — that would knock the camera out of place.
+    // Clicking the marker for the already-selected spot must not restart the focus.
     fireEvent.click(screen.getByRole('button', { name: /click map/i }));
 
     expect(mocks.flyTo).not.toHaveBeenCalled();
@@ -664,7 +687,7 @@ describe('GlobeMapComponent selected spot focus', () => {
     expect(mocks.flyTo).toHaveBeenCalledWith({
       center: [115.085, -8.815],
       zoom: 12,
-      padding: { top: 300, right: 500, bottom: 0, left: 0 },
+      padding: { top: 0, right: 500, bottom: 0, left: 0 },
       duration: 1000,
       essential: true,
     });
@@ -696,7 +719,7 @@ describe('GlobeMapComponent selected spot focus', () => {
     expect(mocks.flyTo).toHaveBeenCalledWith({
       center: [115.085, -8.815],
       zoom: 12,
-      padding: { top: 300, right: 0, bottom: 400, left: 0 },
+      padding: { top: 0, right: 0, bottom: 400, left: 0 },
       duration: 1000,
       essential: true,
     });
@@ -753,7 +776,7 @@ describe('GlobeMapComponent camera inset changes', () => {
     mocks.getZoom.mockReturnValue(12);
   });
 
-  it('updates camera padding without restarting the selected-spot focus animation when the right inset changes', () => {
+  it('recenters the selected spot against the final right inset when a side panel lands', () => {
     const { rerender } = render(
       <GlobeMapComponent
         spots={spots}
@@ -789,17 +812,17 @@ describe('GlobeMapComponent camera inset changes', () => {
       />,
     );
 
-    expect(mocks.setPadding).toHaveBeenCalledWith({
-      top: 300,
-      right: 750,
-      bottom: 0,
-      left: 0,
+    expect(mocks.easeTo).toHaveBeenCalledWith({
+      center: [115.085, -8.815],
+      padding: { top: 0, right: 750, bottom: 0, left: 0 },
+      duration: 600,
+      essential: true,
     });
-    expect(mocks.easeTo).not.toHaveBeenCalled();
     expect(mocks.flyTo).not.toHaveBeenCalled();
+    expect(mocks.setPadding).not.toHaveBeenCalled();
   });
 
-  it('updates camera padding without restarting the selected-spot focus animation when the bottom inset changes', () => {
+  it('recenters the selected spot against the final bottom inset when a sheet lands', () => {
     const { rerender } = render(
       <GlobeMapComponent
         spots={spots}
@@ -835,14 +858,59 @@ describe('GlobeMapComponent camera inset changes', () => {
       />,
     );
 
-    expect(mocks.setPadding).toHaveBeenCalledWith({
-      top: 300,
-      right: 0,
-      bottom: 750,
-      left: 0,
+    expect(mocks.easeTo).toHaveBeenCalledWith({
+      center: [115.085, -8.815],
+      padding: { top: 0, right: 0, bottom: 750, left: 0 },
+      duration: 600,
+      essential: true,
     });
-    expect(mocks.easeTo).not.toHaveBeenCalled();
     expect(mocks.flyTo).not.toHaveBeenCalled();
+    expect(mocks.setPadding).not.toHaveBeenCalled();
+  });
+
+  it('retargets an interrupted overview flight to the selected spot and final inset', () => {
+    mocks.getZoom.mockReturnValue(1.5);
+    const { rerender } = render(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId={null}
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        cameraInsetsPx={{ top: 0, right: 0, bottom: 84, left: 0 }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /load map/i }));
+    rerender(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId="spot-1"
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        cameraInsetsPx={{ top: 0, right: 0, bottom: 84, left: 0 }}
+      />,
+    );
+    mocks.flyTo.mockClear();
+    mocks.setPadding.mockClear();
+
+    rerender(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId="spot-1"
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        cameraInsetsPx={{ top: 0, right: 0, bottom: 400, left: 0 }}
+      />,
+    );
+
+    expect(mocks.flyTo).toHaveBeenCalledWith({
+      center: [115.085, -8.815],
+      zoom: 12,
+      padding: { top: 0, right: 0, bottom: 400, left: 0 },
+      duration: 1000,
+      essential: true,
+    });
+    expect(mocks.setPadding).not.toHaveBeenCalled();
   });
 
   it('does not move the camera when insets change with no spot selected', () => {

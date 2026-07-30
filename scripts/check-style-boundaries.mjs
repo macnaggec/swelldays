@@ -249,7 +249,15 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-motion-easing-standard',
     '--wa-z-panel-chrome',
   ]],
-  ['src/shared/ui/PanelRouteLayout.module.css', ['--wa-control-height-default']],
+  ['src/shared/ui/PanelRouteLayout.module.css', [
+    '--wa-control-height-default',
+    '--wa-safe-area-top',
+    '--wa-shell-edge-clearance',
+    '--wa-z-floating-chrome',
+    '--wa-panel-content-inset',
+    '--wa-radius-panel',
+    '--wa-gallery-tile-comfortable',
+  ]],
   ['src/features/Upload/ui/UploadSidebar.module.css', ['--wa-control-height-default']],
 ]);
 
@@ -279,15 +287,23 @@ const requiredDrawerShellRuntime = [
     'closed side-overlay interaction removal without unmounting',
     /aria-hidden=\{panelOpen \? undefined : true\}[\s\S]*inert=\{!panelOpen\}/,
   ],
+  [
+    'measured drawer geometry publication',
+    /publishDrawerGeometry\(bounds\)/,
+  ],
 ];
 
 const requiredCompactBrowseNavigationRuntime = [
-  ['composition-owned sheet position input', /\buseBrowseSheetPosition\b/],
+  ['composition-owned browse surface input', /\buseBrowseSurface\b/],
   ['DrawerShell-owned sheet-top projection', /\buseSheetSnapTopPx\b/],
   ['full-sheet interaction removal', /\binert=\{isBrowseSheetFull\}/],
 ];
 
 const requiredCompactBrowseNavigationStyles = [
+  [
+    'top-bar notch clearance matching its inline edge clearance',
+    /\.root\[data-navigation-presentation='topBar'\]\s*\{[^}]*top:\s*calc\(var\(--wa-safe-area-top\)\s*\+\s*var\(--wa-shell-edge-clearance\)\)[^}]*right:\s*calc\(var\(--wa-safe-area-right\)\s*\+\s*var\(--wa-shell-edge-clearance\)\)/s,
+  ],
   [
     'middle-snap placement beside the sheet',
     /\.root\[data-navigation-presentation='topBar'\]\[data-sheet-snap='half'\]\s*\{[^}]*--wa-browse-navigation-translate-y:\s*-100%[^}]*top:\s*calc\(var\(--wa-browse-sheet-top\)\s*-\s*var\(--wa-shell-edge-clearance\)\)/s,
@@ -460,23 +476,23 @@ const rules = [
     ),
   },
   {
-    id: 'browse-sheet-position-provider-is-mounted-at-the-composition-root',
-    message: 'Mount the browse sheet position provider once at the composition root.',
-    pattern: /<BrowseSheetPositionProvider[\s>]/,
+    id: 'browse-surface-provider-is-mounted-at-the-composition-root',
+    message: 'Mount the browse surface provider once at the composition root.',
+    pattern: /<BrowseSurfaceProvider[\s>]/,
     include: isRuntimeTypeScript,
     exclude: file => file === 'src/app/routes/__root.tsx',
   },
   {
-    id: 'browse-sheet-position-has-bounded-consumers',
-    message: 'Only the panel route, browse section bar, and app navigation may consume the composition-owned browse sheet position.',
-    pattern: /\buseBrowseSheetPosition\b/,
+    id: 'browse-surface-has-bounded-consumers',
+    message: 'Only the panel route, map scene, and app navigation may consume the composition-owned browse surface.',
+    pattern: /\buseBrowseSurface\b/,
     include: isRuntimeTypeScript,
     exclude: file => (
-      file === 'src/shared/ui/DrawerShell/browseSheetPosition.tsx'
+      file === 'src/shared/ui/DrawerShell/browseSurface.tsx'
       || file === 'src/shared/ui/DrawerShell/index.ts'
       || file === 'src/app/routes/_panel.tsx'
       || file === 'src/widgets/AppNavigation/AppNavigation.tsx'
-      || file === 'src/widgets/BrowseSectionBar/BrowseSectionBar.tsx'
+      || file === 'src/views/GlobeScene/GlobeScene.tsx'
     ),
   },
   {
@@ -510,13 +526,19 @@ const rules = [
   },
   {
     id: 'drawer-shell-owns-geometry-publication',
-    message: 'Only DrawerShell may publish rendered drawer geometry; other modules consume the read-only projection.',
-    pattern: /\bpublishDrawerGeometry\b/,
+    message: 'Only DrawerShell may publish rendered or target drawer geometry; other modules consume the read-only projections.',
+    pattern: /\bpublishDrawer(?:Target)?Geometry\b/,
     include: isRuntimeTypeScript,
     exclude: file => (
       file === 'src/shared/ui/DrawerShell/DrawerShell.tsx'
       || file === 'src/shared/ui/DrawerShell/geometry.ts'
     ),
+  },
+  {
+    id: 'globe-scene-consumes-drawer-owned-geometry',
+    message: 'GlobeScene must consume DrawerShell geometry instead of reconstructing sheet-snap geometry.',
+    pattern: /\b(?:useSheetSnapTopPx|resolveSheetSnapHeights|SHEET_PEEK_HEIGHT_PX)\b/,
+    include: file => file === 'src/views/GlobeScene/GlobeScene.tsx',
   },
   {
     id: 'globe-camera-insets-use-measured-drawer',

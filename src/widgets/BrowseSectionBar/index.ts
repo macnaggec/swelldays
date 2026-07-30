@@ -1,1 +1,5 @@
-export { BrowseSectionBar, type BrowseSection } from './BrowseSectionBar';
+export {
+  BrowseSectionBar,
+  type BrowseDestination,
+  type BrowseSection,
+} from './BrowseSectionBar';

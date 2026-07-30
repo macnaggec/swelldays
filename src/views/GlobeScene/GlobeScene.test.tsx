@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   browsingExpanded: false,
   galleryExpanded: true,
   drawerGeometry: null as DrawerGeometry | null,
+  drawerTargetGeometry: ((): DrawerGeometry | null => null)(),
   setBrowsingPanelExpanded: vi.fn(),
   setGalleryPanelExpanded: vi.fn(),
   matches: [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: { workspaceId: 'workspace-1' } }] as Array<{
@@ -21,6 +22,8 @@ const mocks = vi.hoisted(() => ({
     staticData?: { appRouteIntent?: DeclaredAppRouteIntent };
   }>,
   navigate: vi.fn(),
+  browseSurfaceMode: 'results' as 'map' | 'results',
+  showBrowseResults: vi.fn(),
   notifyError: vi.fn(),
   addSpotState: {
     isActive: false,
@@ -60,6 +63,7 @@ vi.mock('widgets/GlobeMap', () => ({
       data-has-camera-intent={String('cameraIntent' in restProps)}
       data-interaction-policy={String(restProps.interactionPolicy)}
       data-camera-inset-right-px={String(restProps.cameraInsetsPx?.right)}
+      data-camera-inset-top-px={String(restProps.cameraInsetsPx?.top)}
       data-camera-inset-bottom-px={String(restProps.cameraInsetsPx?.bottom)}
     >
       <button onClick={() => onSpotSelect({ id: 'spot-1' })}>Select Pipeline</button>
@@ -96,6 +100,11 @@ vi.mock('shared/model/panelExpansionStore', () => ({
 
 vi.mock('shared/ui/DrawerShell', () => ({
   useDrawerGeometry: () => mocks.drawerGeometry,
+  useDrawerTargetGeometry: () => mocks.drawerTargetGeometry,
+  useBrowseSurface: () => ({
+    mode: mocks.browseSurfaceMode,
+    showResults: mocks.showBrowseResults,
+  }),
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -132,6 +141,8 @@ beforeEach(() => {
   mocks.browsingExpanded = false;
   mocks.galleryExpanded = true;
   mocks.drawerGeometry = null;
+  mocks.drawerTargetGeometry = null;
+  mocks.browseSurfaceMode = 'results';
 });
 
 function globeSceneTree() {
@@ -302,14 +313,15 @@ describe('GlobeScene selected spot ownership', () => {
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-selected-spot-id', 'new-spot');
   });
 
-  it('keeps gallery mode when a photographer selects a map marker', () => {
+  it('opens the selected spot in Feed and requests the browse results surface', () => {
     mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
     renderGlobeScene();
 
     fireEvent.click(screen.getByRole('button', { name: 'Select Pipeline' }));
 
+    expect(mocks.showBrowseResults).toHaveBeenCalledOnce();
     expect(mocks.navigate).toHaveBeenCalledWith({
-      to: '/$spotId/gallery',
+      to: '/$spotId',
       params: { spotId: 'spot-1' },
     });
   });
@@ -393,6 +405,7 @@ describe('GlobeScene map interaction policy', () => {
 
 describe('GlobeScene map camera insets', () => {
   const originalInnerWidth = window.innerWidth;
+  const originalInnerHeight = window.innerHeight;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -406,6 +419,7 @@ describe('GlobeScene map camera insets', () => {
 
   afterEach(() => {
     Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
   });
 
   it('projects the measured drawer overlap instead of estimating from semantic shell state', () => {
@@ -422,5 +436,88 @@ describe('GlobeScene map camera insets', () => {
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-camera-inset-right-px', '800');
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-camera-inset-bottom-px', '0');
+  });
+
+  it('uses the bottom sheet destination snap before its measured surface finishes moving', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 844, configurable: true });
+    mocks.browseSurfaceMode = 'map';
+    mocks.drawerGeometry = {
+      left: 0,
+      top: 557,
+      right: 390,
+      bottom: 844,
+      width: 390,
+      height: 287,
+    };
+    mocks.drawerTargetGeometry = {
+      left: 0,
+      top: 760,
+      right: 390,
+      bottom: 844,
+      width: 390,
+      height: 84,
+    };
+
+    renderGlobeScene();
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-bottom-px', '84');
+  });
+
+  it('uses the side panel destination width while its measured surface is still map chrome', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 844, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 390, configurable: true });
+    mocks.browseSurfaceMode = 'results';
+    mocks.drawerGeometry = {
+      left: 272,
+      top: 12,
+      right: 572,
+      bottom: 72,
+      width: 300,
+      height: 60,
+    };
+    mocks.drawerTargetGeometry = {
+      left: 464,
+      top: 0,
+      right: 844,
+      bottom: 390,
+      width: 380,
+      height: 390,
+    };
+
+    renderGlobeScene();
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-right-px', '380');
+  });
+
+  it('keeps map centering neutral while the floating side-panel chrome replaces results', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 844, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 390, configurable: true });
+    mocks.browseSurfaceMode = 'map';
+    mocks.drawerGeometry = {
+      left: 464,
+      top: 0,
+      right: 844,
+      bottom: 390,
+      width: 380,
+      height: 390,
+    };
+    mocks.drawerTargetGeometry = {
+      left: 272,
+      top: 12,
+      right: 572,
+      bottom: 72,
+      width: 300,
+      height: 60,
+    };
+
+    renderGlobeScene();
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-top-px', '0');
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-right-px', '0');
   });
 });

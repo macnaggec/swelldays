@@ -10,7 +10,7 @@ import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
-import { BrowseSheetPositionProvider } from 'shared/ui/DrawerShell';
+import { BrowseSurfaceProvider } from 'shared/ui/DrawerShell';
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: RootLayout,
@@ -46,13 +46,13 @@ function RootLayout() {
           browseExpanded={browseExpanded}
           galleryExpanded={galleryExpanded}
         >
-          <BrowseSheetPositionProvider
+          <BrowseSurfaceProvider
             preferredExpanded={sheetPreferredExpanded}
             onPreferredExpandedChange={setSheetPreferredExpanded}
           >
             <AppShell />
             <Outlet />
-          </BrowseSheetPositionProvider>
+          </BrowseSurfaceProvider>
         </AppShellLayoutPolicyProvider>
       </AddSpotProvider>
     </AuthModalProvider>

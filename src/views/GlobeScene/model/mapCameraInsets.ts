@@ -5,6 +5,7 @@ import { NO_MAP_CAMERA_INSETS, type MapCameraInsets } from 'widgets/GlobeMap';
 export interface MapCameraInsetsInput {
   drawerBounds: DrawerGeometry | null;
   drawerPresentation: AppShellLayoutPolicy['drawer']['presentation'];
+  drawerChromeOnly?: boolean;
   viewportWidthPx: number;
   viewportHeightPx: number;
 }
@@ -19,6 +20,7 @@ function clippedOverlap(start: number, end: number, viewportExtentPx: number): n
 export function deriveMapCameraInsets({
   drawerBounds,
   drawerPresentation,
+  drawerChromeOnly = false,
   viewportWidthPx,
   viewportHeightPx,
 }: MapCameraInsetsInput): MapCameraInsets {
@@ -26,13 +28,21 @@ export function deriveMapCameraInsets({
 
   switch (drawerPresentation) {
     case 'persistent':
-    case 'sideOverlay':
       return {
         top: 0,
         right: clippedOverlap(drawerBounds.left, drawerBounds.right, viewportWidthPx),
         bottom: 0,
         left: 0,
       };
+    case 'sideOverlay':
+      return drawerChromeOnly
+        ? NO_MAP_CAMERA_INSETS
+        : {
+          top: 0,
+          right: clippedOverlap(drawerBounds.left, drawerBounds.right, viewportWidthPx),
+          bottom: 0,
+          left: 0,
+        };
     case 'bottomSheet':
       return {
         top: 0,

@@ -60,6 +60,33 @@ export function useDrawerGeometry() {
   );
 }
 
+let targetGeometrySnapshot: DrawerGeometry | null = null;
+const targetGeometryListeners = new Set<() => void>();
+
+/**
+ * The drawer bounds it is moving toward. Kept separate from measured geometry
+ * so map camera intent can target the final unobscured viewport immediately,
+ * while adjacent chrome can continue using the surface's settled DOM bounds.
+ */
+export function publishDrawerTargetGeometry(rect: DrawerGeometry | null) {
+  const next = rect ? Object.freeze({ ...rect }) : null;
+  if (hasSameBounds(targetGeometrySnapshot, next)) return;
+
+  targetGeometrySnapshot = next;
+  targetGeometryListeners.forEach((listener) => listener());
+}
+
+export function useDrawerTargetGeometry() {
+  return useSyncExternalStore(
+    (listener) => {
+      targetGeometryListeners.add(listener);
+      return () => targetGeometryListeners.delete(listener);
+    },
+    () => targetGeometrySnapshot,
+    () => null,
+  );
+}
+
 let drawerMoving = false;
 const motionListeners = new Set<() => void>();
 

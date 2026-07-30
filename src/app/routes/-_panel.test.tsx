@@ -8,7 +8,7 @@ import type { BrowseDateFilter } from 'shared/model/browseFilters';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { resolveAppRouteIntent, type DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
-import { BrowseSheetPositionProvider } from 'shared/ui/DrawerShell';
+import { BrowseSurfaceProvider } from 'shared/ui/DrawerShell';
 import { Route, usePanelFeedLayoutReadyChange, useSetPanelRouteBackAction } from './_panel';
 
 // Mirrors the two-input derivation __root.tsx performs for the real app: PanelFrame
@@ -39,12 +39,12 @@ function TestShellPolicyProvider({ children }: { children: ReactNode }) {
       browseExpanded={browseExpanded}
       galleryExpanded={galleryExpanded}
     >
-      <BrowseSheetPositionProvider
+      <BrowseSurfaceProvider
         preferredExpanded={sheetPreferredExpanded}
         onPreferredExpandedChange={setSheetPreferredExpanded}
       >
         {children}
-      </BrowseSheetPositionProvider>
+      </BrowseSurfaceProvider>
     </AppShellLayoutPolicyProvider>
   );
 }
@@ -1204,13 +1204,15 @@ describe('Panel compact browse sheet', () => {
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/$spotId', params: { spotId: 'spot-b' } });
   });
 
-  it('offers no spot selection from search at the smallest sheet position, where only the search row is visible', () => {
+  it('opens a spot from the search-only sheet and raises its Feed results', () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Land on peek' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Select spot-b' }));
 
-    expect(screen.queryByRole('button', { name: 'Select spot-b' })).not.toBeInTheDocument();
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/$spotId', params: { spotId: 'spot-b' } });
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'half');
   });
 });
 
@@ -1232,7 +1234,7 @@ describe('Panel short-height browse section shell', () => {
     useAddSpotStore.getState().exit();
   });
 
-  it('keeps section navigation available while Map closes and Feed reopens the same panel', () => {
+  it('moves search and Upload to standalone Map chrome while keeping the results drawer mounted', () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
@@ -1240,11 +1242,45 @@ describe('Panel short-height browse section shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Map' }));
 
     expect(screen.getByRole('navigation', { name: 'Browse sections' })).toBeInTheDocument();
-    expect(screen.queryByRole('complementary', { name: 'Content drawer' })).not.toBeInTheDocument();
+    expect(panel).toBeInTheDocument();
+    expect(panel).toHaveAttribute('aria-hidden', 'true');
+    const mapSearch = screen.getByRole('search', { name: 'Map search' });
+    expect(mapSearch).not.toBe(panel);
+    expect(mapSearch).toContainElement(screen.getByTestId('feed-search'));
+    expect(mapSearch).toContainElement(screen.getByRole('button', { name: 'Upload' }));
+    expect(screen.getByRole('button', { name: 'Map' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'Feed' })).not.toHaveAttribute('aria-current');
 
     fireEvent.click(screen.getByRole('button', { name: 'Feed' }));
 
     expect(screen.getByRole('complementary', { name: 'Content drawer' })).toBe(panel);
+    expect(panel).not.toHaveAttribute('aria-hidden');
+    expect(screen.queryByRole('search', { name: 'Map search' })).not.toBeInTheDocument();
+    expect(panel).toContainElement(screen.getByTestId('feed-search'));
+  });
+
+  it('centers the section bar on the viewport in Map mode and avoids the results panel in Feed', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    const navigation = screen.getByRole('navigation', { name: 'Browse sections' });
+    expect(navigation).toHaveAttribute('data-drawer-adjacent');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Map' }));
+
+    expect(screen.getByRole('navigation', { name: 'Browse sections' }))
+      .not.toHaveAttribute('data-drawer-adjacent');
+  });
+
+  it('opens a searched spot in Feed from the short-height Map toolbar', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Map' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Select spot-b' }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/$spotId', params: { spotId: 'spot-b' } });
+    expect(screen.getByTestId('side-panel')).not.toHaveAttribute('aria-hidden');
   });
 
   it('reopens the panel for Gallery and keeps the short-height shell after its route becomes active', () => {

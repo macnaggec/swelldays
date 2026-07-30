@@ -10,7 +10,7 @@ import {
 } from 'entities/SurfSession';
 import { EMPTY_BROWSE_FILTERS, type BrowseDateFilter, type BrowseFilters } from 'shared/model/browseFilters';
 import { SidePanel } from 'widgets/SidePanel';
-import { useBrowseSheetPosition } from 'shared/ui/DrawerShell';
+import { useBrowseSurface } from 'shared/ui/DrawerShell';
 import { useCartStore } from 'entities/Commerce';
 import { CartDrawerHeader } from 'features/Cart';
 import { useUploadStore } from 'features/Upload';
@@ -19,6 +19,7 @@ import { ScopeSwitcher } from 'widgets/SidePanel';
 import { FeedSearch } from 'widgets/FeedDrawer';
 import { FilterPills } from 'widgets/SidePanel';
 import {
+  FloatingPanelSearchToolbar,
   FloatingPanelControls,
   PanelRouteActionButton,
   PanelSearchToolbar,
@@ -213,21 +214,27 @@ function PanelFrame({ children }: { children: ReactNode }) {
     return () => cancelAnimationFrame(frame);
   }, [isExpanded, renderedPanelState.expanded]);
 
-  const { snap: sheetSnap, setSnap: handleSheetSnapChange } = useBrowseSheetPosition();
+  const {
+    mode: browseSurfaceMode,
+    snap: sheetSnap,
+    setSnap: handleSheetSnapChange,
+    showMap: showBrowseMap,
+    showResults: revealBrowseResults,
+  } = useBrowseSurface();
   const isBrowseSheet = layoutPolicy.drawer.presentation === 'bottomSheet';
   const isBrowseSectionRoute = Boolean(spotMatch || allGalleryMatch || isDefaultIndex);
   const isShortBrowseSideOverlay = layoutPolicy.drawer.presentation === 'sideOverlay'
     && isBrowseSectionRoute;
+  const showsStandaloneMapToolbar = isShortBrowseSideOverlay && browseSurfaceMode === 'map';
   const usesFloatingBrowseSections = isBrowseSheet || isShortBrowseSideOverlay;
-  const [shortSidePanelOpen, setShortSidePanelOpen] = useState(true);
   const renderedExpanded = isBrowseSheet
     ? sheetSnap !== 'peek'
     : isShortBrowseSideOverlay
-      ? true
+      ? browseSurfaceMode === 'results'
       : isExpanded;
 
   const handleBrowseSectionChange = useCallback((scope: BrowseSection) => {
-    if (isShortBrowseSideOverlay) setShortSidePanelOpen(true);
+    revealBrowseResults();
 
     if (allGalleryMatch || isDefaultIndex) {
       if (
@@ -261,13 +268,12 @@ function PanelFrame({ children }: { children: ReactNode }) {
     allGalleryMatch,
     isDefaultIndex,
     isBrowseSheet,
-    isShortBrowseSideOverlay,
     galleryMatch,
     navigate,
     renderedExpanded,
     setGalleryPreferredExpanded,
-    setShortSidePanelOpen,
     setUserPreferredExpanded,
+    revealBrowseResults,
     spotId,
   ]);
 
@@ -327,23 +333,16 @@ function PanelFrame({ children }: { children: ReactNode }) {
         primary={(
           <FeedSearch
             activeSpot={isDefaultIndex || allGalleryMatch ? null : (activeSpot ?? null)}
-            onSpotSelect={
-              isDefaultIndex
-                ? (renderedExpanded
-                  ? (spot) => void navigate({ to: '/$spotId', params: { spotId: spot.id } })
-                  : undefined)
-                : allGalleryMatch
-                  ? (spot) => void navigate({
-                    to: '/$spotId/gallery',
-                    params: { spotId: spot.id },
-                  })
-                : spotMatch
-                  ? (spot) => void navigate({
-                    to: spotGalleryMatch ? '/$spotId/gallery' : '/$spotId',
-                    params: { spotId: spot.id },
-                  })
-                  : undefined
-            }
+            onSpotSelect={(spot) => {
+              revealBrowseResults();
+              if (browseSurfaceMode === 'map' || isDefaultIndex) {
+                void navigate({ to: '/$spotId', params: { spotId: spot.id } });
+              } else if (allGalleryMatch || spotGalleryMatch) {
+                void navigate({ to: '/$spotId/gallery', params: { spotId: spot.id } });
+              } else {
+                void navigate({ to: '/$spotId', params: { spotId: spot.id } });
+              }
+            }}
             onClear={
               spotMatch
                 ? () => void navigate({ to: spotGalleryMatch ? '/gallery' : '/' })
@@ -408,11 +407,16 @@ function PanelFrame({ children }: { children: ReactNode }) {
               />
             </FloatingPanelControls>
           )}
+          {showsStandaloneMapToolbar && subheader && (
+            <FloatingPanelSearchToolbar>
+              {subheader}
+            </FloatingPanelSearchToolbar>
+          )}
           {layoutPolicy.drawer.presentation !== 'hidden' && (
             <SidePanel
               drawerPresentation={layoutPolicy.drawer.presentation}
               drawerModality={layoutPolicy.drawer.modality === 'modal' ? 'modal' : 'nonmodal'}
-              open={isShortBrowseSideOverlay ? shortSidePanelOpen : true}
+              open={!showsStandaloneMapToolbar}
               sheetSnap={isBrowseSheet ? sheetSnap : undefined}
               onSheetSnapChange={isBrowseSheet ? handleSheetSnapChange : undefined}
               expanded={renderedExpanded}
@@ -422,17 +426,20 @@ function PanelFrame({ children }: { children: ReactNode }) {
               backDisabled={routeBackActionForPanel?.disabled}
               headerFullWidth={Boolean(cartMatch)}
               header={header}
-              subheader={subheader}
+              subheader={showsStandaloneMapToolbar ? undefined : subheader}
               bottomBar={
                 usesFloatingBrowseSections
                 && (!isBrowseSheet || sheetSnap !== 'peek') ? (
                 <BrowseSectionBar
-                  section={galleryMatch ? 'gallery' : 'sessions'}
-                  avoidDrawer={isShortBrowseSideOverlay}
-                  onMap={() => {
-                    if (isBrowseSheet) handleSheetSnapChange('peek');
-                    else setShortSidePanelOpen(false);
-                  }}
+                  active={
+                    browseSurfaceMode === 'map'
+                      ? 'map'
+                      : galleryMatch
+                        ? 'gallery'
+                        : 'sessions'
+                  }
+                  avoidDrawer={isShortBrowseSideOverlay && browseSurfaceMode !== 'map'}
+                  onMap={showBrowseMap}
                   onSectionChange={handleBrowseSectionChange}
                 />
                   ) : undefined

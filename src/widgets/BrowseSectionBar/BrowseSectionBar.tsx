@@ -6,20 +6,21 @@ import { materialClasses } from 'shared/ui/design-system';
 import styles from './BrowseSectionBar.module.css';
 
 export type BrowseSection = 'sessions' | 'gallery';
+export type BrowseDestination = 'map' | BrowseSection;
 
 interface BrowseSectionBarStyle extends CSSProperties {
   '--wa-browse-section-drawer-inset': string;
 }
 
 interface BrowseSectionBarProps {
-  section: BrowseSection;
+  active: BrowseDestination;
   avoidDrawer?: boolean;
   onMap: () => void;
   onSectionChange: (section: BrowseSection) => void;
 }
 
 function BrowseSectionNavigation({
-  section,
+  active,
   onMap,
   onSectionChange,
   drawerInset,
@@ -41,6 +42,7 @@ function BrowseSectionNavigation({
         className={styles.item}
         type="button"
         aria-label="Map"
+        aria-current={active === 'map' ? 'page' : undefined}
         onClick={onMap}
       >
         <IconMap size={20} aria-hidden="true" />
@@ -50,7 +52,7 @@ function BrowseSectionNavigation({
         className={styles.item}
         type="button"
         aria-label="Feed"
-        aria-current={section === 'sessions' ? 'page' : undefined}
+        aria-current={active === 'sessions' ? 'page' : undefined}
         onClick={() => onSectionChange('sessions')}
       >
         <IconStack2 size={20} aria-hidden="true" />
@@ -60,7 +62,7 @@ function BrowseSectionNavigation({
         className={styles.item}
         type="button"
         aria-label="Gallery"
-        aria-current={section === 'gallery' ? 'page' : undefined}
+        aria-current={active === 'gallery' ? 'page' : undefined}
         onClick={() => onSectionChange('gallery')}
       >
         <IconPhoto size={20} aria-hidden="true" />

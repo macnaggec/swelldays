@@ -8,14 +8,17 @@ import {
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import type { SheetSnap } from './sheetSnapPolicy';
 
-interface BrowseSheetPosition {
+interface BrowseSurfaceState {
+  mode: 'map' | 'results';
   snap: SheetSnap;
   setSnap: (snap: SheetSnap) => void;
+  showMap: () => void;
+  showResults: () => void;
 }
 
-const BrowseSheetPositionContext = createContext<BrowseSheetPosition | null>(null);
+const BrowseSurfaceContext = createContext<BrowseSurfaceState | null>(null);
 
-export function BrowseSheetPositionProvider({
+export function BrowseSurfaceProvider({
   preferredExpanded,
   onPreferredExpandedChange,
   children,
@@ -28,9 +31,11 @@ export function BrowseSheetPositionProvider({
   const [snap, setSnapState] = useState<SheetSnap>(() => (
     preferredExpanded ? 'full' : 'half'
   ));
+  const [mode, setMode] = useState<'map' | 'results'>('results');
 
   const setSnap = useCallback((nextSnap: SheetSnap) => {
     setSnapState(nextSnap);
+    setMode(nextSnap === 'peek' ? 'map' : 'results');
     onPreferredExpandedChange(nextSnap === 'full');
   }, [onPreferredExpandedChange]);
 
@@ -40,20 +45,36 @@ export function BrowseSheetPositionProvider({
   const [sheetWasMounted, setSheetWasMounted] = useState(isBrowseSheet);
   if (sheetWasMounted !== isBrowseSheet) {
     setSheetWasMounted(isBrowseSheet);
-    if (isBrowseSheet) setSnapState(preferredExpanded ? 'full' : 'half');
+    if (isBrowseSheet) {
+      setSnapState(mode === 'map' ? 'peek' : preferredExpanded ? 'full' : 'half');
+    }
   }
 
+  const showMap = useCallback(() => {
+    setMode('map');
+    if (!isBrowseSheet) return;
+    setSnapState('peek');
+    onPreferredExpandedChange(false);
+  }, [isBrowseSheet, onPreferredExpandedChange]);
+
+  const showResults = useCallback(() => {
+    setMode('results');
+    if (!isBrowseSheet || snap !== 'peek') return;
+    setSnapState('half');
+    onPreferredExpandedChange(false);
+  }, [isBrowseSheet, onPreferredExpandedChange, snap]);
+
   return (
-    <BrowseSheetPositionContext.Provider value={{ snap, setSnap }}>
+    <BrowseSurfaceContext.Provider value={{ mode, snap, setSnap, showMap, showResults }}>
       {children}
-    </BrowseSheetPositionContext.Provider>
+    </BrowseSurfaceContext.Provider>
   );
 }
 
-export function useBrowseSheetPosition(): BrowseSheetPosition {
-  const position = useContext(BrowseSheetPositionContext);
+export function useBrowseSurface(): BrowseSurfaceState {
+  const position = useContext(BrowseSurfaceContext);
   if (!position) {
-    throw new Error('useBrowseSheetPosition must be used within BrowseSheetPositionProvider');
+    throw new Error('useBrowseSurface must be used within BrowseSurfaceProvider');
   }
   return position;
 }

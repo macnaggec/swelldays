@@ -135,3 +135,7 @@
 .footer:empty {
   display: none;
 }
+
+.root[data-sheet-snap='peek'] .stickyChrome {
+  padding-block: 20px;
+}

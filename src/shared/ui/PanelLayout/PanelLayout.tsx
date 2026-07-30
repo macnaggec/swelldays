@@ -35,7 +35,7 @@ export function PanelLayout({
   const [railTarget, setRailTarget] = useState<HTMLDivElement | null>(null);
   const [metadataTarget, setMetadataTarget] = useState<HTMLDivElement | null>(null);
   const [stickyChromeTarget, setStickyChromeTarget] = useState<HTMLDivElement | null>(null);
-  const { hidden } = usePanelScrollChromeState();
+  const { hidden, sheetSnap } = usePanelScrollChromeState();
 
   // Everything in the panel — search row, filter pills, cards — lays itself out once,
   // at the width the drawer is heading for, instead of being re-flowed on every frame
@@ -67,6 +67,7 @@ export function PanelLayout({
             <div
               className={styles.root}
               data-panel-layout
+              data-sheet-snap={sheetSnap}
               ref={measureRef}
               style={Object.keys(rootStyle).length === 0 ? undefined : rootStyle}
             >

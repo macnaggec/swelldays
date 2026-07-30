@@ -29,6 +29,16 @@ describe('deriveMapCameraInsets', () => {
     })).toEqual({ top: 0, right: 800, bottom: 0, left: 0 });
   });
 
+  it('does not treat a centered chrome-only overlay as a full-width map obstruction', () => {
+    expect(deriveMapCameraInsets({
+      drawerBounds: { left: 735, top: 12, right: 1185, bottom: 72, width: 450, height: 60 },
+      drawerPresentation: 'sideOverlay',
+      drawerChromeOnly: true,
+      viewportWidthPx: 1920,
+      viewportHeightPx: 680,
+    })).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+  });
+
   it('clips a bottomSheet past the viewport bottom edge to the bottom inset', () => {
     expect(deriveMapCameraInsets({
       drawerBounds: { left: 0, top: 500, right: 390, bottom: 1000, width: 390, height: 500 },

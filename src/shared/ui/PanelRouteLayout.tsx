@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useDrawerAdjacentInlineEndInset, useDrawerMoving } from 'shared/ui/DrawerShell';
+import { materialClasses } from 'shared/ui/design-system';
 import styles from './PanelRouteLayout.module.css';
 
 interface PanelRouteLayoutProps {
@@ -83,6 +84,19 @@ export function PanelSearchToolbar({
           {trailing}
         </div>
       )}
+    </div>
+  );
+}
+
+export function FloatingPanelSearchToolbar({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className={`${styles.floatingSearchToolbar} ${materialClasses.panel}`}
+      data-browse-map-toolbar
+      role="search"
+      aria-label="Map search"
+    >
+      {children}
     </div>
   );
 }

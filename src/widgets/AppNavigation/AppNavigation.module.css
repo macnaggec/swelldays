@@ -11,7 +11,7 @@
 }
 
 .root[data-navigation-presentation='topBar'] {
-  top: calc(var(--wa-safe-area-top) + 42px);
+  top: calc(var(--wa-safe-area-top) + var(--wa-shell-edge-clearance));
   left: auto;
   right: calc(var(--wa-safe-area-right) + var(--wa-shell-edge-clearance));
   z-index: var(--wa-z-controls);

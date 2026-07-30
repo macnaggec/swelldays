@@ -2,9 +2,11 @@ import { act, fireEvent, screen } from '@testing-library/react';
 import { createRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
+import { PANEL_WIDTH_VW } from 'shared/model/panelExpansionStore';
 import {
   DrawerShell,
   useDrawerGeometry,
+  useDrawerTargetGeometry,
   useRegisterSheetScrollOwner,
   useSheetContentScrollable,
 } from './index';
@@ -30,6 +32,15 @@ function GeometryProbe() {
     : 'unmeasured';
 
   return <output data-testid="drawer-geometry">{value}</output>;
+}
+
+function TargetGeometryProbe() {
+  const geometry = useDrawerTargetGeometry();
+  const value = geometry
+    ? `${geometry.left}:${geometry.top}:${geometry.right}:${geometry.bottom}:${geometry.width}:${geometry.height}`
+    : 'unmeasured';
+
+  return <output data-testid="drawer-target-geometry">{value}</output>;
 }
 
 describe('DrawerShell geometry projection', () => {
@@ -90,6 +101,7 @@ describe('DrawerShell geometry projection', () => {
     act(() => queuedFrames.shift()?.(16));
     expect(screen.getByTestId('drawer-geometry').textContent).toBe('360:0:1440:900:1080:900');
   });
+
 });
 
 describe('DrawerShell focus continuity', () => {
@@ -222,6 +234,136 @@ describe('DrawerShell bottom-sheet geometry', () => {
 
     expect(screen.getByTestId('drawer-geometry').textContent).toBe(
       `0:${844 - visibleHeight}:390:844:390:${visibleHeight}`,
+    );
+  });
+
+  it('republishes the transformed bounds after the sheet lands at another snap', async () => {
+    const heights = resolveSheetSnapHeights({ viewportHeightPx: 844, peekHeightPx: SHEET_PEEK_HEIGHT_PX });
+    const queuedFrames: FrameRequestCallback[] = [];
+
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      queuedFrames.push(callback);
+      return queuedFrames.length;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    const renderSheet = (snap: 'peek' | 'half') => (
+      <>
+        <DrawerShell
+          presentation="bottomSheet"
+          modality="nonmodal"
+          snap={snap}
+          onSnapChange={() => {}}
+        >
+          Sheet content
+        </DrawerShell>
+        <GeometryProbe />
+      </>
+    );
+
+    const { rerender, unmount } = render(renderSheet('peek'));
+    const sheet = screen.getByRole('complementary', { name: 'Content drawer' });
+    let visibleHeight = heights.peek;
+    vi.spyOn(sheet, 'getBoundingClientRect').mockImplementation(() => (
+      DOMRect.fromRect({ x: 0, y: 844 - visibleHeight, width: 390, height: visibleHeight })
+    ));
+    act(() => queuedFrames.shift()?.(0));
+
+    visibleHeight = heights.half;
+    rerender(renderSheet('half'));
+
+    await act(async () => {
+      await vi.waitFor(() => expect(screen.getByTestId('drawer-geometry').textContent).toBe(
+        `0:${844 - heights.half}:390:844:390:${heights.half}`,
+      ));
+    });
+
+    unmount();
+  });
+
+  it('publishes the destination snap geometry before the measured sheet finishes moving', () => {
+    const viewportHeightPx = window.innerHeight;
+    const viewportWidthPx = window.innerWidth;
+    const heights = resolveSheetSnapHeights({
+      viewportHeightPx,
+      peekHeightPx: SHEET_PEEK_HEIGHT_PX,
+    });
+    const renderSheet = (snap: 'peek' | 'half') => (
+      <>
+        <DrawerShell
+          presentation="bottomSheet"
+          modality="nonmodal"
+          snap={snap}
+          onSnapChange={() => {}}
+        >
+          Sheet content
+        </DrawerShell>
+        <TargetGeometryProbe />
+      </>
+    );
+
+    const { rerender } = render(renderSheet('peek'));
+    rerender(renderSheet('half'));
+
+    expect(screen.getByTestId('drawer-target-geometry').textContent).toBe(
+      `0:${viewportHeightPx - heights.half}:${viewportWidthPx}:${viewportHeightPx}:${viewportWidthPx}:${heights.half}`,
+    );
+  });
+
+  it('publishes a zero-width destination when the side panel closes', () => {
+    const viewportHeightPx = window.innerHeight;
+    const viewportWidthPx = window.innerWidth;
+    const renderPanel = (open: boolean) => (
+      <>
+        <DrawerShell
+          presentation="sideOverlay"
+          state="compact"
+          modality="nonmodal"
+          open={open}
+        >
+          Panel content
+        </DrawerShell>
+        <TargetGeometryProbe />
+      </>
+    );
+
+    const { rerender } = render(renderPanel(true));
+    rerender(renderPanel(false));
+
+    expect(screen.getByTestId('drawer-target-geometry').textContent).toBe(
+      `${viewportWidthPx}:0:${viewportWidthPx}:${viewportHeightPx}:0:${viewportHeightPx}`,
+    );
+  });
+
+  it('publishes the persistent panel destination when its state changes', () => {
+    const viewportHeightPx = window.innerHeight;
+    const viewportWidthPx = window.innerWidth;
+    const renderPanel = (state: 'compact' | 'expanded') => (
+      <>
+        <DrawerShell
+          presentation="persistent"
+          state={state}
+          modality="nonmodal"
+        >
+          Panel content
+        </DrawerShell>
+        <TargetGeometryProbe />
+      </>
+    );
+
+    const { rerender } = render(renderPanel('compact'));
+    rerender(renderPanel('expanded'));
+
+    const expandedWidthPx = viewportWidthPx * (PANEL_WIDTH_VW.expanded / 100);
+    expect(screen.getByTestId('drawer-target-geometry').textContent).toBe(
+      `${viewportWidthPx - expandedWidthPx}:0:${viewportWidthPx}:${viewportHeightPx}:${expandedWidthPx}:${viewportHeightPx}`,
     );
   });
 });

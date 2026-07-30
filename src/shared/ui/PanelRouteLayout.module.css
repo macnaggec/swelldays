@@ -111,9 +111,20 @@
   margin-left: auto;
 }
 
+.floatingSearchToolbar {
+  position: fixed;
+  inset-block-start: calc(var(--wa-safe-area-top) + var(--wa-shell-edge-clearance));
+  inset-inline-start: 50%;
+  z-index: var(--wa-z-floating-chrome);
+  box-sizing: border-box;
+  width: max-content;
+  padding: var(--wa-panel-content-inset);
+  border-radius: var(--wa-radius-panel);
+  transform: translateX(-50%);
+}
+
 /* In the phone sheet, search/upload is one centered, card-width block at every
-   snap. The peek row adds 4px to the sticky chrome's existing 8px inset, giving
-   it the same 12px breathing room above and below. */
+   snap. PanelLayout owns the balanced peek clearance around this row. */
 :global([data-drawer-presentation='bottomSheet']) .toolbar {
   flex-direction: column;
   align-items: stretch;
@@ -145,6 +156,23 @@
   width: 100%;
   max-width: 100%;
   margin-left: 0;
+}
+
+/* The short-landscape Map plate shrink-wraps this row, so the inner controls
+   establish its width instead of inheriting a results-drawer percentage. */
+:global([data-browse-map-toolbar]) .toolbar {
+  width: max-content;
+}
+
+:global([data-browse-map-toolbar]) .toolbarMainCompact {
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: none;
+}
+
+:global([data-browse-map-toolbar]) .toolbarPrimary {
+  flex: 0 0 var(--wa-gallery-tile-comfortable);
+  width: var(--wa-gallery-tile-comfortable);
 }
 
 /* Pills right-align in the shared row and wrap below when the remainder can't

@@ -14,7 +14,12 @@ import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import { useViewportMetrics } from 'shared/model/viewportMetrics';
 import { PANEL_WIDTH_VW } from 'shared/model/panelExpansionStore';
 import { materialClasses } from 'shared/ui/design-system';
-import { publishDrawerGeometry, publishDrawerMotion } from './geometry';
+import {
+  publishDrawerGeometry,
+  publishDrawerMotion,
+  publishDrawerTargetGeometry,
+  type DrawerGeometry,
+} from './geometry';
 import { DRAWER_SHELL_TRANSITION } from './motion';
 import { PanelSettledWidthContext } from './panelSettledWidth';
 import {
@@ -96,6 +101,10 @@ export function DrawerShell(props: DrawerShellProps) {
     () => resolveSheetSnapHeights({ viewportHeightPx, peekHeightPx: SHEET_PEEK_HEIGHT_PX }),
     [viewportHeightPx],
   );
+  const targetSheetHeightPx = snap ? heights[snap] : null;
+  const targetPanelWidthVw = props.presentation === 'persistent'
+    ? PANEL_WIDTH_VW[props.state]
+    : SHORT_SIDE_OVERLAY_WIDTH_VW;
   const dragControls = useDragControls();
   const dragConstraints = useMemo(
     () => ({ top: viewportHeightPx - heights.full, bottom: viewportHeightPx - heights.peek }),
@@ -136,6 +145,46 @@ export function DrawerShell(props: DrawerShellProps) {
     positionKeyRef.current = positionKey;
     publishDrawerMotion(transitioning);
   }, [transitioning, positionKey]);
+
+  useLayoutEffect(() => {
+    const surface = surfaceRef.current;
+    if (!surface) return;
+
+    let target: DrawerGeometry;
+    if (props.presentation === 'bottomSheet') {
+      const targetHeight = targetSheetHeightPx;
+      if (targetHeight === null) return;
+      target = {
+        left: 0,
+        top: viewportHeightPx - targetHeight,
+        right: viewportWidthPx,
+        bottom: viewportHeightPx,
+        width: viewportWidthPx,
+        height: targetHeight,
+      };
+    } else {
+      const targetWidth = panelOpen
+        ? viewportWidthPx * (targetPanelWidthVw / 100)
+        : 0;
+      target = {
+        left: viewportWidthPx - targetWidth,
+        top: 0,
+        right: viewportWidthPx,
+        bottom: viewportHeightPx,
+        width: targetWidth,
+        height: viewportHeightPx,
+      };
+    }
+
+    publishDrawerTargetGeometry(target);
+  }, [
+    panelOpen,
+    props.presentation,
+    targetPanelWidthVw,
+    targetSheetHeightPx,
+    viewportHeightPx,
+    viewportWidthPx,
+  ]);
 
   useEffect(() => () => {
     const focusTarget = latestRestoreFocusRef.current?.current;
@@ -179,6 +228,7 @@ export function DrawerShell(props: DrawerShellProps) {
       observer.disconnect();
       if (pendingFrame !== null) cancelAnimationFrame(pendingFrame);
       publishDrawerGeometry(null);
+      publishDrawerTargetGeometry(null);
       publishDrawerMotion(false);
     };
   }, []);
@@ -289,6 +339,8 @@ export function DrawerShell(props: DrawerShellProps) {
       dragMomentum={false}
       onDragEnd={props.presentation === 'bottomSheet' ? handleSheetDragEnd : undefined}
       onAnimationComplete={() => {
+        const bounds = surfaceRef.current?.getBoundingClientRect();
+        if (bounds) publishDrawerGeometry(bounds);
         transitioningRef.current = false;
         setTransitioning(false);
       }}

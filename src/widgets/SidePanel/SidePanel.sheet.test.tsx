@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'test/setup/render';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import {
-  BrowseSheetPositionProvider,
-  useBrowseSheetPosition,
+  BrowseSurfaceProvider,
+  useBrowseSurface,
 } from 'shared/ui/DrawerShell';
 import { BrowseSectionBar } from 'widgets/BrowseSectionBar';
 import { SidePanel } from './SidePanel';
 
 function BrowseSheetWithSectionBar() {
-  const { snap, setSnap } = useBrowseSheetPosition();
+  const { snap, setSnap } = useBrowseSurface();
 
   return (
     <SidePanel
@@ -19,7 +19,7 @@ function BrowseSheetWithSectionBar() {
       onSheetSnapChange={setSnap}
       bottomBar={(
         <BrowseSectionBar
-          section="sessions"
+          active="sessions"
           onMap={() => setSnap('peek')}
           onSectionChange={() => {}}
         />
@@ -37,12 +37,12 @@ function renderBrowseSheetWithSectionBar() {
       browseExpanded
       galleryExpanded={false}
     >
-      <BrowseSheetPositionProvider
+      <BrowseSurfaceProvider
         preferredExpanded
         onPreferredExpandedChange={() => {}}
       >
         <BrowseSheetWithSectionBar />
-      </BrowseSheetPositionProvider>
+      </BrowseSurfaceProvider>
     </AppShellLayoutPolicyProvider>,
   );
 }
@@ -179,5 +179,30 @@ describe('SidePanel bottom sheet', () => {
     expect(screen.getByText('Map')).toBeInTheDocument();
     expect(screen.getByText('Feed')).toBeInTheDocument();
     expect(screen.getByText('Gallery')).toBeInTheDocument();
+  });
+
+  it('restores search chrome after a previously scrolled side panel closes and reopens', () => {
+    const renderPanel = (open: boolean) => (
+      <SidePanel
+        drawerPresentation="sideOverlay"
+        open={open}
+        subheader={<div>Search and upload</div>}
+      >
+        <div style={{ height: '2000px' }}>Tall panel content</div>
+      </SidePanel>
+    );
+    const { rerender } = render(renderPanel(true));
+    const scrollOwner = screen.getByText('Tall panel content').closest('[data-panel-scroll-owner]');
+    const stickyChrome = screen.getByText('Search and upload').closest('[data-panel-scroll-chrome]');
+    expect(scrollOwner).not.toBeNull();
+    expect(stickyChrome).not.toBeNull();
+
+    fireEvent.scroll(scrollOwner!, { target: { scrollTop: 24 } });
+    expect(stickyChrome).toHaveAttribute('data-hidden', 'true');
+
+    rerender(renderPanel(false));
+    rerender(renderPanel(true));
+
+    expect(stickyChrome).not.toHaveAttribute('data-hidden');
   });
 });

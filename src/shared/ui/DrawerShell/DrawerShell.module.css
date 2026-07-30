@@ -28,6 +28,13 @@
   overflow: hidden;
 }
 
+.surface[data-drawer-presentation='bottomSheet'][data-drawer-snap='peek'] .dragHandle {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: var(--wa-z-panel-chrome);
+}
+
 .dragHandle {
   flex-shrink: 0;
   height: 24px;

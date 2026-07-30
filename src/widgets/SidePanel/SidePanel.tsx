@@ -27,6 +27,7 @@ interface ScrollPosition {
 interface ScrollChromeState {
   hidden: boolean;
   sheetSnap: SheetSnap | undefined;
+  open: boolean;
 }
 
 interface SidePanelProps {
@@ -86,12 +87,15 @@ export function SidePanel({
   const [scrollChromeState, setScrollChromeState] = useState<ScrollChromeState>({
     hidden: false,
     sheetSnap,
+    open,
   });
-  if (scrollChromeState.sheetSnap !== sheetSnap) {
-    setScrollChromeState({ hidden: false, sheetSnap });
+  if (scrollChromeState.sheetSnap !== sheetSnap || scrollChromeState.open !== open) {
+    setScrollChromeState({ hidden: false, sheetSnap, open });
   }
 
   const handleBodyScrollCapture = useCallback((event: UIEvent<HTMLDivElement>) => {
+    if (!open) return;
+
     const scrollTarget = event.target;
     if (!(scrollTarget instanceof HTMLElement)) return;
 
@@ -119,12 +123,14 @@ export function SidePanel({
     }
 
     setScrollChromeState((current) => {
-      return current.hidden === position.hidden && current.sheetSnap === sheetSnap
+      return current.hidden === position.hidden
+        && current.sheetSnap === sheetSnap
+        && current.open === open
         ? current
-        : { hidden: position.hidden, sheetSnap };
+        : { hidden: position.hidden, sheetSnap, open };
     });
     scrollPositionByTargetRef.current.set(scrollTarget, position);
-  }, [sheetSnap]);
+  }, [open, sheetSnap]);
 
   const showExpandToggle = Boolean(onExpandToggle)
     && drawerPresentation !== 'bottomSheet'
@@ -175,7 +181,7 @@ export function SidePanel({
   );
 
   return (
-    <PanelScrollChromeStateProvider value={{ ...scrollChromeState, drawerPresentation }}>
+    <PanelScrollChromeStateProvider value={{ ...scrollChromeState, drawerPresentation, sheetSnap }}>
       {drawerPresentation === 'bottomSheet' && sheetSnap !== undefined && onSheetSnapChange !== undefined ? (
         <DrawerShell
           presentation="bottomSheet"

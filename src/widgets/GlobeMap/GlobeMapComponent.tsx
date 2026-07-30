@@ -50,7 +50,6 @@ export interface GlobeMapHandle {
 
 interface PendingFocus {
   spotId: string;
-  showPreview: boolean;
 }
 
 export interface GlobeMapProps {
@@ -129,7 +128,7 @@ export function GlobeMapComponent({
             pitch: 0,
             bearing: 0,
           },
-          focusedSpotId: spot.id,
+          focusedSpotId: null,
         };
       }
     }
@@ -138,8 +137,7 @@ export function GlobeMapComponent({
       focusedSpotId: null,
     };
   });
-  const focusedRouteSpotIdRef = useRef<string | null>(initialFocusedSpotId);
-  const lastShowPreviewRef = useRef(false);
+  const appliedFocusKeyRef = useRef<string | null>(initialFocusedSpotId);
 
   const {
     startSpinning,
@@ -169,18 +167,16 @@ export function GlobeMapComponent({
   const selectedSpotGeoJson = useSpotGeoJson(selectedSpotList);
   const { loadImages } = useMapImages(mapRef);
 
-  const executeFocusSpot = useCallback((spot: MapSpotProjection, showPreview: boolean) => {
-    lastShowPreviewRef.current = showPreview;
-
+  const executeFocusSpot = useCallback((spot: MapSpotProjection) => {
     const map = mapInstanceRef.current;
     if (!map) {
-      pendingFocusRef.current = { spotId: spot.id, showPreview };
+      pendingFocusRef.current = { spotId: spot.id };
       return;
     }
 
     const currentZoom = map.getZoom();
     const padding = {
-      top: (showPreview ? 300 : 0) + insetTopPx,
+      top: insetTopPx,
       right: insetRightPx,
       bottom: insetBottomPx,
       left: insetLeftPx,
@@ -206,11 +202,11 @@ export function GlobeMapComponent({
     });
   }, [insetTopPx, insetRightPx, insetBottomPx, insetLeftPx]);
 
-  const focusSpotById = useCallback((spotId: string, showPreview: boolean) => {
+  const focusSpotById = useCallback((spotId: string) => {
     const spot = spots.find((candidate) => candidate.id === spotId);
     if (!spot) return false;
 
-    executeFocusSpot(spot, showPreview);
+    executeFocusSpot(spot);
     if (mapInstanceRef.current) {
       pendingFocusRef.current = null;
     }
@@ -228,11 +224,10 @@ export function GlobeMapComponent({
     spots,
     onSpotClick: acceptsSpotInteraction
       ? (spot) => {
-        // Already selected: the camera is already correctly focused on it (with the
-        // route-driven preview padding). Re-running with different padding here would
-        // just knock it out of place, so only re-focus when selecting a different spot.
+        // Already selected: the camera is already correctly focused against the live
+        // shell insets. Re-running is unnecessary, so only focus a different spot.
         if (spot.id !== selectedSpotId) {
-          executeFocusSpot(spot, false);
+          executeFocusSpot(spot);
         }
         onSpotSelect(spot);
       }
@@ -248,43 +243,30 @@ export function GlobeMapComponent({
   useEffect(() => {
     if (!selectedSpotId) {
       pendingFocusRef.current = null;
-      focusedRouteSpotIdRef.current = null;
+      appliedFocusKeyRef.current = null;
       return;
     }
 
-    if (focusedRouteSpotIdRef.current === selectedSpotId) return;
+    const focusKey = [
+      selectedSpotId,
+      insetTopPx,
+      insetRightPx,
+      insetBottomPx,
+      insetLeftPx,
+    ].join(':');
+    if (appliedFocusKeyRef.current === focusKey) return;
 
-    if (focusSpotById(selectedSpotId, true)) {
-      focusedRouteSpotIdRef.current = selectedSpotId;
+    if (focusSpotById(selectedSpotId)) {
+      appliedFocusKeyRef.current = focusKey;
     }
-  }, [focusSpotById, selectedSpotId]);
-
-  const previousInsetsRef = useRef({
-    top: insetTopPx,
-    right: insetRightPx,
-    bottom: insetBottomPx,
-    left: insetLeftPx,
-  });
-
-  useEffect(() => {
-    const previousInsets = previousInsetsRef.current;
-    previousInsetsRef.current = { top: insetTopPx, right: insetRightPx, bottom: insetBottomPx, left: insetLeftPx };
-
-    if (
-      previousInsets.top === insetTopPx
-      && previousInsets.right === insetRightPx
-      && previousInsets.bottom === insetBottomPx
-      && previousInsets.left === insetLeftPx
-    ) return;
-    if (!selectedSpotId) return;
-
-    mapInstanceRef.current?.setPadding({
-      top: (lastShowPreviewRef.current ? 300 : 0) + insetTopPx,
-      right: insetRightPx,
-      bottom: insetBottomPx,
-      left: insetLeftPx,
-    });
-  }, [insetTopPx, insetRightPx, insetBottomPx, insetLeftPx, selectedSpotId]);
+  }, [
+    focusSpotById,
+    insetBottomPx,
+    insetLeftPx,
+    insetRightPx,
+    insetTopPx,
+    selectedSpotId,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -330,7 +312,7 @@ export function GlobeMapComponent({
 
     const pendingFocus = pendingFocusRef.current;
     if (pendingFocus) {
-      focusSpotById(pendingFocus.spotId, pendingFocus.showPreview);
+      focusSpotById(pendingFocus.spotId);
     }
   }, [focusSpotById, loadImages]);
 

@@ -15,7 +15,11 @@ import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { notify } from 'shared/lib/notifications';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import { materialClasses } from 'shared/ui/design-system';
-import { useDrawerGeometry } from 'shared/ui/DrawerShell';
+import {
+  useBrowseSurface,
+  useDrawerGeometry,
+  useDrawerTargetGeometry,
+} from 'shared/ui/DrawerShell';
 import classes from './GlobeScene.module.css';
 import { deriveGlobeMotionPolicy } from './model/globeMotionPolicy';
 import { deriveGlobeSceneMode } from './model/globeSceneMode';
@@ -71,6 +75,10 @@ export function GlobeScene() {
   );
   const isImmersiveMapInput = routeIntent === 'immersiveMapInput';
   const layoutPolicy = useAppShellLayoutPolicy();
+  const {
+    mode: browseSurfaceMode,
+    showResults: showBrowseResults,
+  } = useBrowseSurface();
   const navigate = useNavigate();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -108,11 +116,16 @@ export function GlobeScene() {
     ? 'background'
     : layoutPolicy.map.interaction;
   const drawerGeometry = useDrawerGeometry();
+  const drawerTargetGeometry = useDrawerTargetGeometry();
   const canCompactPersistentDrawer = layoutPolicy.drawer.presentation === 'persistent'
     && (layoutPolicy.drawer.state === 'expanded' || layoutPolicy.drawer.state === 'full');
+  const cameraDrawerBounds = drawerTargetGeometry ?? drawerGeometry;
   const cameraInsetsPx = deriveMapCameraInsets({
-    drawerBounds: drawerGeometry,
+    drawerBounds: cameraDrawerBounds,
     drawerPresentation: layoutPolicy.drawer.presentation,
+    drawerChromeOnly: layoutPolicy.drawer.presentation === 'sideOverlay'
+      && browseSurfaceMode === 'map'
+      && (routeIntent === 'browse' || routeIntent === 'galleryWorkspace'),
     viewportWidthPx,
     viewportHeightPx,
   });
@@ -121,8 +134,9 @@ export function GlobeScene() {
     if (isUpdatingWorkspace) return;
 
     if (sceneMode.kind !== 'uploadSpotSelection') {
+      showBrowseResults();
       await navigate({
-        to: routeIntent === 'galleryWorkspace' ? '/$spotId/gallery' : '/$spotId',
+        to: '/$spotId',
         params: { spotId: spot.id },
       });
       return;
@@ -147,7 +161,7 @@ export function GlobeScene() {
     } catch (error) {
       notify.error(getErrorMessage(error), 'Unable to Save Spot');
     }
-  }, [isUpdatingWorkspace, navigate, queryClient, routeIntent, sceneMode.kind, trpc, updateWorkspace, workspaceId]);
+  }, [isUpdatingWorkspace, navigate, queryClient, sceneMode.kind, showBrowseResults, trpc, updateWorkspace, workspaceId]);
 
   const handleMapCoordinateClick = useCallback((coords: LngLat) => {
     setTempPin(coords);

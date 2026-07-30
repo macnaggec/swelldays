@@ -3,7 +3,7 @@ import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
 import styles from './AppNavigation.module.css';
 import { materialClasses } from 'shared/ui/design-system';
 import {
-  useBrowseSheetPosition,
+  useBrowseSurface,
   useSheetSnapTopPx,
   type SheetSnap,
 } from 'shared/ui/DrawerShell';
@@ -61,7 +61,7 @@ function NavigationSurface({
 }
 
 function BrowseSheetNavigation(): ReactElement {
-  const { snap } = useBrowseSheetPosition();
+  const { snap } = useBrowseSurface();
   const sheetTopPx = useSheetSnapTopPx(snap);
 
   return (

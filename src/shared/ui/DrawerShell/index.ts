@@ -11,6 +11,7 @@ export {
   useDrawerAdjacentInlineEndInset,
   useDrawerMoving,
   useDrawerGeometry,
+  useDrawerTargetGeometry,
   type DrawerGeometry,
 } from './geometry';
 export { DRAWER_SHELL_TRANSITION } from './motion';
@@ -22,9 +23,9 @@ export { DRAWER_SHELL_TRANSITION } from './motion';
  */
 export { type SheetSnap } from './sheetSnapPolicy';
 export {
-  BrowseSheetPositionProvider,
-  useBrowseSheetPosition,
-} from './browseSheetPosition';
+  BrowseSurfaceProvider,
+  useBrowseSurface,
+} from './browseSurface';
 export { useSheetSnapTopPx } from './useSheetSnapTopPx';
 export {
   useRegisterSheetScrollOwner,
