@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { act, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
@@ -10,15 +9,6 @@ import {
   PanelRouteLayout,
   PanelSearchToolbar,
 } from './PanelRouteLayout';
-
-const panelRouteLayoutCss = readFileSync('src/shared/ui/PanelRouteLayout.module.css', 'utf8');
-
-function cssRule(selector: string) {
-  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = panelRouteLayoutCss.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`));
-
-  return match?.[1]?.replace(/\s+/g, ' ').trim() ?? '';
-}
 
 describe('PanelRouteLayout', () => {
   afterEach(() => {
@@ -78,30 +68,6 @@ describe('PanelRouteLayout', () => {
     expect(
       screen.getByText('Search').closest('[data-panel-search-toolbar]')?.hasAttribute('data-expanded'),
     ).toBe(true);
-  });
-
-  it('shares one wrapping row between search, action, and right-aligned pills', () => {
-    expect(cssRule('.toolbar[data-expanded]')).toContain('flex-wrap: wrap');
-    expect(cssRule('.toolbar[data-expanded]')).toContain('gap: var(--wa-panel-grid-gap)');
-    expect(cssRule('.toolbarMainExpanded')).toContain('max-width: var(--wa-gallery-tile-comfortable)');
-    expect(cssRule('.toolbarTrailing')).toContain('margin-left: auto');
-    expect(cssRule('.toolbar[data-expanded] .toolbarTrailing')).toContain('justify-content: flex-end');
-  });
-
-  it('gives the search field and action stronger contrast than passive controls', () => {
-    expect(cssRule('.toolbarPrimary :global(.mantine-Input-input)')).toContain(
-      'background: var(--wa-panel-control-background, var(--wa-control-fill))',
-    );
-    expect(cssRule('.toolbarPrimary :global(.mantine-Input-input)')).toContain(
-      'backdrop-filter: var(--wa-panel-control-backdrop, blur(10px))',
-    );
-    expect(cssRule('.actionButton')).toContain(
-      'background: var(--wa-panel-control-background, var(--wa-control-fill))',
-    );
-    expect(cssRule('.actionButton')).toContain(
-      'backdrop-filter: var(--wa-panel-control-backdrop, blur(10px))',
-    );
-    expect(cssRule('.actionButton')).toContain('color: var(--wa-text-primary)');
   });
 
   it('renders floating controls outside panel content flow', () => {

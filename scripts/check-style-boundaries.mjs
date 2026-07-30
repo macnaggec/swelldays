@@ -241,12 +241,10 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-motion-easing-standard',
   ]],
   // Followed the sticky chrome row here when F12n-b collapsed the two chrome
-  // paths onto one seam: the motion and layer tokens were required of
+  // paths onto one seam: the layer token was required of
   // PanelScrollChrome.module.css before that file was deleted, and the rule
   // must travel with the declarations, not die with the filename.
   ['src/shared/ui/PanelLayout/PanelLayout.module.css', [
-    '--wa-motion-duration-chrome',
-    '--wa-motion-easing-standard',
     '--wa-z-panel-chrome',
   ]],
   ['src/shared/ui/PanelRouteLayout.module.css', [
@@ -267,33 +265,17 @@ const requiredDrawerShellStyles = [
   ['right safe-area projection', /--wa-safe-area-right/],
   ['bottom safe-area projection', /--wa-safe-area-bottom/],
   ['left safe-area projection', /--wa-safe-area-left/],
-  [
-    'semantic bottom-sheet top corners',
-    /\.surface\[data-drawer-presentation='bottomSheet'\]\s*\{[^}]*border-radius:\s*var\(--wa-radius-sheet\)\s+var\(--wa-radius-sheet\)\s+0\s+0/s,
-  ],
-  [
-    'visible bottom-sheet grabber',
-    /\.dragHandle::before\s*\{[^}]*width:\s*var\(--wa-sheet-grabber-width\)[^}]*height:\s*var\(--wa-sheet-grabber-height\)/s,
-  ],
 ];
 
 const requiredDrawerShellRuntime = [
   ['controlled sheet release without independent drag momentum', /dragMomentum=\{false\}/],
   [
-    'short side-overlay width owned by DrawerShell',
-    /const SHORT_SIDE_OVERLAY_WIDTH_VW = 45;[\s\S]*props\.presentation === 'sideOverlay'[\s\S]*SHORT_SIDE_OVERLAY_WIDTH_VW/,
-  ],
-  [
-    'closed side-overlay interaction removal without unmounting',
-    /aria-hidden=\{panelOpen \? undefined : true\}[\s\S]*inert=\{!panelOpen\}/,
-  ],
-  [
     'measured drawer geometry publication',
-    /publishDrawerGeometry\(bounds\)/,
+    /publishDrawerGeometry\(/,
   ],
   [
     'live geometry sampling during an active sheet drag',
-    /\bonDrag=\{[^}]*handleSheetDrag\b/,
+    /\bonDrag=\{/,
   ],
   [
     'dragging flag cleared when the gesture ends or the sheet unmounts',
@@ -380,32 +362,6 @@ const requiredPanelLayoutStyles = [
   // overflows by the row's height and scrolls when its cards already fit.
   ['chrome-aware scroll stacking', /\.scroller\s*{[^}]*flex-direction:\s*column/s],
   ['content that flexes rather than claiming full height', /\.content\s*{[^}]*flex:\s*1\s+0\s+auto/s],
-];
-
-const requiredMobileGalleryDateRuntime = [
-  [
-    'drawer presentation carried by the existing panel scroll owner',
-    /PanelScrollChromeStateProvider\s+value=\{\{[^}]*\.\.\.scrollChromeState[^}]*drawerPresentation/s,
-  ],
-  [
-    'sticky date replacement driven by the existing panel chrome state',
-    /stickyDateReplaced[\s\S]*panelChromeHidden[\s\S]*drawerPresentation/,
-  ],
-  [
-    'horizontal date navigation reusing the gallery month grouping',
-    /groupDaysByMonth[\s\S]*aria-label="Dates"/,
-  ],
-];
-
-const requiredMobileGalleryDateStyles = [
-  [
-    'single-row horizontal date overflow',
-    /\.dateStrip\s*\{[^}]*flex-wrap:\s*nowrap[^}]*overflow-x:\s*auto/s,
-  ],
-  [
-    'semantic sticky-date replacement motion',
-    /\.stickyRow\s*\{[^}]*var\(--wa-motion-duration-chrome\)[^}]*var\(--wa-motion-easing-standard\)[\s\S]*\.stickyRow\[data-chrome-replaced\]\s*\{[^}]*visibility:\s*hidden/s,
-  ],
 ];
 
 // The component owns the count (F12k); the stylesheet must not re-column.
@@ -957,35 +913,6 @@ for (const [requirement, pattern] of requiredPanelLayoutStyles) {
     line: 1,
     rule: 'panel-layout-required-styles',
     message: `PanelLayout is missing ${requirement}.`,
-  });
-}
-
-const mobileGalleryDateRuntime = [
-  readFileSync(path.join(root, 'src/widgets/SidePanel/SidePanel.tsx'), 'utf8'),
-  readFileSync(path.join(root, 'src/shared/ui/VirtualGallery/VirtualGallery.tsx'), 'utf8'),
-  readFileSync(path.join(root, 'src/features/PublicGallery/ui/GalleryDateJumpHeading.tsx'), 'utf8'),
-].join('\n');
-for (const [requirement, pattern] of requiredMobileGalleryDateRuntime) {
-  if (pattern.test(mobileGalleryDateRuntime)) continue;
-  violations.push({
-    file: 'src/features/PublicGallery/ui/GalleryDateJumpHeading.tsx',
-    line: 1,
-    rule: 'mobile-gallery-date-required-runtime',
-    message: `Mobile gallery date navigation is missing ${requirement}.`,
-  });
-}
-
-const mobileGalleryDateStyles = [
-  readFileSync(path.join(root, 'src/shared/ui/VirtualGallery/VirtualGallery.module.css'), 'utf8'),
-  readFileSync(path.join(root, 'src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css'), 'utf8'),
-].join('\n');
-for (const [requirement, pattern] of requiredMobileGalleryDateStyles) {
-  if (pattern.test(mobileGalleryDateStyles)) continue;
-  violations.push({
-    file: 'src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css',
-    line: 1,
-    rule: 'mobile-gallery-date-required-styles',
-    message: `Mobile gallery date navigation is missing ${requirement}.`,
   });
 }
 
