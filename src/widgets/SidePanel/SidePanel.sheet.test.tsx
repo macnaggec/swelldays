@@ -9,6 +9,17 @@ import {
 import { BrowseSectionBar } from 'widgets/BrowseSectionBar';
 import { SidePanel } from './SidePanel';
 
+function setScrollMetrics(
+  element: HTMLElement,
+  clientHeight: number,
+  scrollHeight: number,
+) {
+  Object.defineProperties(element, {
+    clientHeight: { configurable: true, value: clientHeight },
+    scrollHeight: { configurable: true, value: scrollHeight },
+  });
+}
+
 function BrowseSheetWithSectionBar() {
   const { snap, setSnap } = useBrowseSurface();
 
@@ -120,10 +131,13 @@ describe('SidePanel bottom sheet', () => {
       </SidePanel>,
     );
 
-    const scrollOwner = screen.getByText('Tall sheet content').closest('[data-panel-scroll-owner]');
+    const scrollOwner = screen.getByText('Tall sheet content').closest<HTMLElement>(
+      '[data-panel-scroll-owner]',
+    );
     const stickyChrome = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
     expect(scrollOwner).not.toBeNull();
     expect(stickyChrome).not.toBeNull();
+    setScrollMetrics(scrollOwner!, 300, 900);
 
     fireEvent.scroll(scrollOwner!, { target: { scrollTop: 24 } });
     expect(stickyChrome).toHaveAttribute('data-hidden', 'true');
@@ -144,10 +158,13 @@ describe('SidePanel bottom sheet', () => {
       </SidePanel>
     );
     const { rerender } = render(renderSheet('full'));
-    const scrollOwner = screen.getByText('Tall sheet content').closest('[data-panel-scroll-owner]');
+    const scrollOwner = screen.getByText('Tall sheet content').closest<HTMLElement>(
+      '[data-panel-scroll-owner]',
+    );
     const stickyChrome = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
     expect(scrollOwner).not.toBeNull();
     expect(stickyChrome).not.toBeNull();
+    setScrollMetrics(scrollOwner!, 300, 900);
 
     fireEvent.scroll(scrollOwner!, { target: { scrollTop: 24 } });
     expect(stickyChrome).toHaveAttribute('data-hidden', 'true');
@@ -161,8 +178,11 @@ describe('SidePanel bottom sheet', () => {
   it('keeps section navigation mounted while hiding labels on scroll down and restoring them on scroll up', () => {
     renderBrowseSheetWithSectionBar();
 
-    const scrollOwner = screen.getByText('Tall sheet content').closest('[data-panel-scroll-owner]');
+    const scrollOwner = screen.getByText('Tall sheet content').closest<HTMLElement>(
+      '[data-panel-scroll-owner]',
+    );
     expect(scrollOwner).not.toBeNull();
+    setScrollMetrics(scrollOwner!, 300, 900);
 
     fireEvent.scroll(scrollOwner!, { target: { scrollTop: 24 } });
 
@@ -192,10 +212,13 @@ describe('SidePanel bottom sheet', () => {
       </SidePanel>
     );
     const { rerender } = render(renderPanel(true));
-    const scrollOwner = screen.getByText('Tall panel content').closest('[data-panel-scroll-owner]');
+    const scrollOwner = screen.getByText('Tall panel content').closest<HTMLElement>(
+      '[data-panel-scroll-owner]',
+    );
     const stickyChrome = screen.getByText('Search and upload').closest('[data-panel-scroll-chrome]');
     expect(scrollOwner).not.toBeNull();
     expect(stickyChrome).not.toBeNull();
+    setScrollMetrics(scrollOwner!, 300, 900);
 
     fireEvent.scroll(scrollOwner!, { target: { scrollTop: 24 } });
     expect(stickyChrome).toHaveAttribute('data-hidden', 'true');

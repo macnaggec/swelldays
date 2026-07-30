@@ -9,6 +9,17 @@ import { PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
 const sidePanelCss = readFileSync('src/shared/ui/PanelLayout/PanelLayout.module.css', 'utf8');
 const designTokensCss = readFileSync('src/shared/ui/design-system/tokens.css', 'utf8');
 
+function setScrollMetrics(
+  element: HTMLElement,
+  clientHeight: number,
+  scrollHeight: number,
+) {
+  Object.defineProperties(element, {
+    clientHeight: { configurable: true, value: clientHeight },
+    scrollHeight: { configurable: true, value: scrollHeight },
+  });
+}
+
 function cssRule(selector: string) {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = sidePanelCss.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`));
@@ -84,6 +95,7 @@ describe('SidePanel', () => {
 
     expect(scrollOwners).toHaveLength(1);
     expect(scrollOwners[0]).toContainElement(chrome);
+    setScrollMetrics(scrollOwners[0]!, 300, 900);
 
     fireEvent.scroll(scrollOwners[0]!, { target: { scrollTop: 80 } });
     expect(chrome).toHaveAttribute('data-hidden');
@@ -108,6 +120,7 @@ describe('SidePanel', () => {
 
     const subheader = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
     const mediaList = screen.getByTestId('media-list');
+    setScrollMetrics(mediaList, 300, 900);
 
     fireEvent.scroll(mediaList, { target: { scrollTop: 80 } });
     expect(subheader).toHaveAttribute('data-hidden');
@@ -137,7 +150,7 @@ describe('SidePanel', () => {
     expect(subheader).not.toHaveAttribute('data-hidden');
   });
 
-  it('does not reveal the subheader for a tiny opposite scroll correction during momentum', () => {
+  it('ignores a tiny opposite correction before revealing the subheader on deliberate upward travel', () => {
     render(
       <SidePanel
         subheader={<div>Search and filters</div>}
@@ -153,11 +166,46 @@ describe('SidePanel', () => {
 
     const subheader = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
     const mediaList = screen.getByTestId('media-list');
+    setScrollMetrics(mediaList, 300, 900);
 
-    fireEvent.scroll(mediaList, { target: { scrollTop: 80 } });
-    fireEvent.scroll(mediaList, { target: { scrollTop: 79 } });
-
+    fireEvent.scroll(mediaList, { target: { scrollTop: 24 } });
     expect(subheader).toHaveAttribute('data-hidden');
+
+    fireEvent.scroll(mediaList, { target: { scrollTop: 23 } });
+    expect(subheader).toHaveAttribute('data-hidden');
+
+    fireEvent.scroll(mediaList, { target: { scrollTop: 15 } });
+    expect(subheader).not.toHaveAttribute('data-hidden');
+  });
+
+  it('keeps search chrome and one-card content stable when boundary corrections have no scroll range', () => {
+    render(
+      <SidePanel
+        drawerPresentation="sideOverlay"
+        subheader={<div>Search and filters</div>}
+      >
+        <article>Only session card</article>
+      </SidePanel>,
+    );
+
+    const drawer = screen.getByRole('complementary', { name: 'Content drawer' });
+    const scrollOwner = drawer.querySelector<HTMLElement>('[data-panel-scroll-owner]');
+    const chrome = screen.getByText('Search and filters').closest<HTMLElement>(
+      '[data-panel-scroll-chrome]',
+    );
+    const card = screen.getByText('Only session card');
+    expect(scrollOwner).not.toBeNull();
+    expect(chrome).not.toBeNull();
+    expect(scrollOwner).toContainElement(card);
+    setScrollMetrics(scrollOwner!, 300, 300);
+
+    for (const scrollTop of [24, 0, 24, 0]) {
+      fireEvent.scroll(scrollOwner!, { target: { scrollTop } });
+
+      expect(chrome).not.toHaveAttribute('data-hidden');
+      expect(screen.getByText('Only session card')).toBe(card);
+      expect(scrollOwner).toContainElement(card);
+    }
   });
 
   it('keeps one chrome mount in the scroll owner when content declares its own overflow context', () => {
@@ -213,6 +261,7 @@ describe('SidePanel', () => {
 
     const toolbar = screen.getByText('Collection filters').closest('[data-panel-scroll-chrome]');
     const collectionList = screen.getByTestId('collection-list');
+    setScrollMetrics(collectionList, 300, 900);
 
     fireEvent.scroll(collectionList, { target: { scrollTop: 80 } });
     expect(toolbar).toHaveAttribute('data-hidden');

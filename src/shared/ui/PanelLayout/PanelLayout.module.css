@@ -39,6 +39,15 @@
   overflow-y: hidden;
 }
 
+/* Hiding search/filter chrome changes the first row's height (to an active-date
+   replacement in Gallery, and to zero in Feed). Without this opt-out, browser
+   scroll anchoring compensates by changing scrollTop; the direction detector
+   then reads that layout correction as an opposite gesture and swaps the chrome
+   back. Scope the opt-out to panels that actually publish hideable chrome. */
+.scroller:has(.stickyChrome [data-panel-scroll-chrome-primary]) {
+  overflow-anchor: none;
+}
+
 /* Pinned beside the scroller: rail content keeps its place while the panel
    content scrolls, and overflowing rail content scrolls on its own with the
    native scrollbar hidden. */

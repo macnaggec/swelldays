@@ -19,6 +19,11 @@ import styles from './SidePanel.module.css';
 
 const SCROLL_DIRECTION_THRESHOLD_PX = 8;
 
+function hasMeaningfulVerticalScrollTravel(scrollTarget: HTMLElement): boolean {
+  return scrollTarget.scrollHeight - scrollTarget.clientHeight
+    >= SCROLL_DIRECTION_THRESHOLD_PX;
+}
+
 interface ScrollPosition {
   anchor: number;
   hidden: boolean;
@@ -109,7 +114,10 @@ export function SidePanel({
       hidden: false,
     };
 
-    if (currentScrollTop <= 0) {
+    if (!hasMeaningfulVerticalScrollTravel(scrollTarget)) {
+      position.anchor = 0;
+      position.hidden = false;
+    } else if (currentScrollTop <= 0) {
       position.anchor = 0;
       position.hidden = false;
     } else if (position.hidden) {
