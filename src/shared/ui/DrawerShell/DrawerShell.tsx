@@ -15,6 +15,7 @@ import { useViewportMetrics } from 'shared/model/viewportMetrics';
 import { PANEL_WIDTH_VW } from 'shared/model/panelExpansionStore';
 import { materialClasses } from 'shared/ui/design-system';
 import {
+  publishDrawerDragging,
   publishDrawerGeometry,
   publishDrawerMotion,
   publishDrawerTargetGeometry,
@@ -230,6 +231,7 @@ export function DrawerShell(props: DrawerShellProps) {
       publishDrawerGeometry(null);
       publishDrawerTargetGeometry(null);
       publishDrawerMotion(false);
+      publishDrawerDragging(false);
     };
   }, []);
 
@@ -285,7 +287,15 @@ export function DrawerShell(props: DrawerShellProps) {
     };
   }, [snap]);
 
+  const handleSheetDrag: DragHandler = () => {
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    publishDrawerDragging(true);
+    publishDrawerGeometry(surface.getBoundingClientRect());
+  };
+
   const handleSheetDragEnd: DragHandler = (_event, info) => {
+    publishDrawerDragging(false);
     const surface = surfaceRef.current;
     if (!surface || snap === undefined || !onSnapChange) return;
     const heightPx = viewportHeightPx - surface.getBoundingClientRect().top;
@@ -303,7 +313,9 @@ export function DrawerShell(props: DrawerShellProps) {
     : {
       y: 0,
       width: props.presentation === 'sideOverlay'
-        ? panelOpen ? `${SHORT_SIDE_OVERLAY_WIDTH_VW}vw` : '0vw'
+        ? panelOpen
+          ? `${SHORT_SIDE_OVERLAY_WIDTH_VW}vw`
+          : '0vw'
         : props.state === 'expanded' ? `${PANEL_WIDTH_VW.expanded}vw` : `${PANEL_WIDTH_VW.compact}vw`,
     };
   // The property a presentation does not animate is corrected instantly: a band crossing
@@ -313,7 +325,10 @@ export function DrawerShell(props: DrawerShellProps) {
       y: prefersReducedMotion ? { duration: 0 } : DRAWER_SHELL_TRANSITION,
       width: { duration: 0 },
     }
-    : { width: DRAWER_SHELL_TRANSITION, y: { duration: 0 } };
+    : {
+      width: DRAWER_SHELL_TRANSITION,
+      y: { duration: 0 },
+    };
 
   return (
     <motion.aside
@@ -337,6 +352,7 @@ export function DrawerShell(props: DrawerShellProps) {
       dragConstraints={props.presentation === 'bottomSheet' ? dragConstraints : undefined}
       dragElastic={props.presentation === 'bottomSheet' ? SHEET_DRAG_ELASTIC : undefined}
       dragMomentum={false}
+      onDrag={props.presentation === 'bottomSheet' ? handleSheetDrag : undefined}
       onDragEnd={props.presentation === 'bottomSheet' ? handleSheetDragEnd : undefined}
       onAnimationComplete={() => {
         const bounds = surfaceRef.current?.getBoundingClientRect();

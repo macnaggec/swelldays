@@ -398,19 +398,36 @@ For every implementation task:
 
 ### Phase M — mobile experience: compact plus constrained-short (promoted by the 2026-07-22 pivot)
 
-**Status 2026-07-30 — global-audit reconciliation.** The mobile Feed/Gallery shell through M02 remains completed history: upright browse is a bottom sheet over an interactive map, with parked list/map chrome and the approved Map/Feed/Gallery bottom bar; landscape Feed/Gallery shares the approved nonmodal side panel and persistent section bar. The audited implementation baseline contains 60 dirty paths; the audit itself additionally changes this roadmap and the existing architecture roadmap. The implementation paths contain post-M02 shell corrections and a partial M03 implementation, but they are not a completed M03 slice. Audit found four stop-line issues: GlobeScene reconstructs bottom-sheet target geometry instead of consuming one DrawerShell projection; the public date index and feed have an incomplete shared lifecycle; timestamp-only ordering is paired with an id cursor; and the implemented separate month/day rows explicitly contradict M03's approved one-sequence/month-jump behavior. M03 is therefore split below. No M04 work begins until M03-g closes the umbrella.
+**Status 2026-07-30 — global-audit reconciliation.** The mobile Feed/Gallery shell through M02 remains completed history: upright browse is a bottom sheet over an interactive map, with parked list/map chrome and the approved Map/Feed/Gallery bottom bar; landscape Feed/Gallery shares the approved nonmodal side panel and persistent section bar. The audited implementation baseline contains 60 dirty paths; the audit itself additionally changes this roadmap and the existing architecture roadmap. The implementation paths contain post-M02 shell corrections and a partial M03 implementation, but they are not a completed M03 slice. Audit found four stop-line issues: GlobeScene reconstructed bottom-sheet target geometry instead of consuming one DrawerShell projection (corrected by M03-a); the public date index and feed have an incomplete shared lifecycle; timestamp-only ordering is paired with an id cursor; and the implemented separate month/day rows explicitly contradict M03's approved one-sequence/month-jump behavior. M03 is split below. No M04 work begins until M03-i closes the umbrella.
+
+**User-reported UI regression register (2026-07-30).** These eight reports are accepted as defects from the named capability/state; they were documented from the user's behavior descriptions and supplied screenshots, not independently screenshot-verified by the agent. The text below is the durable acceptance record.
+
+| ID | Reported state and failure | Owning task | Owning regression verification |
+|---|---|---|---|
+| UI-01 | Phone portrait, Map/peek search: typing opens results behind/under the map, so the options are not usable | M02-e | Route-level focus/type/select test plus DOM geometry, clipping, stacking, and hit-testing checks |
+| UI-02 | Phone landscape, selected spot with one card: the search bar jitters when the short result surface is scrolled | M02-f | Short-content scroll-owner integration test proving stable chrome state and geometry |
+| UI-03 | Mobile Gallery: choosing a date leaves the menu open; it must close, jump, update the date label, and keep date chrome visible | M03-f | Date-control interaction test covering close, jump, active label, focus return, and replacement-chrome state |
+| UI-04 | Mobile Gallery: scrolling inside the open date menu closes it and switches back to search chrome | M03-f | Pointer/touch/wheel scroll-containment test proving the menu stays open and the underlying panel chrome state does not change |
+| UI-05 | Mobile Gallery: search/date chrome swaps without a transition and changes the grid's vertical position | M03-g | Chrome-handoff integration test proving stable slot/content geometry, one interactive row, motion, and reduced-motion behavior |
+| UI-06 | Desktop compact Gallery: in-grid date dividers are interactive bars; they should be a simple non-interactive line plus date | M03-h | Compact-persistent gallery behavior/accessibility test proving divider rows contain no menu/button |
+| UI-07 | Desktop compact Gallery: date and search chrome overlap, and the date menu uses a stale list; it must reuse the mobile compact component and behavior | M03-h | Shared compact-date behavior suite plus DOM overlap and fresh-query-data checks |
+| UI-08 | Phone portrait, half/middle sheet: the account/cart plate does not follow live drag and remains visible until covered | M02-g | Drawer-geometry/navigation integration test plus computed geometry/opacity checks and a manual motion checklist |
 
 Current dirty-path ownership:
 
 | Path/hunk family | Open task |
 |---|---|
-| App route, DrawerShell, panel layout/chrome, VirtualGallery, GlobeScene/GlobeMap, AppNavigation, BrowseSectionBar, and SidePanel behavior/geometry hunks plus their owning tests/styles | M03-a |
+| App route, DrawerShell, GlobeScene/GlobeMap, BrowseSectionBar, and SidePanel geometry hunks plus their owning tests/styles | M03-a (completed) |
+| Portrait Map search-result layering and SpotSearch/PanelRouteLayout shell-integration hunks | M02-e |
+| PanelLayout scroll-owner/chrome stability hunks for short landscape content | M02-f |
+| AppNavigation live sheet-geometry/motion hunks | M02-g |
 | `PanelRouteLayout.test.tsx` CSS-text assertions and exact-name/markup/CSS-structure rules newly added to `scripts/check-style-boundaries.mjs` | M03-b |
 | Media repository/service/route ordering and cursor hunks plus equal-timestamp integration coverage | M03-c |
 | Spot media query adapter, PublicGallery fetch/rebase hunks, date-key/highlight models, Media calendar-index query, and their contract/integration/behavior tests | M03-d |
 | Public projection invalidation hunks in Media/Spot/SurfSession query policies plus focused lifecycle tests | M03-e |
-| Gallery date-control components/styles/tests and only the stable ownership rules for that interaction | M03-f |
-| BaseCard, CarouselLightbox, MediaLightbox, and the named final shell/accessibility/large-text verification hunks | M03-g |
+| Gallery date-control components/styles/tests and only the stable ownership rules for that interaction | M03-f/M03-h by hunk |
+| PanelLayout sticky-chrome handoff/motion and stable-content-offset hunks | M03-g |
+| BaseCard, CarouselLightbox, MediaLightbox, and the named final shell/accessibility/large-text verification hunks | M03-i |
 | Shared files containing more than one family (`PublicGallery.tsx`, `scripts/check-style-boundaries.mjs`, route/shell integration tests) | stage only the named task's hunks; preserve the remaining hunks for their later task |
 | `docs/review/05-transformation-roadmap.md` and this roadmap | audit record; land with the reconciled slices rather than as a competing roadmap |
 
@@ -418,13 +435,17 @@ What remains, in order:
 
 | Task | What it delivers | Waiting on |
 |---|---|---|
-| M03-a | Restore one shell-geometry authority | Current worktree contains two bottom-sheet target-geometry producers |
+| M02-e | Keep portrait Map search results visible and selectable | User-reported UI-01 |
+| M02-f | Stabilize landscape search chrome with one-card/short content | User-reported UI-02 |
+| M02-g | Couple account/cart plate to live bottom-sheet motion | M03-a complete; user-reported UI-08 |
 | M03-b | Correct verifier ownership | Current slice contains source/CSS snapshot assertions |
 | M03-c | Make public-media pagination total | Timestamp-only order currently uses an id cursor |
 | M03-d | Decide calendar-day semantics; build the compact index and direct locator | Current index returns every timestamp and date jump fetches intervening pages |
 | M03-e | Complete public-media lifecycle invalidation | Feed and date index can refresh independently |
-| M03-f | Implement the approved one-sequence date control | Current separate-row/month-toggle behavior contradicts the approved decision |
-| M03-g | Finish lightbox, large text, both-shell verification, and appearance acceptance | M03-a through M03-f |
+| M03-f | Implement the approved date control and its open/scroll/select lifecycle | Current contract mismatch plus UI-03/UI-04 |
+| M03-g | Animate search/date chrome without moving the grid | M03-f; user-reported UI-05 |
+| M03-h | Unify compact-desktop Gallery date chrome with mobile and simplify dividers | M03-g; user-reported UI-06/UI-07 |
+| M03-i | Finish lightbox, large text, cross-shell verification, and appearance acceptance | M02-e through M03-h |
 | M04 | Session detail, cart, account, collections, earnings as phone screens | — |
 | M05 | Upload and Add Spot on a phone, incl. the software keyboard | — |
 | M06 | Touch sizing, safe areas, reduced motion across the band | — |
@@ -530,7 +551,14 @@ Phase T (six tasks, ending in Gate 3) and Phase D (four tasks) follow unchanged.
   - Invariant and verifier: With one card and the landscape search/filter row mounted, a touch/wheel attempt at the scroll boundary cannot make the row or card oscillate vertically; with genuinely scrollable content, one downward/upward gesture still produces one deliberate hide/reveal transition. A focused scroll-owner integration test owns both short- and long-content branches and proves the semantic hidden state does not alternate from layout-induced `scrollTop` corrections. DOM geometry owns row/card stability; no runtime test asserts CSS declarations. Announce the visible stability correction and wait for explicit approval before implementation. All five gates must pass.
   - Completed 2026-07-30. `SidePanel` now ignores direction changes when the event target's measured vertical travel cannot reach the existing 8px threshold, resetting the shared chrome state to visible without a card-count, route, presentation, or second direction authority. The scoped PanelLayout scroll-anchoring opt-out prevents hideable chrome layout corrections from feeding back into that signal, while genuinely scrollable Feed/Gallery content and compact navigation keep the existing deliberate hide/reveal lifecycle. A focused test failed first when zero-range content hid at a synthetic 24px correction; the final focused suites passed 20 tests and all five project gates passed (114 files, 703 tests). See `docs/review/responsive-layout-m02-f-handoff.md`.
 
-**M03 umbrella — Complete mobile gallery behavior inside the approved shells.** The original single task is split into M03-a through M03-g by the 2026-07-30 global audit. This preserves its approved product decision and completed density/filter characterization without treating the partial implementation as finished. Each subtask is one implementation session; do not combine them merely because their changes currently share a worktree.
+- [x] **M02-g — Fix: couple the portrait account/cart plate to live sheet motion**
+  - Depends on: M03-a.
+  - User report UI-08 (2026-07-30): while the portrait bottom sheet is dragged upward through its middle position, the account/cart plate is positioned from the resting snap rather than the live sheet edge, then remains visible until the sheet covers it.
+  - Scope: Keep AppNavigation as the sole account/cart control owner and consume DrawerShell's read-only live rendered-geometry projection established by M03-a. During a drag, the plate follows the moving sheet edge continuously and fades to fully invisible/inert before the sheet intersects it. Reverse mechanic for opposite direction. Resting peek/half/full semantics stay unchanged; do not mirror snap-height formulas or create navigation-owned drag progress.
+  - Invariant and verifier: Sampled live drawer bounds drive a corresponding navigation position and monotonic opacity; before sheet/navigation bounds overlap, opacity reaches zero and the plate becomes non-interactive/hidden from accessibility. DrawerShell/AppNavigation integration owns live geometry consumption and interaction state. Computed geometry/opacity checks own the measurable contract; a short user checklist owns perceived motion timing. Announce the visible motion change and wait for explicit approval before implementation. All five gates must pass.
+  - Completed 2026-07-30. `DrawerShell` now publishes a second channel (`publishDrawerDragging`/`useDrawerDragging`) alongside its existing rendered-geometry channel, set on every drag frame (`onDrag`) and cleared on release or unmount. `useBrowseSheetNavigationPlacement` (replacing `useSheetSnapTopPx`) is the one DrawerShell-owned projection that turns that into `{ topPx, opacity, hidden, live }`: `topPx` prefers the live rendered top while dragging and falls back to the resting snap formula otherwise; `opacity`/`hidden` come from a new pure function (`resolveBrowseSheetNavigationOpacity`) that linearly interpolates between the `half` and `full` snap heights, reproducing today's binary visible/hidden behavior exactly at rest. `AppNavigation`'s discrete `[data-sheet-snap='full']` CSS block is replaced by a continuous `opacity: var(--wa-browse-navigation-opacity)`, with a `[data-navigation-tracking]` rule suppressing the snap transition while a live sample is driving position/opacity so the plate tracks 1:1 with the finger instead of lagging behind a re-triggered CSS transition. `inert`/`aria-hidden` already remove interactivity and accessibility exposure, so the old block's `pointer-events`/`visibility` toggling was dropped as redundant. Verified with a real `pointerdown`/`pointermove` gesture on the drag handle (via `clientX`/`clientY`, since jsdom's `pageX`/`pageY` are derived read-only getters that would otherwise never cross framer-motion's drag threshold) asserting the published geometry reflects the dragged position before the gesture ends. All five gates passed (114 files, 712 tests). See `docs/review/responsive-layout-m02-g-handoff.md`.
+
+**M03 umbrella — Complete mobile gallery behavior inside the approved shells.** The original single task is split into M03-a through M03-i by the 2026-07-30 global audit and the UI regression register above. This preserves its approved product decision and completed density/filter characterization without treating the partial implementation as finished. Each subtask is one implementation session; do not combine them merely because their changes currently share a worktree.
 
 The approved product decision remains unchanged: keep the complete active date pinned on mobile. While media scrolls down, the shared search/filter chrome hides and that active-date bar appears; while media scrolls up, the date bar hides and search/filter chrome returns, so the two rows never overlap. Tapping the date opens one horizontal, natively x-scrollable sequence: a year label only when the year changes, a month control only when the month changes, and de-duplicated day controls. The active day is highlighted and brought into view; tapping a month jumps to its first day and tapping a day jumps to that day. Do not add continuous drag-to-jump. Existing filter pills remain unchanged.
 
@@ -540,7 +568,7 @@ Preserved verified facts from the original M03 work:
 - VirtualGallery resolves the PanelLayout scroll owner for visibility and date jumps;
 - the route remains the one selected-date/favorite-spots-filter owner across snaps, section changes, close/reopen, and live shell crossings;
 - the selected date/favorites controls expose semantic selected state;
-- these facts remain subject to re-verification after M03-c through M03-f change page anchoring and date identity.
+- these facts remain subject to re-verification after M03-c through M03-h change page anchoring, date identity, chrome lifecycle, and compact-desktop projection.
 
 - [x] **M03-a — Restore one DrawerShell geometry projection**
   - Depends on: M02-b, M00b.
@@ -571,16 +599,29 @@ Preserved verified facts from the original M03 work:
 
 - [ ] **M03-f — Implement the approved one-sequence mobile date control**
   - Depends on: M03-d, M03-e.
-  - Scope: Replace the current separate month/day rows with one native horizontal sequence. Render year and month controls only at their boundaries, deduplicate days, highlight/scroll the active day into view, jump a month to its first day, and jump a day to itself. Preserve mutual exclusion with search/filter chrome and reuse the route-owned filter/date facts. No drag-to-jump.
-  - Invariant and verifier: The on-screen date interaction exactly matches the approved M03 decision without another mobile-only date state. Semantic interaction, accessibility, focus, and horizontal-scroll tests own behavior; static rules confine ownership but do not snapshot markup or CSS. Announce the visible correction and wait for the required UI approval before implementation. All five gates must pass.
+  - User reports UI-03/UI-04 (2026-07-30): selecting a date leaves the menu open and allows search chrome to replace the selected-date bar; attempting to scroll inside the open date list immediately closes it and restores search chrome.
+  - Scope: Replace the current separate month/day rows with one native horizontal sequence. Render year and month controls only at their boundaries, deduplicate days, highlight/scroll the active day into view, jump a month to its first day, and jump a day to itself. A successful month/day selection closes the menu, rebases/scrolls the gallery, updates the closed date-bar label, returns focus to that bar, and keeps date chrome active instead of immediately revealing search. Pointer/touch/wheel interaction inside the open horizontal list is contained from the underlying panel scroll-direction owner, so browsing the choices cannot dismiss the menu or switch chrome. Preserve the route-owned filter/date facts; add no mobile-only selection or open-state store. No drag-to-jump.
+  - Invariant and verifier: The on-screen date interaction exactly matches the approved M03 decision and UI-03/UI-04 without another date or chrome authority. A focused interaction suite owns open → internal scroll stays open → month/day select → menu closes → jump fires → active label updates → focus returns → date chrome remains active. A panel integration test owns event/scroll containment from the underlying chrome-direction state. Accessibility and native horizontal-scroll behavior are asserted semantically; static rules confine ownership but do not snapshot markup or CSS. Announce the visible correction and wait for the required UI approval before implementation. All five gates must pass.
 
-- [ ] **M03-g — Complete lightbox, large-text, and both-shell verification**
-  - Depends on: M03-a, M03-f.
-  - Scope: Finish the named lightbox coordination, card/lightbox focus, large-text, density, scroll-owner, filter, anchoring, snap-reset, subtree-continuity, and route-continuity behaviors in compact-regular plus compact/constrained-short gallery shells. Do not expand this into an open-ended matrix programme. Use the user checklist only for appearance.
-  - Invariant and verifier: Gallery cards, virtual scrolling, filters, date navigation, and lightbox remain usable in every Phase M capability cell; switching Feed/Gallery or opening/closing/crossing shells does not reset or duplicate them. Semantic DOM, computed style, geometry, accessibility, focus, scroll, interaction, console, network, the manual appearance checklist, and all five gates own completion.
+- [ ] **M03-g — Add a stable transition between search and date chrome**
+  - Depends on: M03-f.
+  - User report UI-05 (2026-07-30): the search/filter and active-date rows currently appear/disappear without transition, and their different layout participation shifts the media grid vertically.
+  - Scope: Keep the existing panel scroll-direction fact as the sole switch. Realize both chrome states through one constant-geometry PanelLayout slot so the grid's block-start position does not change during or after the handoff. Add a short semantic motion transition between the rows; only the visible row is interactive/announced, and reduced motion removes the animation without removing the stable slot. Do not add delayed visibility state in PublicGallery or make the grid compensate with hardcoded padding.
+  - Invariant and verifier: Before, during, and after a search↔date handoff, the sticky slot and first gallery row retain the same measured block geometry; exactly one chrome state is interactive and accessibility-visible. A focused PanelLayout/PublicGallery integration test owns semantic state and stable geometry, computed-style/animation checks own transition presence, and the reduced-motion branch owns immediate stable replacement. A short user checklist owns appearance. Announce the visible motion change and wait for explicit approval before implementation. All five gates must pass.
+
+- [ ] **M03-h — Unify compact-desktop Gallery date chrome with mobile**
+  - Depends on: M03-d, M03-f, M03-g.
+  - User reports UI-06/UI-07 (2026-07-30): compact desktop Gallery renders interactive date bars inside the grid, overlaps its date bar with search chrome, and opens a stale date list. Compact desktop must use the same current-data component and interaction lifecycle as mobile, while in-grid day dividers become simple non-interactive line-and-date separators.
+  - Scope: Define one compact-gallery date-chrome projection used by bottom sheet, short side overlay, and compact persistent desktop whenever the wide date rail is unavailable. Reuse the M03-f control, open/scroll/select lifecycle, active label, and M03-d calendar index; do not fork a desktop copy or retain a second date list. Project that control through the same PanelLayout replacement slot as mobile so it cannot overlap search/filter chrome. Change VirtualGallery's compact desktop divider renderer to a semantic separator containing only a line and formatted date—not a button, menu target, or sticky date-control authority. Wide date-sidebar behavior stays unchanged.
+  - Invariant and verifier: The three compact presentations consume the same date-control interface and fresh index data, expose one interactive date bar, and never overlap it with search/filter chrome. Parameterized behavior tests run the M03-f lifecycle in bottom-sheet, side-overlay, and compact-persistent contexts; updating the query's available days updates all three menus. Compact-desktop DOM/accessibility tests prove divider rows contain no interactive control; DOM bounding boxes own non-overlap. Do not assert CSS source text or internal component names merely to prove reuse. Announce the visible desktop-compact change and wait for explicit approval before implementation. All five gates must pass.
+
+- [ ] **M03-i — Complete lightbox, large-text, and cross-shell verification**
+  - Depends on: M02-e, M02-f, M02-g, M03-h.
+  - Scope: Finish the named lightbox coordination, card/lightbox focus, large-text, density, scroll-owner, filter, anchoring, snap-reset, subtree-continuity, route-continuity, and UI-01–UI-08 regression behaviors in compact-regular, compact/constrained-short, and compact-persistent gallery/browse shells. Do not expand this into an open-ended matrix programme. Use the user checklist only for appearance/motion.
+  - Invariant and verifier: Gallery cards, virtual scrolling, filters, date navigation, search results, shell chrome, account navigation, and lightbox remain usable in their named capability cells; switching Feed/Gallery or opening/closing/crossing shells does not reset, duplicate, overlap, clip, or jitter them. Semantic DOM, computed style, geometry, accessibility, focus, scroll, interaction, console, network, the manual appearance checklist, and all five gates own completion.
 
 - [ ] **M04 — Implement mobile route workspaces**
-  - Depends on: M03-g, M00, M01, F09, F10.
+  - Depends on: M03-i, M00, M01, F09, F10.
   - Scope: Migrate session detail, cart, account, collections, and earnings to the Phase M workspace lifecycles: full-screen in compact cells and the policy-selected short-height workspace for constrained-short landscape phones. Activate each Phase M `routeWorkspace` cell only after back, modality, map, and chrome behavior are complete.
   - Invariant and verifier: Back, focus, scrolling, footer clearance, loading, empty, and error behavior remain consistent; focused integration and browser checks own verification. All five completion gates must pass.
 
@@ -590,7 +631,7 @@ Preserved verified facts from the original M03 work:
   - Invariant and verifier: Keyboard appearance cannot hide the active field or action, cannot notify discrete capability consumers unless a semantic band actually changes, and cannot corrupt measured map occlusion. A focused viewport-metrics/DrawerShell integration test owns keyboard resize and offset behavior; semantic DOM, geometry, focus, and interaction checks own the user flow. Static enforcement confines `visualViewport` reads to the metrics owner. All five completion gates must pass.
 
 - [ ] **M06 — Complete input, safe-area, and reduced-motion behavior**
-  - Depends on: M02, M03-g, M04, M05.
+  - Depends on: M02, M03-i, M04, M05.
   - Scope: Apply coarse-pointer dimensions, remove hover-only dependencies, verify fine-pointer behavior, consolidate safe-area use, and make drawer, chrome, gallery, validation, lightbox, and globe motion honor the user's preference. Keep the ownership split explicit: CSS media features own purely visual pointer/hover/reduced-motion styling; the TypeScript capability snapshot is consumed only by JavaScript interaction and animation systems that cannot consume CSS. Do not route CSS presentation through React props merely to claim one capability owner.
   - Invariant and verifier: Input modality changes affordances but not product policy, and every motion system honors reduced motion through the owner native to that system. CSS/static checks own visual capability styling and token use; capability integration plus semantic DOM, computed-style, focus, and interaction checks own JavaScript behavior. All five completion gates must pass.
 

@@ -9,6 +9,7 @@ export {
   getDrawerGeometrySnapshot,
   subscribeDrawerGeometry,
   useDrawerAdjacentInlineEndInset,
+  useDrawerDragging,
   useDrawerMoving,
   useDrawerGeometry,
   useDrawerTargetGeometry,
@@ -26,7 +27,10 @@ export {
   BrowseSurfaceProvider,
   useBrowseSurface,
 } from './browseSurface';
-export { useSheetSnapTopPx } from './useSheetSnapTopPx';
+export {
+  useBrowseSheetNavigationPlacement,
+  type BrowseSheetNavigationPlacement,
+} from './useBrowseSheetNavigationPlacement';
 export {
   useRegisterSheetScrollOwner,
   useSheetContentScrollable,

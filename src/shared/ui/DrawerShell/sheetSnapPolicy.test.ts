@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   nearestSheetSnap,
+  resolveBrowseSheetNavigationOpacity,
   resolveSheetSnapHeights,
   SHEET_PEEK_HEIGHT_PX,
 } from './sheetSnapPolicy';
@@ -92,5 +93,55 @@ describe('nearestSheetSnap', () => {
 
   it('stays at peek on a downward flick already at peek', () => {
     expect(nearestSheetSnap({ heightPx: heights.peek, velocityPx: 500, heights })).toBe('peek');
+  });
+});
+
+describe('resolveBrowseSheetNavigationOpacity', () => {
+  const heights = resolveSheetSnapHeights({ viewportHeightPx: 844, peekHeightPx: SHEET_PEEK_HEIGHT_PX });
+  // heights: { peek: 84, half: 287, full: 820 }
+
+  it('is fully opaque and not hidden at or below the half height', () => {
+    expect(resolveBrowseSheetNavigationOpacity({ visibleHeightPx: heights.half, heights })).toEqual({
+      opacity: 1,
+      hidden: false,
+    });
+    expect(resolveBrowseSheetNavigationOpacity({ visibleHeightPx: heights.peek, heights })).toEqual({
+      opacity: 1,
+      hidden: false,
+    });
+  });
+
+  it('is fully transparent and hidden at or above the full height', () => {
+    expect(resolveBrowseSheetNavigationOpacity({ visibleHeightPx: heights.full, heights })).toEqual({
+      opacity: 0,
+      hidden: true,
+    });
+  });
+
+  it('is exactly half-faded at the midpoint between half and full', () => {
+    const midpoint = (heights.half + heights.full) / 2;
+    expect(resolveBrowseSheetNavigationOpacity({ visibleHeightPx: midpoint, heights })).toEqual({
+      opacity: 0.5,
+      hidden: false,
+    });
+  });
+
+  it('fades monotonically as the sheet rises from half toward full', () => {
+    const span = heights.full - heights.half;
+    const first = resolveBrowseSheetNavigationOpacity({
+      visibleHeightPx: heights.half + span * 0.25,
+      heights,
+    }).opacity;
+    const second = resolveBrowseSheetNavigationOpacity({
+      visibleHeightPx: heights.half + span * 0.5,
+      heights,
+    }).opacity;
+    const third = resolveBrowseSheetNavigationOpacity({
+      visibleHeightPx: heights.half + span * 0.75,
+      heights,
+    }).opacity;
+
+    expect(first).toBeGreaterThan(second);
+    expect(second).toBeGreaterThan(third);
   });
 });

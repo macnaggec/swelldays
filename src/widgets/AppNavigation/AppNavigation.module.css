@@ -15,7 +15,7 @@
   left: auto;
   right: calc(var(--wa-safe-area-right) + var(--wa-shell-edge-clearance));
   z-index: var(--wa-z-controls);
-  opacity: 1;
+  opacity: var(--wa-browse-navigation-opacity, 1);
   visibility: visible;
   transition:
     top var(--wa-motion-duration-chrome) var(--wa-motion-easing-standard),
@@ -29,15 +29,8 @@
   top: calc(var(--wa-browse-sheet-top) - var(--wa-shell-edge-clearance));
 }
 
-.root[data-navigation-presentation='topBar'][data-sheet-snap='full'] {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition:
-    top var(--wa-motion-duration-chrome) var(--wa-motion-easing-standard),
-    transform var(--wa-motion-duration-chrome) var(--wa-motion-easing-standard),
-    opacity var(--wa-motion-duration-chrome) var(--wa-motion-easing-standard),
-    visibility 0s linear var(--wa-motion-duration-chrome);
+.root[data-navigation-presentation='topBar'][data-navigation-tracking] {
+  transition: none;
 }
 
 .stack {

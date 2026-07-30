@@ -368,6 +368,85 @@ describe('DrawerShell bottom-sheet geometry', () => {
   });
 });
 
+describe('DrawerShell live drag geometry', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('publishes the sheet\'s live rendered edge while a drag is in progress, before the drag ends', async () => {
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    const queuedFrames: FrameRequestCallback[] = [];
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+    // Only the component's own mount-time measurement loop reads this stub (it looks up
+    // the global at call time); framer-motion's internal frame scheduler captured the
+    // real requestAnimationFrame at import time, so its onDrag callback still lands on a
+    // genuine frame below, independent of this queue.
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      queuedFrames.push(callback);
+      return queuedFrames.length;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    const onSnapChange = vi.fn();
+
+    render(
+      <>
+        <DrawerShell
+          presentation="bottomSheet"
+          modality="nonmodal"
+          snap="half"
+          onSnapChange={onSnapChange}
+        >
+          Sheet content
+        </DrawerShell>
+        <GeometryProbe />
+      </>,
+    );
+
+    const sheet = screen.getByRole('complementary', { name: 'Content drawer' });
+    let rect = DOMRect.fromRect({ x: 0, y: 500, width: 390, height: 344 });
+    vi.spyOn(sheet, 'getBoundingClientRect').mockImplementation(() => rect);
+
+    // Settle the mount-time measurement against the resting rect first, so the only
+    // remaining path that can publish the dragged rect below is the live-drag wiring
+    // under test, not a still-pending initial measurement.
+    act(() => queuedFrames.shift()?.(0));
+    expect(screen.getByTestId('drawer-geometry').textContent).toBe('0:500:390:844:390:344');
+
+    const handle = sheet.querySelector('[data-drawer-sheet-handle]');
+    if (!handle) throw new Error('Expected the drag handle to be rendered.');
+
+    act(() => {
+      // jsdom derives pageX/pageY from clientX/clientY (there is no real layout to
+      // offset against), so the gesture must be driven through clientX/clientY for
+      // framer-motion's pan session to see any movement at all.
+      fireEvent.pointerDown(handle, { pointerId: 1, isPrimary: true, clientX: 195, clientY: 500 });
+    });
+
+    rect = DOMRect.fromRect({ x: 0, y: 420, width: 390, height: 424 });
+    act(() => {
+      fireEvent.pointerMove(handle, { pointerId: 1, isPrimary: true, clientX: 195, clientY: 420 });
+    });
+
+    // framer-motion schedules its onDrag callback through its own animation-frame
+    // queue rather than synchronously, so the published geometry lands a real
+    // frame after the pointermove — this waits for that frame rather than the
+    // pointer gesture ending.
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(screen.getByTestId('drawer-geometry').textContent).toBe('0:420:390:844:390:424');
+      });
+    });
+
+    expect(onSnapChange).not.toHaveBeenCalled();
+  });
+});
+
 describe('DrawerShell scroll-to-snap coupling', () => {
   it('parks panel content scrolling until the sheet reaches its top snap', () => {
     const onSnapChange = vi.fn();

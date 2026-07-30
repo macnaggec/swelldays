@@ -3,8 +3,9 @@ import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
 import styles from './AppNavigation.module.css';
 import { materialClasses } from 'shared/ui/design-system';
 import {
+  useBrowseSheetNavigationPlacement,
   useBrowseSurface,
-  useSheetSnapTopPx,
+  type BrowseSheetNavigationPlacement,
   type SheetSnap,
 } from 'shared/ui/DrawerShell';
 import { useCartStore } from 'entities/Commerce';
@@ -18,33 +19,38 @@ export interface AppNavigationProps {
 
 interface BrowseNavigationStyle extends CSSProperties {
   '--wa-browse-sheet-top': string;
+  '--wa-browse-navigation-opacity': string;
 }
 
 interface NavigationSurfaceProps {
   presentation: Exclude<AppShellLayoutPolicy['navigation'], 'hidden'>;
   sheetSnap?: SheetSnap;
-  sheetTopPx?: number;
+  placement?: BrowseSheetNavigationPlacement;
 }
 
 function NavigationSurface({
   presentation,
   sheetSnap,
-  sheetTopPx,
+  placement,
 }: NavigationSurfaceProps): ReactElement {
   const cartCount = useCartStore((s) => s.items.length);
-  const isBrowseSheetFull = sheetSnap === 'full';
-  const style: BrowseNavigationStyle | undefined = sheetTopPx === undefined
+  const hidden = placement?.hidden ?? false;
+  const style: BrowseNavigationStyle | undefined = placement === undefined
     ? undefined
-    : { '--wa-browse-sheet-top': `${sheetTopPx}px` };
+    : {
+      '--wa-browse-sheet-top': `${placement.topPx}px`,
+      '--wa-browse-navigation-opacity': `${placement.opacity}`,
+    };
 
   return (
     <div
       className={styles.root}
       data-navigation-presentation={presentation}
       data-sheet-snap={sheetSnap}
+      data-navigation-tracking={placement?.live || undefined}
       style={style}
-      inert={isBrowseSheetFull}
-      aria-hidden={isBrowseSheetFull || undefined}
+      inert={hidden}
+      aria-hidden={hidden || undefined}
     >
       <div className={`${styles.stack} ${materialClasses.chrome}`}>
         <div className={styles.button}>
@@ -62,14 +68,10 @@ function NavigationSurface({
 
 function BrowseSheetNavigation(): ReactElement {
   const { snap } = useBrowseSurface();
-  const sheetTopPx = useSheetSnapTopPx(snap);
+  const placement = useBrowseSheetNavigationPlacement(snap);
 
   return (
-    <NavigationSurface
-      presentation="topBar"
-      sheetSnap={snap}
-      sheetTopPx={sheetTopPx}
-    />
+    <NavigationSurface presentation="topBar" sheetSnap={snap} placement={placement} />
   );
 }
 

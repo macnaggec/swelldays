@@ -80,3 +80,23 @@ export function nearestSheetSnap({ heightPx, velocityPx, heights }: NearestSheet
   }
   return nearest ?? 'peek';
 }
+
+export interface BrowseSheetNavigationOpacity {
+  /** 1 while the sheet has not yet risen past `half`; 0 once it reaches `full`. */
+  opacity: number;
+  /** True once opacity reaches 0 — the plate is inert and hidden from accessibility. */
+  hidden: boolean;
+}
+
+export function resolveBrowseSheetNavigationOpacity({
+  visibleHeightPx,
+  heights,
+}: {
+  visibleHeightPx: number;
+  heights: SheetSnapHeights;
+}): BrowseSheetNavigationOpacity {
+  const span = heights.full - heights.half;
+  const progress = span <= 0 ? 1 : (visibleHeightPx - heights.half) / span;
+  const opacity = clamp(1 - progress, 0, 1);
+  return { opacity, hidden: opacity <= 0 };
+}

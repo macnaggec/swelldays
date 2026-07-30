@@ -291,12 +291,20 @@ const requiredDrawerShellRuntime = [
     'measured drawer geometry publication',
     /publishDrawerGeometry\(bounds\)/,
   ],
+  [
+    'live geometry sampling during an active sheet drag',
+    /\bonDrag=\{[^}]*handleSheetDrag\b/,
+  ],
+  [
+    'dragging flag cleared when the gesture ends or the sheet unmounts',
+    /publishDrawerDragging\(false\)/,
+  ],
 ];
 
 const requiredCompactBrowseNavigationRuntime = [
   ['composition-owned browse surface input', /\buseBrowseSurface\b/],
-  ['DrawerShell-owned sheet-top projection', /\buseSheetSnapTopPx\b/],
-  ['full-sheet interaction removal', /\binert=\{isBrowseSheetFull\}/],
+  ['DrawerShell-owned live sheet placement projection', /\buseBrowseSheetNavigationPlacement\b/],
+  ['full-sheet interaction removal', /\binert=\{hidden\}/],
 ];
 
 const requiredCompactBrowseNavigationStyles = [
@@ -309,8 +317,12 @@ const requiredCompactBrowseNavigationStyles = [
     /\.root\[data-navigation-presentation='topBar'\]\[data-sheet-snap='half'\]\s*\{[^}]*--wa-browse-navigation-translate-y:\s*-100%[^}]*top:\s*calc\(var\(--wa-browse-sheet-top\)\s*-\s*var\(--wa-shell-edge-clearance\)\)/s,
   ],
   [
-    'full-snap hiding',
-    /\.root\[data-navigation-presentation='topBar'\]\[data-sheet-snap='full'\]\s*\{[^}]*opacity:\s*0[^}]*visibility:\s*hidden/s,
+    'continuous opacity driven by the live placement projection',
+    /\.root\[data-navigation-presentation='topBar'\]\s*\{[^}]*opacity:\s*var\(--wa-browse-navigation-opacity/s,
+  ],
+  [
+    'transition suppressed while live-tracking a drag',
+    /\[data-navigation-tracking\]\s*\{[^}]*transition:\s*none/s,
   ],
   [
     'semantic snap transition',
@@ -537,7 +549,7 @@ const rules = [
   {
     id: 'globe-scene-consumes-drawer-owned-geometry',
     message: 'GlobeScene must consume DrawerShell geometry instead of reconstructing sheet-snap geometry.',
-    pattern: /\b(?:useSheetSnapTopPx|resolveSheetSnapHeights|SHEET_PEEK_HEIGHT_PX)\b/,
+    pattern: /\b(?:useBrowseSheetNavigationPlacement|resolveSheetSnapHeights|SHEET_PEEK_HEIGHT_PX)\b/,
     include: file => file === 'src/views/GlobeScene/GlobeScene.tsx',
   },
   {
@@ -580,7 +592,7 @@ const rules = [
   {
     id: 'drawer-shell-owns-sheet-snap-geometry',
     message: 'Bottom-sheet snap positions and heights belong to shared/ui/DrawerShell; consume the shell instead of declaring snap geometry.',
-    pattern: /\bSHEET_(?:SNAP_FRACTIONS|HALF_HEIGHT_FRACTION|FULL_TOP_INSET_PX|PEEK_HEIGHT_PX)\b|\bresolveSheetSnapHeights\b|\bnearestSheetSnap\b|\[data-drawer-snap/,
+    pattern: /\bSHEET_(?:SNAP_FRACTIONS|HALF_HEIGHT_FRACTION|FULL_TOP_INSET_PX|PEEK_HEIGHT_PX)\b|\bresolveSheetSnapHeights\b|\bnearestSheetSnap\b|\bresolveBrowseSheetNavigationOpacity\b|\[data-drawer-snap/,
     include: file => /\.(?:css|tsx?)$/.test(file) && !file.startsWith('src/shared/ui/DrawerShell/'),
   },
   {

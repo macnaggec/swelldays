@@ -116,6 +116,27 @@ export function useDrawerMoving() {
   );
 }
 
+let drawerDragging = false;
+const draggingListeners = new Set<() => void>();
+
+/** Whether the bottom sheet is currently under an active pointer drag. */
+export function publishDrawerDragging(dragging: boolean) {
+  if (drawerDragging === dragging) return;
+  drawerDragging = dragging;
+  draggingListeners.forEach((listener) => listener());
+}
+
+export function useDrawerDragging() {
+  return useSyncExternalStore(
+    (listener) => {
+      draggingListeners.add(listener);
+      return () => draggingListeners.delete(listener);
+    },
+    () => drawerDragging,
+    () => false,
+  );
+}
+
 export function useDrawerAdjacentInlineEndInset(gapPx = 0) {
   const geometry = useDrawerGeometry();
   const { layoutViewportWidthPx: widthPx } = useViewportMetrics();
