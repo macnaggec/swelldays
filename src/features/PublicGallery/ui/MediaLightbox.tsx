@@ -3,6 +3,7 @@ import { ActionIcon, Group, Text, Badge, Tooltip } from '@mantine/core';
 import { IconHeart, IconShoppingCartPlus, IconShoppingCartMinus } from '@tabler/icons-react';
 import { formatPrice } from 'shared/lib/currency';
 import { formatDimensions } from 'shared/lib/formatDimensions';
+import { formatCapturedAtDate } from 'shared/lib/dateUtils';
 import { CarouselLightbox } from 'shared/ui/CarouselLightbox';
 
 /** Normalized shape callers must produce before passing to MediaLightbox. */
@@ -51,7 +52,7 @@ const MediaLightbox: FC<MediaLightboxProps> = memo(({
     id: item.id,
     url: item.lightboxUrl,
     type: item.type,
-    alt: `Surf photo from ${new Date(item.capturedAt).toLocaleDateString()}`,
+    alt: `Surf photo from ${formatCapturedAtDate(item.capturedAt)}`,
     width: item.width,
     height: item.height,
   }));
@@ -84,7 +85,7 @@ const MediaLightbox: FC<MediaLightboxProps> = memo(({
               </Badge>
             )}
             <Text size="sm" c="white" fw={600}>
-              {new Date(item.capturedAt).toLocaleDateString()}
+              {formatCapturedAtDate(item.capturedAt)}
             </Text>
             {dimensions && (
               <Text size="sm" c="white" style={{ opacity: 0.75 }}>

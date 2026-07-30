@@ -2,6 +2,7 @@ import { fireEvent, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { formatPrice } from 'shared/lib/currency';
+import { formatCapturedAtDate } from 'shared/lib/dateUtils';
 import MediaLightbox, { type LightboxMedia } from './MediaLightbox';
 
 const mediaItem: LightboxMedia = {
@@ -118,13 +119,13 @@ describe('MediaLightbox', () => {
 
     expect(screen.queryByText(formatPrice(mediaItem.price ?? 0))).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add to cart' })).toBeNull();
-    expect(screen.getByText(new Date(mediaItem.capturedAt).toLocaleDateString())).toBeInTheDocument();
+    expect(screen.getByText(formatCapturedAtDate(mediaItem.capturedAt))).toBeInTheDocument();
 
     fireEvent.error(screen.getByAltText(/Surf photo from/));
 
     expect(screen.queryByText(formatPrice(mediaItem.price ?? 0))).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add to cart' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add to favorites' })).toBeNull();
-    expect(screen.getByText(new Date(mediaItem.capturedAt).toLocaleDateString())).toBeInTheDocument();
+    expect(screen.getByText(formatCapturedAtDate(mediaItem.capturedAt))).toBeInTheDocument();
   });
 });

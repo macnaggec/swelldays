@@ -5,6 +5,7 @@ import { ActionIcon, Badge, Group, Text } from '@mantine/core';
 import { IconShoppingCartPlus, IconShoppingCartMinus, IconShoppingCart, IconShoppingBag, IconHeart, IconShare, IconFlag, IconUser } from '@tabler/icons-react';
 import { formatPrice } from 'shared/lib/currency';
 import { formatDimensions } from 'shared/lib/formatDimensions';
+import { formatCapturedAtDate } from 'shared/lib/dateUtils';
 import { materialClasses } from 'shared/ui/design-system';
 import { BaseCard } from 'shared/ui/BaseGallery';
 import type { PublicCardAction } from '../../model/types';
@@ -164,7 +165,7 @@ const PublicCard: FC<PublicCardProps> = memo(({
         </Badge>
       )}
       <Text size="xs" fw={600} className={materialClasses.mediaTextOverlay}>
-        {new Date(mediaItem.capturedAt).toLocaleDateString()}
+        {formatCapturedAtDate(mediaItem.capturedAt)}
       </Text>
       {dimensions && (
         <Text size="xs" className={materialClasses.mediaTextOverlay} style={{ opacity: 0.7 }}>

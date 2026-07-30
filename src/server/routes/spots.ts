@@ -78,12 +78,19 @@ export const spotsRouter = router({
       return { ok: true };
     }),
 
-  /** Published media, optionally scoped to a single spot; unfiltered lists across all spots. */
+  /**
+   * Published media, optionally scoped to a single spot; unfiltered lists across all spots.
+   * Bidirectional: `direction: 'backward'` (set by TanStack's fetchPreviousPage) fetches
+   * newer items than `cursor` instead of older ones, for scrolling back toward the present
+   * after `anchorCapturedAt` seeds a jump into distant history.
+   */
   mediaFeed: publicProcedure
     .input(
       z.object({
         spotId: z.string().optional(),
         cursor: z.string().optional(),
+        direction: z.enum(['forward', 'backward']).optional(),
+        anchorCapturedAt: z.coerce.date().optional(),
         limit: z.number().min(1).max(100).default(30),
         sortOrder: z.enum(['asc', 'desc']).default('desc'),
         dateFrom: z.coerce.date().optional(),
@@ -93,15 +100,45 @@ export const spotsRouter = router({
     )
     .query(({ input, ctx }) => {
       if (input.favoriteSpotsOnly && !ctx.user) throw new TRPCError({ code: 'UNAUTHORIZED' });
-      return mediaService.findPublishedBySpot({
+      const scope = {
         spotId: input.spotId,
-        cursor: input.cursor,
-        limit: input.limit,
         sortOrder: input.sortOrder,
         dateFrom: input.dateFrom,
         dateTo: input.dateTo,
         favoriteUserId: input.favoriteSpotsOnly ? ctx.user?.id : undefined,
+      };
+      if (input.direction === 'backward') {
+        if (!input.cursor) throw new TRPCError({ code: 'BAD_REQUEST', message: 'cursor is required for direction "backward"' });
+        return mediaService.findPublishedBySpotBefore({ ...scope, cursor: input.cursor, limit: input.limit }, ctx.user?.id);
+      }
+      return mediaService.findPublishedBySpot({
+        ...scope,
+        cursor: input.cursor,
+        anchorCapturedAt: input.anchorCapturedAt,
+        limit: input.limit,
       }, ctx.user?.id);
+    }),
+
+  /** Complete compact chronology for the date menu; cards remain paginated by mediaFeed. */
+  mediaDateIndex: publicProcedure
+    .input(
+      z.object({
+        spotId: z.string().optional(),
+        sortOrder: z.enum(['asc', 'desc']).default('desc'),
+        dateFrom: z.coerce.date().optional(),
+        dateTo: z.coerce.date().optional(),
+        favoriteSpotsOnly: z.boolean().optional(),
+      }),
+    )
+    .query(({ input, ctx }) => {
+      if (input.favoriteSpotsOnly && !ctx.user) throw new TRPCError({ code: 'UNAUTHORIZED' });
+      return mediaService.findPublishedDates({
+        spotId: input.spotId,
+        sortOrder: input.sortOrder,
+        dateFrom: input.dateFrom,
+        dateTo: input.dateTo,
+        favoriteUserId: input.favoriteSpotsOnly ? ctx.user?.id : undefined,
+      });
     }),
 
   card: publicProcedure.input(z.string()).query(({ input: id }) => spotRepository.findSpotCard(id)),

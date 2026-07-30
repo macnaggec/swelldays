@@ -435,3 +435,152 @@ describe('MediaRepository.findPublishedBySpot', () => {
     }
   });
 });
+
+describe('MediaRepository.findPublishedDates', () => {
+  it('returns one entry per distinct calendar day in descending order, not every media timestamp', async () => {
+    const viewer = await prisma.user.create({ data: { email: 'date-index-viewer@example.com' } });
+    const photographer = await prisma.user.create({ data: { email: 'date-index-photographer@example.com' } });
+    const favoriteSpot = await prisma.spot.create({ data: { name: 'Indexed', location: 'North' } });
+    const otherSpot = await prisma.spot.create({ data: { name: 'Excluded', location: 'South' } });
+    await prisma.userFavoriteSpot.create({ data: { userId: viewer.id, spotId: favoriteSpot.id } });
+    const session = await prisma.surfSession.create({ data: { photographerId: photographer.id } });
+    const base = {
+      sessionId: session.id,
+      photographerId: photographer.id,
+      status: 'PUBLISHED' as const,
+      lightboxUrl: 'https://example.com/date-index.jpg',
+      thumbnailUrl: 'https://example.com/date-index-thumb.jpg',
+    };
+    const june = new Date('2026-06-25T10:00:00Z');
+    const july = new Date('2026-07-21T10:00:00Z');
+    const julySameDayLater = new Date('2026-07-21T18:00:00Z');
+
+    await prisma.mediaItem.create({
+      data: { ...base, spotId: favoriteSpot.id, capturedAt: june, cloudinaryPublicId: 'date-index-june' },
+    });
+    await prisma.mediaItem.create({
+      data: { ...base, spotId: favoriteSpot.id, capturedAt: july, cloudinaryPublicId: 'date-index-july' },
+    });
+    // A second photo the same UTC calendar day as `july`, at a different hour —
+    // must collapse to the same one entry, not appear as a second day.
+    await prisma.mediaItem.create({
+      data: { ...base, spotId: favoriteSpot.id, capturedAt: julySameDayLater, cloudinaryPublicId: 'date-index-july-2' },
+    });
+    await prisma.mediaItem.create({
+      data: { ...base, spotId: otherSpot.id, capturedAt: new Date('2026-05-01T10:00:00Z'), cloudinaryPublicId: 'date-index-other' },
+    });
+    await prisma.mediaItem.create({
+      data: {
+        ...base,
+        spotId: favoriteSpot.id,
+        status: 'DRAFT',
+        capturedAt: new Date('2026-04-01T10:00:00Z'),
+        cloudinaryPublicId: 'date-index-draft',
+      },
+    });
+
+    // Descending order keeps the first-encountered row per day, i.e. the
+    // latest timestamp of that day — julySameDayLater, not july itself.
+    await expect(repo.findPublishedDates({
+      favoriteUserId: viewer.id,
+    })).resolves.toEqual([julySameDayLater, june]);
+  });
+});
+
+describe('MediaRepository.findPublishedBySpotBefore', () => {
+  async function seedFiveTiedMedia() {
+    const photographer = await prisma.user.create({ data: { email: `before-tied-${crypto.randomUUID()}@example.com` } });
+    const spot = await prisma.spot.create({ data: { name: 'Tied Before', location: 'North Shore' } });
+    const session = await prisma.surfSession.create({ data: { photographerId: photographer.id } });
+    const tiedCapturedAt = new Date('2026-01-01T06:00:00Z');
+    const created = [];
+    for (let i = 0; i < 5; i++) {
+      created.push(await prisma.mediaItem.create({
+        data: {
+          sessionId: session.id,
+          photographerId: photographer.id,
+          spotId: spot.id,
+          status: 'PUBLISHED',
+          capturedAt: tiedCapturedAt,
+          lightboxUrl: `https://res.cloudinary.com/test/before-tied-${i}.jpg`,
+          thumbnailUrl: `https://res.cloudinary.com/test/before-tied-${i}-thumb.jpg`,
+          cloudinaryPublicId: `swelldays/test/before-tied-${i}`,
+        },
+      }));
+    }
+    return { spot, createdIds: created.map((item) => item.id).sort() };
+  }
+
+  it('fetches newer items than the cursor, in normal display order, without skipping or duplicating ties', async () => {
+    const { spot, createdIds } = await seedFiveTiedMedia();
+
+    // Walk forward (older) all the way to the end first.
+    let forwardCursor: string | undefined;
+    let lastPage = await repo.findPublishedBySpot({ spotId: spot.id, cursor: forwardCursor, limit: 2 });
+    for (let guard = 0; guard < 10 && lastPage.nextCursor; guard++) {
+      forwardCursor = lastPage.nextCursor;
+      lastPage = await repo.findPublishedBySpot({ spotId: spot.id, cursor: forwardCursor, limit: 2 });
+    }
+    expect(lastPage.prevCursor).not.toBeNull();
+
+    // Now walk newer (before) exclusively, from the oldest page back to the start —
+    // a single continuous path so nothing already collected can be seen twice.
+    const seen: string[] = [...lastPage.items.map((i) => i.id)];
+    let cursor = lastPage.prevCursor!;
+    for (let guard = 0; guard < 10; guard++) {
+      const page = await repo.findPublishedBySpotBefore({ spotId: spot.id, cursor, limit: 2 });
+      seen.push(...page.items.map((i) => i.id));
+      if (!page.prevCursor) break;
+      cursor = page.prevCursor;
+    }
+
+    expect(seen).toHaveLength(5);
+    expect([...seen].sort()).toEqual(createdIds);
+  });
+
+  it('reconstructs the original forward page when chained after→before, proving the seam is consistent', async () => {
+    const { spot } = await seedFiveTiedMedia();
+
+    const firstPage = await repo.findPublishedBySpot({ spotId: spot.id, limit: 3 });
+    const secondPage = await repo.findPublishedBySpot({ spotId: spot.id, cursor: firstPage.nextCursor!, limit: 3 });
+    expect(secondPage.items).toHaveLength(2);
+
+    const reconstructedFirstPage = await repo.findPublishedBySpotBefore({
+      spotId: spot.id,
+      cursor: secondPage.prevCursor!,
+      limit: 3,
+    });
+
+    expect(reconstructedFirstPage.items.map((i) => i.id)).toEqual(firstPage.items.map((i) => i.id));
+    expect(reconstructedFirstPage.prevCursor).toBeNull();
+
+    // Its own nextCursor (built from its own last item, not secondPage's cursor)
+    // must still continue forward into exactly secondPage, closing the loop.
+    const continued = await repo.findPublishedBySpot({
+      spotId: spot.id,
+      cursor: reconstructedFirstPage.nextCursor!,
+      limit: 3,
+    });
+    expect(continued.items.map((i) => i.id)).toEqual(secondPage.items.map((i) => i.id));
+  });
+
+  it('returns an empty page with null cursors when nothing is newer than the cursor', async () => {
+    const { spot } = await seedFiveTiedMedia();
+
+    // limit: 1 with no incoming cursor fetches exactly the newest item; its
+    // own nextCursor is therefore a real cursor pointing at that newest item.
+    const newestOnly = await repo.findPublishedBySpot({ spotId: spot.id, limit: 1 });
+    expect(newestOnly.items).toHaveLength(1);
+    expect(newestOnly.nextCursor).not.toBeNull();
+
+    const beforeNewest = await repo.findPublishedBySpotBefore({
+      spotId: spot.id,
+      cursor: newestOnly.nextCursor!,
+      limit: 5,
+    });
+
+    expect(beforeNewest.items).toEqual([]);
+    expect(beforeNewest.prevCursor).toBeNull();
+    expect(beforeNewest.nextCursor).toBeNull();
+  });
+});

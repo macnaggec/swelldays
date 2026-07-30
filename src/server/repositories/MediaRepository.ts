@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
 import { MEDIA_STATUS } from 'shared/constants/media';
+import { getVisibleCalendarDayKey } from 'shared/lib/dateUtils';
 import type { DraftMedia, MediaStatus as DomainMediaStatus, PublicMedia } from 'shared/types/media';
 import { mapToDraftMedia } from './mappers';
 
@@ -12,16 +13,52 @@ export type AttributedPublishedMedia = Omit<PublicMedia, 'viewerEntitlement'>;
 export type SpotMediaPage = {
   items: AttributedPublishedMedia[];
   nextCursor: string | null;
+  /** Cursor toward newer items than this page's first item; see findPublishedBySpotBefore. */
+  prevCursor: string | null;
 };
 
-export interface PublishedSpotMediaFilter {
+export interface PublishedSpotMediaScope {
   spotId?: string;
-  cursor?: string;
-  limit: number;
   sortOrder?: 'asc' | 'desc';
   dateFrom?: Date;
   dateTo?: Date;
   favoriteUserId?: string;
+}
+
+export interface PublishedSpotMediaFilter extends PublishedSpotMediaScope {
+  cursor?: string;
+  /**
+   * Seeds the first page of a jump to a distant day: bounds capturedAt to
+   * at-or-before (desc) / at-or-after (asc) this instant. Only consulted when
+   * cursor is absent — once a cursor exists the cursor alone defines position,
+   * and re-applying the anchor would wrongly cap how far fetchPreviousPage
+   * (findPublishedBySpotBefore) can reach back toward the present.
+   */
+  anchorCapturedAt?: Date;
+  limit: number;
+}
+
+export interface PublishedSpotMediaBeforeFilter extends PublishedSpotMediaScope {
+  /** Required — "before" fetches items newer than a known position, not a fresh start. */
+  cursor: string;
+  limit: number;
+}
+
+function publishedSpotMediaWhere(filter: PublishedSpotMediaScope): Prisma.MediaItemWhereInput {
+  return {
+    spotId: filter.spotId,
+    status: MEDIA_STATUS.PUBLISHED,
+    deletedAt: null,
+    ...(filter.dateFrom || filter.dateTo ? {
+      capturedAt: {
+        ...(filter.dateFrom ? { gte: filter.dateFrom } : {}),
+        ...(filter.dateTo ? { lt: filter.dateTo } : {}),
+      },
+    } : {}),
+    ...(filter.favoriteUserId ? {
+      spot: { favoritedBy: { some: { userId: filter.favoriteUserId } } },
+    } : {}),
+  };
 }
 
 type MediaCursor = { capturedAt: Date; id: string };
@@ -51,6 +88,22 @@ function afterMediaCursorWhere(sortOrder: 'asc' | 'desc', cursor: MediaCursor): 
       { capturedAt: cursor.capturedAt, id: { gt: cursor.id } },
     ],
   };
+}
+
+/** The mirror of afterMediaCursorWhere: items strictly before the cursor in the forward (capturedAt, id-asc) order. */
+function beforeMediaCursorWhere(sortOrder: 'asc' | 'desc', cursor: MediaCursor): Prisma.MediaItemWhereInput {
+  const strictCapturedAt = sortOrder === 'desc' ? { gt: cursor.capturedAt } : { lt: cursor.capturedAt };
+  return {
+    OR: [
+      { capturedAt: strictCapturedAt },
+      { capturedAt: cursor.capturedAt, id: { lt: cursor.id } },
+    ],
+  };
+}
+
+/** Seeds the first page of a jump: capturedAt at-or-before (desc) / at-or-after (asc) the anchor. */
+function anchorMediaWhere(sortOrder: 'asc' | 'desc', anchorCapturedAt: Date): Prisma.MediaItemWhereInput {
+  return { capturedAt: sortOrder === 'desc' ? { lte: anchorCapturedAt } : { gte: anchorCapturedAt } };
 }
 
 function mapToAttributedPublishedMedia(
@@ -100,6 +153,8 @@ export interface IMediaRepository {
   findDraftsByUser(photographerId: string): Promise<DraftMedia[]>;
   findDraftsBySpot(spotId: string, photographerId: string): Promise<DraftMedia[]>;
   findPublishedBySpot(filter: PublishedSpotMediaFilter): Promise<SpotMediaPage>;
+  findPublishedBySpotBefore(filter: PublishedSpotMediaBeforeFilter): Promise<SpotMediaPage>;
+  findPublishedDates(filter: PublishedSpotMediaScope): Promise<Date[]>;
 }
 
 export class MediaRepository implements IMediaRepository {
@@ -260,19 +315,12 @@ export class MediaRepository implements IMediaRepository {
       const sortOrder = filter.sortOrder ?? 'desc';
       const rows = await prisma.mediaItem.findMany({
         where: {
-          spotId: filter.spotId,
-          status: MEDIA_STATUS.PUBLISHED,
-          deletedAt: null,
-          ...(filter.dateFrom || filter.dateTo ? {
-            capturedAt: {
-              ...(filter.dateFrom ? { gte: filter.dateFrom } : {}),
-              ...(filter.dateTo ? { lt: filter.dateTo } : {}),
-            },
-          } : {}),
-          ...(filter.favoriteUserId ? {
-            spot: { favoritedBy: { some: { userId: filter.favoriteUserId } } },
-          } : {}),
-          ...(filter.cursor ? afterMediaCursorWhere(sortOrder, decodeMediaCursor(filter.cursor)) : {}),
+          ...publishedSpotMediaWhere(filter),
+          ...(filter.cursor
+            ? afterMediaCursorWhere(sortOrder, decodeMediaCursor(filter.cursor))
+            : filter.anchorCapturedAt
+              ? anchorMediaWhere(sortOrder, filter.anchorCapturedAt)
+              : {}),
         },
         orderBy: [{ capturedAt: sortOrder }, { id: 'asc' }],
         take: filter.limit + 1,
@@ -283,11 +331,74 @@ export class MediaRepository implements IMediaRepository {
       });
 
       const hasMore = rows.length > filter.limit;
-      const items = hasMore ? rows.slice(0, filter.limit) : rows;
+      const items = (hasMore ? rows.slice(0, filter.limit) : rows).map(mapToAttributedPublishedMedia);
+      const first = items[0];
       const last = items[items.length - 1];
       const nextCursor = hasMore && last ? encodeMediaCursor({ capturedAt: last.capturedAt, id: last.id }) : null;
+      // A cursor or anchor guarantees something exists before this page (the position we
+      // continued from); prevCursor only needs to be precise when this is a true fresh
+      // start (no cursor, no anchor), where nothing can come before it by construction.
+      const prevCursor = (filter.cursor || filter.anchorCapturedAt) && first
+        ? encodeMediaCursor({ capturedAt: first.capturedAt, id: first.id })
+        : null;
 
-      return { items: items.map(mapToAttributedPublishedMedia), nextCursor };
+      return { items, nextCursor, prevCursor };
+    });
+  }
+
+  /**
+   * The reverse of findPublishedBySpot: fetches items newer than cursor (in
+   * display order), for scrolling back toward the present after a jump.
+   */
+  findPublishedBySpotBefore(filter: PublishedSpotMediaBeforeFilter): Promise<SpotMediaPage> {
+    return runQuery(async () => {
+      const sortOrder = filter.sortOrder ?? 'desc';
+      const reverseCapturedAt = sortOrder === 'desc' ? 'asc' : 'desc';
+      const cursor = decodeMediaCursor(filter.cursor);
+      const rows = await prisma.mediaItem.findMany({
+        where: {
+          ...publishedSpotMediaWhere(filter),
+          ...beforeMediaCursorWhere(sortOrder, cursor),
+        },
+        // Closest-to-cursor first: the exact reverse of the forward [capturedAt, id-asc] order.
+        orderBy: [{ capturedAt: reverseCapturedAt }, { id: 'desc' }],
+        take: filter.limit + 1,
+        include: {
+          photographer: { select: { id: true, name: true } },
+          spot: { select: { id: true, name: true } },
+        },
+      });
+
+      const hasMore = rows.length > filter.limit;
+      const closestFirst = hasMore ? rows.slice(0, filter.limit) : rows;
+      // Reverse back to normal display order before use.
+      const items = closestFirst.slice().reverse().map(mapToAttributedPublishedMedia);
+      const first = items[0];
+      const last = items[items.length - 1];
+      const prevCursor = hasMore && first ? encodeMediaCursor({ capturedAt: first.capturedAt, id: first.id }) : null;
+      const nextCursor = last ? encodeMediaCursor({ capturedAt: last.capturedAt, id: last.id }) : null;
+
+      return { items, nextCursor, prevCursor };
+    });
+  }
+
+  /** Compact chronology for date navigation: one entry per distinct calendar day, newest-first or oldest-first. */
+  findPublishedDates(filter: PublishedSpotMediaScope): Promise<Date[]> {
+    return runQuery(async () => {
+      const rows = await prisma.mediaItem.findMany({
+        where: publishedSpotMediaWhere(filter),
+        orderBy: { capturedAt: filter.sortOrder ?? 'desc' },
+        select: { capturedAt: true },
+      });
+      const seenDays = new Set<string>();
+      const days: Date[] = [];
+      for (const { capturedAt } of rows) {
+        const dayKey = getVisibleCalendarDayKey(capturedAt);
+        if (seenDays.has(dayKey)) continue;
+        seenDays.add(dayKey);
+        days.push(capturedAt);
+      }
+      return days;
     });
   }
 }

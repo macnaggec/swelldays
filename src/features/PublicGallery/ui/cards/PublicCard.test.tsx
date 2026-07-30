@@ -2,6 +2,7 @@ import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { formatPrice } from 'shared/lib/currency';
+import { formatCapturedAtDate } from 'shared/lib/dateUtils';
 import PublicCard, { type DisplayMedia } from './PublicCard';
 
 const media: DisplayMedia = {
@@ -48,7 +49,7 @@ describe('PublicCard standard overlays', () => {
     expect(screen.queryByText(formatPrice(300))).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add to cart' })).not.toBeInTheDocument();
     // The date is server data, not tied to the image load — visible immediately.
-    expect(screen.getByText(new Date(media.capturedAt).toLocaleDateString())).toBeInTheDocument();
+    expect(screen.getByText(formatCapturedAtDate(media.capturedAt))).toBeInTheDocument();
 
     fireEvent.load(screen.getByAltText('Media media-1'));
 
@@ -61,7 +62,7 @@ describe('PublicCard standard overlays', () => {
     fireEvent.load(screen.getByAltText('Media media-1'));
 
     expect(screen.getByText(formatPrice(300))).toBeInTheDocument();
-    expect(screen.getByText(new Date(media.capturedAt).toLocaleDateString())).toBeInTheDocument();
+    expect(screen.getByText(formatCapturedAtDate(media.capturedAt))).toBeInTheDocument();
     expect(screen.getByAltText('Media media-1')).toHaveAttribute('src', media.thumbnailUrl);
   });
 
@@ -79,7 +80,7 @@ describe('PublicCard broken media', () => {
     fireEvent.error(screen.getByAltText('Media media-1'));
 
     expect(screen.queryByText(formatPrice(300))).not.toBeInTheDocument();
-    expect(screen.getByText(new Date(media.capturedAt).toLocaleDateString())).toBeInTheDocument();
+    expect(screen.getByText(formatCapturedAtDate(media.capturedAt))).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add to cart' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add to favorites' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument();
@@ -109,7 +110,7 @@ describe('PublicCard broken media', () => {
 
     fireEvent.error(screen.getByAltText('Media media-1'));
 
-    expect(screen.getByText(new Date(media.capturedAt).toLocaleDateString())).toBeInTheDocument();
+    expect(screen.getByText(formatCapturedAtDate(media.capturedAt))).toBeInTheDocument();
   });
 });
 

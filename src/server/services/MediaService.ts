@@ -1,4 +1,9 @@
-import type { IMediaRepository, PublishedSpotMediaFilter } from 'server/repositories/MediaRepository';
+import type {
+  IMediaRepository,
+  PublishedSpotMediaBeforeFilter,
+  PublishedSpotMediaFilter,
+  PublishedSpotMediaScope,
+} from 'server/repositories/MediaRepository';
 import { mediaRepository } from 'server/repositories/MediaRepository';
 import { logger } from 'shared/lib/logger';
 import { BadRequestError, ForbiddenError, NotFoundError } from 'shared/errors';
@@ -129,6 +134,21 @@ export class MediaService {
       ...page,
       items: await this.withViewerEntitlement(page.items, viewerId),
     };
+  }
+
+  async findPublishedBySpotBefore(
+    filter: PublishedSpotMediaBeforeFilter,
+    viewerId?: string | null,
+  ): Promise<PublicMediaPage> {
+    const page = await this.media.findPublishedBySpotBefore(filter);
+    return {
+      ...page,
+      items: await this.withViewerEntitlement(page.items, viewerId),
+    };
+  }
+
+  findPublishedDates(filter: PublishedSpotMediaScope): Promise<Date[]> {
+    return this.media.findPublishedDates(filter);
   }
 
   /**

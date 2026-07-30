@@ -67,4 +67,5 @@ export interface PublicMedia extends PublishedMedia {
 export type PublicMediaPage = {
   items: PublicMedia[];
   nextCursor: string | null;
+  prevCursor: string | null;
 };

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useTRPC } from 'shared/lib/trpc';
 import { EMPTY_BROWSE_FILTERS, toBrowseDateRange, type BrowseFilters } from 'shared/model/browseFilters';
 
@@ -8,19 +8,46 @@ export function useSpotMediaFeed({
   spotId,
   filters = EMPTY_BROWSE_FILTERS,
   sortOrder = 'desc',
+  jumpAnchor,
 }: {
   spotId?: string;
   filters?: BrowseFilters;
   sortOrder?: 'asc' | 'desc';
+  /**
+   * A distant day to start the feed from. Part of the query input, so
+   * changing it starts a fresh, separately-cached anchored query — one
+   * request instead of walking every page between here and there. That fresh
+   * page still supports fetchNextPage (older) and fetchPreviousPage (newer,
+   * back toward the present) like any other page.
+   */
+  jumpAnchor?: Date;
 } = {}) {
   const trpc = useTRPC();
   const dateRange = toBrowseDateRange(filters.date);
 
   const query = useInfiniteQuery(
     trpc.spots.mediaFeed.infiniteQueryOptions(
-      { spotId, limit: 30, sortOrder, ...dateRange, favoriteSpotsOnly: filters.favoriteSpotsOnly },
-      { getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined },
+      {
+        spotId,
+        limit: 30,
+        sortOrder,
+        ...dateRange,
+        favoriteSpotsOnly: filters.favoriteSpotsOnly,
+        anchorCapturedAt: jumpAnchor,
+      },
+      {
+        getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+        getPreviousPageParam: (firstPage) => firstPage.prevCursor ?? undefined,
+      },
     ),
+  );
+  const dateIndexQuery = useQuery(
+    trpc.spots.mediaDateIndex.queryOptions({
+      spotId,
+      sortOrder,
+      ...dateRange,
+      favoriteSpotsOnly: filters.favoriteSpotsOnly,
+    }),
   );
 
   const flatItems = useMemo(
@@ -28,5 +55,10 @@ export function useSpotMediaFeed({
     [query.data],
   );
 
-  return { ...query, flatItems };
+  return {
+    ...query,
+    flatItems,
+    availableDates: dateIndexQuery.data ?? [],
+    isLoading: query.isLoading || dateIndexQuery.isLoading,
+  };
 }

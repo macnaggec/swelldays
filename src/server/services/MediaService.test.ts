@@ -21,6 +21,7 @@ const mockMedia = {
   findPublishedByPhotographer: vi.fn(),
   findPublishedBySession: vi.fn(),
   findPublishedBySpot: vi.fn(),
+  findPublishedDates: vi.fn(),
 };
 
 const mockEntitlements = {
