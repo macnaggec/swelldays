@@ -127,7 +127,7 @@ export default function SpotSearch({
     <Combobox
       store={combobox}
       onOptionSubmit={handleSelect}
-      withinPortal={false}
+      withinPortal
     >
       <Combobox.Target>
         <Input

@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { useEffect } from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -53,6 +54,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   notifyError: vi.fn(),
   openAuth: vi.fn(),
+  startAddSpot: vi.fn(),
   isAuthenticated: false,
   historyBack: vi.fn(),
   uploadBack: vi.fn(),
@@ -67,6 +69,13 @@ const mocks = vi.hoisted(() => ({
   params: {} as { spotId?: string },
   sizeBand: 'wide' as 'compact' | 'constrained' | 'wide',
   heightBand: 'regular' as 'short' | 'regular',
+  renderRealFeedSearch: false,
+  spotResults: [{
+    id: 'spot-b',
+    name: 'Spot B',
+    location: 'Somewhere',
+    coords: [1, 2],
+  }],
 }));
 
 vi.mock('shared/model/viewportCapabilities', () => ({
@@ -120,6 +129,8 @@ vi.mock('entities/Spot', () => ({
     spot: mocks.params.spotId ? { id: mocks.params.spotId, name: 'Spot A', location: 'Somewhere' } : null,
   }),
   useSpotPreview: () => ({ data: null }),
+  useSpots: () => ({ data: mocks.spotResults, isFetching: false }),
+  useAddSpotAlias: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 vi.mock('entities/SurfSession', () => ({}));
@@ -131,6 +142,14 @@ vi.mock('shared/hooks/useUser', () => ({
 vi.mock('features/Auth', () => ({
   useAuthModal: () => ({ open: mocks.openAuth }),
 }));
+
+vi.mock('features/AddSpot', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('features/AddSpot')>();
+  return {
+    ...actual,
+    useAddSpot: () => ({ startAddSpot: mocks.startAddSpot }),
+  };
+});
 
 vi.mock('shared/lib/trpc', () => ({
   useTRPC: () => ({
@@ -297,24 +316,37 @@ vi.mock('features/PublicGallery', () => ({
   ),
 }));
 
-vi.mock('widgets/FeedDrawer', () => ({
-  FeedSearch: ({
-    activeSpot,
-    onSpotSelect,
-    onClear,
-  }: {
-    activeSpot?: { id: string } | null;
-    onSpotSelect?: (spot: { id: string }) => void;
-    onClear?: () => void;
-  }) => (
-    <div data-testid="feed-search" data-active-spot={activeSpot?.id ?? 'none'}>
-      {onClear && <button onClick={onClear}>Clear spot search</button>}
-      {onSpotSelect && (
-        <button onClick={() => onSpotSelect({ id: 'spot-b' })}>Select spot-b</button>
-      )}
-    </div>
-  ),
-}));
+vi.mock('widgets/FeedDrawer', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('widgets/FeedDrawer')>();
+
+  return {
+    ...actual,
+    FeedSearch: ({
+      activeSpot,
+      onSpotSelect,
+      onClear,
+    }: {
+      activeSpot?: { id: string; name: string; location: string } | null;
+      onSpotSelect?: (spot: { id: string }) => void;
+      onClear?: () => void;
+    }) => (
+      mocks.renderRealFeedSearch ? (
+        <actual.FeedSearch
+          activeSpot={activeSpot}
+          onSpotSelect={onSpotSelect}
+          onClear={onClear}
+        />
+      ) : (
+        <div data-testid="feed-search" data-active-spot={activeSpot?.id ?? 'none'}>
+          {onClear && <button onClick={onClear}>Clear spot search</button>}
+          {onSpotSelect && (
+            <button onClick={() => onSpotSelect({ id: 'spot-b' })}>Select spot-b</button>
+          )}
+        </div>
+      )
+    ),
+  };
+});
 vi.mock('features/Cart', () => ({
   CartDrawerHeader: ({
     spotName,
@@ -1056,6 +1088,7 @@ describe('Panel compact browse sheet', () => {
     mocks.params = {};
     mocks.sizeBand = 'compact';
     mocks.heightBand = 'regular';
+    mocks.renderRealFeedSearch = false;
     usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: true });
     useAddSpotStore.getState().exit();
   });
@@ -1063,6 +1096,7 @@ describe('Panel compact browse sheet', () => {
   afterEach(() => {
     mocks.sizeBand = 'wide';
     mocks.heightBand = 'regular';
+    mocks.renderRealFeedSearch = false;
     useAddSpotStore.getState().exit();
   });
 
@@ -1212,6 +1246,30 @@ describe('Panel compact browse sheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Select spot-b' }));
 
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/$spotId', params: { spotId: 'spot-b' } });
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'half');
+  });
+
+  it('keeps search results outside the clipped peek sheet while preserving keyboard selection', async () => {
+    mocks.renderRealFeedSearch = true;
+    const user = userEvent.setup();
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    await user.click(screen.getByRole('button', { name: 'Land on peek' }));
+    const searchInput = screen.getByPlaceholderText('Search for a spot...');
+    await user.click(searchInput);
+    await user.type(searchInput, 'sp');
+
+    const option = await screen.findByRole('option', { name: /Spot B/, hidden: true });
+    expect(screen.getByTestId('side-panel')).not.toContainElement(option);
+
+    Object.defineProperty(option, 'scrollIntoView', { value: vi.fn() });
+    await user.keyboard('{ArrowDown}{Enter}');
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: '/$spotId',
+      params: { spotId: 'spot-b' },
+    });
     expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'half');
   });
 });
