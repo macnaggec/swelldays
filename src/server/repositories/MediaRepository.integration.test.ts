@@ -300,6 +300,54 @@ describe('MediaRepository.findPublishedBySpot', () => {
     expect(firstIds.some(id => secondIds.includes(id))).toBe(false);
   });
 
+  it('paginates media sharing an identical capturedAt without skipping or duplicating, in both directions', async () => {
+    const photographer = await prisma.user.create({
+      data: { email: 'spot-tied-timestamps@example.com' },
+    });
+    const spot = await prisma.spot.create({ data: { name: 'Tied', location: 'North Shore' } });
+    const session = await prisma.surfSession.create({
+      data: { photographerId: photographer.id },
+    });
+
+    const tiedCapturedAt = new Date('2026-01-01T06:00:00Z');
+    const created = [];
+    for (let i = 0; i < 5; i++) {
+      created.push(await prisma.mediaItem.create({
+        data: {
+          sessionId: session.id,
+          photographerId: photographer.id,
+          spotId: spot.id,
+          status: 'PUBLISHED',
+          capturedAt: tiedCapturedAt,
+          lightboxUrl: `https://res.cloudinary.com/test/tied-${i}.jpg`,
+          thumbnailUrl: `https://res.cloudinary.com/test/tied-${i}-thumb.jpg`,
+          cloudinaryPublicId: `swelldays/test/tied-${i}`,
+        },
+      }));
+    }
+    const createdIds = created.map(item => item.id).sort();
+
+    async function collectAllPages(sortOrder: 'asc' | 'desc') {
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      for (let guard = 0; guard < 10; guard++) {
+        const page = await repo.findPublishedBySpot({ spotId: spot.id, limit: 2, sortOrder, cursor });
+        seen.push(...page.items.map(item => item.id));
+        if (!page.nextCursor) break;
+        cursor = page.nextCursor;
+      }
+      return seen;
+    }
+
+    const descending = await collectAllPages('desc');
+    expect(descending).toHaveLength(5);
+    expect([...descending].sort()).toEqual(createdIds);
+
+    const ascending = await collectAllPages('asc');
+    expect(ascending).toHaveLength(5);
+    expect([...ascending].sort()).toEqual(createdIds);
+  });
+
   it('returns published media across all spots when no spotId is given, with each item carrying its own spot', async () => {
     const photographer = await prisma.user.create({
       data: { email: 'all-spots@example.com' },

@@ -83,7 +83,7 @@ export const spotsRouter = router({
     .input(
       z.object({
         spotId: z.string().optional(),
-        cursor: z.string().uuid().optional(),
+        cursor: z.string().optional(),
         limit: z.number().min(1).max(100).default(30),
         sortOrder: z.enum(['asc', 'desc']).default('desc'),
         dateFrom: z.coerce.date().optional(),

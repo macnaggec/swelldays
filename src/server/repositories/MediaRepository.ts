@@ -1,4 +1,5 @@
 import { MediaItem as PrismaMediaItem } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
 import { MEDIA_STATUS } from 'shared/constants/media';
@@ -21,6 +22,35 @@ export interface PublishedSpotMediaFilter {
   dateFrom?: Date;
   dateTo?: Date;
   favoriteUserId?: string;
+}
+
+type MediaCursor = { capturedAt: Date; id: string };
+
+function encodeMediaCursor(cursor: MediaCursor): string {
+  return Buffer.from(JSON.stringify([cursor.capturedAt.toISOString(), cursor.id])).toString('base64url');
+}
+
+function decodeMediaCursor(cursor: string): MediaCursor {
+  const [capturedAtIso, id] = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as [string, string];
+  return { capturedAt: new Date(capturedAtIso), id };
+}
+
+/**
+ * Prisma's built-in `cursor`/`skip` pagination compares only the single id
+ * field it is given, so ties on `capturedAt` fall back to whatever order
+ * Postgres happens to return them in — not guaranteed stable across queries.
+ * This builds the (capturedAt, id) tuple comparison explicitly: capturedAt
+ * orders by sortOrder, id always ascending as the fixed tiebreaker, so
+ * "after the cursor" has one unambiguous meaning regardless of scan order.
+ */
+function afterMediaCursorWhere(sortOrder: 'asc' | 'desc', cursor: MediaCursor): Prisma.MediaItemWhereInput {
+  const strictCapturedAt = sortOrder === 'desc' ? { lt: cursor.capturedAt } : { gt: cursor.capturedAt };
+  return {
+    OR: [
+      { capturedAt: strictCapturedAt },
+      { capturedAt: cursor.capturedAt, id: { gt: cursor.id } },
+    ],
+  };
 }
 
 function mapToAttributedPublishedMedia(
@@ -227,6 +257,7 @@ export class MediaRepository implements IMediaRepository {
   /** Published media, optionally scoped to a single spot; unfiltered lists across all spots. */
   findPublishedBySpot(filter: PublishedSpotMediaFilter): Promise<SpotMediaPage> {
     return runQuery(async () => {
+      const sortOrder = filter.sortOrder ?? 'desc';
       const rows = await prisma.mediaItem.findMany({
         where: {
           spotId: filter.spotId,
@@ -241,10 +272,10 @@ export class MediaRepository implements IMediaRepository {
           ...(filter.favoriteUserId ? {
             spot: { favoritedBy: { some: { userId: filter.favoriteUserId } } },
           } : {}),
+          ...(filter.cursor ? afterMediaCursorWhere(sortOrder, decodeMediaCursor(filter.cursor)) : {}),
         },
-        orderBy: { capturedAt: filter.sortOrder ?? 'desc' },
+        orderBy: [{ capturedAt: sortOrder }, { id: 'asc' }],
         take: filter.limit + 1,
-        ...(filter.cursor ? { cursor: { id: filter.cursor }, skip: 1 } : {}),
         include: {
           photographer: { select: { id: true, name: true } },
           spot: { select: { id: true, name: true } },
@@ -253,7 +284,8 @@ export class MediaRepository implements IMediaRepository {
 
       const hasMore = rows.length > filter.limit;
       const items = hasMore ? rows.slice(0, filter.limit) : rows;
-      const nextCursor = hasMore ? items[items.length - 1]!.id : null;
+      const last = items[items.length - 1];
+      const nextCursor = hasMore && last ? encodeMediaCursor({ capturedAt: last.capturedAt, id: last.id }) : null;
 
       return { items: items.map(mapToAttributedPublishedMedia), nextCursor };
     });
