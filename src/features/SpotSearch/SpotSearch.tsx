@@ -1,4 +1,13 @@
-import { Combobox, Input, Loader, useCombobox, Group, CloseButton, Divider } from '@mantine/core';
+import {
+  CloseButton,
+  Combobox,
+  Divider,
+  Group,
+  Input,
+  Loader,
+  ScrollArea,
+  useCombobox,
+} from '@mantine/core';
 import classes from './SpotSearch.module.css';
 import { IconSearch, IconMapPin } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
@@ -7,6 +16,12 @@ import { useState, useCallback, useDeferredValue } from 'react';
 import { useSpots, Spot } from 'entities/Spot';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { SpotResultOption } from './ui/SpotResultOption';
+
+const resultListViewportProps: React.HTMLAttributes<HTMLDivElement> & {
+  'data-scroll-direction-isolated': boolean;
+} = {
+  'data-scroll-direction-isolated': true,
+};
 
 export interface SpotSearchProps {
   onSpotSelect: (spot: Spot) => void;
@@ -150,7 +165,15 @@ export default function SpotSearch({
 
       <Combobox.Dropdown>
         <Combobox.Options>
-          {renderDropdownContent()}
+          <ScrollArea.Autosize
+            mah="min(50dvh, 22rem)"
+            type="scroll"
+            scrollbarSize="var(--combobox-padding)"
+            offsetScrollbars="y"
+            viewportProps={resultListViewportProps}
+          >
+            {renderDropdownContent()}
+          </ScrollArea.Autosize>
         </Combobox.Options>
       </Combobox.Dropdown>
     </Combobox>

@@ -99,6 +99,10 @@ export function SidePanel({
     const scrollTarget = event.target;
     if (!(scrollTarget instanceof HTMLElement)) return;
 
+    // Nested interactive scrollers own their own movement. Treating result-list
+    // travel as panel travel hides the search control the user is operating.
+    if (scrollTarget.closest('[data-scroll-direction-isolated]')) return;
+
     const currentScrollTop = scrollTarget.scrollTop;
     const position = scrollPositionByTargetRef.current.get(scrollTarget) ?? {
       anchor: 0,

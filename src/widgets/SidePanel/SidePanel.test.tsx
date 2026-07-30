@@ -116,6 +116,27 @@ describe('SidePanel', () => {
     expect(subheader).not.toHaveAttribute('data-hidden');
   });
 
+  it('keeps search chrome visible while an isolated result list scrolls', () => {
+    render(
+      <SidePanel subheader={<div>Search and filters</div>}>
+        <div
+          data-testid="search-results"
+          data-scroll-direction-isolated
+          style={{ height: 120, overflowY: 'auto' }}
+        >
+          <div style={{ height: 480 }}>Spot results</div>
+        </div>
+      </SidePanel>,
+    );
+
+    const subheader = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
+    const searchResults = screen.getByTestId('search-results');
+
+    fireEvent.scroll(searchResults, { target: { scrollTop: 80 } });
+
+    expect(subheader).not.toHaveAttribute('data-hidden');
+  });
+
   it('does not reveal the subheader for a tiny opposite scroll correction during momentum', () => {
     render(
       <SidePanel
