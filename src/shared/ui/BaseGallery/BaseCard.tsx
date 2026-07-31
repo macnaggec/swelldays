@@ -115,6 +115,18 @@ const BaseCard: FC<BaseCardProps> = memo(({
         )
       )}
 
+      {onClick && (
+        <button
+          type="button"
+          className={classes.openButton}
+          aria-label={`Open ${alt}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onClick();
+          }}
+        />
+      )}
+
       {resourceType === 'video' && (
         <div className={classes.videoIndicator}>
           <IconPlayerPlay size={16} />

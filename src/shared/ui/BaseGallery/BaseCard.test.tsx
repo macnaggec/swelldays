@@ -1,4 +1,5 @@
 import { render, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MantineProvider } from '@mantine/core';
 import { describe, expect, it, vi } from 'vitest';
 import BaseCard from './BaseCard';
@@ -122,5 +123,69 @@ describe('BaseCard', () => {
     );
 
     expect(container.querySelector('[data-gallery-card-actions="glass"]')).not.toBeNull();
+  });
+
+  it('opens an action-free clickable card once from Enter or Space while ignoring unrelated keys', async () => {
+    const onClick = vi.fn();
+    const user = userEvent.setup();
+    const { getByRole } = wrap(
+      <BaseCard
+        imageUrl="https://cdn.example.com/photo.jpg"
+        resourceType="image"
+        alt="Test photo"
+        onClick={onClick}
+      />,
+    );
+    const card = getByRole('button', { name: 'Open Test photo' });
+
+    expect(card.tagName).toBe('BUTTON');
+
+    card.focus();
+    await user.keyboard('{Enter}');
+    expect(onClick).toHaveBeenCalledTimes(1);
+
+    await user.keyboard(' ');
+    expect(onClick).toHaveBeenCalledTimes(2);
+
+    await user.keyboard('{ArrowRight}');
+    expect(onClick).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the preview and nested action as sibling buttons with independent keyboard behavior', async () => {
+    const onClick = vi.fn();
+    const user = userEvent.setup();
+    const { getByRole } = wrap(
+      <BaseCard
+        imageUrl="https://cdn.example.com/photo.jpg"
+        resourceType="image"
+        alt="Test photo"
+        onClick={onClick}
+        actions={<button type="button">Save</button>}
+      />,
+    );
+    const preview = getByRole('button', { name: 'Open Test photo' });
+    const nestedAction = getByRole('button', { name: 'Save' });
+
+    expect(preview.contains(nestedAction)).toBe(false);
+
+    nestedAction.focus();
+    await user.keyboard('{Enter}');
+
+    expect(onClick).not.toHaveBeenCalled();
+
+    preview.focus();
+    await user.keyboard('{Enter}');
+
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it('keeps a card without onClick out of the button role and tab order', () => {
+    const { container } = wrap(
+      <BaseCard imageUrl="https://cdn.example.com/photo.jpg" resourceType="image" />,
+    );
+    const card = container.querySelector('[data-media-card-aspect="tall"]');
+
+    expect(card?.getAttribute('role')).toBeNull();
+    expect(card?.getAttribute('tabindex')).toBeNull();
   });
 });

@@ -41,6 +41,22 @@
   object-fit: cover;
 }
 
+.openButton {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  border: 0;
+}
+
+.openButton:focus-visible {
+  outline: 3px solid var(--wa-accent-spot);
+  outline-offset: -3px;
+}
+
 /* Placeholder shown when the media src fails to load (404, broken image): a transparent slot
    with a light border and centered icon (static, so transparency is safe — no coil whine). */
 .mediaFallback {
