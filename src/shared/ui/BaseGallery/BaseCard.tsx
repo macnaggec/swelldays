@@ -120,6 +120,7 @@ const BaseCard: FC<BaseCardProps> = memo(({
           type="button"
           className={classes.openButton}
           aria-label={`Open ${alt}`}
+          data-media-card-open="true"
           onClick={(event) => {
             event.stopPropagation();
             onClick();

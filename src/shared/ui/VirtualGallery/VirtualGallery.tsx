@@ -48,6 +48,13 @@ interface SelectionState {
 
 export interface VirtualGalleryHandle {
   scrollToIndex: (index: number, options?: { align: 'start' | 'center' | 'end' | 'auto' }) => void;
+  /**
+   * Focuses the given item's open control if its row is currently mounted in the
+   * virtualized window; otherwise focuses the gallery's own scroll container so
+   * focus never falls back to the document body. Returns whether the item's own
+   * control received focus.
+   */
+  focusItem: (itemId: string) => boolean;
 }
 
 export interface VirtualGalleryProps<T extends { id: string }> {
@@ -96,7 +103,9 @@ function VirtualGalleryInner<T extends { id: string }>(
   const { hidden: panelChromeHidden } = usePanelScrollChromeState();
 
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useCallback((node: HTMLDivElement | null) => {
+    rootRef.current = node;
     setScrollElement(node ? resolveGalleryScrollOwner(node) : null);
   }, []);
 
@@ -149,6 +158,17 @@ function VirtualGalleryInner<T extends { id: string }>(
         requestAnimationFrame(checkSettled);
       };
       requestAnimationFrame(checkSettled);
+    },
+    focusItem: (itemId) => {
+      const root = rootRef.current;
+      if (!root) return false;
+      const control = root.querySelector<HTMLElement>(`[data-item-id="${itemId}"] [data-media-card-open]`);
+      if (control) {
+        control.focus();
+        return true;
+      }
+      root.focus();
+      return false;
     },
   }), [virtualizer, scrollElement]);
 
@@ -235,6 +255,7 @@ function VirtualGalleryInner<T extends { id: string }>(
       ref={containerRef}
       className={styles.container}
       data-dense={dense || undefined}
+      tabIndex={-1}
       style={{ '--gallery-cols': columns } as React.CSSProperties}
     >
       {toolbar && (

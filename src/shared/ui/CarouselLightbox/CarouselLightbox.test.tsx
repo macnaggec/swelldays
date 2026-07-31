@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { createTheme, MantineProvider } from '@mantine/core';
-import { act, fireEvent, render as testingLibraryRender, screen } from '@testing-library/react';
+import { act, fireEvent, render as testingLibraryRender, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
@@ -111,6 +111,19 @@ describe('CarouselLightbox', () => {
     expect(screen.getByRole('button', { name: 'Show media 2' }).getAttribute('data-active')).toBe('true');
     expect(screen.getByText('Second status').closest('[data-lightbox-caption-transition]')).not.toBeNull();
     expect(nextButton.closest('[data-lightbox-static-chrome="media-frame"]')).toBe(staticChrome);
+  });
+
+  it('moves focus onto the close control when it opens', async () => {
+    render(
+      <CarouselLightbox
+        items={[{ id: 'media-1', url: 'https://cdn.example.com/photo-1.jpg' }]}
+        initialIndex={0}
+        opened
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close preview' })).toHaveFocus());
   });
 
   it('supports keyboard and touch navigation without a sliding carousel track', () => {

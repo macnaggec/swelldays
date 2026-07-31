@@ -8,6 +8,7 @@ function galleryRef() {
   return {
     current: {
       scrollToIndex: vi.fn(),
+      focusItem: vi.fn(),
     },
   } satisfies RefObject<VirtualGalleryHandle | null>;
 }

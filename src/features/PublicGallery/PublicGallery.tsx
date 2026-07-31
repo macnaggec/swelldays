@@ -90,7 +90,8 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   // LIGHTBOX STATE
   // ========================================================================
 
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [lightboxItemId, setLightboxItemId] = useState<string | null>(null);
+  const lightboxIndex = lightboxItemId === null ? -1 : flatItems.findIndex((i) => i.id === lightboxItemId);
 
   const lightboxItems = useMemo(
     () => flatItems.map((i) => ({ ...i, type: i.type === 'VIDEO' ? 'video' as const : 'image' as const })),
@@ -166,13 +167,9 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   // ACTION HANDLERS
   // ========================================================================
 
-  const handleCardClick = useCallback(
-    (itemId: string) => {
-      const index = flatItems.findIndex((i) => i.id === itemId);
-      if (index !== -1) setLightboxIndex(index);
-    },
-    [flatItems],
-  );
+  const handleCardClick = useCallback((itemId: string) => {
+    setLightboxItemId(itemId);
+  }, []);
 
   const handleCardAction = useCallback(
     (action: PublicCardAction, itemId: string) => {
@@ -192,6 +189,12 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
     },
     [flatItems, toggleFavorite],
   );
+
+  const closeLightbox = useCallback(() => {
+    const closingId = lightboxItemId;
+    setLightboxItemId(null);
+    if (closingId) galleryRef.current?.focusItem(closingId);
+  }, [lightboxItemId]);
 
   // ========================================================================
   // RENDER
@@ -297,9 +300,10 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
 
       <MediaLightbox
         items={lightboxItems}
-        initialIndex={lightboxIndex ?? 0}
-        opened={lightboxIndex !== null}
-        onClose={() => setLightboxIndex(null)}
+        initialIndex={lightboxIndex === -1 ? 0 : lightboxIndex}
+        opened={lightboxItemId !== null}
+        onClose={closeLightbox}
+        returnFocus={false}
         cartItemIds={cartItemIds}
         onCartToggle={toggleCartItem}
         favoriteItemIds={favoriteIds}

@@ -30,6 +30,7 @@ export interface MediaLightboxProps {
   onFavoriteToggle?: (item: LightboxMedia) => void;
   ownedItemIds?: Set<string>;
   purchasedItemIds?: Set<string>;
+  returnFocus?: boolean;
 }
 
 /**
@@ -47,6 +48,7 @@ const MediaLightbox: FC<MediaLightboxProps> = memo(({
   onFavoriteToggle,
   ownedItemIds = new Set<string>(),
   purchasedItemIds = new Set<string>(),
+  returnFocus,
 }) => {
   const lightboxItems = items.map((item) => ({
     id: item.id,
@@ -63,6 +65,7 @@ const MediaLightbox: FC<MediaLightboxProps> = memo(({
       initialIndex={initialIndex}
       opened={opened}
       onClose={onClose}
+      returnFocus={returnFocus}
       renderOverlay={(itemIndex, { mediaReady }) => {
         const item = items[itemIndex];
         if (!item) return null;

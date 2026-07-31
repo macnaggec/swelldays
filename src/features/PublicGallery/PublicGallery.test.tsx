@@ -34,6 +34,7 @@ const galleryState = vi.hoisted(() => ({
   isLoading: false,
   measuredWidth: 0,
   scrollToIndex: vi.fn(),
+  focusItem: vi.fn(),
 }));
 
 const useSpotMediaFeedMock = vi.hoisted(() => vi.fn());
@@ -80,6 +81,7 @@ vi.mock('shared/ui/VirtualGallery/VirtualGallery', () => ({
   ) {
     React.useImperativeHandle(ref, () => ({
       scrollToIndex: galleryState.scrollToIndex,
+      focusItem: galleryState.focusItem,
     }));
     let itemIndex = 0;
     return (
@@ -371,33 +373,51 @@ describe('PublicGallery', () => {
     expect(screen.queryByRole('button', { name: 'Show all media' })).not.toBeInTheDocument();
   });
 
-  it('keeps the same keyboard-opened preview and card focus across a live mobile shell crossing', async () => {
-    galleryState.measuredWidth = 420;
-    const user = userEvent.setup();
-    const { rerender } = render(<PublicGallery expanded={false} spotId="spot-1" />);
-    const card = screen.getByRole('button', { name: 'Open Media media-1' });
+  it.each([
+    ['bottom sheet', 'bottomSheet' as const],
+    ['short side overlay', 'sideOverlay' as const],
+    ['compact persistent desktop', 'persistent' as const],
+  ])(
+    'keeps the same keyboard-opened preview and hands focus back by item id across a live shell crossing (%s)',
+    async (_label, drawerPresentation) => {
+      galleryState.measuredWidth = 420;
+      const user = userEvent.setup();
+      const gallery = (expanded: boolean) => (
+        <MantineProvider env="test">
+          <PanelScrollChromeStateProvider value={{ hidden: true, drawerPresentation }}>
+            <PublicGallery expanded={expanded} spotId="spot-1" />
+          </PanelScrollChromeStateProvider>
+        </MantineProvider>
+      );
+      const { rerender } = render(gallery(false));
+      const card = screen.getByRole('button', { name: 'Open Media media-1' });
 
-    card.focus();
-    await user.keyboard('{Enter}');
+      card.focus();
+      await user.keyboard('{Enter}');
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    const previewImage = screen.getByAltText(/Surf photo from/);
-    expect(previewImage).toHaveAttribute('src', mediaItem.lightboxUrl);
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Close preview' })).toHaveFocus());
+      const previewImage = screen.getByAltText(/Surf photo from/);
+      expect(previewImage).toHaveAttribute('src', mediaItem.lightboxUrl);
 
-    Object.defineProperty(previewImage, 'naturalWidth', { value: 1200, configurable: true });
-    Object.defineProperty(previewImage, 'naturalHeight', { value: 800, configurable: true });
-    fireEvent.load(previewImage);
-    fireEvent.click(screen.getByRole('button', { name: 'Add to favorites' }));
+      Object.defineProperty(previewImage, 'naturalWidth', { value: 1200, configurable: true });
+      Object.defineProperty(previewImage, 'naturalHeight', { value: 800, configurable: true });
+      fireEvent.load(previewImage);
+      fireEvent.click(screen.getByRole('button', { name: 'Add to favorites' }));
 
-    expect(galleryActions.toggleFavorite).toHaveBeenCalledWith(mediaItem);
+      expect(galleryActions.toggleFavorite).toHaveBeenCalledWith(mediaItem);
 
-    rerender(<PublicGallery expanded spotId="spot-1" />);
+      // Simulate a capability-band crossing: a column-count change (driven here by
+      // `expanded`, exactly as a real drawer resize drives it via `galleryColumns`)
+      // is what causes VirtualGallery's real row keys to change and remount.
+      rerender(gallery(true));
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByAltText(/Surf photo from/)).toHaveAttribute('src', mediaItem.lightboxUrl);
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByAltText(/Surf photo from/)).toHaveAttribute('src', mediaItem.lightboxUrl);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close preview' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Close preview' }));
 
-    await waitFor(() => expect(card).toHaveFocus());
-  });
+      await waitFor(() => expect(galleryState.focusItem).toHaveBeenCalledWith('media-1'));
+    },
+  );
 });

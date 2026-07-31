@@ -114,6 +114,14 @@ export interface CarouselLightboxProps {
   renderOverlay?: (itemIndex: number, context: LightboxMediaContext) => ReactNode;
   /** Receives the current carousel index; render icon actions in the floating control rail. */
   renderActions?: (currentIndex: number, context: LightboxMediaContext) => ReactNode;
+  /**
+   * Forwarded to Mantine's Modal `returnFocus`. Defaults to true (Mantine's own
+   * document.activeElement-at-open capture). Pass false when the caller re-focuses
+   * the originating trigger itself by a stable identity instead — required once
+   * that trigger can be unmounted and remounted with a new DOM node while the
+   * modal is open (e.g. a virtualized list that re-columns on resize).
+   */
+  returnFocus?: boolean;
 }
 
 /**
@@ -127,6 +135,7 @@ const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
   onClose,
   renderOverlay,
   renderActions,
+  returnFocus = true,
 }) => {
   const [nav, setNav] = useState({ index: initialIndex, direction: 0 });
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -395,6 +404,7 @@ const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
       centered
       padding={0}
       withCloseButton={false}
+      returnFocus={returnFocus}
       zIndex="var(--wa-z-modal-content)"
       classNames={{
         inner: classes.inner,
@@ -573,6 +583,7 @@ const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
                     aria-label="Close preview"
                     data-lightbox-icon-action="true"
                     data-lightbox-icon-frame="chip"
+                    data-autofocus="true"
                     variant="subtle"
                     size={44}
                     radius="xl"
