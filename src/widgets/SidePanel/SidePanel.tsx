@@ -19,8 +19,12 @@ import styles from './SidePanel.module.css';
 
 const SCROLL_DIRECTION_THRESHOLD_PX = 8;
 
-function hasMeaningfulVerticalScrollTravel(scrollTarget: HTMLElement): boolean {
+function hasMeaningfulVerticalScrollTravel(
+  scrollTarget: HTMLElement,
+  pinnedChromeHeightPx: number,
+): boolean {
   return scrollTarget.scrollHeight - scrollTarget.clientHeight
+    - pinnedChromeHeightPx
     >= SCROLL_DIRECTION_THRESHOLD_PX;
 }
 
@@ -98,7 +102,18 @@ export function SidePanel({
     setScrollChromeState({ hidden: false, sheetSnap, open });
   }
 
-  const handleBodyScrollCapture = useCallback((event: UIEvent<HTMLDivElement>) => {
+  // While pinned, the exposed `hidden` fact freezes regardless of scroll
+  // direction — an open date-jump menu's own trigger must not be swapped out
+  // from under it by the user scrolling the gallery beneath. Scroll tracking
+  // itself keeps running underneath, so unpinning immediately reflects
+  // whatever direction the user actually last scrolled.
+  const [chromePinned, setChromePinned] = useState(false);
+  const hidden = chromePinned || scrollChromeState.hidden;
+
+  const handleBodyScrollCapture = useCallback((
+    event: UIEvent<HTMLDivElement>,
+    pinnedChromeHeightPx: number,
+  ) => {
     if (!open) return;
 
     const scrollTarget = event.target;
@@ -114,7 +129,7 @@ export function SidePanel({
       hidden: false,
     };
 
-    if (!hasMeaningfulVerticalScrollTravel(scrollTarget)) {
+    if (!hasMeaningfulVerticalScrollTravel(scrollTarget, pinnedChromeHeightPx)) {
       position.anchor = 0;
       position.hidden = false;
     } else if (currentScrollTop <= 0) {
@@ -193,7 +208,14 @@ export function SidePanel({
   );
 
   return (
-    <PanelScrollChromeStateProvider value={{ ...scrollChromeState, drawerPresentation, sheetSnap }}>
+    <PanelScrollChromeStateProvider
+      value={{
+        hidden,
+        sheetSnap,
+        drawerPresentation,
+        pinChromeHidden: setChromePinned,
+      }}
+    >
       {drawerPresentation === 'bottomSheet' && sheetSnap !== undefined && onSheetSnapChange !== undefined ? (
         <DrawerShell
           presentation="bottomSheet"

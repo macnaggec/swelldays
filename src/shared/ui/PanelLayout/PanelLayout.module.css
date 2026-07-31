@@ -100,12 +100,23 @@
      between them never moves the card grid below. */
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  /* A one-track grid whose row transitions between its content's natural
+     height (1fr, the only track) and zero — the standard way to animate an
+     otherwise-unknown "auto" height. Only takes effect where a panel with no
+     replacement publication actually collapses this row away below; see that
+     rule for why the collapse itself needs to be smooth, not just present. */
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    padding-block 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .stickyChrome [data-panel-scroll-chrome-primary],
 .stickyChrome [data-panel-scroll-chrome-replacement] {
   grid-area: 1 / 1;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -125,17 +136,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .stickyChrome,
   .stickyChrome [data-panel-scroll-chrome-primary],
   .stickyChrome [data-panel-scroll-chrome-replacement] {
     transition: none;
   }
-}
-
-/* A non-gallery panel has no replacement publication. When its primary
-   controls hide, the shared row releases its height instead of leaving an
-   empty stripe above the scrolling content. */
-.stickyChrome[data-hidden]:not(:has([data-panel-scroll-chrome-replacement])) {
-  display: none;
 }
 
 .stickyChrome:empty {
@@ -179,4 +184,17 @@
 
 .root[data-sheet-snap='peek'] .stickyChrome {
   padding-block: 20px;
+}
+
+/* A non-gallery panel has no replacement publication. When its primary
+   controls hide, the shared row releases its height instead of leaving an
+   empty stripe above the scrolling content — smoothly (the grid-row collapse
+   above), not by disappearing outright: an instant `display: none` on a
+   sticky row jumps the content below by its full height in one frame, the
+   same class of bug the primary/replacement cross-fade above fixes for
+   panels that do have a replacement. Declared last so it wins the tie
+   against the peek padding rule above when both apply at once. */
+.stickyChrome[data-hidden]:not(:has([data-panel-scroll-chrome-replacement])) {
+  grid-template-rows: 0fr;
+  padding-block: 0;
 }

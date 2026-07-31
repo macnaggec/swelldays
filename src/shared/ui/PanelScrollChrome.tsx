@@ -5,6 +5,13 @@ interface PanelScrollChromeState {
   hidden: boolean;
   drawerPresentation?: DrawerShellPresentation;
   sheetSnap?: SheetSnap;
+  /**
+   * Freezes `hidden` at its current value regardless of scroll direction —
+   * for a consumer (e.g. an open date-jump menu) whose own trigger must not
+   * be swapped out from under it while the user scrolls the gallery beneath.
+   * Call with `false` to release the freeze and resume scroll-driven swaps.
+   */
+  pinChromeHidden?: (pinned: boolean) => void;
 }
 
 const PanelScrollChromeStateContext = createContext<PanelScrollChromeState>({ hidden: false });

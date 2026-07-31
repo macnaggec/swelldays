@@ -372,11 +372,15 @@ const requiredPanelLayoutStyles = [
   ],
   [
     'reduced motion swaps chrome instantly instead of animating',
-    /prefers-reduced-motion:\s*reduce\)\s*\{[^{}]*\.stickyChrome\s+\[data-panel-scroll-chrome-primary\][\s\S]*?transition:\s*none/s,
+    /prefers-reduced-motion:\s*reduce\)\s*\{[^{}]*\.stickyChrome,[\s\S]*?\.stickyChrome\s+\[data-panel-scroll-chrome-primary\][\s\S]*?transition:\s*none/s,
   ],
   [
-    'hidden chrome releases empty row height',
-    /\.stickyChrome\[data-hidden\]:not\(:has\(\[data-panel-scroll-chrome-replacement\]\)\)\s*\{[^}]*display:\s*none/s,
+    'the empty-row collapse itself animates rather than jumping instantly',
+    /\.stickyChrome\s*\{[^}]*grid-template-rows:\s*1fr[^}]*transition:[^;]*grid-template-rows/s,
+  ],
+  [
+    'hidden chrome smoothly releases empty row height',
+    /\.stickyChrome\[data-hidden\]:not\(:has\(\[data-panel-scroll-chrome-replacement\]\)\)\s*\{[^}]*grid-template-rows:\s*0fr[^}]*padding-block:\s*0/s,
   ],
   [
     'hideable chrome cannot feed layout shifts back into scroll direction',

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'test/setup/render';
 import { SidePanel } from './SidePanel';
 import { PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
+import { usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
 
 const sidePanelCss = readFileSync('src/shared/ui/PanelLayout/PanelLayout.module.css', 'utf8');
 const designTokensCss = readFileSync('src/shared/ui/design-system/tokens.css', 'utf8');
@@ -178,7 +179,7 @@ describe('SidePanel', () => {
     expect(subheader).not.toHaveAttribute('data-hidden');
   });
 
-  it('keeps search chrome and one-card content stable when boundary corrections have no scroll range', () => {
+  it('keeps search chrome and one-card content stable when hiding the row would erase the scroll range', () => {
     render(
       <SidePanel
         drawerPresentation="sideOverlay"
@@ -197,9 +198,13 @@ describe('SidePanel', () => {
     expect(scrollOwner).not.toBeNull();
     expect(chrome).not.toBeNull();
     expect(scrollOwner).toContainElement(card);
-    setScrollMetrics(scrollOwner!, 300, 300);
+    setScrollMetrics(scrollOwner!, 300, 321);
+    Object.defineProperty(chrome!, 'offsetHeight', {
+      configurable: true,
+      value: 93,
+    });
 
-    for (const scrollTop of [24, 0, 24, 0]) {
+    for (const scrollTop of [21, 0, 21, 0]) {
       fireEvent.scroll(scrollOwner!, { target: { scrollTop } });
 
       expect(chrome).not.toHaveAttribute('data-hidden');
@@ -242,6 +247,48 @@ describe('SidePanel', () => {
     expect(rule).toContain('background: var(--wa-panel-control-background)');
     expect(rule).toContain('backdrop-filter: var(--wa-panel-control-backdrop)');
     expect(rule).toContain('border: 1px solid var(--wa-glass-border-media-overlay)');
+  });
+
+  it('freezes the hidden chrome state while a descendant menu is pinned open, then resumes on release', () => {
+    function PinControl() {
+      const { pinChromeHidden } = usePanelScrollChromeState();
+      return (
+        <>
+          <button onClick={() => pinChromeHidden?.(true)}>Pin</button>
+          <button onClick={() => pinChromeHidden?.(false)}>Unpin</button>
+        </>
+      );
+    }
+
+    render(
+      <SidePanel subheader={<div>Search and filters</div>}>
+        <PinControl />
+        <div
+          data-testid="media-list"
+          style={{ height: 120, overflowY: 'auto' }}
+        >
+          <div style={{ height: 480 }}>Media cards</div>
+        </div>
+      </SidePanel>,
+    );
+
+    const subheader = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
+    const mediaList = screen.getByTestId('media-list');
+    setScrollMetrics(mediaList, 300, 900);
+
+    fireEvent.scroll(mediaList, { target: { scrollTop: 80 } });
+    expect(subheader).toHaveAttribute('data-hidden');
+
+    // Pinned (an open date menu): scrolling back up must not reveal the
+    // subheader out from under the menu's own trigger.
+    fireEvent.click(screen.getByRole('button', { name: 'Pin' }));
+    fireEvent.scroll(mediaList, { target: { scrollTop: 20 } });
+    expect(subheader).toHaveAttribute('data-hidden');
+
+    // Released: the scroll direction tracked underneath the whole time is
+    // exposed immediately, with no extra scroll needed to "catch up".
+    fireEvent.click(screen.getByRole('button', { name: 'Unpin' }));
+    expect(subheader).not.toHaveAttribute('data-hidden');
   });
 
   it('shares the same hidden state with descendant gallery chrome', () => {
