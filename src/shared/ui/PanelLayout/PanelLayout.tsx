@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   type ReactNode,
+  type UIEvent,
   type UIEventHandler,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -22,7 +23,10 @@ const PanelLayoutStickyChromeTargetContext = createContext<HTMLElement | null>(n
 
 interface PanelLayoutProps {
   header?: ReactNode;
-  onScrollCapture?: UIEventHandler<HTMLDivElement>;
+  onScrollCapture?: (
+    event: UIEvent<HTMLDivElement>,
+    pinnedChromeHeightPx: number,
+  ) => void;
   children?: ReactNode;
 }
 
@@ -46,6 +50,14 @@ export function PanelLayout({
   const { boxWidth, contentWidth, transitioning } = useSettledLayout(measuredWidth);
   const registerSheetScrollOwner = useRegisterSheetScrollOwner();
   const contentScrollable = useSheetContentScrollable();
+  const handleScrollCapture: UIEventHandler<HTMLDivElement> = (event) => {
+    onScrollCapture?.(
+      event,
+      event.target === event.currentTarget
+        ? stickyChromeTarget?.offsetHeight ?? 0
+        : 0,
+    );
+  };
 
   // Closing, these differ, and the panel needs both at once. Its *box* stays wide so
   // cards still travelling across the space being given up are not clipped away; its
@@ -55,7 +67,12 @@ export function PanelLayout({
   // this does nothing.
   const rootStyle: Record<string, string> = {};
   if (boxWidth !== null) rootStyle.width = `${boxWidth}px`;
-  if (transitioning && contentWidth !== null && boxWidth !== null && contentWidth < boxWidth) {
+  if (
+    transitioning
+    && contentWidth !== null
+    && boxWidth !== null
+    && contentWidth < boxWidth
+  ) {
     rootStyle['--wa-panel-content-width'] = `${contentWidth}px`;
   }
 
@@ -81,7 +98,7 @@ export function PanelLayout({
                   data-panel-scroll-owner
                   data-content-scroll={contentScrollable ? undefined : 'locked'}
                   ref={registerSheetScrollOwner}
-                  onScrollCapture={onScrollCapture}
+                  onScrollCapture={handleScrollCapture}
                 >
                   {/*
                     * Rendered as a direct child of the scroll owner on purpose: a
@@ -156,5 +173,38 @@ export function PanelLayoutMetadata({ children }: { children: ReactNode }) {
  */
 export function PanelLayoutStickyChrome({ children }: { children: ReactNode }) {
   const stickyChromeTarget = useContext(PanelLayoutStickyChromeTargetContext);
-  return stickyChromeTarget ? createPortal(children, stickyChromeTarget) : null;
+  const { hidden } = usePanelScrollChromeState();
+  return stickyChromeTarget
+    ? createPortal(
+      <div
+        data-panel-scroll-chrome-primary
+        aria-hidden={hidden || undefined}
+        inert={hidden}
+      >
+        {children}
+      </div>,
+      stickyChromeTarget,
+    )
+    : null;
+}
+
+/**
+ * Alternate content for the same pinned chrome row. It becomes interactive
+ * only while the primary search/filter publication is hidden.
+ */
+export function PanelLayoutStickyChromeReplacement({ children }: { children: ReactNode }) {
+  const stickyChromeTarget = useContext(PanelLayoutStickyChromeTargetContext);
+  const { hidden } = usePanelScrollChromeState();
+  return stickyChromeTarget
+    ? createPortal(
+      <div
+        data-panel-scroll-chrome-replacement
+        aria-hidden={!hidden || undefined}
+        inert={!hidden}
+      >
+        {children}
+      </div>,
+      stickyChromeTarget,
+    )
+    : null;
 }

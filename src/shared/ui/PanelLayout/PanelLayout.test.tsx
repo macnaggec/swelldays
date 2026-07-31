@@ -2,11 +2,13 @@ import { act, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { PanelSettledWidthContext } from 'shared/ui/DrawerShell/panelSettledWidth';
+import { PanelScrollChromeStateProvider } from 'shared/ui/PanelScrollChrome';
 import {
   PanelLayout,
   PanelLayoutMetadata,
   PanelLayoutRail,
   PanelLayoutStickyChrome,
+  PanelLayoutStickyChromeReplacement,
 } from './PanelLayout';
 
 /** As in PanelCollectionGrid.test.tsx: drives a chosen contentRect width on demand. */
@@ -126,6 +128,7 @@ describe('PanelLayout destination width', () => {
     const root = container.querySelector('[data-panel-layout]') as HTMLElement;
     expect(root.style.width).toBe('');
   });
+
 });
 
 describe('PanelLayoutRail', () => {
@@ -184,6 +187,62 @@ describe('PanelLayoutStickyChrome', () => {
     );
 
     expect(screen.queryByText('Search and filters')).toBeNull();
+  });
+
+  it('uses one sticky slot to alternate primary browse controls with the active date', () => {
+    const layout = (hidden: boolean) => (
+      <PanelScrollChromeStateProvider value={{ hidden, drawerPresentation: 'bottomSheet' }}>
+        <PanelLayout>
+          <PanelLayoutStickyChrome>
+            <button type="button">Search and upload</button>
+          </PanelLayoutStickyChrome>
+          <PanelLayoutStickyChromeReplacement>
+            <button type="button">Jump to date</button>
+          </PanelLayoutStickyChromeReplacement>
+          <div>Gallery cards</div>
+        </PanelLayout>
+      </PanelScrollChromeStateProvider>
+    );
+
+    const view = render(layout(false));
+    const search = screen.getByRole('button', { name: 'Search and upload' });
+    expect(screen.queryByRole('button', { name: 'Jump to date' })).toBeNull();
+
+    view.rerender(layout(true));
+
+    const date = screen.getByRole('button', { name: 'Jump to date' });
+    expect(screen.queryByRole('button', { name: 'Search and upload' })).toBeNull();
+    expect(search.closest('[data-panel-scroll-chrome]')).toBe(
+      date.closest('[data-panel-scroll-chrome]'),
+    );
+  });
+
+  it('keeps both rows mounted in the same slot across the switch, so the row never collapses to remeasure', () => {
+    const layout = (hidden: boolean) => (
+      <PanelScrollChromeStateProvider value={{ hidden, drawerPresentation: 'bottomSheet' }}>
+        <PanelLayout>
+          <PanelLayoutStickyChrome>
+            <button type="button">Search and upload</button>
+          </PanelLayoutStickyChrome>
+          <PanelLayoutStickyChromeReplacement>
+            <button type="button">Jump to date</button>
+          </PanelLayoutStickyChromeReplacement>
+          <div>Gallery cards</div>
+        </PanelLayout>
+      </PanelScrollChromeStateProvider>
+    );
+
+    const { container, rerender } = render(layout(false));
+    const rowsPresent = () => [
+      container.querySelector('[data-panel-scroll-chrome-primary]'),
+      container.querySelector('[data-panel-scroll-chrome-replacement]'),
+    ];
+
+    expect(rowsPresent().every(Boolean)).toBe(true);
+
+    rerender(layout(true));
+
+    expect(rowsPresent().every(Boolean)).toBe(true);
   });
 });
 

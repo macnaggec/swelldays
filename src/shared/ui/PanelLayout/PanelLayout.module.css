@@ -93,17 +93,49 @@
   box-sizing: border-box;
   padding: 8px var(--wa-panel-content-inset);
   overflow: visible;
-  transform: translateY(0);
   z-index: var(--wa-z-panel-chrome);
-  transition:
-    transform
-    var(--wa-motion-duration-chrome)
-    var(--wa-motion-easing-standard);
+  /* The primary (search/filter) and replacement (active date) rows stack in the
+     same grid cell instead of one replacing the other in flow. Whichever is
+     taller sizes the row regardless of which is currently shown, so switching
+     between them never moves the card grid below. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.stickyChrome[data-hidden] {
+.stickyChrome [data-panel-scroll-chrome-primary],
+.stickyChrome [data-panel-scroll-chrome-replacement] {
+  grid-area: 1 / 1;
+  min-width: 0;
+  transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stickyChrome [data-panel-scroll-chrome-replacement] {
+  opacity: 0;
   pointer-events: none;
-  transform: translateY(-100%);
+}
+
+.stickyChrome[data-hidden] [data-panel-scroll-chrome-primary] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stickyChrome[data-hidden] [data-panel-scroll-chrome-replacement] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stickyChrome [data-panel-scroll-chrome-primary],
+  .stickyChrome [data-panel-scroll-chrome-replacement] {
+    transition: none;
+  }
+}
+
+/* A non-gallery panel has no replacement publication. When its primary
+   controls hide, the shared row releases its height instead of leaving an
+   empty stripe above the scrolling content. */
+.stickyChrome[data-hidden]:not(:has([data-panel-scroll-chrome-replacement])) {
+  display: none;
 }
 
 .stickyChrome:empty {

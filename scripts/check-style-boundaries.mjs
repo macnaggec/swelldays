@@ -362,6 +362,30 @@ const requiredPanelLayoutStyles = [
   // overflows by the row's height and scrolls when its cards already fit.
   ['chrome-aware scroll stacking', /\.scroller\s*{[^}]*flex-direction:\s*column/s],
   ['content that flexes rather than claiming full height', /\.content\s*{[^}]*flex:\s*1\s+0\s+auto/s],
+  [
+    'primary and replacement chrome stacked in one constant-geometry grid cell',
+    /\.stickyChrome\s+\[data-panel-scroll-chrome-primary\],\s*\n\s*\.stickyChrome\s+\[data-panel-scroll-chrome-replacement\]\s*\{[^}]*grid-area:\s*1\s*\/\s*1/s,
+  ],
+  [
+    'one shared row cross-fading primary and replacement chrome',
+    /\.stickyChrome\[data-hidden\]\s+\[data-panel-scroll-chrome-primary\]\s*\{[^}]*opacity:\s*0[\s\S]*\.stickyChrome\[data-hidden\]\s+\[data-panel-scroll-chrome-replacement\]\s*\{[^}]*opacity:\s*1/s,
+  ],
+  [
+    'reduced motion swaps chrome instantly instead of animating',
+    /prefers-reduced-motion:\s*reduce\)\s*\{[^{}]*\.stickyChrome\s+\[data-panel-scroll-chrome-primary\][\s\S]*?transition:\s*none/s,
+  ],
+  [
+    'hidden chrome releases empty row height',
+    /\.stickyChrome\[data-hidden\]:not\(:has\(\[data-panel-scroll-chrome-replacement\]\)\)\s*\{[^}]*display:\s*none/s,
+  ],
+  [
+    'hideable chrome cannot feed layout shifts back into scroll direction',
+    /\.scroller:has\(\.stickyChrome\s+\[data-panel-scroll-chrome-primary\]\)\s*\{[^}]*overflow-anchor:\s*none/s,
+  ],
+  [
+    'peek search row has equal top and bottom clearance around the overlaid grabber',
+    /\.root\[data-sheet-snap='peek'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*20px/s,
+  ],
 ];
 
 // The component owns the count (F12k); the stylesheet must not re-column.
