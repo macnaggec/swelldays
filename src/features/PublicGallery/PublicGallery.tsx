@@ -1,4 +1,4 @@
-import React, { FC, memo, useCallback, useMemo, useRef, useState } from 'react';
+import React, { FC, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SimpleGrid, Skeleton } from '@mantine/core';
 import { useMediaFavorites, type PublicMedia } from 'entities/Media';
 import { useSpotMediaFeed, useSpotPreview } from 'entities/Spot';
@@ -8,12 +8,21 @@ import { useMeasuredWidth } from 'shared/hooks';
 import { useLivePanelWidth } from 'shared/ui/DrawerShell/panelSettledWidth';
 import { VirtualGallery, type VirtualGalleryHandle } from 'shared/ui/VirtualGallery/VirtualGallery';
 import { useCartToggle } from 'entities/Commerce';
-import { PanelLayoutRail } from 'shared/ui/PanelLayout';
+import {
+  PanelLayoutRail,
+  PanelLayoutStickyChromeReplacement,
+} from 'shared/ui/PanelLayout';
+import { usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
 import PublicCard, { PublicCardAction } from './ui/cards/PublicCard';
 import MediaLightbox from './ui/MediaLightbox';
 import { GalleryDateSidebar } from './ui/GalleryDateSidebar';
 import { GalleryDateJumpHeading } from './ui/GalleryDateJumpHeading';
-import { showsDateRail, toDayHighlights } from './model/galleryDateHighlights';
+import {
+  activeDayIndex,
+  mergeGalleryDateHighlights,
+  showsDateRail,
+  type GalleryDateHighlight,
+} from './model/galleryDateHighlights';
 import { usePublicGalleryActions } from './model/usePublicGalleryActions';
 import { EMPTY_BROWSE_FILTERS, type BrowseFilters } from 'shared/model/browseFilters';
 import { GalleryEmptyState } from './ui/GalleryEmptyState';
@@ -39,8 +48,19 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   filters = EMPTY_BROWSE_FILTERS,
   onClearFilters,
 }) => {
-  const { flatItems, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useSpotMediaFeed({ spotId, filters });
+  const [jumpAnchor, setJumpAnchor] = useState<Date | null>(null);
+  const {
+    flatItems,
+    availableDates,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchPreviousPage,
+    hasPreviousPage,
+    isFetchingPreviousPage,
+  } =
+    useSpotMediaFeed({ spotId, filters, jumpAnchor: jumpAnchor ?? undefined });
 
   const { data: spot } = useSpotPreview(spotId ?? '', { enabled: !!spotId });
   const spotName = spot?.name ?? '';
@@ -92,7 +112,7 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
 
   const rows = useMemo(() => buildGalleryRows(flatItems, columns), [flatItems, columns]);
 
-  const highlights = useMemo(
+  const loadedHighlights = useMemo(
     () =>
       rows
         .map((row, i) => (row.type === 'divider' ? { date: row.date, rowIndex: i } : null))
@@ -102,22 +122,45 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
 
   const galleryRef = useRef<VirtualGalleryHandle>(null);
   const [firstVisibleIndex, setFirstVisibleIndex] = useState(0);
+  const { drawerPresentation } = usePanelScrollChromeState();
+  // The mobile drawer presentations never show the wide rail regardless of
+  // measured width — a docked sidebar doesn't fit their touch-first, narrow
+  // form factor even on the rare occasion the drawer itself measures wide.
+  const isMobileDrawerPresentation = drawerPresentation === 'bottomSheet'
+    || drawerPresentation === 'sideOverlay';
 
-  // Container-aware date navigation (F12g): a wide gallery gets the pinned
-  // date rail; below that capability the dividers become sticky headings that
-  // double as a date-jump menu.
-  const railVisible = showsDateRail(measuredWidth);
-  const dayHighlights = useMemo(() => toDayHighlights(highlights), [highlights]);
+  // Container-aware date navigation (F12g/M03-h): a wide-enough gallery gets
+  // the pinned date rail; every other case — mobile drawers always, or a
+  // desktop panel simply narrowed below that width — shares the same compact
+  // date control instead of a second, forked one.
+  const railVisible = !isMobileDrawerPresentation && showsDateRail(measuredWidth);
+  const usesCompactDateChrome = !railVisible;
+  const dayHighlights = useMemo(
+    () => mergeGalleryDateHighlights(availableDates, loadedHighlights),
+    [availableDates, loadedHighlights],
+  );
+  const activeDay = dayHighlights[activeDayIndex(dayHighlights, firstVisibleIndex)];
+  const [pendingScrollAnchor, setPendingScrollAnchor] = useState<Date | null>(null);
   const handleDateJump = useCallback(
-    (rowIndex: number) => galleryRef.current?.scrollToIndex(rowIndex, { align: 'start' }),
+    (day: GalleryDateHighlight) => {
+      if (day.rowIndex !== null) {
+        galleryRef.current?.scrollToIndex(day.rowIndex, { align: 'start' });
+        return;
+      }
+      // Not yet loaded: reseed the feed to start at this day directly (one
+      // request) instead of walking every intervening page to reach it.
+      setJumpAnchor(day.date);
+      setPendingScrollAnchor(day.date);
+    },
     [],
   );
-  const renderJumpDivider = useCallback(
-    (date: Date) => (
-      <GalleryDateJumpHeading date={date} dayHighlights={dayHighlights} onJump={handleDateJump} />
-    ),
-    [dayHighlights, handleDateJump],
-  );
+  useEffect(() => {
+    if (!pendingScrollAnchor) return;
+    if (isLoading) return;
+    galleryRef.current?.scrollToIndex(0, { align: 'start' });
+    setPendingScrollAnchor(null);
+  }, [pendingScrollAnchor, isLoading]);
+  const renderNoDivider = useCallback(() => null, []);
 
   // ========================================================================
   // ACTION HANDLERS
@@ -192,6 +235,15 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
 
   return (
     <>
+      {usesCompactDateChrome && activeDay && (
+        <PanelLayoutStickyChromeReplacement>
+          <GalleryDateJumpHeading
+            date={activeDay.date}
+            dayHighlights={dayHighlights}
+            onJump={handleDateJump}
+          />
+        </PanelLayoutStickyChromeReplacement>
+      )}
       <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex' }}>
         <div
           ref={galleryViewportRef}
@@ -207,8 +259,7 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
             rows={rows}
             columns={columns}
             dense={!expanded}
-            stickyDividers={!railVisible}
-            renderDivider={railVisible ? undefined : renderJumpDivider}
+            renderDivider={isMobileDrawerPresentation ? renderNoDivider : undefined}
             renderCard={(item) => {
               const { actions, activeActions, isOwn } = getCardActions(item, false);
               const isPurchased = item.viewerEntitlement.purchaseState === 'purchased';
@@ -228,14 +279,17 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
             onFirstVisibleIndexChange={setFirstVisibleIndex}
             onEndReached={hasNextPage ? fetchNextPage : undefined}
             isFetchingMore={isFetchingNextPage}
+            onStartReached={hasPreviousPage ? fetchPreviousPage : undefined}
+            isFetchingPrevious={isFetchingPreviousPage}
           />
         </div>
         {railVisible && (
           <PanelLayoutRail>
             <GalleryDateSidebar
-              highlights={highlights}
+              highlights={dayHighlights}
               firstVisibleIndex={firstVisibleIndex}
               galleryRef={galleryRef}
+              onJump={handleDateJump}
             />
           </PanelLayoutRail>
         )}

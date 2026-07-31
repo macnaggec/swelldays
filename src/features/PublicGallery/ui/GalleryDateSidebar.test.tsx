@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { RefObject } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { GalleryDateSidebar } from './GalleryDateSidebar';
@@ -93,7 +93,7 @@ describe('GalleryDateSidebar', () => {
     expect(screen.queryByRole('button', { name: '18' })).not.toBeInTheDocument();
   });
 
-  it('jumps to a month’s first shot when its header is tapped', () => {
+  it('tapping a month only unfolds its days locally — it never scrolls the gallery', () => {
     labelAllMonths();
     const ref = galleryRef();
 
@@ -101,10 +101,11 @@ describe('GalleryDateSidebar', () => {
       <GalleryDateSidebar highlights={TWO_MONTHS} firstVisibleIndex={0} galleryRef={ref} />,
     );
 
-    screen.getByRole('button', { name: 'Jun' }).click();
+    fireEvent.click(screen.getByRole('button', { name: 'Jun' }));
 
-    // June's newest day sits at row 8.
-    expect(ref.current.scrollToIndex).toHaveBeenCalledWith(8, { align: 'start' });
+    expect(ref.current.scrollToIndex).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: '25' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '20' })).toBeInTheDocument();
   });
 
   it('jumps to a day’s row when a day in the open month is tapped', () => {
@@ -115,7 +116,7 @@ describe('GalleryDateSidebar', () => {
       <GalleryDateSidebar highlights={TWO_MONTHS} firstVisibleIndex={0} galleryRef={ref} />,
     );
 
-    screen.getByRole('button', { name: '18' }).click();
+    fireEvent.click(screen.getByRole('button', { name: '18' }));
 
     expect(ref.current.scrollToIndex).toHaveBeenCalledWith(4, { align: 'start' });
   });

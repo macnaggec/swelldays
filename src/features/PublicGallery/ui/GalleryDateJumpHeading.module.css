@@ -1,20 +1,22 @@
-/* Mirrors VirtualGallery's divider row so the jump control reads as the same
-   date heading, plus an affordance chevron. */
+/* The pinned divider becomes the same inset glass control used by the panel's
+   search and action chrome, while preserving the complete active date. */
 .heading {
   display: flex;
   align-items: center;
   gap: 4px;
   width: 100%;
-  height: var(--wa-panel-section-chrome-height);
-  padding: 0 var(--wa-panel-content-inset);
-  border: none;
-  border-bottom: 1px solid var(--mantine-color-default-border);
-  background: none;
+  min-height: var(--wa-panel-section-chrome-height);
+  margin: 0;
+  padding: 0 10px;
+  border-radius: var(--wa-radius-control-md);
   cursor: pointer;
   text-align: left;
 }
 
 .headingText {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: var(--mantine-font-size-sm);
   font-weight: 600;
   color: var(--mantine-color-dimmed);
@@ -27,63 +29,5 @@
 .dropdown {
   max-height: 280px;
   overflow-y: auto;
-}
-
-.dateStrip {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: var(--mantine-spacing-xs);
-  width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  touch-action: pan-x;
-}
-
-.dateStrip::-webkit-scrollbar {
-  display: none;
-}
-
-.dateMonthGroup {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: var(--mantine-spacing-xs);
-}
-
-.dateYear,
-.dateMonth,
-.dateDay {
-  flex: 0 0 auto;
-}
-
-.dateYear {
-  padding-inline: var(--mantine-spacing-xs);
-  color: var(--mantine-color-dimmed);
-  font-size: var(--mantine-font-size-xs);
-  font-weight: 600;
-}
-
-.dateMonth,
-.dateDay {
-  min-width: var(--wa-control-size-compact);
-  height: var(--wa-control-size-compact);
-  padding-inline: var(--mantine-spacing-xs);
-  border: 1px solid var(--mantine-color-default-border);
-  border-radius: var(--mantine-radius-xl);
-  background: var(--mantine-color-body);
-  color: var(--mantine-color-text);
-  cursor: pointer;
-}
-
-.dateMonth {
-  font-weight: 600;
-}
-
-.dateDay[aria-current='date'] {
-  border-color: var(--mantine-primary-color-filled);
-  background: var(--mantine-primary-color-filled);
-  color: var(--mantine-color-white);
+  padding: var(--mantine-spacing-xs);
 }

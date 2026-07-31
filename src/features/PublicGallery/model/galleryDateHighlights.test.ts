@@ -3,6 +3,7 @@ import {
   DATE_RAIL_MIN_GALLERY_WIDTH_PX,
   activeDayIndex,
   groupDaysByMonth,
+  mergeGalleryDateHighlights,
   showsDateRail,
   toDayHighlights,
 } from './galleryDateHighlights';
@@ -16,6 +17,21 @@ describe('toDayHighlights', () => {
     const days = toDayHighlights([morning, afternoon, nextDay]);
 
     expect(days).toEqual([morning, nextDay]);
+  });
+});
+
+describe('mergeGalleryDateHighlights', () => {
+  it('lists every available day immediately and attaches row indexes only to loaded days', () => {
+    const july = new Date('2026-07-21T12:00:00.000Z');
+    const june = new Date('2026-06-25T12:00:00.000Z');
+
+    expect(mergeGalleryDateHighlights(
+      [july, june],
+      [{ date: july, rowIndex: 4 }],
+    )).toEqual([
+      { date: july, rowIndex: 4 },
+      { date: june, rowIndex: null },
+    ]);
   });
 });
 

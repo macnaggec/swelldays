@@ -29,38 +29,16 @@
 
 /* Date section header — thin one-line label; day grouping without a heavy band.
    12px inset matches the panel toolbar chrome (PanelScrollChrome). */
-/* Active sticky divider row — pinned to the scrollport top while its section
-   scrolls beneath; opaque so passing cards never show through. */
-.stickyRow {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  width: 100%;
-  background: var(--mantine-color-body);
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-  transition:
-    opacity var(--wa-motion-duration-chrome) var(--wa-motion-easing-standard),
-    transform var(--wa-motion-duration-chrome) var(--wa-motion-easing-standard);
-}
-
-.stickyRow[data-chrome-replaced] {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateY(-100%);
-}
-
 .divider {
   display: flex;
   align-items: center;
-  height: var(--wa-panel-section-chrome-height);
+  min-height: var(--wa-panel-section-chrome-height);
   padding: 0 var(--wa-panel-content-inset);
   border-bottom: 1px solid var(--mantine-color-default-border);
 }
 
 .dividerText {
+  overflow-wrap: anywhere;
   font-size: var(--mantine-font-size-sm);
   font-weight: 600;
   color: var(--mantine-color-dimmed);
@@ -93,6 +71,20 @@
 }
 
 .loader {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+/* Overlays rather than pushing the virtualized content down, so its
+   appearance while fetching newer items cannot itself shift the scroll
+   position the anchor-preservation logic is protecting. */
+.loaderTop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
   display: flex;
   justify-content: center;
   padding: 16px 0;

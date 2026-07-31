@@ -16,7 +16,8 @@ export function showsDateRail(measuredGalleryWidthPx: number): boolean {
 /** A jump target: the date of a gallery divider row and the row it sits at. */
 export interface GalleryDateHighlight {
   date: Date;
-  rowIndex: number;
+  /** Null until the infinite feed has loaded the divider row for this day. */
+  rowIndex: number | null;
 }
 
 /**
@@ -37,21 +38,51 @@ export function toDayHighlights(highlights: GalleryDateHighlight[]): GalleryDate
 }
 
 /**
+ * Uses the server-owned complete date index for menu coverage, then enriches
+ * whichever days are already loaded with their virtual-gallery row.
+ */
+export function mergeGalleryDateHighlights(
+  availableDates: Date[],
+  loadedHighlights: GalleryDateHighlight[],
+): GalleryDateHighlight[] {
+  const loadedRowByDay = new Map(
+    toDayHighlights(loadedHighlights).map(({ date, rowIndex }) => [
+      getVisibleCalendarDayKey(date),
+      rowIndex,
+    ]),
+  );
+  const seen = new Set<string>();
+
+  return availableDates.flatMap((date) => {
+    const key = getVisibleCalendarDayKey(date);
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [{
+      date,
+      rowIndex: loadedRowByDay.get(key) ?? null,
+    }];
+  });
+}
+
+/**
  * Index of the day the gallery is currently scrolled into: the last highlight at
  * or above the first visible row. Returns 0 for an empty list or before scroll.
  */
 export function activeDayIndex(dayHighlights: GalleryDateHighlight[], firstVisibleIndex: number): number {
-  let active = 0;
+  let active = dayHighlights.findIndex(({ rowIndex }) => rowIndex !== null);
+  if (active === -1) return 0;
   for (let i = 0; i < dayHighlights.length; i++) {
-    if (dayHighlights[i]!.rowIndex <= firstVisibleIndex) active = i;
+    const rowIndex = dayHighlights[i]!.rowIndex;
+    if (rowIndex === null) continue;
+    if (rowIndex <= firstVisibleIndex) active = i;
     else break;
   }
   return active;
 }
 
-/** Calendar-month identity used to fold the rail's days into month sections. */
+/** Calendar-month identity used to fold the rail's days into month sections. UTC — see getVisibleCalendarDayKey. */
 export function monthKeyOf(date: Date): string {
-  return `${date.getFullYear()}-${date.getMonth()}`;
+  return `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
 }
 
 /** One month section of the date rail: its days (newest first) and where its first shot sits. */

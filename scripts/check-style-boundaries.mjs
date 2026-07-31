@@ -388,6 +388,30 @@ const requiredPanelLayoutStyles = [
   ],
 ];
 
+const requiredMobileGalleryLargeTextStyles = [
+  [
+    'src/shared/ui/VirtualGallery/VirtualGallery.module.css',
+    'semantic minimum height for gallery date dividers',
+    /\.divider\s*\{[^}]*min-height:\s*var\(--wa-panel-section-chrome-height\)/s,
+  ],
+  [
+    'src/shared/ui/VirtualGallery/VirtualGallery.module.css',
+    'overflow wrapping for gallery date dividers',
+    /\.dividerText\s*\{[^}]*overflow-wrap:\s*anywhere/s,
+  ],
+];
+
+const mobileGalleryLargeTextCssConsumers = new Set([
+  'src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css',
+  'src/features/PublicGallery/ui/GalleryDateMonthList.module.css',
+  'src/shared/ui/VirtualGallery/VirtualGallery.module.css',
+]);
+
+const requiredGalleryDateMonthListConsumers = [
+  'src/features/PublicGallery/ui/GalleryDateJumpHeading.tsx',
+  'src/features/PublicGallery/ui/GalleryDateSidebar.tsx',
+];
+
 // The component owns the count (F12k); the stylesheet must not re-column.
 const forbiddenPanelCollectionGridStyles = [
   ['column ownership', /grid-template-columns/],
@@ -730,6 +754,18 @@ const rules = [
     ),
   },
   {
+    id: 'mobile-gallery-large-text-uses-minimum-heights',
+    message: 'Mobile Gallery date chrome must use semantic minimum heights so large text can grow.',
+    pattern: /^\s*height:\s*var\(--wa-(?:panel-section-chrome-height|control-size-compact)\)\s*;/m,
+    include: file => mobileGalleryLargeTextCssConsumers.has(file),
+  },
+  {
+    id: 'mobile-gallery-preview-metadata-wraps',
+    message: 'Mobile Gallery preview metadata must wrap rather than clip at large text.',
+    pattern: /wrap=["\']nowrap["\']/,
+    include: file => file === 'src/features/PublicGallery/ui/MediaLightbox.tsx',
+  },
+  {
     id: 'no-local-panel-chrome-height',
     message: 'Panel chrome bands must use semantic chrome-height tokens.',
     pattern: /height:\s*32px/,
@@ -937,6 +973,28 @@ for (const [requirement, pattern] of requiredPanelLayoutStyles) {
     line: 1,
     rule: 'panel-layout-required-styles',
     message: `PanelLayout is missing ${requirement}.`,
+  });
+}
+
+for (const [file, requirement, pattern] of requiredMobileGalleryLargeTextStyles) {
+  const contents = readFileSync(path.join(root, file), 'utf8');
+  if (pattern.test(contents)) continue;
+  violations.push({
+    file,
+    line: 1,
+    rule: 'mobile-gallery-large-text-required-styles',
+    message: `Mobile Gallery is missing ${requirement}.`,
+  });
+}
+
+for (const file of requiredGalleryDateMonthListConsumers) {
+  const contents = readFileSync(path.join(root, file), 'utf8');
+  if (/GalleryDateMonthList/.test(contents)) continue;
+  violations.push({
+    file,
+    line: 1,
+    rule: 'shared-gallery-date-navigation-owner',
+    message: 'Gallery date presentations must reuse GalleryDateMonthList so their fold and active states cannot diverge.',
   });
 }
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { getActiveStickyIndex, getAnchoredVisibleRowIndex, resolveGalleryScrollOwner } from './VirtualGallery';
+import { getAnchoredVisibleRowIndex, resolveGalleryScrollOwner } from './VirtualGallery';
 
 describe('getAnchoredVisibleRowIndex', () => {
   it('uses the row around the viewport anchor instead of the first partially visible row', () => {
@@ -33,26 +33,5 @@ describe('resolveGalleryScrollOwner', () => {
     const standalone = document.getElementById('standalone')!;
 
     expect(resolveGalleryScrollOwner(standalone)).toBe(standalone);
-  });
-});
-
-describe('getActiveStickyIndex', () => {
-  const dividerIndexes = [0, 5, 12];
-
-  it('picks the last divider at or above the rendered range start', () => {
-    expect(getActiveStickyIndex(dividerIndexes, 7)).toBe(5);
-  });
-
-  it('keeps the previous section divider until the next divider enters the range', () => {
-    expect(getActiveStickyIndex(dividerIndexes, 11)).toBe(5);
-    expect(getActiveStickyIndex(dividerIndexes, 12)).toBe(12);
-  });
-
-  it('returns -1 when the range starts above the first divider', () => {
-    expect(getActiveStickyIndex([5, 12], 3)).toBe(-1);
-  });
-
-  it('returns -1 for a gallery without dividers', () => {
-    expect(getActiveStickyIndex([], 4)).toBe(-1);
   });
 });

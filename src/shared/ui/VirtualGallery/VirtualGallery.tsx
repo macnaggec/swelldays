@@ -1,10 +1,11 @@
-import React, { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { defaultRangeExtractor, useVirtualizer, type Range } from '@tanstack/react-virtual';
+import React, { ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Loader } from '@mantine/core';
 import type { GalleryRow } from 'shared/lib/buildGalleryRows';
 import type { CardContext } from 'shared/ui/BaseGallery/BaseGallery';
 import SelectionCheckbox from 'shared/ui/BaseGallery/SelectionCheckbox';
 import { usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
+import { formatCapturedAtDate } from 'shared/lib/dateUtils';
 import styles from './VirtualGallery.module.css';
 
 const DIVIDER_HEIGHT = 32;
@@ -39,20 +40,6 @@ export function resolveGalleryScrollOwner(node: HTMLElement): HTMLElement {
   return node.closest<HTMLElement>('[data-panel-scroll-owner]') ?? node;
 }
 
-/**
- * The divider row that should stick to the top of the scrollport: the last
- * divider at or above the first rendered row. -1 when the range is still above
- * the first divider (or there are none).
- */
-export function getActiveStickyIndex(dividerIndexes: number[], rangeStartIndex: number): number {
-  let active = -1;
-  for (const index of dividerIndexes) {
-    if (index <= rangeStartIndex) active = index;
-    else break;
-  }
-  return active;
-}
-
 interface SelectionState {
   isSelectionMode: boolean;
   isSelected: (id: string) => boolean;
@@ -74,13 +61,17 @@ export interface VirtualGalleryProps<T extends { id: string }> {
   toolbar?: ReactNode;
   onEndReached?: () => void;
   isFetchingMore?: boolean;
+  /**
+   * Called when scrolled near the top of the rendered range — fetching newer
+   * content (fetchPreviousPage) after a jump into distant history. Rows
+   * prepended in response keep their scroll position: the row anchored at
+   * the top before the prepend is restored there after, so content already
+   * in view does not visibly shift.
+   */
+  onStartReached?: () => void;
+  isFetchingPrevious?: boolean;
   /** Called when the anchored visible row index changes — use to drive an external sidebar. */
   onFirstVisibleIndexChange?: (index: number) => void;
-  /**
-   * Pin the current section's divider row to the top of the scrollport while
-   * its rows scroll beneath — the below-rail-capability date navigation (F12g).
-   */
-  stickyDividers?: boolean;
   /** Custom divider-row content — e.g. a date heading that doubles as a jump control. */
   renderDivider?: (date: Date) => ReactNode;
 }
@@ -95,39 +86,19 @@ function VirtualGalleryInner<T extends { id: string }>(
     toolbar,
     onEndReached,
     isFetchingMore,
+    onStartReached,
+    isFetchingPrevious,
     onFirstVisibleIndexChange,
-    stickyDividers = false,
     renderDivider,
   }: VirtualGalleryProps<T>,
   ref: React.ForwardedRef<VirtualGalleryHandle>,
 ) {
-  const { hidden: panelChromeHidden, drawerPresentation } = usePanelScrollChromeState();
-  const usesReplaceableMobileChrome = drawerPresentation === 'bottomSheet'
-    || drawerPresentation === 'sideOverlay';
+  const { hidden: panelChromeHidden } = usePanelScrollChromeState();
 
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
   const containerRef = useCallback((node: HTMLDivElement | null) => {
     setScrollElement(node ? resolveGalleryScrollOwner(node) : null);
   }, []);
-
-  // Sticky dividers: the active section's divider is kept in the rendered
-  // range so it can pin to the scrollport top while its rows pass beneath.
-  const dividerIndexes = useMemo(
-    () => rows.flatMap((row, i) => (row.type === 'divider' ? [i] : [])),
-    [rows],
-  );
-  const activeStickyIndexRef = useRef(-1);
-  const rangeExtractor = useCallback((range: Range) => {
-    if (!stickyDividers || dividerIndexes.length === 0) {
-      activeStickyIndexRef.current = -1;
-      return defaultRangeExtractor(range);
-    }
-    const active = getActiveStickyIndex(dividerIndexes, range.startIndex);
-    activeStickyIndexRef.current = active;
-    if (active < 0) return defaultRangeExtractor(range);
-    const withSticky = new Set([active, ...defaultRangeExtractor(range)]);
-    return [...withSticky].sort((a, b) => a - b);
-  }, [stickyDividers, dividerIndexes]);
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual exposes imperative functions that React Compiler intentionally leaves un-memoized.
   const virtualizer = useVirtualizer({
@@ -140,12 +111,46 @@ function VirtualGalleryInner<T extends { id: string }>(
     },
     measureElement: (el) => el.getBoundingClientRect().height,
     overscan: 3,
-    rangeExtractor,
   });
 
   React.useImperativeHandle(ref, () => ({
-    scrollToIndex: (index, options) => virtualizer.scrollToIndex(index, options),
-  }), [virtualizer]);
+    // An imperative jump (e.g. the date menu) is not the user scrolling —
+    // whichever direction it lands in must not flip the panel's search/date
+    // chrome via the scroll-direction heuristic that real scrolling drives.
+    // Isolate the resulting scroll event(s) until the position genuinely
+    // settles: a jump can trigger react-virtual's own remeasurement, which
+    // corrects scrollTop again a frame or two after the initial jump, so
+    // lifting isolation after a single frame let that later correction
+    // through and still flipped the chrome intermittently.
+    scrollToIndex: (index, options) => {
+      if (!scrollElement) {
+        virtualizer.scrollToIndex(index, options);
+        return;
+      }
+      scrollElement.setAttribute('data-scroll-direction-isolated', 'true');
+      virtualizer.scrollToIndex(index, options);
+
+      const SETTLE_FRAMES = 3;
+      let lastTop = scrollElement.scrollTop;
+      let stableFrames = 0;
+      const checkSettled = () => {
+        if (!scrollElement.isConnected) return;
+        const currentTop = scrollElement.scrollTop;
+        if (currentTop === lastTop) {
+          stableFrames += 1;
+        } else {
+          stableFrames = 0;
+          lastTop = currentTop;
+        }
+        if (stableFrames >= SETTLE_FRAMES) {
+          scrollElement.removeAttribute('data-scroll-direction-isolated');
+          return;
+        }
+        requestAnimationFrame(checkSettled);
+      };
+      requestAnimationFrame(checkSettled);
+    },
+  }), [virtualizer, scrollElement]);
 
   // Map item id → global index for CardContext
   const itemIndexMap = useMemo(() => {
@@ -161,10 +166,38 @@ function VirtualGalleryInner<T extends { id: string }>(
 
   const virtualItems = virtualizer.getVirtualItems();
   const lastIndex = virtualItems[virtualItems.length - 1]?.index ?? -1;
+  const firstIndex = virtualItems[0]?.index ?? -1;
 
   useEffect(() => {
     if (lastIndex >= rows.length - 3) onEndReached?.();
   }, [lastIndex, rows.length, onEndReached]);
+
+  useEffect(() => {
+    if (firstIndex >= 0 && firstIndex <= 2) onStartReached?.();
+  }, [firstIndex, onStartReached]);
+
+  // Rows prepended above the viewport (fetchPreviousPage resolving after a
+  // jump) shift every existing row's index without moving the scrollport, so
+  // the same scrollTop now shows different content. Track the row anchored
+  // at the top by its stable key and, if a prepend moved it, snap back to it
+  // before paint so nothing already in view visibly shifts.
+  const previousAnchorRef = useRef<{ key: string; index: number } | null>(null);
+  useLayoutEffect(() => {
+    const previous = previousAnchorRef.current;
+    let anchorIndex = virtualizer.getVirtualItems()[0]?.index ?? 0;
+    if (previous) {
+      const rowAtSamePosition = rows[previous.index];
+      if (rowAtSamePosition?.key !== previous.key) {
+        const newIndex = rows.findIndex((row) => row.key === previous.key);
+        if (newIndex !== -1 && newIndex !== previous.index) {
+          virtualizer.scrollToIndex(newIndex, { align: 'start' });
+          anchorIndex = newIndex;
+        }
+      }
+    }
+    const topRow = rows[anchorIndex];
+    previousAnchorRef.current = topRow ? { key: topRow.key, index: anchorIndex } : null;
+  }, [rows, virtualizer]);
 
   // Scroll tracking — feeds onFirstVisibleIndexChange for external sidebars
   const [scrollTop, setScrollTop] = useState(0);
@@ -213,40 +246,27 @@ function VirtualGalleryInner<T extends { id: string }>(
         </div>
       )}
       <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+        {isFetchingPrevious && (
+          <div className={styles.loaderTop}>
+            <Loader size="sm" />
+          </div>
+        )}
         {virtualItems.map((virtualItem) => {
           const row = rows[virtualItem.index];
           if (!row) return null;
-
-          // The active sticky divider stays in flow at the container top with
-          // position: sticky, so it pins to the scrollport while every other
-          // row keeps the virtualizer's absolute placement.
-          const isActiveSticky = stickyDividers && virtualItem.index === activeStickyIndexRef.current;
-          const stickyDateReplaced = isActiveSticky
-            && usesReplaceableMobileChrome
-            && !panelChromeHidden;
 
           return (
             <div
               key={virtualItem.key}
               data-index={virtualItem.index}
               ref={virtualizer.measureElement}
-              className={isActiveSticky ? styles.stickyRow : undefined}
-              aria-hidden={stickyDateReplaced || undefined}
-              inert={stickyDateReplaced}
-              data-chrome-replaced={stickyDateReplaced || undefined}
-              style={isActiveSticky
-                ? undefined
-                : { position: 'absolute', top: virtualItem.start, left: 0, width: '100%' }}
+              style={{ position: 'absolute', top: virtualItem.start, left: 0, width: '100%' }}
             >
               {row.type === 'divider' ? (
                 renderDivider ? renderDivider(row.date) : (
                   <div className={styles.divider}>
                     <span className={styles.dividerText}>
-                      {row.date.toLocaleDateString(undefined, {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
+                      {formatCapturedAtDate(row.date, { day: 'numeric', month: 'long', year: 'numeric' })}
                     </span>
                   </div>
                 )

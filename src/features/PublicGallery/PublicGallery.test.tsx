@@ -1,9 +1,15 @@
 import React from 'react';
-import { fireEvent, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MantineProvider } from '@mantine/core';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import PublicGallery from './PublicGallery';
 import type { PublicMedia } from 'entities/Media';
+import type { GalleryRow } from 'shared/lib/buildGalleryRows';
+import type { CardContext } from 'shared/ui/BaseGallery/BaseGallery';
+import { PanelScrollChromeStateProvider } from 'shared/ui/PanelScrollChrome';
+import { PanelLayout } from 'shared/ui/PanelLayout';
 
 const mediaItem: PublicMedia = {
   id: 'media-1',
@@ -21,22 +27,29 @@ const mediaItem: PublicMedia = {
 
 const galleryState = vi.hoisted(() => ({
   flatItems: [] as PublicMedia[],
+  availableDates: [] as Date[],
+  fetchNextPage: vi.fn(),
+  hasNextPage: false,
+  isFetchingNextPage: false,
+  isLoading: false,
   measuredWidth: 0,
+  scrollToIndex: vi.fn(),
+}));
+
+const useSpotMediaFeedMock = vi.hoisted(() => vi.fn());
+
+const galleryActions = vi.hoisted(() => ({
+  toggleCartItem: vi.fn(),
+  toggleFavorite: vi.fn(),
 }));
 
 vi.mock('entities/Spot', () => ({
-  useSpotMediaFeed: () => ({
-    flatItems: galleryState.flatItems,
-    isLoading: false,
-    fetchNextPage: vi.fn(),
-    hasNextPage: false,
-    isFetchingNextPage: false,
-  }),
+  useSpotMediaFeed: useSpotMediaFeedMock,
   useSpotPreview: () => ({ data: { name: 'Pipeline' } }),
 }));
 
 vi.mock('entities/Commerce', () => ({
-  useCartToggle: () => ({ cartItemIds: new Set(), toggleCartItem: vi.fn() }),
+  useCartToggle: () => ({ cartItemIds: new Set(), toggleCartItem: galleryActions.toggleCartItem }),
   useCartStore: (selector: (state: { add: () => void }) => unknown) => selector({ add: vi.fn() }),
   toCartItem: vi.fn(),
 }));
@@ -47,17 +60,51 @@ vi.mock('shared/hooks/useUser', () => ({
 
 vi.mock('entities/Media', async (importOriginal) => ({
   ...(await importOriginal<typeof import('entities/Media')>()),
-  useMediaFavorites: () => ({ favoriteIds: new Set(), toggleFavorite: vi.fn() }),
+  useMediaFavorites: () => ({ favoriteIds: new Set(), toggleFavorite: galleryActions.toggleFavorite }),
 }));
 
 vi.mock('shared/ui/VirtualGallery/VirtualGallery', () => ({
   VirtualGallery: React.forwardRef(function VirtualGalleryMock(
-    { toolbar }: { toolbar?: React.ReactNode },
-    _ref,
+    {
+      toolbar,
+      rows,
+      renderCard,
+      renderDivider,
+    }: {
+      toolbar?: React.ReactNode;
+      rows: GalleryRow<PublicMedia>[];
+      renderCard: (item: PublicMedia, context: CardContext) => React.ReactNode;
+      renderDivider?: (date: Date) => React.ReactNode;
+    },
+    ref,
   ) {
+    React.useImperativeHandle(ref, () => ({
+      scrollToIndex: galleryState.scrollToIndex,
+    }));
+    let itemIndex = 0;
     return (
       <div data-testid="virtual-gallery">
         {toolbar && <div data-testid="gallery-toolbar">{toolbar}</div>}
+        {rows.flatMap((row) => {
+          if (row.type === 'divider') {
+            return renderDivider
+              ? [<React.Fragment key={row.key}>{renderDivider(row.date)}</React.Fragment>]
+              : [];
+          }
+          return row.items.map((item) => {
+            const index = itemIndex++;
+            return (
+              <React.Fragment key={item.id}>
+                {renderCard(item, {
+                  index,
+                  isFirst: index === 0,
+                  isLast: index === galleryState.flatItems.length - 1,
+                  isSelectionMode: false,
+                })}
+              </React.Fragment>
+            );
+          });
+        })}
       </div>
     );
   }),
@@ -79,14 +126,54 @@ vi.mock('shared/ui/PanelLayout', async (importOriginal) => ({
   PanelLayoutRail: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock('./ui/MediaLightbox', () => ({
-  default: () => null,
-}));
-
 describe('PublicGallery', () => {
+  beforeAll(() => {
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+
+    class IntersectionObserverMock implements IntersectionObserver {
+      readonly root = null;
+      readonly rootMargin = '0px';
+      readonly thresholds: ReadonlyArray<number> = [];
+
+      observe(_target: Element) {
+        return undefined;
+      }
+
+      unobserve(_target: Element) {
+        return undefined;
+      }
+
+      disconnect() {
+        return undefined;
+      }
+
+      takeRecords(): IntersectionObserverEntry[] {
+        return [];
+      }
+    }
+
+    global.IntersectionObserver = IntersectionObserverMock;
+  });
+
   beforeEach(() => {
+    vi.clearAllMocks();
     galleryState.flatItems = [mediaItem];
+    galleryState.availableDates = [mediaItem.capturedAt];
+    galleryState.hasNextPage = false;
+    galleryState.isFetchingNextPage = false;
+    galleryState.isLoading = false;
     galleryState.measuredWidth = 0;
+    useSpotMediaFeedMock.mockImplementation(() => ({
+      flatItems: galleryState.flatItems,
+      availableDates: galleryState.availableDates,
+      isLoading: galleryState.isLoading,
+      fetchNextPage: galleryState.fetchNextPage,
+      hasNextPage: galleryState.hasNextPage,
+      isFetchingNextPage: galleryState.isFetchingNextPage,
+      fetchPreviousPage: vi.fn(),
+      hasPreviousPage: false,
+      isFetchingPreviousPage: false,
+    }));
   });
 
   it('shows the date rail when the measured gallery width supports it', () => {
@@ -111,6 +198,145 @@ describe('PublicGallery', () => {
     expect(screen.getByTestId('virtual-gallery')).toBeInTheDocument();
     expect(screen.queryByTestId('gallery-toolbar')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Select' })).not.toBeInTheDocument();
+  });
+
+  it('publishes one mobile active-date control without repeating date dividers in the feed', () => {
+    galleryState.measuredWidth = 420;
+    galleryState.flatItems = [
+      mediaItem,
+      {
+        ...mediaItem,
+        id: 'media-2',
+        capturedAt: new Date('2026-03-01T10:00:00.000Z'),
+      },
+    ];
+
+    render(
+      <MantineProvider env="test">
+        <PanelScrollChromeStateProvider
+          value={{ hidden: true, drawerPresentation: 'sideOverlay' }}
+        >
+          <PanelLayout>
+            <PublicGallery expanded spotId="spot-1" />
+          </PanelLayout>
+        </PanelScrollChromeStateProvider>
+      </MantineProvider>,
+    );
+
+    expect(screen.getAllByRole('button', { name: 'Jump to date' })).toHaveLength(1);
+  });
+
+  it.each([
+    ['bottom sheet', 'bottomSheet' as const],
+    ['short side overlay', 'sideOverlay' as const],
+    ['compact persistent desktop', 'persistent' as const],
+  ])('shows every matching month the first time the date control opens (%s)', async (_label, drawerPresentation) => {
+    galleryState.measuredWidth = 420;
+    galleryState.flatItems = [{
+      ...mediaItem,
+      capturedAt: new Date('2026-07-21T10:00:00.000Z'),
+    }];
+    galleryState.availableDates = [
+      new Date('2026-07-21T10:00:00.000Z'),
+      new Date('2026-06-25T10:00:00.000Z'),
+    ];
+
+    render(
+      <MantineProvider env="test">
+        <PanelScrollChromeStateProvider
+          value={{ hidden: true, drawerPresentation }}
+        >
+          <PanelLayout>
+            <PublicGallery expanded spotId="spot-1" />
+          </PanelLayout>
+        </PanelScrollChromeStateProvider>
+      </MantineProvider>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Jump to date' }));
+
+    expect(screen.getByRole('button', { name: 'Jul' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Jun' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('narrows a persistent desktop panel to the same compact date control as mobile, with no interactive in-grid divider', () => {
+    galleryState.measuredWidth = 420;
+    galleryState.flatItems = [
+      mediaItem,
+      {
+        ...mediaItem,
+        id: 'media-2',
+        capturedAt: new Date('2026-03-01T10:00:00.000Z'),
+      },
+    ];
+
+    render(
+      <MantineProvider env="test">
+        <PanelScrollChromeStateProvider
+          value={{ hidden: true, drawerPresentation: 'persistent' }}
+        >
+          <PanelLayout>
+            <PublicGallery expanded spotId="spot-1" />
+          </PanelLayout>
+        </PanelScrollChromeStateProvider>
+      </MantineProvider>,
+    );
+
+    // Same one active-date control as mobile, mounted through the shared chrome
+    // slot — not the wide rail, and not a second in-grid interactive divider.
+    expect(screen.getAllByRole('button', { name: 'Jump to date' })).toHaveLength(1);
+    expect(screen.queryByTestId('gallery-date-sidebar')).not.toBeInTheDocument();
+  });
+
+  it('jumps directly to an initially unloaded date via a fresh anchored query instead of paging through every intervening page', async () => {
+    galleryState.measuredWidth = 420;
+    const julyItem = {
+      ...mediaItem,
+      capturedAt: new Date('2026-07-21T10:00:00.000Z'),
+    };
+    const juneDate = new Date('2026-06-25T10:00:00.000Z');
+    galleryState.flatItems = [julyItem];
+    galleryState.availableDates = [julyItem.capturedAt, juneDate];
+    galleryState.hasNextPage = true;
+
+    const gallery = () => (
+      <MantineProvider env="test">
+        <PanelScrollChromeStateProvider
+          value={{ hidden: true, drawerPresentation: 'sideOverlay' }}
+        >
+          <PanelLayout>
+            <PublicGallery expanded spotId="spot-1" />
+          </PanelLayout>
+        </PanelScrollChromeStateProvider>
+      </MantineProvider>
+    );
+    const { rerender } = render(gallery());
+
+    // The fresh anchored query starts out loading, same as any new query key.
+    // June has only juneDate loaded; tapping the month only unfolds it locally,
+    // then tapping its one day jumps straight to it.
+    galleryState.isLoading = true;
+    await userEvent.click(screen.getByRole('button', { name: 'Jump to date' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Jun' }));
+    await userEvent.click(screen.getByRole('button', { name: '25' }));
+
+    expect(useSpotMediaFeedMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ jumpAnchor: juneDate }),
+    );
+    expect(galleryState.fetchNextPage).not.toHaveBeenCalled();
+    expect(galleryState.scrollToIndex).not.toHaveBeenCalled();
+
+    // The anchored page resolves: one request landed exactly on the target day.
+    galleryState.isLoading = false;
+    galleryState.flatItems = [{ ...mediaItem, id: 'media-june', capturedAt: juneDate }];
+    galleryState.availableDates = [julyItem.capturedAt, juneDate];
+    galleryState.hasNextPage = true;
+    rerender(gallery());
+
+    await waitFor(() => {
+      expect(galleryState.scrollToIndex).toHaveBeenCalledWith(0, { align: 'start' });
+    });
+    expect(galleryState.fetchNextPage).not.toHaveBeenCalled();
   });
 
   it('offers to clear active filters when no media matches the current view', () => {
@@ -143,5 +369,35 @@ describe('PublicGallery', () => {
       screen.getByText('Published photos and clips will show up here. Use Upload above to add the first set.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Show all media' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the same keyboard-opened preview and card focus across a live mobile shell crossing', async () => {
+    galleryState.measuredWidth = 420;
+    const user = userEvent.setup();
+    const { rerender } = render(<PublicGallery expanded={false} spotId="spot-1" />);
+    const card = screen.getByRole('button', { name: 'Open Media media-1' });
+
+    card.focus();
+    await user.keyboard('{Enter}');
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    const previewImage = screen.getByAltText(/Surf photo from/);
+    expect(previewImage).toHaveAttribute('src', mediaItem.lightboxUrl);
+
+    Object.defineProperty(previewImage, 'naturalWidth', { value: 1200, configurable: true });
+    Object.defineProperty(previewImage, 'naturalHeight', { value: 800, configurable: true });
+    fireEvent.load(previewImage);
+    fireEvent.click(screen.getByRole('button', { name: 'Add to favorites' }));
+
+    expect(galleryActions.toggleFavorite).toHaveBeenCalledWith(mediaItem);
+
+    rerender(<PublicGallery expanded spotId="spot-1" />);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByAltText(/Surf photo from/)).toHaveAttribute('src', mediaItem.lightboxUrl);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close preview' }));
+
+    await waitFor(() => expect(card).toHaveFocus());
   });
 });

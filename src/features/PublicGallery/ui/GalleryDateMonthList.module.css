@@ -1,0 +1,141 @@
+/* Wide galleries place this in PanelLayoutRail. It stays put while the media
+   grid scrolls, and the rail owns overflow when dates exceed the panel height. */
+.navigation {
+  display: flex;
+  align-items: center;
+}
+
+.vertical {
+  flex-direction: column;
+  width: 36px;
+  min-height: 100%;
+  padding: 4px 0;
+  gap: 2px;
+  border-left: 1px solid var(--mantine-color-default-border);
+}
+
+.horizontal {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+}
+
+.monthRow,
+.dayRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 2px;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+
+.monthRow::-webkit-scrollbar,
+.dayRow::-webkit-scrollbar {
+  display: none;
+}
+
+.monthGroup {
+  display: flex;
+  align-items: center;
+}
+
+.verticalMonthGroup,
+.vertical .monthGroup {
+  display: contents;
+}
+
+.horizontal .monthGroup {
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.year {
+  display: block;
+  text-align: center;
+  font-size: var(--wa-font-size-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--mantine-color-dimmed);
+  text-transform: uppercase;
+}
+
+.vertical .year {
+  width: 100%;
+  padding: 6px 0 2px;
+}
+
+.horizontal .year {
+  flex: 0 0 auto;
+  padding-inline: 6px;
+}
+
+.month,
+.day {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--mantine-color-dimmed);
+  transition: background 120ms ease, color 120ms ease;
+  line-height: 1.1;
+}
+
+.month:hover,
+.day:hover {
+  background: var(--mantine-color-default-hover);
+  color: var(--mantine-color-text);
+}
+
+/* Month section header — collapsed sits quiet; the open month reads as the
+   heading of its adjacent day list. */
+.month {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.vertical .month {
+  width: 100%;
+  padding: 5px 2px;
+}
+
+.horizontal .month,
+.horizontal .day {
+  min-width: var(--wa-control-size-compact);
+  min-height: var(--wa-control-size-compact);
+  padding-inline: 6px;
+}
+
+.monthOpen {
+  color: var(--mantine-color-text);
+}
+
+.day {
+  font-size: var(--wa-font-size-xs);
+  font-weight: 600;
+}
+
+.vertical .day {
+  width: 100%;
+  padding: 4px 2px;
+}
+
+.dayActive {
+  background: var(--mantine-color-blue-light);
+  color: var(--mantine-color-blue-light-color);
+}
+
+.dayActive:hover {
+  background: var(--mantine-color-blue-light-hover);
+}
