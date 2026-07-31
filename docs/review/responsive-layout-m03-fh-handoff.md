@@ -75,11 +75,19 @@ and computed-style/animation presence for the cross-fade and slide motions.
 unrelated, unstarted "standalone map toolbar" feature's rules and an
 unrelated M03-i ("large-text") in-progress slice (`src/shared/ui/BaseGallery/
 BaseCard.tsx`, `src/shared/ui/CarouselLightbox/CarouselLightbox.module.css`
-and their check-style-boundaries entries). Neither is touched by this
-commit; both remain uncommitted for whoever picks up that work next.
+and their check-style-boundaries entries). The map-toolbar rules stay
+uncommitted for whoever picks up that work next.
+
+`BaseCard.tsx`'s piece turned out not to be optional: `PublicGallery.test.tsx`'s
+own keyboard-focus test already depended on the accessible open button it
+adds, only caught after `fd0ed18` via an isolated gate run. Committed as a
+same-day follow-up (`05945fe`, `fix(gallery): make card open target
+keyboard-focusable`) rather than rewriting `fd0ed18`.
+`CarouselLightbox.module.css`'s caption-width fix has no such dependency —
+confirmed by the same isolated run passing without it — and stays
+uncommitted, unevaluated, for M03-i.
 
 Next ready task: M03-i — complete lightbox, large-text, and cross-shell
-verification. Some of its groundwork (`BaseCard.tsx`'s accessible open
-button, `CarouselLightbox.module.css`'s caption width fix) already sits
+verification. `CarouselLightbox.module.css`'s caption width fix already sits
 uncommitted in the working tree from earlier work; not evaluated or touched
 this session.
