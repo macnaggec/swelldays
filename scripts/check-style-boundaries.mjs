@@ -367,20 +367,16 @@ const requiredPanelLayoutStyles = [
     /\.stickyChrome\s+\[data-panel-scroll-chrome-primary\],\s*\n\s*\.stickyChrome\s+\[data-panel-scroll-chrome-replacement\]\s*\{[^}]*grid-area:\s*1\s*\/\s*1/s,
   ],
   [
-    'one shared row cross-fading primary and replacement chrome',
-    /\.stickyChrome\[data-hidden\]\s+\[data-panel-scroll-chrome-primary\]\s*\{[^}]*opacity:\s*0[\s\S]*\.stickyChrome\[data-hidden\]\s+\[data-panel-scroll-chrome-replacement\]\s*\{[^}]*opacity:\s*1/s,
+    'one shared row cross-fading primary and replacement chrome when a replacement exists',
+    /\.stickyChrome\[data-hidden\]:has\(\[data-panel-scroll-chrome-replacement\]\)\s+\[data-panel-scroll-chrome-primary\]\s*\{[^}]*opacity:\s*0[\s\S]*\.stickyChrome\[data-hidden\]\s+\[data-panel-scroll-chrome-replacement\]\s*\{[^}]*opacity:\s*1/s,
+  ],
+  [
+    'a replacement-less row slides its content through its own top edge instead of collapsing',
+    /\.stickyChrome\[data-hidden\]:not\(:has\(\[data-panel-scroll-chrome-replacement\]\)\)\s+\[data-panel-scroll-chrome-primary\]\s*\{[^}]*transform:\s*translateY\(-100%\)/s,
   ],
   [
     'reduced motion swaps chrome instantly instead of animating',
-    /prefers-reduced-motion:\s*reduce\)\s*\{[^{}]*\.stickyChrome,[\s\S]*?\.stickyChrome\s+\[data-panel-scroll-chrome-primary\][\s\S]*?transition:\s*none/s,
-  ],
-  [
-    'the empty-row collapse itself animates rather than jumping instantly',
-    /\.stickyChrome\s*\{[^}]*grid-template-rows:\s*1fr[^}]*transition:[^;]*grid-template-rows/s,
-  ],
-  [
-    'hidden chrome smoothly releases empty row height',
-    /\.stickyChrome\[data-hidden\]:not\(:has\(\[data-panel-scroll-chrome-replacement\]\)\)\s*\{[^}]*grid-template-rows:\s*0fr[^}]*padding-block:\s*0/s,
+    /prefers-reduced-motion:\s*reduce\)\s*\{[^{}]*\.stickyChrome\s+\[data-panel-scroll-chrome-primary\][\s\S]*?transition:\s*none/s,
   ],
   [
     'hideable chrome cannot feed layout shifts back into scroll direction',
