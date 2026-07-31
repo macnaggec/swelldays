@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   isAuthenticated: true,
   toggleInput: undefined as string | undefined,
   invalidated: false,
+  invalidatedKeys: [] as unknown[],
   openAuthModal: vi.fn(),
 }));
 
@@ -24,8 +25,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     ...actual,
     useQuery: () => ({ data: mocks.isFavorited }),
     useQueryClient: () => ({
-      invalidateQueries: async () => {
+      invalidateQueries: async (filter: { queryKey: unknown[] }) => {
         mocks.invalidated = true;
+        mocks.invalidatedKeys.push(filter.queryKey);
       },
     }),
     useMutation: (options: { onSuccess?: () => void }) => ({
@@ -51,6 +53,9 @@ vi.mock('shared/lib/trpc', () => ({
       mediaFeed: {
         pathFilter: () => ({ queryKey: [['spots', 'mediaFeed']] }),
       },
+      mediaDateIndex: {
+        pathFilter: () => ({ queryKey: [['spots', 'mediaDateIndex']] }),
+      },
     },
     sessions: {
       list: {
@@ -67,6 +72,7 @@ describe('useFavoriteSpot', () => {
     mocks.isAuthenticated = true;
     mocks.toggleInput = undefined;
     mocks.invalidated = false;
+    mocks.invalidatedKeys = [];
   });
 
   it('toggles favorite state for the given spot when authenticated', async () => {
@@ -78,6 +84,8 @@ describe('useFavoriteSpot', () => {
 
     expect(mocks.toggleInput).toBe('spot-1');
     expect(mocks.invalidated).toBe(true);
+    expect(mocks.invalidatedKeys).toContainEqual([['spots', 'mediaFeed']]);
+    expect(mocks.invalidatedKeys).toContainEqual([['spots', 'mediaDateIndex']]);
     expect(mocks.openAuthModal).not.toHaveBeenCalled();
   });
 

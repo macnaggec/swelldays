@@ -29,6 +29,10 @@ function queryFilter(path: string) {
   return (input?: unknown) => ({ queryKey: [path, input] });
 }
 
+function pathFilter(path: string) {
+  return () => ({ queryKey: [path] });
+}
+
 vi.mock('shared/lib/trpc', () => ({
   useTRPC: () => ({
     uploads: {
@@ -48,6 +52,10 @@ vi.mock('shared/lib/trpc', () => ({
     },
     media: {
       myDrafts: { queryFilter: queryFilter('media.myDrafts') },
+    },
+    spots: {
+      mediaFeed: { pathFilter: pathFilter('spots.mediaFeed') },
+      mediaDateIndex: { pathFilter: pathFilter('spots.mediaDateIndex') },
     },
   }),
 }));
@@ -151,6 +159,9 @@ describe('usePublishUploadSession', () => {
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ['sessions.byId', 'session-1'],
     });
+    // Publishing puts new media in front of viewers — refresh the public feed too.
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['spots.mediaFeed'] });
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['spots.mediaDateIndex'] });
   });
 
   it('reports missing inputs in their visual order without saving', async () => {

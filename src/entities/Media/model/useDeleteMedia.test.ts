@@ -14,6 +14,10 @@ function queryFilter(path: string) {
   return (input?: unknown) => ({ queryKey: [path, input] });
 }
 
+function pathFilter(path: string) {
+  return () => ({ queryKey: [path] });
+}
+
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
   useMutation: (options: { onSuccess?: () => unknown }) => ({
@@ -40,6 +44,10 @@ vi.mock('shared/lib/trpc', () => ({
       byId: { queryFilter: queryFilter('sessions.byId') },
       list: { pathFilter: () => ({ queryKey: ['sessions.list'] }) },
     },
+    spots: {
+      mediaFeed: { pathFilter: pathFilter('spots.mediaFeed') },
+      mediaDateIndex: { pathFilter: pathFilter('spots.mediaDateIndex') },
+    },
   }),
 }));
 
@@ -59,5 +67,8 @@ describe('useDeleteMedia', () => {
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['sessions.mine', undefined] });
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['sessions.byId', undefined] });
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['sessions.list'] });
+    // The deleted item may have been published — refresh the public feed too.
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['spots.mediaFeed'] });
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['spots.mediaDateIndex'] });
   });
 });

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTRPC } from 'shared/lib/trpc';
 import { useUser } from 'shared/hooks/useUser';
 import { useAuthModal } from 'entities/Identity';
+import { useMediaPublicProjectionInvalidation } from 'entities/Media';
 
 /** Favorite state + toggle for a single spot — used by the map's selected-spot popup. */
 export function useFavoriteSpot(spotId: string | null) {
@@ -9,6 +10,7 @@ export function useFavoriteSpot(spotId: string | null) {
   const queryClient = useQueryClient();
   const { isAuthenticated } = useUser();
   const { open: openAuthModal } = useAuthModal();
+  const invalidateMediaPublicProjection = useMediaPublicProjectionInvalidation();
 
   const { data: isFavorited = false } = useQuery({
     ...trpc.spots.isFavorited.queryOptions(spotId ?? ''),
@@ -21,7 +23,7 @@ export function useFavoriteSpot(spotId: string | null) {
         await Promise.all([
           queryClient.invalidateQueries(trpc.spots.isFavorited.pathFilter()),
           queryClient.invalidateQueries(trpc.sessions.list.pathFilter()),
-          queryClient.invalidateQueries(trpc.spots.mediaFeed.pathFilter()),
+          invalidateMediaPublicProjection(),
         ]);
       },
     }),

@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { notify } from 'shared/lib/notifications';
 import { useTRPC } from 'shared/lib/trpc';
-import { MIN_MEDIA_PRICE_CENTS } from 'entities/Media';
+import { MIN_MEDIA_PRICE_CENTS, useMediaPublicProjectionInvalidation } from 'entities/Media';
 import { useSessionLifecycleInvalidation } from 'entities/SurfSession';
 import type { GalleryCard } from './types';
 import { useClearUploadQueue } from './useClearUploadQueue';
@@ -39,6 +39,7 @@ export function usePublishUploadSession({
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const invalidateSessionLifecycle = useSessionLifecycleInvalidation();
+  const invalidateMediaPublicProjection = useMediaPublicProjectionInvalidation();
   const clearQueue = useClearUploadQueue();
   const { mutateAsync: saveWorkspace, isPending } = useMutation(
     trpc.uploads.saveWorkspace.mutationOptions({
@@ -51,6 +52,7 @@ export function usePublishUploadSession({
         // stale cache is GC'd; there is no fresh state to fetch for a retired workspace.
         await Promise.all([
           invalidateSessionLifecycle(result.id),
+          invalidateMediaPublicProjection(),
           queryClient.invalidateQueries(trpc.uploads.getActiveWorkspace.queryFilter()),
         ]);
       },
