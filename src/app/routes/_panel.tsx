@@ -335,9 +335,11 @@ function PanelFrame({ children }: { children: ReactNode }) {
             activeSpot={isDefaultIndex || allGalleryMatch ? null : (activeSpot ?? null)}
             onSpotSelect={(spot) => {
               revealBrowseResults();
-              if (browseSurfaceMode === 'map' || isDefaultIndex) {
-                void navigate({ to: '/$spotId', params: { spotId: spot.id } });
-              } else if (allGalleryMatch || spotGalleryMatch) {
+              // The scope the photographer was already in owns spot selection: picking
+              // a spot from the gallery stays in the gallery, filtered to that spot;
+              // picking one from sessions stays in sessions. Only the scopeless
+              // default index has nothing to preserve.
+              if (!isDefaultIndex && (allGalleryMatch || spotGalleryMatch)) {
                 void navigate({ to: '/$spotId/gallery', params: { spotId: spot.id } });
               } else {
                 void navigate({ to: '/$spotId', params: { spotId: spot.id } });

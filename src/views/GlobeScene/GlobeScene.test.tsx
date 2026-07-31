@@ -314,7 +314,7 @@ describe('GlobeScene selected spot ownership', () => {
   });
 
   it('opens the selected spot in Feed and requests the browse results surface', () => {
-    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
+    mocks.matches = [];
     renderGlobeScene();
 
     fireEvent.click(screen.getByRole('button', { name: 'Select Pipeline' }));
@@ -322,6 +322,45 @@ describe('GlobeScene selected spot ownership', () => {
     expect(mocks.showBrowseResults).toHaveBeenCalledOnce();
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: '/$spotId',
+      params: { spotId: 'spot-1' },
+    });
+  });
+
+  it('keeps a photographer in Feed sessions when picking a spot from the Feed', () => {
+    mocks.matches = [{ routeId: '/_panel/$spotId', params: { spotId: 'spot-0' } }];
+    renderGlobeScene();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select Pipeline' }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: '/$spotId',
+      params: { spotId: 'spot-1' },
+    });
+  });
+
+  it('keeps a photographer in the gallery when picking a spot from the all-spots gallery', () => {
+    mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
+    renderGlobeScene();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select Pipeline' }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: '/$spotId/gallery',
+      params: { spotId: 'spot-1' },
+    });
+  });
+
+  it('keeps a photographer in the gallery when picking a new spot from an already-selected spot gallery', () => {
+    mocks.matches = [
+      { routeId: '/_panel/$spotId', params: { spotId: 'spot-0' } },
+      { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
+    ];
+    renderGlobeScene();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select Pipeline' }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: '/$spotId/gallery',
       params: { spotId: 'spot-1' },
     });
   });

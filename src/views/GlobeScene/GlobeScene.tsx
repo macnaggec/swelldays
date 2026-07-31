@@ -98,6 +98,8 @@ export function GlobeScene() {
   });
   const uploadSeedSpotId = uploadSearch?.spotId;
   const spotMatch = matches.find((match) => match.routeId === '/_panel/$spotId');
+  const spotGalleryMatch = matches.find((match) => match.routeId === '/_panel/$spotId/gallery');
+  const allGalleryMatch = matches.find((match) => match.routeId === '/_panel/gallery');
   const routeSelectedSpotId = (spotMatch?.params as { spotId?: string } | undefined)?.spotId ?? null;
   const selectedSpotId = uploadMatch
     ? (uploadSeedSpotId ?? uploadWorkspaceState?.workspace.spotId ?? null)
@@ -135,8 +137,12 @@ export function GlobeScene() {
 
     if (sceneMode.kind !== 'uploadSpotSelection') {
       showBrowseResults();
+      // The scope the photographer was already in owns spot selection: picking
+      // a spot while browsing the gallery stays in the gallery, filtered to
+      // that spot; picking one from sessions (or with no scope yet) lands on
+      // that spot's session list, as before.
       await navigate({
-        to: '/$spotId',
+        to: (allGalleryMatch || spotGalleryMatch) ? '/$spotId/gallery' : '/$spotId',
         params: { spotId: spot.id },
       });
       return;
@@ -161,7 +167,18 @@ export function GlobeScene() {
     } catch (error) {
       notify.error(getErrorMessage(error), 'Unable to Save Spot');
     }
-  }, [isUpdatingWorkspace, navigate, queryClient, sceneMode.kind, showBrowseResults, trpc, updateWorkspace, workspaceId]);
+  }, [
+    allGalleryMatch,
+    isUpdatingWorkspace,
+    navigate,
+    queryClient,
+    sceneMode.kind,
+    showBrowseResults,
+    spotGalleryMatch,
+    trpc,
+    updateWorkspace,
+    workspaceId,
+  ]);
 
   const handleMapCoordinateClick = useCallback((coords: LngLat) => {
     setTempPin(coords);
