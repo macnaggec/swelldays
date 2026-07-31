@@ -398,7 +398,7 @@ For every implementation task:
 
 ### Phase M — mobile experience: compact plus constrained-short (promoted by the 2026-07-22 pivot)
 
-**Status 2026-07-30 — global-audit reconciliation.** The mobile Feed/Gallery shell through M02 remains completed history: upright browse is a bottom sheet over an interactive map, with parked list/map chrome and the approved Map/Feed/Gallery bottom bar; landscape Feed/Gallery shares the approved nonmodal side panel and persistent section bar. The audited implementation baseline contains 60 dirty paths; the audit itself additionally changes this roadmap and the existing architecture roadmap. The implementation paths contain post-M02 shell corrections and a partial M03 implementation, but they are not a completed M03 slice. Audit found four stop-line issues: GlobeScene reconstructed bottom-sheet target geometry instead of consuming one DrawerShell projection (corrected by M03-a); the public date index and feed have an incomplete shared lifecycle; timestamp-only ordering is paired with an id cursor; and the implemented separate month/day rows explicitly contradict M03's approved one-sequence/month-jump behavior. M03 is split below. No M04 work begins until M03-i closes the umbrella.
+**Status 2026-07-30 — global-audit reconciliation.** The mobile Feed/Gallery shell through M02 remains completed history: upright browse is a bottom sheet over an interactive map, with parked list/map chrome and the approved Map/Feed/Gallery bottom bar; landscape Feed/Gallery shares the approved nonmodal side panel and persistent section bar. The audited implementation baseline contains 60 dirty paths; the audit itself additionally changes this roadmap and the existing architecture roadmap. The implementation paths contain post-M02 shell corrections and a partial M03 implementation, but they are not a completed M03 slice. Audit found four stop-line issues: GlobeScene reconstructed bottom-sheet target geometry instead of consuming one DrawerShell projection (corrected by M03-a); the public date index and feed have an incomplete shared lifecycle; timestamp-only ordering is paired with an id cursor; and the implemented separate month/day rows explicitly contradict M03's approved one-sequence/month-jump behavior. M03 is split below. No M04 work begins until M03-i-d closes the umbrella (M03-i itself was further split into M03-i-a through M03-i-d on 2026-08-01; see that note below).
 
 **User-reported UI regression register (2026-07-30).** These eight reports are accepted as defects from the named capability/state; they were documented from the user's behavior descriptions and supplied screenshots, not independently screenshot-verified by the agent. The text below is the durable acceptance record.
 
@@ -427,7 +427,7 @@ Current dirty-path ownership:
 | Public projection invalidation hunks in Media/Spot/SurfSession query policies plus focused lifecycle tests | M03-e |
 | Gallery date-control components/styles/tests and only the stable ownership rules for that interaction | M03-f/M03-h by hunk |
 | PanelLayout sticky-chrome handoff/motion and stable-content-offset hunks | M03-g |
-| BaseCard, CarouselLightbox, MediaLightbox, and the named final shell/accessibility/large-text verification hunks | M03-i |
+| BaseCard, CarouselLightbox, MediaLightbox, and the named final shell/accessibility/large-text verification hunks | M03-i-a through M03-i-d by hunk (see split note below) |
 | Shared files containing more than one family (`PublicGallery.tsx`, `scripts/check-style-boundaries.mjs`, route/shell integration tests) | stage only the named task's hunks; preserve the remaining hunks for their later task |
 | `docs/review/05-transformation-roadmap.md` and this roadmap | audit record; land with the reconciled slices rather than as a competing roadmap |
 
@@ -443,7 +443,10 @@ What remains, in order:
 | M03-f | Implement the approved date control and its open/scroll/select lifecycle | Current contract mismatch plus UI-03/UI-04 |
 | M03-g | Animate search/date chrome without moving the grid | M03-f; user-reported UI-05 |
 | M03-h | Unify compact-desktop Gallery date chrome with mobile and simplify dividers | M03-g; user-reported UI-06/UI-07 |
-| M03-i | Finish lightbox, large text, cross-shell verification, and appearance acceptance | M02-e through M03-h |
+| M03-i-a | Finish lightbox coordination and card/lightbox focus | M02-e through M03-h |
+| M03-i-b | Finish large-text and density support | M03-i-a |
+| M03-i-c | Verify scroll-owner, filter, and anchoring continuity | M03-i-b |
+| M03-i-d | Verify snap-reset/subtree/route continuity; close the UI-01–UI-08 regression sweep | M03-i-c |
 | M04 | Session detail, cart, account, collections, earnings as phone screens | — |
 | M05 | Upload and Add Spot on a phone, incl. the software keyboard | — |
 | M06 | Touch sizing, safe areas, reduced motion across the band | — |
@@ -626,13 +629,30 @@ Preserved verified facts from the original M03 work:
 
     All of this, plus M03-d's and M03-f's remaining UI wiring, landed in one commit (`fd0ed18`) once every piece was done and user-approved, since they turned out not to be separable (`GalleryDateJumpHeading`'s prop signature, its chrome-slot mount point, and `PublicGallery.tsx`'s row-index type all threaded through every file at once). The `PanelLayout`/`PanelScrollChrome` mechanism commits (`344959b`, `30263e4`, `92c95bd`, `6b0a53f`) and the navigation fix (`b334afb`) landed separately as they came, since those files were independently separable. DOM bounding-box non-overlap and the Playwright computed-style/animation checks remain deferred to the visual suite, held per this roadmap's own rule until the user has approved the full UI by eye.
 
-- [ ] **M03-i — Complete lightbox, large-text, and cross-shell verification**
+**M03-i split (2026-08-01).** The single M03-i checkbox bundled eleven distinct behaviors across three shells into one session, with no natural verification boundary between them. Split into four sequential sub-tasks instead, ordered so each closes before the next starts — the same reasoning the M03-d/f/g/h experience already proved out: these behaviors read as independent on paper but several route through the same few files (`VirtualGallery.tsx`, `PublicGallery.tsx`, `MediaLightbox.tsx`/`CarouselLightbox.tsx`), so running them as parallel agent work risks the same merge tangle that cluster produced, not just scheduling overhead. Do not dispatch M03-i-a through M03-i-d concurrently. Each still needs its own "announce the visible change, wait for approval" gate before implementation and all five completion gates before its checkbox closes.
+
+- [ ] **M03-i-a — Finish lightbox coordination and card/lightbox focus**
   - Depends on: M02-e, M02-f, M02-g, M03-h.
-  - Scope: Finish the named lightbox coordination, card/lightbox focus, large-text, density, scroll-owner, filter, anchoring, snap-reset, subtree-continuity, route-continuity, and UI-01–UI-08 regression behaviors in compact-regular, compact/constrained-short, and compact-persistent gallery/browse shells. Do not expand this into an open-ended matrix programme. Use the user checklist only for appearance/motion.
+  - Scope: Finish the named lightbox coordination and card/lightbox focus behaviors in compact-regular, compact/constrained-short, and compact-persistent gallery/browse shells: opening a card moves focus into the lightbox, closing it returns focus to the originating card, and the lightbox's own internal focus/keyboard behavior stays stable across a shell crossing. Do not expand into large-text, density, or the other M03-i behaviors — those are M03-i-b/c/d.
+  - Invariant and verifier: The lightbox and its originating card share one continuous focus relationship in every named capability cell; opening, closing, and crossing shells never leaves focus stranded, duplicated, or reset to the document body. Semantic DOM, accessibility, and focus-behavior tests own completion; a manual appearance/motion checklist owns anything with no reliable non-visual signal. All five gates must pass.
+
+- [ ] **M03-i-b — Finish large-text and density support**
+  - Depends on: M03-i-a.
+  - Scope: Finish the named large-text and density behaviors in the same three shells. `BaseCard.tsx`'s accessible open button and `CarouselLightbox.module.css`'s stretchable caption already sit uncommitted from earlier work — evaluate, verify, and land or replace them rather than starting over; extend the same semantic minimum-height/wrap-not-clip treatment already established for the gallery date chrome (M03-h) to every remaining gallery and lightbox surface. Verify both comfortable and compact density hold under the largest supported text size.
+  - Invariant and verifier: No gallery, card, or lightbox surface clips, overlaps, or loses interactivity at the largest supported text size, in either density, in any named capability cell. Computed-style and DOM tests own the wrap/min-height contract; all five gates must pass.
+
+- [ ] **M03-i-c — Verify scroll-owner, filter, and anchoring continuity**
+  - Depends on: M03-i-b.
+  - Scope: Verify the gallery's scroll ownership, active filters, and date-jump anchor survive switching Feed/Gallery and opening/closing/crossing shells, in all three named capability cells: no duplicate scroll owner, no dropped filter, no lost anchor position. This is a verification pass over already-implemented behavior (M03-c/d/f/h); fix regressions found, but do not redesign the underlying mechanisms.
+  - Invariant and verifier: Scroll position, active filters, and the current date anchor are identical immediately before and after a Feed/Gallery switch or a shell crossing, in every named capability cell. Integration tests own scroll-owner and filter-state continuity; all five gates must pass.
+
+- [ ] **M03-i-d — Verify snap-reset and subtree/route continuity; close the UI-01–UI-08 regression sweep**
+  - Depends on: M03-i-c.
+  - Scope: Verify bottom-sheet snap position, subtree continuity, and route continuity across shell crossings, then re-verify all eight UI-01–UI-08 fixes still hold in every named capability cell. This is the closing regression pass for the whole M03 phase and closes the M03 umbrella — do not expand it into an open-ended matrix programme.
   - Invariant and verifier: Gallery cards, virtual scrolling, filters, date navigation, search results, shell chrome, account navigation, and lightbox remain usable in their named capability cells; switching Feed/Gallery or opening/closing/crossing shells does not reset, duplicate, overlap, clip, or jitter them. Semantic DOM, computed style, geometry, accessibility, focus, scroll, interaction, console, network, the manual appearance checklist, and all five gates own completion.
 
 - [ ] **M04 — Implement mobile route workspaces**
-  - Depends on: M03-i, M00, M01, F09, F10.
+  - Depends on: M03-i-d, M00, M01, F09, F10.
   - Scope: Migrate session detail, cart, account, collections, and earnings to the Phase M workspace lifecycles: full-screen in compact cells and the policy-selected short-height workspace for constrained-short landscape phones. Activate each Phase M `routeWorkspace` cell only after back, modality, map, and chrome behavior are complete.
   - Invariant and verifier: Back, focus, scrolling, footer clearance, loading, empty, and error behavior remain consistent; focused integration and browser checks own verification. All five completion gates must pass.
 
@@ -642,7 +662,7 @@ Preserved verified facts from the original M03 work:
   - Invariant and verifier: Keyboard appearance cannot hide the active field or action, cannot notify discrete capability consumers unless a semantic band actually changes, and cannot corrupt measured map occlusion. A focused viewport-metrics/DrawerShell integration test owns keyboard resize and offset behavior; semantic DOM, geometry, focus, and interaction checks own the user flow. Static enforcement confines `visualViewport` reads to the metrics owner. All five completion gates must pass.
 
 - [ ] **M06 — Complete input, safe-area, and reduced-motion behavior**
-  - Depends on: M02, M03-i, M04, M05.
+  - Depends on: M02, M03-i-d, M04, M05.
   - Scope: Apply coarse-pointer dimensions, remove hover-only dependencies, verify fine-pointer behavior, consolidate safe-area use, and make drawer, chrome, gallery, validation, lightbox, and globe motion honor the user's preference. Keep the ownership split explicit: CSS media features own purely visual pointer/hover/reduced-motion styling; the TypeScript capability snapshot is consumed only by JavaScript interaction and animation systems that cannot consume CSS. Do not route CSS presentation through React props merely to claim one capability owner.
   - Invariant and verifier: Input modality changes affordances but not product policy, and every motion system honors reduced motion through the owner native to that system. CSS/static checks own visual capability styling and token use; capability integration plus semantic DOM, computed-style, focus, and interaction checks own JavaScript behavior. All five completion gates must pass.
 
