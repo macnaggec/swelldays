@@ -100,6 +100,7 @@
      between them never moves the card grid below. */
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .stickyChrome [data-panel-scroll-chrome-primary],
@@ -109,9 +110,7 @@
 }
 
 .stickyChrome [data-panel-scroll-chrome-primary] {
-  transition:
-    opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .stickyChrome [data-panel-scroll-chrome-replacement] {
@@ -133,18 +132,23 @@
   pointer-events: auto;
 }
 
-/* A panel with no replacement (plain search/filter chrome) instead slides its
-   content up through the row's own top edge — the original sticky-bar motion.
-   The row itself keeps its reserved height rather than collapsing it: an
-   instant `display: none`, or even an animated height collapse, moves the
-   card grid below by the row's height; a fixed-height row whose *content*
-   slides away never does, at the cost of a small reserved gap while hidden. */
-.stickyChrome[data-hidden]:not(:has([data-panel-scroll-chrome-replacement])) [data-panel-scroll-chrome-primary] {
+/* A panel with no replacement (plain search/filter chrome) instead slides the
+   *whole row* — padding and all — up through its own top edge, the original
+   sticky-bar motion. Sliding only the inner content left a sliver of it
+   visible: the content's own box (inset by the row's padding) is shorter than
+   the row's, so translating the content by its own -100% only cleared the
+   content's own height, not the full row, and its bottom edge landed back
+   inside the still-reserved row. Moving the row itself clears the whole box
+   in one motion, at the cost of a small reserved gap while hidden (the row's
+   height stays constant rather than collapsing, so the card grid below never
+   jumps). */
+.stickyChrome[data-hidden]:not(:has([data-panel-scroll-chrome-replacement])) {
   transform: translateY(-100%);
   pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .stickyChrome,
   .stickyChrome [data-panel-scroll-chrome-primary],
   .stickyChrome [data-panel-scroll-chrome-replacement] {
     transition: none;

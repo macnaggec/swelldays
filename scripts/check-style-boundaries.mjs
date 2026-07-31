@@ -371,12 +371,12 @@ const requiredPanelLayoutStyles = [
     /\.stickyChrome\[data-hidden\]:has\(\[data-panel-scroll-chrome-replacement\]\)\s+\[data-panel-scroll-chrome-primary\]\s*\{[^}]*opacity:\s*0[\s\S]*\.stickyChrome\[data-hidden\]\s+\[data-panel-scroll-chrome-replacement\]\s*\{[^}]*opacity:\s*1/s,
   ],
   [
-    'a replacement-less row slides its content through its own top edge instead of collapsing',
-    /\.stickyChrome\[data-hidden\]:not\(:has\(\[data-panel-scroll-chrome-replacement\]\)\)\s+\[data-panel-scroll-chrome-primary\]\s*\{[^}]*transform:\s*translateY\(-100%\)/s,
+    'a replacement-less row slides itself (not just its content) through its own top edge',
+    /\.stickyChrome\[data-hidden\]:not\(:has\(\[data-panel-scroll-chrome-replacement\]\)\)\s*\{[^}]*transform:\s*translateY\(-100%\)/s,
   ],
   [
     'reduced motion swaps chrome instantly instead of animating',
-    /prefers-reduced-motion:\s*reduce\)\s*\{[^{}]*\.stickyChrome\s+\[data-panel-scroll-chrome-primary\][\s\S]*?transition:\s*none/s,
+    /prefers-reduced-motion:\s*reduce\)\s*\{[^{}]*\.stickyChrome,[\s\S]*?\.stickyChrome\s+\[data-panel-scroll-chrome-primary\][\s\S]*?transition:\s*none/s,
   ],
   [
     'hideable chrome cannot feed layout shifts back into scroll direction',
