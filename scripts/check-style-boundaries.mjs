@@ -399,6 +399,26 @@ const requiredMobileGalleryLargeTextStyles = [
     'overflow wrapping for gallery date dividers',
     /\.dividerText\s*\{[^}]*overflow-wrap:\s*anywhere/s,
   ],
+  [
+    'src/shared/ui/BaseGallery/BaseCard.module.css',
+    'a capped width so the card overlay badge row wraps within the card instead of overflowing it',
+    /\.overlays\s*\{[^}]*max-width:/s,
+  ],
+  [
+    'src/shared/ui/CarouselLightbox/CarouselLightbox.module.css',
+    'a caption that stretches to the media frame width instead of clipping at its content width',
+    /\.mediaCaption\s*\{[^}]*max-width:\s*100%/s,
+  ],
+  [
+    'src/shared/ui/CarouselLightbox/CarouselLightbox.module.css',
+    'a media-unavailable placeholder that grows instead of clipping its label',
+    /\.mediaUnavailable\s*\{[^}]*min-height:/s,
+  ],
+  [
+    'src/shared/ui/CarouselLightbox/CarouselLightbox.module.css',
+    'overflow wrapping for the media-unavailable label',
+    /\.mediaUnavailableLabel\s*\{[^}]*overflow-wrap:\s*anywhere/s,
+  ],
 ];
 
 const mobileGalleryLargeTextCssConsumers = new Set([
@@ -763,7 +783,8 @@ const rules = [
     id: 'mobile-gallery-preview-metadata-wraps',
     message: 'Mobile Gallery preview metadata must wrap rather than clip at large text.',
     pattern: /wrap=["\']nowrap["\']/,
-    include: file => file === 'src/features/PublicGallery/ui/MediaLightbox.tsx',
+    include: file => file === 'src/features/PublicGallery/ui/MediaLightbox.tsx'
+      || file === 'src/features/PublicGallery/ui/cards/PublicCard.tsx',
   },
   {
     id: 'no-local-panel-chrome-height',

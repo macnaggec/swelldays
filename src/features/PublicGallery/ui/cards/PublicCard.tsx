@@ -158,7 +158,7 @@ const PublicCard: FC<PublicCardProps> = memo(({
   // Previously this badge group only rendered when a price existed; broken media broadens that
   // to "price OR broken" so the date still identifies an unavailable card with no price set.
   const priceDateBadge = (mediaItem.price != null || isBroken) && (
-    <Group gap={4} wrap="nowrap">
+    <Group gap={4} wrap="wrap">
       {mediaItem.price != null && mediaReady && (
         <Badge size="xs" variant={mediaItem.price > 0 ? 'filled' : 'light'} color={mediaItem.price > 0 ? 'blue' : 'gray'}>
           {formatPrice(mediaItem.price)}

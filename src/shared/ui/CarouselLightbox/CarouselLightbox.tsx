@@ -487,7 +487,7 @@ const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
                       ? (
                         <div className={classes.mediaUnavailable} role="img" aria-label={`${activeItem.type === 'video' ? 'Video' : 'Image'} unavailable`}>
                           <IconPhotoOff size={40} stroke={1.5} />
-                          <span>{activeItem.type === 'video' ? 'Video unavailable' : 'Image unavailable'}</span>
+                          <span className={classes.mediaUnavailableLabel}>{activeItem.type === 'video' ? 'Video unavailable' : 'Image unavailable'}</span>
                         </div>
                       )
                       : activeItem.type === 'video'

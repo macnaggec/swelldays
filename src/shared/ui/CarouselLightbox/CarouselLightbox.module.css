@@ -40,7 +40,9 @@
 }
 
 .mediaCaption {
-  align-self: flex-start;
+  align-self: stretch;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .mediaFrame {
@@ -153,12 +155,17 @@ video.media {
   justify-content: center;
   gap: 0.75rem;
   width: min(60vh, 90vw);
-  height: min(45vh, 68vw);
+  min-height: min(45vh, 68vw);
   max-width: 100%;
   border: 1px solid var(--wa-glass-border);
   border-radius: var(--wa-radius-dialog);
   color: var(--wa-text-muted);
   font-size: var(--wa-font-size-sm);
+}
+
+.mediaUnavailableLabel {
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .staticChrome :global([data-lightbox-icon-action]),
