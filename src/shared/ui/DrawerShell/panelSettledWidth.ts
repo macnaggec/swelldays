@@ -1,5 +1,5 @@
-import { createContext, useContext, useState } from 'react';
-import { useDrawerGeometry } from './geometry';
+import { createContext, useContext, useLayoutEffect, useState, type RefObject } from 'react';
+import { getDrawerGeometrySnapshot, subscribeDrawerGeometry } from './geometry';
 
 export interface PanelSettledWidth {
   /**
@@ -55,8 +55,8 @@ export interface SettledLayout {
 }
 
 /**
- * The panel's width *right now*, mid-animation, minus this element's own inset — or null
- * when the panel is standing still.
+ * Applies the panel's width *right now*, mid-animation, minus this element's own inset,
+ * directly to `elementRef`'s DOM node — or clears it, when the panel is standing still.
  *
  * The opposite choice from `useSettledLayout`, and right for the opposite case. Content
  * whose arrangement changes between the two panel states must not follow the moving
@@ -65,12 +65,18 @@ export interface SettledLayout {
  * tiles — has nothing to re-flow, so following the width is what makes it grow and
  * shrink with the panel instead of jumping to its final size and waiting to be uncovered.
  *
- * Subscribes to per-frame geometry, so it is deliberately a separate hook: callers of
- * `useSettledLayout` must not be re-rendered every frame just because this exists.
+ * Written to the DOM directly rather than returned as a value: a React value re-renders
+ * its caller on every one of geometry's per-frame publishes, which is affordable for a
+ * handful of chrome elements but not for a component whose subtree holds dozens of
+ * mounted cards — a re-render there competes with the animation itself for the frame
+ * budget. Callers of `useSettledLayout` are unaffected either way; that hook already
+ * only changes at rest, not per frame.
  */
-export function useLivePanelWidth(measuredWidth: number): number | null {
+export function useLivePanelWidthOnElement(
+  measuredWidth: number,
+  elementRef: RefObject<HTMLElement | null>,
+): void {
   const settled = usePanelSettledWidth();
-  const geometry = useDrawerGeometry();
   const transitioning = settled?.transitioning ?? false;
   const destinationSurface = settled?.destinationWidth ?? 0;
 
@@ -80,8 +86,23 @@ export function useLivePanelWidth(measuredWidth: number): number | null {
     if (next !== inset) setInset(next);
   }
 
-  if (!transitioning || inset < 0 || !geometry) return null;
-  return Math.max(0, geometry.width - inset);
+  useLayoutEffect(() => {
+    const element = elementRef.current;
+    if (!element) return;
+
+    const applyWidth = () => {
+      if (!transitioning || inset < 0) {
+        element.style.width = '';
+        return;
+      }
+      const geometry = getDrawerGeometrySnapshot();
+      if (geometry) element.style.width = `${Math.max(0, geometry.width - inset)}px`;
+    };
+
+    applyWidth();
+    const unsubscribe = subscribeDrawerGeometry(applyWidth);
+    return () => { unsubscribe(); };
+  }, [elementRef, transitioning, inset]);
 }
 
 /**

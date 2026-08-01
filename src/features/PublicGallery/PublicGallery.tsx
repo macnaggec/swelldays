@@ -1,11 +1,12 @@
 import React, { FC, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SimpleGrid, Skeleton } from '@mantine/core';
+import { useMergedRef } from '@mantine/hooks';
 import { useMediaFavorites, type PublicMedia } from 'entities/Media';
 import { useSpotMediaFeed, useSpotPreview } from 'entities/Spot';
 import { buildGalleryRows } from 'shared/lib/buildGalleryRows';
 import { galleryColumns, type GalleryDensity } from 'shared/lib/galleryColumns';
 import { useMeasuredWidth } from 'shared/hooks';
-import { useLivePanelWidth, useSettledLayout } from 'shared/ui/DrawerShell/panelSettledWidth';
+import { useLivePanelWidthOnElement, usePanelSettledWidth, useSettledLayout } from 'shared/ui/DrawerShell/panelSettledWidth';
 import { VirtualGallery, type VirtualGalleryHandle } from 'shared/ui/VirtualGallery/VirtualGallery';
 import { useCartToggle } from 'entities/Commerce';
 import {
@@ -80,11 +81,16 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   // the live one below, so a toggle re-columns once instead of walking through
   // every intermediate width — the same reason PanelCollectionGrid reads it.
   const [measuredWidth, galleryViewportRef] = useMeasuredWidth();
-  // Tracks the panel's live width while it opens or closes, so the tiles grow and
-  // shrink with it. The column count is unchanged between the two panel states here,
-  // so there is no arrangement to re-flow — only size — which is why this follows the
-  // moving width where the card feed deliberately does not.
-  const livePanelWidth = useLivePanelWidth(measuredWidth);
+  const galleryViewportNodeRef = useRef<HTMLDivElement | null>(null);
+  const galleryViewportMergedRef = useMergedRef(galleryViewportRef, galleryViewportNodeRef);
+  // Applies the panel's live width directly to the wrapper node while it opens or
+  // closes, so the tiles grow and shrink with it, without re-rendering this component
+  // — and the dozens of cards beneath it — on every animation frame. The column count
+  // is unchanged between the two panel states here, so there is no arrangement to
+  // re-flow, only size, which is why this follows the moving width where the card feed
+  // deliberately does not.
+  useLivePanelWidthOnElement(measuredWidth, galleryViewportNodeRef);
+  const { transitioning } = usePanelSettledWidth() ?? { transitioning: false };
   const { contentWidth } = useSettledLayout(measuredWidth);
   const density: GalleryDensity = expanded ? 'comfortable' : 'compact';
   const columns = galleryColumns(contentWidth ?? measuredWidth, density);
@@ -136,8 +142,10 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   // Container-aware date navigation (F12g/M03-h): a wide-enough gallery gets
   // the pinned date rail; every other case — mobile drawers always, or a
   // desktop panel simply narrowed below that width — shares the same compact
-  // date control instead of a second, forked one.
-  const railVisible = !isMobileDrawerPresentation && showsDateRail(measuredWidth);
+  // date control instead of a second, forked one. Reads the settled destination
+  // width, not the live one, so the rail cannot mount/unmount mid-toggle merely
+  // because the live width swept past the threshold on its way elsewhere.
+  const railVisible = !isMobileDrawerPresentation && showsDateRail(contentWidth ?? measuredWidth);
   const usesCompactDateChrome = !railVisible;
   const dayHighlights = useMemo(
     () => mergeGalleryDateHighlights(availableDates, loadedHighlights),
@@ -252,10 +260,9 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
       )}
       <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex' }}>
         <div
-          ref={galleryViewportRef}
+          ref={galleryViewportMergedRef}
           style={{
-            flex: livePanelWidth === null ? 1 : '0 0 auto',
-            width: livePanelWidth === null ? undefined : `${livePanelWidth}px`,
+            flex: transitioning ? '0 0 auto' : 1,
             minWidth: 0,
             display: 'flex',
           }}
