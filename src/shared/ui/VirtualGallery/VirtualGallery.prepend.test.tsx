@@ -7,19 +7,33 @@ import { VirtualGallery, type VirtualGalleryHandle } from './VirtualGallery';
 
 const scrollToIndexMock = vi.hoisted(() => vi.fn());
 const virtualItemsMock = vi.hoisted(() => vi.fn(() => [{ key: 'v', index: 0, start: 0, size: 220 }]));
+// Captures VirtualGallery's real `measureElement` config function (not the mocked
+// virtualizer's own returned ref-callback) so tests can invoke it directly to
+// simulate a row's measured height changing, without needing a real layout engine.
+const capturedMeasureElement = vi.hoisted(() => ({ current: null as ((el: Element) => number) | null }));
 
 vi.mock('@tanstack/react-virtual', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-virtual')>();
   return {
     ...actual,
-    useVirtualizer: () => ({
-      getVirtualItems: virtualItemsMock,
-      getTotalSize: () => 1000,
-      scrollToIndex: scrollToIndexMock,
-      measureElement: () => 0,
-    }),
+    useVirtualizer: (config: { measureElement: (el: Element) => number }) => {
+      capturedMeasureElement.current = config.measureElement;
+      return {
+        getVirtualItems: virtualItemsMock,
+        getTotalSize: () => 1000,
+        scrollToIndex: scrollToIndexMock,
+        measureElement: () => 0,
+      };
+    },
   };
 });
+
+function fakeRowElement(index: number, height: number): Element {
+  return {
+    getAttribute: (name: string) => (name === 'data-index' ? String(index) : null),
+    getBoundingClientRect: () => ({ height }) as DOMRect,
+  } as unknown as Element;
+}
 
 type Item = { id: string };
 
@@ -96,6 +110,40 @@ describe('VirtualGallery imperative scrollToIndex isolates the resulting scroll'
     // A single frame is not enough — react-virtual's own remeasurement can
     // still correct scrollTop a frame or two later, which is exactly the
     // flakiness this settle-detection replaces.
+    await nextFrame();
+    expect(container.querySelector('[data-scroll-direction-isolated]')).not.toBeNull();
+
+    await nextFrame();
+    await nextFrame();
+    expect(container.querySelector('[data-scroll-direction-isolated]')).toBeNull();
+  });
+
+  it('keeps the scroll owner isolated while a jumped-to row is still correcting its measured height', async () => {
+    const rows = [mediaRow('a'), mediaRow('b')];
+    const handleRef = createRef<VirtualGalleryHandle>();
+
+    const { container } = render(<VirtualGallery ref={handleRef} rows={rows} renderCard={() => null} />);
+
+    // Baseline measurement for the row the jump lands near, as if it had already
+    // been measured once before this jump started.
+    capturedMeasureElement.current?.(fakeRowElement(1, 220));
+
+    act(() => {
+      handleRef.current?.scrollToIndex(1, { align: 'start' });
+    });
+    expect(container.querySelector('[data-scroll-direction-isolated]')).not.toBeNull();
+
+    await nextFrame();
+
+    // The row corrects its measured height mid-settle — e.g. its first real
+    // measurement replacing the estimate, or an image inside it finishing load.
+    // This must reset the settle countdown, not just extend the previous one.
+    capturedMeasureElement.current?.(fakeRowElement(1, 340));
+
+    // Three frames after the jump started is exactly how long the sibling test
+    // above takes to lift isolation from scrollTop stability alone — here it must
+    // still be isolated, since the measurement reset the countdown one frame in.
+    await nextFrame();
     await nextFrame();
     expect(container.querySelector('[data-scroll-direction-isolated]')).not.toBeNull();
 

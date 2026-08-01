@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { getAnchoredVisibleRowIndex, resolveGalleryScrollOwner } from './VirtualGallery';
+import { getAnchoredVisibleRowIndex, recordRowMeasurement, resolveGalleryScrollOwner } from './VirtualGallery';
 
 describe('getAnchoredVisibleRowIndex', () => {
   it('uses the row around the viewport anchor instead of the first partially visible row', () => {
@@ -10,6 +10,36 @@ describe('getAnchoredVisibleRowIndex', () => {
     ];
 
     expect(getAnchoredVisibleRowIndex(rows, 1634, 611)).toBe(11);
+  });
+});
+
+describe('recordRowMeasurement', () => {
+  it('reports no change for a row measured for the first time', () => {
+    const heights = new Map<number, number>();
+
+    expect(recordRowMeasurement(heights, 0, 220)).toBe(false);
+    expect(heights.get(0)).toBe(220);
+  });
+
+  it('reports no change when a row remeasures at the same height', () => {
+    const heights = new Map<number, number>([[0, 220]]);
+
+    expect(recordRowMeasurement(heights, 0, 220)).toBe(false);
+  });
+
+  it('reports a change when a row remeasures at a different height', () => {
+    const heights = new Map<number, number>([[0, 220]]);
+
+    expect(recordRowMeasurement(heights, 0, 340)).toBe(true);
+    expect(heights.get(0)).toBe(340);
+  });
+
+  it('tracks each row index independently', () => {
+    const heights = new Map<number, number>([[0, 220]]);
+
+    expect(recordRowMeasurement(heights, 1, 32)).toBe(false);
+    expect(heights.get(0)).toBe(220);
+    expect(heights.get(1)).toBe(32);
   });
 });
 

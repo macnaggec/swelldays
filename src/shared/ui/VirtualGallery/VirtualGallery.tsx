@@ -40,6 +40,25 @@ export function resolveGalleryScrollOwner(node: HTMLElement): HTMLElement {
   return node.closest<HTMLElement>('[data-panel-scroll-owner]') ?? node;
 }
 
+/**
+ * Records a row's freshly measured height and reports whether it differs from
+ * the previously recorded height for that row index — the signal
+ * scrollToIndex's settle check watches to keep a jump isolated while rows are
+ * still correcting their estimated height (a row rendered for the first time
+ * starts at CARD_ROW_ESTIMATE until measured, and its content — e.g. an image
+ * finishing load — can change it again later), not just while scrollTop
+ * itself is moving.
+ */
+export function recordRowMeasurement(
+  measuredHeights: Map<number, number>,
+  index: number,
+  height: number,
+): boolean {
+  const previous = measuredHeights.get(index);
+  measuredHeights.set(index, height);
+  return previous !== undefined && previous !== height;
+}
+
 interface SelectionState {
   isSelectionMode: boolean;
   isSelected: (id: string) => boolean;
@@ -108,6 +127,8 @@ function VirtualGalleryInner<T extends { id: string }>(
     rootRef.current = node;
     setScrollElement(node ? resolveGalleryScrollOwner(node) : null);
   }, []);
+  const measuredRowHeightsRef = useRef<Map<number, number>>(new Map());
+  const measurementEpochRef = useRef(0);
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual exposes imperative functions that React Compiler intentionally leaves un-memoized.
   const virtualizer = useVirtualizer({
@@ -118,7 +139,14 @@ function VirtualGalleryInner<T extends { id: string }>(
       if (row?.type === 'divider') return DIVIDER_HEIGHT;
       return CARD_ROW_ESTIMATE;
     },
-    measureElement: (el) => el.getBoundingClientRect().height,
+    measureElement: (el) => {
+      const height = el.getBoundingClientRect().height;
+      const indexAttr = el.getAttribute('data-index');
+      if (indexAttr !== null && recordRowMeasurement(measuredRowHeightsRef.current, Number(indexAttr), height)) {
+        measurementEpochRef.current += 1;
+      }
+      return height;
+    },
     overscan: 3,
   });
 
@@ -126,11 +154,14 @@ function VirtualGalleryInner<T extends { id: string }>(
     // An imperative jump (e.g. the date menu) is not the user scrolling —
     // whichever direction it lands in must not flip the panel's search/date
     // chrome via the scroll-direction heuristic that real scrolling drives.
-    // Isolate the resulting scroll event(s) until the position genuinely
-    // settles: a jump can trigger react-virtual's own remeasurement, which
-    // corrects scrollTop again a frame or two after the initial jump, so
-    // lifting isolation after a single frame let that later correction
-    // through and still flipped the chrome intermittently.
+    // Isolate the resulting scroll event(s) until the position AND every
+    // row's measured height have genuinely settled: a jump can trigger
+    // react-virtual's own remeasurement — a row rendered for the first time
+    // starts at the estimated height until measured, and its content (e.g.
+    // an image finishing load) can change it again later — and that
+    // correction can land after scrollTop alone has already looked stable
+    // for a few frames, letting it slip through unisolated and still flip
+    // the chrome intermittently.
     scrollToIndex: (index, options) => {
       if (!scrollElement) {
         virtualizer.scrollToIndex(index, options);
@@ -141,15 +172,18 @@ function VirtualGalleryInner<T extends { id: string }>(
 
       const SETTLE_FRAMES = 3;
       let lastTop = scrollElement.scrollTop;
+      let lastMeasurementEpoch = measurementEpochRef.current;
       let stableFrames = 0;
       const checkSettled = () => {
         if (!scrollElement.isConnected) return;
         const currentTop = scrollElement.scrollTop;
-        if (currentTop === lastTop) {
+        const currentMeasurementEpoch = measurementEpochRef.current;
+        if (currentTop === lastTop && currentMeasurementEpoch === lastMeasurementEpoch) {
           stableFrames += 1;
         } else {
           stableFrames = 0;
           lastTop = currentTop;
+          lastMeasurementEpoch = currentMeasurementEpoch;
         }
         if (stableFrames >= SETTLE_FRAMES) {
           scrollElement.removeAttribute('data-scroll-direction-isolated');
