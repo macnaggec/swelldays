@@ -5,7 +5,7 @@ import { useSpotMediaFeed, useSpotPreview } from 'entities/Spot';
 import { buildGalleryRows } from 'shared/lib/buildGalleryRows';
 import { galleryColumns, type GalleryDensity } from 'shared/lib/galleryColumns';
 import { useMeasuredWidth } from 'shared/hooks';
-import { useLivePanelWidth } from 'shared/ui/DrawerShell/panelSettledWidth';
+import { useLivePanelWidth, useSettledLayout } from 'shared/ui/DrawerShell/panelSettledWidth';
 import { VirtualGallery, type VirtualGalleryHandle } from 'shared/ui/VirtualGallery/VirtualGallery';
 import { useCartToggle } from 'entities/Commerce';
 import {
@@ -76,15 +76,18 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
 
   // Measured gallery width drives column count and card density: compact packs
   // a dense grid with actions moved to the lightbox; expanded keeps the roomy
-  // card layout.
+  // card layout. Column count is read from the settled destination width, not
+  // the live one below, so a toggle re-columns once instead of walking through
+  // every intermediate width — the same reason PanelCollectionGrid reads it.
   const [measuredWidth, galleryViewportRef] = useMeasuredWidth();
   // Tracks the panel's live width while it opens or closes, so the tiles grow and
   // shrink with it. The column count is unchanged between the two panel states here,
   // so there is no arrangement to re-flow — only size — which is why this follows the
   // moving width where the card feed deliberately does not.
   const livePanelWidth = useLivePanelWidth(measuredWidth);
+  const { contentWidth } = useSettledLayout(measuredWidth);
   const density: GalleryDensity = expanded ? 'comfortable' : 'compact';
-  const columns = galleryColumns(measuredWidth, density);
+  const columns = galleryColumns(contentWidth ?? measuredWidth, density);
 
   // ========================================================================
   // LIGHTBOX STATE

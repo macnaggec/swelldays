@@ -10,6 +10,7 @@ import type { GalleryRow } from 'shared/lib/buildGalleryRows';
 import type { CardContext } from 'shared/ui/BaseGallery/BaseGallery';
 import { PanelScrollChromeStateProvider } from 'shared/ui/PanelScrollChrome';
 import { PanelLayout } from 'shared/ui/PanelLayout';
+import { PanelSettledWidthContext } from 'shared/ui/DrawerShell/panelSettledWidth';
 
 const mediaItem: PublicMedia = {
   id: 'media-1',
@@ -33,6 +34,7 @@ const galleryState = vi.hoisted(() => ({
   isFetchingNextPage: false,
   isLoading: false,
   measuredWidth: 0,
+  columns: 0,
   scrollToIndex: vi.fn(),
   focusItem: vi.fn(),
   reportFirstVisibleIndex: (_index: number) => {},
@@ -70,12 +72,14 @@ vi.mock('shared/ui/VirtualGallery/VirtualGallery', () => ({
     {
       toolbar,
       rows,
+      columns,
       renderCard,
       renderDivider,
       onFirstVisibleIndexChange,
     }: {
       toolbar?: React.ReactNode;
       rows: GalleryRow<PublicMedia>[];
+      columns: number;
       renderCard: (item: PublicMedia, context: CardContext) => React.ReactNode;
       renderDivider?: (date: Date) => React.ReactNode;
       onFirstVisibleIndexChange?: (index: number) => void;
@@ -87,6 +91,7 @@ vi.mock('shared/ui/VirtualGallery/VirtualGallery', () => ({
       focusItem: galleryState.focusItem,
     }));
     galleryState.reportFirstVisibleIndex = onFirstVisibleIndexChange ?? (() => {});
+    galleryState.columns = columns;
     let itemIndex = 0;
     return (
       <div data-testid="virtual-gallery">
@@ -196,6 +201,38 @@ describe('PublicGallery', () => {
     render(<PublicGallery expanded spotId="spot-1" />);
 
     expect(screen.queryByTestId('gallery-date-sidebar')).not.toBeInTheDocument();
+  });
+
+  it('freezes the column count at the destination width during a live drawer transition', () => {
+    const atDrawer = (destinationWidth: number, transitioning: boolean, expanded: boolean) => (
+      <PanelSettledWidthContext.Provider value={{ destinationWidth, transitioning }}>
+        <PublicGallery expanded={expanded} spotId="spot-1" />
+      </PanelSettledWidthContext.Provider>
+    );
+
+    // At rest, expanded (comfortable, 340px tile): 1020 / 340 = 3 columns.
+    galleryState.measuredWidth = 1020;
+    const { rerender } = render(atDrawer(1020, false, true));
+    expect(galleryState.columns).toBe(3);
+
+    // The toggle to compact is pressed. Density flips to 'compact' (120px tile)
+    // immediately, but the surface has not animated yet — measuredWidth is still
+    // 1020. Under the raw width this used to spike to 6 columns (round(1020/120),
+    // clamped); the destination (340px) wants 3.
+    rerender(atDrawer(340, true, false));
+    expect(galleryState.columns).toBe(3);
+
+    // Mid-sweep: the live measured width is partway through the animation, but the
+    // destination has not changed, so the column count must not move either. Under
+    // the raw width this used to read 6 again (round(700/120)).
+    galleryState.measuredWidth = 700;
+    rerender(atDrawer(340, true, false));
+    expect(galleryState.columns).toBe(3);
+
+    // Settled at the destination.
+    galleryState.measuredWidth = 340;
+    rerender(atDrawer(340, false, false));
+    expect(galleryState.columns).toBe(3);
   });
 
   it('renders published media without a gallery-local selection toolbar', () => {
