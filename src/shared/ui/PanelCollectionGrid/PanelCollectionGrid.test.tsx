@@ -1,7 +1,8 @@
+import { useLayoutEffect } from 'react';
 import { act } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
-import { PanelCollectionGrid } from './PanelCollectionGrid';
+import { PanelCollectionGrid, usePanelCollectionColumns } from './PanelCollectionGrid';
 
 /**
  * Stubs the global ResizeObserver in the shape used by useMeasuredWidth.test.tsx: a
@@ -203,5 +204,49 @@ describe('PanelCollectionGrid scroll anchoring', () => {
 
     expect(scrollOwner.scrollTop).toBe(scrollTopBefore);
     expect(trackedCard().getBoundingClientRect().top).toBe(offsetAtRest);
+  });
+
+  it('corrects scrollTop before any child layout effect can observe the stale position', () => {
+    // Stands in for framer-motion's own layout-effect-based glide measurement
+    // (FeedCardSlot's `layout="position"`): a plain child using the same React
+    // lifecycle hook that any recolumn-reactive descendant would use to measure its
+    // position, and — like FeedCardSlot — consuming `usePanelCollectionColumns()` so it
+    // actually re-renders on a recolumn (a child that ignores the column count is
+    // handed the same `children` element as last time and React skips it entirely,
+    // same as it would skip a card that never reacts to the count changing). If the
+    // grid's own correction ran too late, this probe — a child, and children's layout
+    // effects fire before their parent's — would still observe the pre-correction
+    // scrollTop.
+    const observedScrollTops: number[] = [];
+    function ChildLayoutEffectProbe() {
+      usePanelCollectionColumns();
+      useLayoutEffect(() => {
+        const owner = document.querySelector('[data-panel-scroll-owner]') as HTMLElement;
+        observedScrollTops.push(owner.scrollTop);
+      });
+      return <div>probe</div>;
+    }
+
+    const resizeObserver = stubResizeObserver();
+    stubGridLayout();
+
+    const { container } = render(
+      <div data-panel-scroll-owner>
+        <PanelCollectionGrid>{[...SIX_CARDS, <ChildLayoutEffectProbe key="probe" />]}</PanelCollectionGrid>
+      </div>,
+    );
+
+    const scrollOwner = container.querySelector('[data-panel-scroll-owner]') as HTMLElement;
+    resizeObserver.emit(300);
+    scrollOwner.scrollTop = 150;
+    act(() => {
+      scrollOwner.dispatchEvent(new Event('scroll'));
+    });
+    observedScrollTops.length = 0;
+
+    resizeObserver.emit(1020);
+
+    expect(observedScrollTops).toHaveLength(1);
+    expect(observedScrollTops[0]).toBe(scrollOwner.scrollTop);
   });
 });

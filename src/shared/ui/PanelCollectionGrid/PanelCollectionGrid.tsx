@@ -1,4 +1,4 @@
-import { Children, createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, type HTMLAttributes } from 'react';
+import { Children, createContext, useCallback, useContext, useEffect, useInsertionEffect, useRef, type HTMLAttributes } from 'react';
 import { useMergedRef } from '@mantine/hooks';
 import { galleryColumns } from 'shared/lib/galleryColumns';
 import { useMeasuredWidth } from 'shared/hooks/useMeasuredWidth';
@@ -92,7 +92,17 @@ export function PanelCollectionGrid({
   // completely different one once scrolled past the first row. `overflow-anchor` is
   // disabled on this grid's scroll owner for an unrelated chrome-direction reason
   // (PanelLayout.module.css), so nothing else compensates.
-  useLayoutEffect(() => {
+  //
+  // `useInsertionEffect`, not `useLayoutEffect`: cards glide between grid cells via
+  // framer-motion's `layout` prop (FeedCardSlot), which measures each card's new
+  // position in its own layout effect. React runs child layout effects before the
+  // parent's, so by the time a plain `useLayoutEffect` here adjusted scrollTop, framer
+  // had already measured and locked in a glide animation against the *uncorrected*
+  // position — every card then visibly jumped by the correction on top of its glide.
+  // Insertion effects run before every layout effect in the tree, parent or child, so
+  // scrollTop is already correct by the time framer measures, and the glide looks
+  // exactly like the always-correct case: recolumning from the very top of the list.
+  useInsertionEffect(() => {
     const grid = gridNodeRef.current;
     const scrollOwner = grid?.closest<HTMLElement>('[data-panel-scroll-owner]');
     const anchor = anchorRef.current;
