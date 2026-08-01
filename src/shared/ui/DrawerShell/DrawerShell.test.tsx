@@ -10,7 +10,22 @@ import {
   useRegisterSheetScrollOwner,
   useSheetContentScrollable,
 } from './index';
+import { DRAWER_SHELL_TRANSITION } from './motion';
 import { resolveSheetSnapHeights, SHEET_PEEK_HEIGHT_PX, SHEET_SNAPS } from './sheetSnapPolicy';
+
+const animateMock = vi.hoisted(() => vi.fn());
+const nearestSheetSnapMock = vi.hoisted(() => vi.fn());
+
+vi.mock('framer-motion', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('framer-motion')>();
+  return { ...actual, animate: animateMock };
+});
+
+vi.mock('./sheetSnapPolicy', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./sheetSnapPolicy')>();
+  nearestSheetSnapMock.mockImplementation(actual.nearestSheetSnap);
+  return { ...actual, nearestSheetSnap: nearestSheetSnapMock };
+});
 
 /** Panel content carrying state a rebuilt subtree would silently discard. */
 function DraftField() {
@@ -444,6 +459,14 @@ describe('DrawerShell live drag geometry', () => {
     });
 
     expect(onSnapChange).not.toHaveBeenCalled();
+
+    // Release the drag framer-motion's pan session started above (M00c, found while
+    // adding a later drag-end test in this file): an unfinished pointerDown/pointerMove
+    // pair leaves that session dangling past this test's own render tree, and it then
+    // swallows a later test's own drag gesture on an unrelated pointer id.
+    act(() => {
+      fireEvent.pointerUp(handle, { pointerId: 1, isPrimary: true, clientX: 195, clientY: 420 });
+    });
   });
 });
 
@@ -635,5 +658,98 @@ describe('DrawerShell presentation swap geometry', () => {
     await vi.waitFor(() => expect(restingOffsetPx()).toBe(0));
 
     unmount();
+  });
+});
+
+describe('DrawerShell settles a drag release that resolves to the current snap', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('imperatively settles the surface when the resolved snap equals the pre-drag snap', async () => {
+    nearestSheetSnapMock.mockReturnValueOnce('half');
+
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    const queuedFrames: FrameRequestCallback[] = [];
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      queuedFrames.push(callback);
+      return queuedFrames.length;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    const onSnapChange = vi.fn();
+
+    render(
+      <>
+        <DrawerShell
+          presentation="bottomSheet"
+          modality="nonmodal"
+          snap="half"
+          onSnapChange={onSnapChange}
+        >
+          Sheet content
+        </DrawerShell>
+        <GeometryProbe />
+      </>,
+    );
+
+    const sheet = screen.getByRole('complementary', { name: 'Content drawer' });
+    let rect = DOMRect.fromRect({ x: 0, y: 500, width: 390, height: 344 });
+    vi.spyOn(sheet, 'getBoundingClientRect').mockImplementation(() => rect);
+
+    // Settle the mount-time measurement against the resting rect first, exactly as the
+    // live-drag geometry test above does, so the drag below is the only thing that can
+    // move the published geometry.
+    act(() => queuedFrames.shift()?.(0));
+    expect(screen.getByTestId('drawer-geometry').textContent).toBe('0:500:390:844:390:344');
+
+    const handle = sheet.querySelector('[data-drawer-sheet-handle]');
+    if (!handle) throw new Error('Expected the drag handle to be rendered.');
+
+    act(() => {
+      fireEvent.pointerDown(handle, { pointerId: 1, isPrimary: true, clientX: 195, clientY: 500 });
+    });
+
+    rect = DOMRect.fromRect({ x: 0, y: 460, width: 390, height: 384 });
+    act(() => {
+      fireEvent.pointerMove(handle, { pointerId: 1, isPrimary: true, clientX: 195, clientY: 460 });
+    });
+
+    // framer-motion schedules its onDrag callback through its own real animation-frame
+    // queue rather than synchronously (see the live-drag geometry test above) — this
+    // waits for that frame so the drag has genuinely started before ending it below. A
+    // pointerUp fired immediately after pointerMove races ahead of that scheduling, and
+    // the gesture is never recognized as a drag at all.
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(screen.getByTestId('drawer-geometry').textContent).toBe('0:460:390:844:390:384');
+      });
+    });
+
+    act(() => {
+      fireEvent.pointerUp(handle, { pointerId: 1, isPrimary: true, clientX: 195, clientY: 460 });
+    });
+
+    const heights = resolveSheetSnapHeights({
+      viewportHeightPx: window.innerHeight,
+      peekHeightPx: SHEET_PEEK_HEIGHT_PX,
+    });
+
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(animateMock).toHaveBeenCalledWith(
+          sheet,
+          { y: window.innerHeight - heights.half },
+          DRAWER_SHELL_TRANSITION,
+        );
+      });
+    });
+
+    expect(onSnapChange).not.toHaveBeenCalled();
   });
 });

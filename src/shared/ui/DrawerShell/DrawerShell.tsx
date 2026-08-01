@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { motion, useDragControls, type DragHandler } from 'framer-motion';
+import { animate as animateSurface, motion, useDragControls, type DragHandler } from 'framer-motion';
 import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
 import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import { useViewportMetrics } from 'shared/model/viewportMetrics';
@@ -299,7 +299,15 @@ export function DrawerShell(props: DrawerShellProps) {
     const surface = surfaceRef.current;
     if (!surface || snap === undefined || !onSnapChange) return;
     const heightPx = viewportHeightPx - surface.getBoundingClientRect().top;
-    onSnapChange(nearestSheetSnap({ heightPx, velocityPx: info.velocity.y, heights }));
+    const nextSnap = nearestSheetSnap({ heightPx, velocityPx: info.velocity.y, heights });
+    if (nextSnap === snap) {
+      // The resolved snap did not change, so nothing re-renders and the declarative
+      // `animate` prop below never recomputes its target. Settle explicitly instead of
+      // leaving the sheet wherever a slow, deliberate drag happened to release it.
+      animateSurface(surface, { y: viewportHeightPx - heights[nextSnap] }, prefersReducedMotion ? { duration: 0 } : DRAWER_SHELL_TRANSITION);
+      return;
+    }
+    onSnapChange(nextSnap);
   };
 
   // Both presentations name *both* properties, even though each only animates one of
