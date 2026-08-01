@@ -1229,6 +1229,26 @@ describe('Panel compact browse sheet', () => {
     });
   });
 
+  it('resumes the sheet at the same snap after crossing out to wide and back to compact', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Land on full' }));
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'full');
+
+    // Cross out: compact -> wide. The sheet itself stops rendering, but the persisted
+    // expansion preference (written by 'Land on full' above) must survive the crossing.
+    mocks.sizeBand = 'wide';
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'none');
+
+    // Cross back in: wide -> compact. The sheet must resume at 'full', reseeded from the
+    // same preference — not reset to the 'half' default a fresh mount would otherwise use.
+    mocks.sizeBand = 'compact';
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'full');
+  });
+
   it('lets a spot chosen from search open that spot while the sheet is above its smallest position', () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
