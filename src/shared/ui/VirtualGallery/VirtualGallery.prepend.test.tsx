@@ -41,6 +41,10 @@ function mediaRow(id: string): GalleryRow<Item> {
   return { type: 'media', items: [{ id }], key: `media-${id}` };
 }
 
+function mediaRowOf(ids: string[]): GalleryRow<Item> {
+  return { type: 'media', items: ids.map((id) => ({ id })), key: `media-${ids[0]}` };
+}
+
 describe('VirtualGallery prepend anchor preservation', () => {
   beforeEach(() => {
     scrollToIndexMock.mockClear();
@@ -79,6 +83,37 @@ describe('VirtualGallery prepend anchor preservation', () => {
     render(<VirtualGallery rows={initialRows} renderCard={() => null} />);
 
     expect(scrollToIndexMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('VirtualGallery recolumn anchor preservation', () => {
+  beforeEach(() => {
+    scrollToIndexMock.mockClear();
+  });
+
+  it('relocates the anchor when a recolumn moves its item to a different row', () => {
+    // 10 items in one day, chunked at 3 columns: [a,b,c], [d,e,f], [g,h,i], [j].
+    // The anchor sits on the second row ('d,e,f' — not the group's first
+    // chunk), matching "scrolled a couple of screens down" from the bug
+    // report. A recolumn to 6 columns re-chunks to [a..f], [g..j] — 'd' is
+    // now in the row at index 0, not index 1 — so a correction must fire.
+    const threeColumnRows = [
+      mediaRowOf(['a', 'b', 'c']),
+      mediaRowOf(['d', 'e', 'f']),
+      mediaRowOf(['g', 'h', 'i']),
+      mediaRowOf(['j']),
+    ];
+    virtualItemsMock.mockReturnValue([{ key: 'v', index: 1, start: 0, size: 220 }]);
+
+    const { rerender } = render(<VirtualGallery rows={threeColumnRows} renderCard={() => null} />);
+
+    const sixColumnRows = [
+      mediaRowOf(['a', 'b', 'c', 'd', 'e', 'f']),
+      mediaRowOf(['g', 'h', 'i', 'j']),
+    ];
+    rerender(<VirtualGallery rows={sixColumnRows} renderCard={() => null} />);
+
+    expect(scrollToIndexMock).toHaveBeenCalledWith(0, { align: 'start' });
   });
 });
 

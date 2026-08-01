@@ -18,6 +18,10 @@ interface MeasuredVirtualRow {
   size: number;
 }
 
+type GalleryRowAnchor<_T extends { id: string }> =
+  | { type: 'divider'; key: string; index: number }
+  | { type: 'media'; itemId: string; index: number };
+
 export function getAnchoredVisibleRowIndex(
   virtualItems: MeasuredVirtualRow[],
   scrollTop: number,
@@ -234,23 +238,39 @@ function VirtualGalleryInner<T extends { id: string }>(
   // jump) shift every existing row's index without moving the scrollport, so
   // the same scrollTop now shows different content. Track the row anchored
   // at the top by its stable key and, if a prepend moved it, snap back to it
-  // before paint so nothing already in view visibly shifts.
-  const previousAnchorRef = useRef<{ key: string; index: number } | null>(null);
+  // before paint so nothing already in view visibly shifts. The anchor is
+  // tracked by the item at the row's head, not the row's own key, so a
+  // chunk-boundary shift from a recolumn (a manual panel toggle or a
+  // capability-band crossing changing the column count) is followed
+  // correctly even when the anchored row is not a group's first chunk.
+  const previousAnchorRef = useRef<GalleryRowAnchor<T> | null>(null);
   useLayoutEffect(() => {
     const previous = previousAnchorRef.current;
     let anchorIndex = virtualizer.getVirtualItems()[0]?.index ?? 0;
+
     if (previous) {
-      const rowAtSamePosition = rows[previous.index];
-      if (rowAtSamePosition?.key !== previous.key) {
-        const newIndex = rows.findIndex((row) => row.key === previous.key);
+      const matchesAnchor = (row: GalleryRow<T> | undefined): boolean => {
+        if (!row) return false;
+        return previous.type === 'divider'
+          ? row.type === 'divider' && row.key === previous.key
+          : row.type === 'media' && row.items.some((item) => item.id === previous.itemId);
+      };
+
+      if (!matchesAnchor(rows[previous.index])) {
+        const newIndex = rows.findIndex(matchesAnchor);
         if (newIndex !== -1 && newIndex !== previous.index) {
           virtualizer.scrollToIndex(newIndex, { align: 'start' });
           anchorIndex = newIndex;
         }
       }
     }
+
     const topRow = rows[anchorIndex];
-    previousAnchorRef.current = topRow ? { key: topRow.key, index: anchorIndex } : null;
+    previousAnchorRef.current = topRow
+      ? topRow.type === 'divider'
+        ? { type: 'divider', key: topRow.key, index: anchorIndex }
+        : { type: 'media', itemId: topRow.items[0]!.id, index: anchorIndex }
+      : null;
   }, [rows, virtualizer]);
 
   // Scroll tracking — feeds onFirstVisibleIndexChange for external sidebars
