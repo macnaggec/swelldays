@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MantineProvider } from '@mantine/core';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -35,6 +35,7 @@ const galleryState = vi.hoisted(() => ({
   measuredWidth: 0,
   scrollToIndex: vi.fn(),
   focusItem: vi.fn(),
+  reportFirstVisibleIndex: (_index: number) => {},
 }));
 
 const useSpotMediaFeedMock = vi.hoisted(() => vi.fn());
@@ -71,11 +72,13 @@ vi.mock('shared/ui/VirtualGallery/VirtualGallery', () => ({
       rows,
       renderCard,
       renderDivider,
+      onFirstVisibleIndexChange,
     }: {
       toolbar?: React.ReactNode;
       rows: GalleryRow<PublicMedia>[];
       renderCard: (item: PublicMedia, context: CardContext) => React.ReactNode;
       renderDivider?: (date: Date) => React.ReactNode;
+      onFirstVisibleIndexChange?: (index: number) => void;
     },
     ref,
   ) {
@@ -83,6 +86,7 @@ vi.mock('shared/ui/VirtualGallery/VirtualGallery', () => ({
       scrollToIndex: galleryState.scrollToIndex,
       focusItem: galleryState.focusItem,
     }));
+    galleryState.reportFirstVisibleIndex = onFirstVisibleIndexChange ?? (() => {});
     let itemIndex = 0;
     return (
       <div data-testid="virtual-gallery">
@@ -420,4 +424,39 @@ describe('PublicGallery', () => {
       await waitFor(() => expect(galleryState.focusItem).toHaveBeenCalledWith('media-1'));
     },
   );
+
+  it('keeps the current active date anchor through a live shell crossing instead of resetting it', () => {
+    galleryState.measuredWidth = 420;
+    galleryState.flatItems = [
+      mediaItem,
+      { ...mediaItem, id: 'media-2', capturedAt: new Date('2026-03-01T10:00:00.000Z') },
+    ];
+    galleryState.availableDates = [mediaItem.capturedAt, new Date('2026-03-01T10:00:00.000Z')];
+
+    const gallery = (expanded: boolean, drawerPresentation: 'sideOverlay' | 'persistent') => (
+      <MantineProvider env="test">
+        <PanelScrollChromeStateProvider value={{ hidden: true, drawerPresentation }}>
+          <PanelLayout>
+            <PublicGallery expanded={expanded} spotId="spot-1" />
+          </PanelLayout>
+        </PanelScrollChromeStateProvider>
+      </MantineProvider>
+    );
+
+    const { rerender } = render(gallery(false, 'sideOverlay'));
+    const initialAnchor = screen.getByRole('button', { name: 'Jump to date' }).textContent;
+
+    // Row 2 is the older day's divider (row 0: newer-day divider, row 1: its one media
+    // row, row 2: older-day divider) — simulating a real scroll deep enough to anchor
+    // on the second day, exactly as VirtualGallery's real onFirstVisibleIndexChange
+    // would report.
+    act(() => galleryState.reportFirstVisibleIndex(2));
+    const scrolledAnchor = screen.getByRole('button', { name: 'Jump to date' }).textContent;
+    expect(scrolledAnchor).not.toBe(initialAnchor);
+
+    // A shell crossing (band/presentation change) must not reset this back to the top.
+    rerender(gallery(true, 'persistent'));
+
+    expect(screen.getByRole('button', { name: 'Jump to date' }).textContent).toBe(scrolledAnchor);
+  });
 });
