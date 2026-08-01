@@ -56,7 +56,8 @@ export interface SettledLayout {
 
 /**
  * Applies the panel's width *right now*, mid-animation, minus this element's own inset,
- * directly to `elementRef`'s DOM node — or clears it, when the panel is standing still.
+ * to `elementRef`'s DOM node as a `transform: scale(...)` relative to `scaleBasisWidth`
+ * — or clears it, when the panel is standing still.
  *
  * The opposite choice from `useSettledLayout`, and right for the opposite case. Content
  * whose arrangement changes between the two panel states must not follow the moving
@@ -65,15 +66,21 @@ export interface SettledLayout {
  * tiles — has nothing to re-flow, so following the width is what makes it grow and
  * shrink with the panel instead of jumping to its final size and waiting to be uncovered.
  *
- * Written to the DOM directly rather than returned as a value: a React value re-renders
- * its caller on every one of geometry's per-frame publishes, which is affordable for a
- * handful of chrome elements but not for a component whose subtree holds dozens of
- * mounted cards — a re-render there competes with the animation itself for the frame
- * budget. Callers of `useSettledLayout` are unaffected either way; that hook already
- * only changes at rest, not per frame.
+ * A CSS transform rather than `width`: `elementRef` is expected to hold dozens of mounted
+ * cards, and animating `width` forces the browser to re-run layout for that whole subtree
+ * on every frame, competing with the animation itself for the frame budget. `transform`
+ * is compositor-only — it never triggers layout or paint — so `elementRef` should be laid
+ * out once at `scaleBasisWidth` (its caller's own settled `contentWidth`) and left there;
+ * this only ever touches its rendered scale.
+ *
+ * Written to the DOM directly rather than returned as a value, for the same reason:
+ * `elementRef`'s caller would otherwise re-render on every one of geometry's per-frame
+ * publishes just to pass a new scale prop through. Callers of `useSettledLayout` are
+ * unaffected either way; that hook already only changes at rest, not per frame.
  */
-export function useLivePanelWidthOnElement(
+export function useLivePanelScaleOnElement(
   measuredWidth: number,
+  scaleBasisWidth: number,
   elementRef: RefObject<HTMLElement | null>,
 ): void {
   const settled = usePanelSettledWidth();
@@ -90,19 +97,21 @@ export function useLivePanelWidthOnElement(
     const element = elementRef.current;
     if (!element) return;
 
-    const applyWidth = () => {
-      if (!transitioning || inset < 0) {
-        element.style.width = '';
+    const applyScale = () => {
+      if (!transitioning || inset < 0 || scaleBasisWidth <= 0) {
+        element.style.transform = '';
         return;
       }
       const geometry = getDrawerGeometrySnapshot();
-      if (geometry) element.style.width = `${Math.max(0, geometry.width - inset)}px`;
+      if (!geometry) return;
+      const liveContentWidth = Math.max(0, geometry.width - inset);
+      element.style.transform = `scale(${liveContentWidth / scaleBasisWidth})`;
     };
 
-    applyWidth();
-    const unsubscribe = subscribeDrawerGeometry(applyWidth);
+    applyScale();
+    const unsubscribe = subscribeDrawerGeometry(applyScale);
     return () => { unsubscribe(); };
-  }, [elementRef, transitioning, inset]);
+  }, [elementRef, transitioning, inset, scaleBasisWidth]);
 }
 
 /**

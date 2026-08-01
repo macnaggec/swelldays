@@ -6,7 +6,7 @@ import { useSpotMediaFeed, useSpotPreview } from 'entities/Spot';
 import { buildGalleryRows } from 'shared/lib/buildGalleryRows';
 import { galleryColumns, type GalleryDensity } from 'shared/lib/galleryColumns';
 import { useMeasuredWidth } from 'shared/hooks';
-import { useLivePanelWidthOnElement, usePanelSettledWidth, useSettledLayout } from 'shared/ui/DrawerShell/panelSettledWidth';
+import { useLivePanelScaleOnElement, useSettledLayout } from 'shared/ui/DrawerShell/panelSettledWidth';
 import { VirtualGallery, type VirtualGalleryHandle } from 'shared/ui/VirtualGallery/VirtualGallery';
 import { useCartToggle } from 'entities/Commerce';
 import {
@@ -81,19 +81,20 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   // the live one below, so a toggle re-columns once instead of walking through
   // every intermediate width — the same reason PanelCollectionGrid reads it.
   const [measuredWidth, galleryViewportRef] = useMeasuredWidth();
-  const galleryViewportNodeRef = useRef<HTMLDivElement | null>(null);
-  const galleryViewportMergedRef = useMergedRef(galleryViewportRef, galleryViewportNodeRef);
-  // Applies the panel's live width directly to the wrapper node while it opens or
-  // closes, so the tiles grow and shrink with it, without re-rendering this component
-  // — and the dozens of cards beneath it — on every animation frame. The column count
-  // is unchanged between the two panel states here, so there is no arrangement to
-  // re-flow, only size, which is why this follows the moving width where the card feed
-  // deliberately does not.
-  useLivePanelWidthOnElement(measuredWidth, galleryViewportNodeRef);
-  const { transitioning } = usePanelSettledWidth() ?? { transitioning: false };
-  const { contentWidth } = useSettledLayout(measuredWidth);
+  const { boxWidth, contentWidth, transitioning } = useSettledLayout(measuredWidth);
   const density: GalleryDensity = expanded ? 'comfortable' : 'compact';
   const columns = galleryColumns(contentWidth ?? measuredWidth, density);
+
+  // The outer box only resizes at rest (the wider of where the panel is and where it's
+  // heading, per useSettledLayout — never per animation frame, so it never fights the
+  // date rail beside it for space). The inner content is laid out once at its final,
+  // destination size and only its rendered *scale* follows the panel's live width, so
+  // the tiles still visibly grow and shrink with the toggle without the browser
+  // re-running layout for the whole card grid on every frame.
+  const galleryBoxNodeRef = useRef<HTMLDivElement | null>(null);
+  const galleryBoxRef = useMergedRef(galleryViewportRef, galleryBoxNodeRef);
+  const galleryScaleNodeRef = useRef<HTMLDivElement | null>(null);
+  useLivePanelScaleOnElement(measuredWidth, contentWidth ?? measuredWidth, galleryScaleNodeRef);
 
   // ========================================================================
   // LIGHTBOX STATE
@@ -260,41 +261,54 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
       )}
       <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex' }}>
         <div
-          ref={galleryViewportMergedRef}
+          ref={galleryBoxRef}
           style={{
-            flex: transitioning ? '0 0 auto' : 1,
+            flex: boxWidth === null ? 1 : '0 0 auto',
+            width: boxWidth === null ? undefined : `${boxWidth}px`,
             minWidth: 0,
+            overflow: 'hidden',
             display: 'flex',
           }}
         >
-          <VirtualGallery
-            ref={galleryRef}
-            rows={rows}
-            columns={columns}
-            dense={!expanded}
-            renderDivider={isMobileDrawerPresentation ? renderNoDivider : undefined}
-            renderCard={(item) => {
-              const { actions, activeActions, isOwn } = getCardActions(item, false);
-              const isPurchased = item.viewerEntitlement.purchaseState === 'purchased';
-              return (
-                <PublicCard
-                  mediaItem={item}
-                  actions={actions}
-                  activeActions={activeActions}
-                  onAction={handleCardAction}
-                  onCardClick={() => handleCardClick(item.id)}
-                  showOwnerBadge={isOwn}
-                  showPurchasedBadge={isPurchased}
-                  dense={!expanded}
-                />
-              );
+          <div
+            ref={galleryScaleNodeRef}
+            style={{
+              flex: transitioning ? '0 0 auto' : 1,
+              width: transitioning ? `${contentWidth ?? measuredWidth}px` : undefined,
+              minWidth: 0,
+              transformOrigin: 'top left',
+              display: 'flex',
             }}
-            onFirstVisibleIndexChange={setFirstVisibleIndex}
-            onEndReached={hasNextPage ? fetchNextPage : undefined}
-            isFetchingMore={isFetchingNextPage}
-            onStartReached={hasPreviousPage ? fetchPreviousPage : undefined}
-            isFetchingPrevious={isFetchingPreviousPage}
-          />
+          >
+            <VirtualGallery
+              ref={galleryRef}
+              rows={rows}
+              columns={columns}
+              dense={!expanded}
+              renderDivider={isMobileDrawerPresentation ? renderNoDivider : undefined}
+              renderCard={(item) => {
+                const { actions, activeActions, isOwn } = getCardActions(item, false);
+                const isPurchased = item.viewerEntitlement.purchaseState === 'purchased';
+                return (
+                  <PublicCard
+                    mediaItem={item}
+                    actions={actions}
+                    activeActions={activeActions}
+                    onAction={handleCardAction}
+                    onCardClick={() => handleCardClick(item.id)}
+                    showOwnerBadge={isOwn}
+                    showPurchasedBadge={isPurchased}
+                    dense={!expanded}
+                  />
+                );
+              }}
+              onFirstVisibleIndexChange={setFirstVisibleIndex}
+              onEndReached={hasNextPage ? fetchNextPage : undefined}
+              isFetchingMore={isFetchingNextPage}
+              onStartReached={hasPreviousPage ? fetchPreviousPage : undefined}
+              isFetchingPrevious={isFetchingPreviousPage}
+            />
+          </div>
         </div>
         {railVisible && (
           <PanelLayoutRail>
