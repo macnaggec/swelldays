@@ -1,4 +1,5 @@
-import { Children, createContext, useContext, type HTMLAttributes } from 'react';
+import { Children, createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, type HTMLAttributes } from 'react';
+import { useMergedRef } from '@mantine/hooks';
 import { galleryColumns } from 'shared/lib/galleryColumns';
 import { useMeasuredWidth } from 'shared/hooks/useMeasuredWidth';
 import { useSettledLayout } from 'shared/ui/DrawerShell/panelSettledWidth';
@@ -59,10 +60,54 @@ export function PanelCollectionGrid({
     ? Children.toArray(children).slice(0, columns * 3)
     : children;
 
+  const gridNodeRef = useRef<HTMLDivElement | null>(null);
+  const gridRef = useMergedRef(measureRef, gridNodeRef);
+  const anchorRef = useRef<{ node: Element; offsetFromScrollOwnerTop: number } | null>(null);
+
+  const captureAnchor = useCallback(() => {
+    const grid = gridNodeRef.current;
+    const scrollOwner = grid?.closest<HTMLElement>('[data-panel-scroll-owner]');
+    if (!grid || !scrollOwner) return;
+    const scrollOwnerTop = scrollOwner.getBoundingClientRect().top;
+    const cards = Array.from(grid.children);
+    const anchor = cards.find((card) => card.getBoundingClientRect().bottom > scrollOwnerTop) ?? cards[0];
+    anchorRef.current = anchor
+      ? { node: anchor, offsetFromScrollOwnerTop: anchor.getBoundingClientRect().top - scrollOwnerTop }
+      : null;
+  }, []);
+
+  // The anchor must reflect wherever the photographer has actually scrolled to, which
+  // can change with no render at all — the recolumn correction below is only as good as
+  // knowing where they really are the instant it runs.
+  useEffect(() => {
+    const scrollOwner = gridNodeRef.current?.closest<HTMLElement>('[data-panel-scroll-owner]');
+    if (!scrollOwner) return;
+    captureAnchor();
+    scrollOwner.addEventListener('scroll', captureAnchor, { passive: true });
+    return () => scrollOwner.removeEventListener('scroll', captureAnchor);
+  }, [captureAnchor]);
+
+  // A recolumn changes row heights (fewer columns means more, taller rows) without
+  // moving scrollTop, so a scroll position that used to show one card can land on a
+  // completely different one once scrolled past the first row. `overflow-anchor` is
+  // disabled on this grid's scroll owner for an unrelated chrome-direction reason
+  // (PanelLayout.module.css), so nothing else compensates.
+  useLayoutEffect(() => {
+    const grid = gridNodeRef.current;
+    const scrollOwner = grid?.closest<HTMLElement>('[data-panel-scroll-owner]');
+    const anchor = anchorRef.current;
+    if (!grid || !scrollOwner || !anchor || !anchor.node.isConnected) return;
+
+    const newOffset = anchor.node.getBoundingClientRect().top - scrollOwner.getBoundingClientRect().top;
+    const delta = newOffset - anchor.offsetFromScrollOwnerTop;
+    if (delta !== 0) scrollOwner.scrollTop += delta;
+    captureAnchor();
+  }, [columns, captureAnchor]);
+
   return (
     <div
       {...props}
-      ref={measureRef}
+      ref={gridRef}
       className={[styles.root, className].filter(Boolean).join(' ')}
       data-panel-collection-grid
       data-preview={preview || undefined}
