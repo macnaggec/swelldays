@@ -205,7 +205,7 @@ describe('PublicGallery', () => {
 
   it('freezes the column count at the destination width during a live drawer transition', () => {
     const atDrawer = (destinationWidth: number, transitioning: boolean, expanded: boolean) => (
-      <PanelSettledWidthContext.Provider value={{ destinationWidth, transitioning }}>
+      <PanelSettledWidthContext.Provider value={{ destinationWidth, open: true, transitioning }}>
         <PublicGallery expanded={expanded} spotId="spot-1" />
       </PanelSettledWidthContext.Provider>
     );

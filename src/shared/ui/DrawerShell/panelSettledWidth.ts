@@ -7,6 +7,8 @@ export interface PanelSettledWidth {
    * pressed, before the surface has moved. 0 until the surface has been measured once.
    */
   destinationWidth: number;
+  /** True while the drawer surface is open and can receive user scroll. */
+  open: boolean;
   /** True while the surface is animating toward that width. */
   transitioning: boolean;
 }

@@ -23,13 +23,13 @@ function withRenderCounter(node: ReactNode, counter: { count: number }) {
 }
 
 const atRest = (destinationWidth: number, children: React.ReactNode) => (
-  <PanelSettledWidthContext.Provider value={{ destinationWidth, transitioning: false }}>
+  <PanelSettledWidthContext.Provider value={{ destinationWidth, open: true, transitioning: false }}>
     {children}
   </PanelSettledWidthContext.Provider>
 );
 
 const transitioningTo = (destinationWidth: number, children: React.ReactNode) => (
-  <PanelSettledWidthContext.Provider value={{ destinationWidth, transitioning: true }}>
+  <PanelSettledWidthContext.Provider value={{ destinationWidth, open: true, transitioning: true }}>
     {children}
   </PanelSettledWidthContext.Provider>
 );

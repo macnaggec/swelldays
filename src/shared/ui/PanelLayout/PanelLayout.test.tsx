@@ -56,7 +56,7 @@ function stubResizeObserver() {
 }
 
 const atDrawer = (destinationWidth: number, transitioning: boolean) => (
-  <PanelSettledWidthContext.Provider value={{ destinationWidth, transitioning }}>
+  <PanelSettledWidthContext.Provider value={{ destinationWidth, open: true, transitioning }}>
     <PanelLayout>content</PanelLayout>
   </PanelSettledWidthContext.Provider>
 );

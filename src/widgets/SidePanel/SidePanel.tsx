@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -15,6 +16,7 @@ import {
 } from 'shared/ui/DrawerShell';
 import { PanelScrollChromeStateProvider } from 'shared/ui/PanelScrollChrome';
 import { PanelLayout, PanelChromeSlot, PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
+import { isPanelCollectionScrollCorrection } from 'shared/ui/PanelCollectionGrid';
 import styles from './SidePanel.module.css';
 
 const SCROLL_DIRECTION_THRESHOLD_PX = 8;
@@ -30,7 +32,6 @@ function hasMeaningfulVerticalScrollTravel(
 
 interface ScrollPosition {
   anchor: number;
-  hidden: boolean;
 }
 
 interface ScrollChromeState {
@@ -93,6 +94,11 @@ export function SidePanel({
   children,
 }: SidePanelProps) {
   const scrollPositionByTargetRef = useRef<WeakMap<HTMLElement, ScrollPosition>>(new WeakMap());
+  const scrollChromeTrackerRef = useRef<ScrollChromeState>({
+    hidden: false,
+    sheetSnap,
+    open,
+  });
   const [scrollChromeState, setScrollChromeState] = useState<ScrollChromeState>({
     hidden: false,
     sheetSnap,
@@ -101,6 +107,10 @@ export function SidePanel({
   if (scrollChromeState.sheetSnap !== sheetSnap || scrollChromeState.open !== open) {
     setScrollChromeState({ hidden: false, sheetSnap, open });
   }
+
+  useLayoutEffect(() => {
+    scrollChromeTrackerRef.current = { hidden: false, sheetSnap, open };
+  }, [open, sheetSnap]);
 
   // While pinned, the exposed `hidden` fact freezes regardless of scroll
   // direction — an open date-jump menu's own trigger must not be swapped out
@@ -119,42 +129,54 @@ export function SidePanel({
     const scrollTarget = event.target;
     if (!(scrollTarget instanceof HTMLElement)) return;
 
-    // Nested interactive scrollers own their own movement. Treating result-list
-    // travel as panel travel hides the search control the user is operating.
-    if (scrollTarget.closest('[data-scroll-direction-isolated]')) return;
-
     const currentScrollTop = scrollTarget.scrollTop;
     const position = scrollPositionByTargetRef.current.get(scrollTarget) ?? {
       anchor: 0,
-      hidden: false,
     };
+    const chromeTracker = scrollChromeTrackerRef.current;
+    if (chromeTracker.sheetSnap !== sheetSnap || chromeTracker.open !== open) {
+      chromeTracker.hidden = false;
+      chromeTracker.sheetSnap = sheetSnap;
+      chromeTracker.open = open;
+    }
+    let nextHidden = chromeTracker.hidden;
+
+    // Nested interactive scrollers own their movement, and collection reflows are
+    // internal layout corrections. Neither is a user gesture that should move chrome.
+    if (scrollTarget.closest('[data-scroll-direction-isolated]')
+      || isPanelCollectionScrollCorrection(scrollTarget)) {
+      position.anchor = currentScrollTop;
+      scrollPositionByTargetRef.current.set(scrollTarget, position);
+      return;
+    }
 
     if (!hasMeaningfulVerticalScrollTravel(scrollTarget, pinnedChromeHeightPx)) {
       position.anchor = 0;
-      position.hidden = false;
+      nextHidden = false;
     } else if (currentScrollTop <= 0) {
       position.anchor = 0;
-      position.hidden = false;
-    } else if (position.hidden) {
+      nextHidden = false;
+    } else if (nextHidden) {
       if (currentScrollTop > position.anchor) position.anchor = currentScrollTop;
       else if (position.anchor - currentScrollTop >= SCROLL_DIRECTION_THRESHOLD_PX) {
         position.anchor = currentScrollTop;
-        position.hidden = false;
+        nextHidden = false;
       }
     } else {
       if (currentScrollTop < position.anchor) position.anchor = currentScrollTop;
       else if (currentScrollTop - position.anchor >= SCROLL_DIRECTION_THRESHOLD_PX) {
         position.anchor = currentScrollTop;
-        position.hidden = true;
+        nextHidden = true;
       }
     }
 
+    chromeTracker.hidden = nextHidden;
     setScrollChromeState((current) => {
-      return current.hidden === position.hidden
+      return current.hidden === nextHidden
         && current.sheetSnap === sheetSnap
         && current.open === open
         ? current
-        : { hidden: position.hidden, sheetSnap, open };
+        : { hidden: nextHidden, sheetSnap, open };
     });
     scrollPositionByTargetRef.current.set(scrollTarget, position);
   }, [open, sheetSnap]);

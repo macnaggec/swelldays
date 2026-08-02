@@ -227,5 +227,9 @@ describe('SidePanel bottom sheet', () => {
     rerender(renderPanel(true));
 
     expect(stickyChrome).not.toHaveAttribute('data-hidden');
+
+    fireEvent.scroll(scrollOwner!, { target: { scrollTop: 23 } });
+
+    expect(stickyChrome).not.toHaveAttribute('data-hidden');
   });
 });

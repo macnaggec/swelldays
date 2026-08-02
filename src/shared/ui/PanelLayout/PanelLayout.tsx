@@ -1,12 +1,15 @@
 import {
   createContext,
   useContext,
+  useLayoutEffect,
+  useRef,
   useState,
   type ReactNode,
   type UIEvent,
   type UIEventHandler,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useMergedRef } from '@mantine/hooks';
 import { useMeasuredWidth } from 'shared/hooks/useMeasuredWidth';
 import {
   useRegisterSheetScrollOwner,
@@ -59,6 +62,21 @@ export function PanelLayout({
     );
   };
 
+  // Published on the scroll owner itself so content inside it (e.g. PanelCollectionGrid)
+  // can tell how much of the owner's own top edge this pinned row currently covers,
+  // without reaching for the row's mount point directly — that stays this file's alone
+  // (see the panel-sticky-chrome-has-one-mount style-boundary rule). Kept in a layout
+  // effect, not read at render, so it reflects the row's real measured height; redone on
+  // a width change too, since that is exactly what can make the row wrap onto another
+  // line and grow.
+  const scrollOwnerRef = useRef<HTMLDivElement | null>(null);
+  const scrollOwnerMergedRef = useMergedRef(registerSheetScrollOwner, scrollOwnerRef);
+  useLayoutEffect(() => {
+    const scrollOwner = scrollOwnerRef.current;
+    if (!scrollOwner) return;
+    scrollOwner.dataset.panelChromeHeight = String(hidden ? 0 : stickyChromeTarget?.offsetHeight ?? 0);
+  }, [hidden, stickyChromeTarget, contentWidth]);
+
   // Closing, these differ, and the panel needs both at once. Its *box* stays wide so
   // cards still travelling across the space being given up are not clipped away; its
   // *chrome* — header, search row, card area, footer — takes the width it will settle
@@ -97,7 +115,7 @@ export function PanelLayout({
                   data-panel-layout-scroller
                   data-panel-scroll-owner
                   data-content-scroll={contentScrollable ? undefined : 'locked'}
-                  ref={registerSheetScrollOwner}
+                  ref={scrollOwnerMergedRef}
                   onScrollCapture={handleScrollCapture}
                 >
                   {/*

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { useRef, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { render } from 'test/setup/render';
@@ -148,6 +148,138 @@ describe('SidePanel', () => {
 
     fireEvent.scroll(searchResults, { target: { scrollTop: 80 } });
 
+    expect(subheader).not.toHaveAttribute('data-hidden');
+  });
+
+  it('keeps search chrome visible during a panel collection scroll correction', () => {
+    render(
+      <SidePanel subheader={<div>Search and filters</div>}>
+        <div
+          data-testid="collection-list"
+          data-panel-collection-scroll-correction
+          style={{ height: 120, overflowY: 'auto' }}
+        >
+          <div style={{ height: 480 }}>Collection cards</div>
+        </div>
+      </SidePanel>,
+    );
+
+    const subheader = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
+    const collectionList = screen.getByTestId('collection-list');
+    setScrollMetrics(collectionList, 300, 900);
+
+    fireEvent.scroll(collectionList, { target: { scrollTop: 80 } });
+
+    expect(subheader).not.toHaveAttribute('data-hidden');
+
+    collectionList.removeAttribute('data-panel-collection-scroll-correction');
+    fireEvent.scroll(collectionList, { target: { scrollTop: 79 } });
+
+    expect(subheader).not.toHaveAttribute('data-hidden');
+
+    fireEvent.scroll(collectionList, { target: { scrollTop: 100 } });
+    expect(subheader).toHaveAttribute('data-hidden');
+
+    collectionList.setAttribute('data-panel-collection-scroll-correction', 'true');
+    fireEvent.scroll(collectionList, { target: { scrollTop: 40 } });
+    expect(subheader).toHaveAttribute('data-hidden');
+
+    collectionList.removeAttribute('data-panel-collection-scroll-correction');
+    fireEvent.scroll(collectionList, { target: { scrollTop: 39 } });
+
+    expect(subheader).toHaveAttribute('data-hidden');
+  });
+
+  it('tracks user movement away from a settled panel collection correction', () => {
+    render(
+      <SidePanel subheader={<div>Search and filters</div>}>
+        <div
+          data-testid="collection-list"
+          data-panel-collection-scroll-correction="80"
+        >
+          <div style={{ height: 480 }}>Collection cards</div>
+        </div>
+      </SidePanel>,
+    );
+
+    const subheader = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
+    const collectionList = screen.getByTestId('collection-list');
+    setScrollMetrics(collectionList, 300, 900);
+
+    fireEvent.scroll(collectionList, { target: { scrollTop: 80 } });
+    expect(subheader).not.toHaveAttribute('data-hidden');
+
+    fireEvent.scroll(collectionList, { target: { scrollTop: 100 } });
+
+    expect(subheader).toHaveAttribute('data-hidden');
+  });
+
+  it('preserves hidden chrome when a different scroll target starts a correction', () => {
+    render(
+      <SidePanel subheader={<div>Search and filters</div>}>
+        <div data-testid="feed-list">
+          <div style={{ height: 480 }}>Feed cards</div>
+        </div>
+        <div
+          data-testid="collection-list"
+          data-panel-collection-scroll-correction
+        >
+          <div style={{ height: 480 }}>Collection cards</div>
+        </div>
+      </SidePanel>,
+    );
+
+    const subheader = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
+    const feedList = screen.getByTestId('feed-list');
+    const collectionList = screen.getByTestId('collection-list');
+    setScrollMetrics(feedList, 300, 900);
+    setScrollMetrics(collectionList, 300, 900);
+
+    fireEvent.scroll(feedList, { target: { scrollTop: 24 } });
+    expect(subheader).toHaveAttribute('data-hidden');
+
+    fireEvent.scroll(collectionList, { target: { scrollTop: 80 } });
+    expect(subheader).toHaveAttribute('data-hidden');
+
+    collectionList.removeAttribute('data-panel-collection-scroll-correction');
+    fireEvent.scroll(collectionList, { target: { scrollTop: 79 } });
+
+    expect(subheader).toHaveAttribute('data-hidden');
+  });
+
+  it('uses one chrome visibility state when alternating between scroll targets', () => {
+    render(
+      <SidePanel subheader={<div>Search and filters</div>}>
+        <div data-testid="first-list">
+          <div style={{ height: 480 }}>First cards</div>
+        </div>
+        <div data-testid="second-list">
+          <div style={{ height: 480 }}>Second cards</div>
+        </div>
+      </SidePanel>,
+    );
+
+    const subheader = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
+    const firstList = screen.getByTestId('first-list');
+    const secondList = screen.getByTestId('second-list');
+    setScrollMetrics(firstList, 300, 900);
+    setScrollMetrics(secondList, 300, 900);
+
+    act(() => {
+      firstList.scrollTop = 0;
+      firstList.dispatchEvent(new Event('scroll'));
+      secondList.scrollTop = 24;
+      secondList.dispatchEvent(new Event('scroll'));
+    });
+    expect(subheader).toHaveAttribute('data-hidden');
+
+    fireEvent.scroll(firstList, { target: { scrollTop: 1 } });
+    expect(subheader).toHaveAttribute('data-hidden');
+
+    fireEvent.scroll(secondList, { target: { scrollTop: 15 } });
+    expect(subheader).not.toHaveAttribute('data-hidden');
+
+    fireEvent.scroll(firstList, { target: { scrollTop: 2 } });
     expect(subheader).not.toHaveAttribute('data-hidden');
   });
 

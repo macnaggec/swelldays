@@ -1,5 +1,17 @@
 .root {
+  position: relative;
   display: grid;
   gap: var(--wa-panel-grid-gap);
   width: 100%;
+  margin-block-start: var(--wa-panel-collection-scroll-head-runway, 0px);
+}
+
+.root::after {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 1px;
+  height: var(--wa-panel-collection-scroll-runway, 0px);
+  pointer-events: none;
+  content: '';
 }

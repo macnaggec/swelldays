@@ -259,11 +259,12 @@ export function DrawerShell(props: DrawerShellProps) {
   const settledWidth = useMemo(
     () => ({
       destinationWidth,
+      open: panelOpen,
       // A sheet is full-width at every snap, so its content never rides a mid-toggle
       // width; only the panel's width animation can leave the two temporarily apart.
       transitioning: props.presentation === 'bottomSheet' ? false : transitioning,
     }),
-    [destinationWidth, transitioning, props.presentation],
+    [destinationWidth, panelOpen, transitioning, props.presentation],
   );
 
   // The panel scroll owner the sheet arbitrates with (step 8): registered by PanelLayout
