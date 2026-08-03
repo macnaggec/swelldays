@@ -255,6 +255,7 @@ export function SidePanel({
           open={open}
           modality={drawerModality}
           restoreFocusRef={restoreFocusRef}
+          onEscape={onBack}
         >
           {panelLayout}
         </DrawerShell>

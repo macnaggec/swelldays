@@ -661,6 +661,79 @@ describe('DrawerShell presentation swap geometry', () => {
   });
 });
 
+describe('DrawerShell fullScreen geometry', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('renders a fullScreen drawer at the full viewport width, not the short side-overlay width', async () => {
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+
+    const { unmount } = render(
+      <DrawerShell presentation="fullScreen" state="expanded" modality="modal" open>
+        <DraftField />
+      </DrawerShell>,
+    );
+
+    const surface = screen.getByRole('dialog', { name: 'Content drawer' });
+    await vi.waitFor(() => expect(surface.style.width).toBe('100vw'));
+
+    unmount();
+  });
+});
+
+describe('DrawerShell modal focus and Escape', () => {
+  it('moves focus inside the drawer surface when a modal drawer opens, instead of leaving it on document.body', async () => {
+    render(
+      <DrawerShell presentation="fullScreen" state="expanded" modality="modal" open>
+        <button>Focus target</button>
+      </DrawerShell>,
+    );
+
+    const surface = screen.getByRole('dialog', { name: 'Content drawer' });
+    await vi.waitFor(() => {
+      expect(document.activeElement).not.toBe(document.body);
+      expect(surface).toContainElement(document.activeElement as HTMLElement);
+    });
+  });
+
+  it('calls onEscape when Escape is pressed on a modal, open drawer', () => {
+    const onEscape = vi.fn();
+
+    render(
+      <DrawerShell presentation="fullScreen" state="expanded" modality="modal" open onEscape={onEscape}>
+        <button>Focus target</button>
+      </DrawerShell>,
+    );
+
+    const surface = screen.getByRole('dialog', { name: 'Content drawer' });
+    fireEvent.keyDown(surface, { key: 'Escape' });
+
+    expect(onEscape).toHaveBeenCalledOnce();
+  });
+
+  it('does not call onEscape when Escape is pressed on a nonmodal drawer', () => {
+    const onEscape = vi.fn();
+
+    render(
+      <DrawerShell presentation="persistent" state="compact" modality="nonmodal" onEscape={onEscape}>
+        <button>Focus target</button>
+      </DrawerShell>,
+    );
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    fireEvent.keyDown(surface, { key: 'Escape' });
+
+    expect(onEscape).not.toHaveBeenCalled();
+  });
+});
+
 describe('DrawerShell settles a drag release that resolves to the current snap', () => {
   afterEach(() => {
     vi.unstubAllGlobals();

@@ -122,7 +122,6 @@ describe('the mobile browse section shell cells', () => {
   it('leaves every other compact and constrained cell falling back to the complete wide lifecycle', () => {
     const stillInactiveCells: readonly ActivationCell[] = [
       { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'browse' },
-      { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'routeWorkspace' },
       { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'mapInput' },
     ];
 
@@ -135,6 +134,31 @@ describe('the mobile browse section shell cells', () => {
         preferences,
       }));
     }
+  });
+
+  it.each([
+    'short',
+    'regular',
+  ] as const)('activates the compact/%s routeWorkspace cell as a full-screen modal over the backgrounded map', (
+    heightBand,
+  ) => {
+    const cell = { sizeBand: 'compact', heightBand, routeIntent: 'routeWorkspace' } as const;
+    const resolved = resolveShellLayoutPolicy({ ...cell, preferences });
+
+    expect(isCellActive(cell)).toBe(true);
+    expect(resolved.drawer.presentation).toBe('fullScreen');
+    expect(resolved.drawer.modality).toBe('modal');
+    expect(resolved.map.interaction).toBe('background');
+  });
+
+  it('activates the constrained/short routeWorkspace cell as a modal side overlay over the backgrounded map', () => {
+    const cell = { sizeBand: 'constrained', heightBand: 'short', routeIntent: 'routeWorkspace' } as const;
+    const resolved = resolveShellLayoutPolicy({ ...cell, preferences });
+
+    expect(isCellActive(cell)).toBe(true);
+    expect(resolved.drawer.presentation).toBe('sideOverlay');
+    expect(resolved.drawer.modality).toBe('modal');
+    expect(resolved.map.interaction).toBe('background');
   });
 });
 

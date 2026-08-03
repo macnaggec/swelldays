@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { act, fireEvent, screen } from '@testing-library/react';
 import { useRef, useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { SidePanel } from './SidePanel';
 import { PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
@@ -54,6 +54,21 @@ describe('SidePanel', () => {
 
     const drawer = screen.getByRole('complementary', { name: 'Content drawer' });
     expect(drawer).toContainElement(screen.getByText('Panel body'));
+  });
+
+  it('forwards onBack as the modal drawer\'s Escape handler', () => {
+    const onBackSpy = vi.fn();
+
+    render(
+      <SidePanel drawerPresentation="fullScreen" drawerModality="modal" onBack={onBackSpy}>
+        <div>Panel body</div>
+      </SidePanel>,
+    );
+
+    const drawer = screen.getByRole('dialog', { name: 'Content drawer' });
+    fireEvent.keyDown(drawer, { key: 'Escape' });
+
+    expect(onBackSpy).toHaveBeenCalledOnce();
   });
 
   it('restores focus to the drawer trigger when the surface unmounts', () => {

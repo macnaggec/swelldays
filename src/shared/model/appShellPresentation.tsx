@@ -26,10 +26,13 @@ const WIDE_FALLBACK = { sizeBand: 'wide', heightBand: 'regular' } as const;
 const ACTIVE_CELLS: readonly ActivationCell[] = [
   { sizeBand: 'compact', heightBand: 'short', routeIntent: 'browse' },
   { sizeBand: 'compact', heightBand: 'short', routeIntent: 'galleryWorkspace' },
+  { sizeBand: 'compact', heightBand: 'short', routeIntent: 'routeWorkspace' },
   { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'browse' },
   { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'galleryWorkspace' },
+  { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'routeWorkspace' },
   { sizeBand: 'constrained', heightBand: 'short', routeIntent: 'browse' },
   { sizeBand: 'constrained', heightBand: 'short', routeIntent: 'galleryWorkspace' },
+  { sizeBand: 'constrained', heightBand: 'short', routeIntent: 'routeWorkspace' },
   { sizeBand: 'wide', heightBand: 'regular', routeIntent: 'browse' },
   { sizeBand: 'wide', heightBand: 'regular', routeIntent: 'galleryWorkspace' },
   { sizeBand: 'wide', heightBand: 'regular', routeIntent: 'routeWorkspace' },

@@ -9,6 +9,7 @@ import {
   type RefObject,
 } from 'react';
 import { animate as animateSurface, motion, useDragControls, type DragHandler } from 'framer-motion';
+import { FocusTrap } from '@mantine/core';
 import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
 import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import { useViewportMetrics } from 'shared/model/viewportMetrics';
@@ -53,6 +54,8 @@ interface DrawerShellBaseProps {
   modality: DrawerShellModality;
   ariaLabel?: string;
   restoreFocusRef?: RefObject<HTMLElement | null>;
+  /** Invoked when Escape is pressed while modal and open. Ignored otherwise. */
+  onEscape?: () => void;
   children?: ReactNode;
 }
 
@@ -74,6 +77,7 @@ export type DrawerShellProps = DrawerShellPanelProps | DrawerShellSheetProps;
 // only softens the stop at either end rather than allowing real overshoot.
 const SHEET_DRAG_ELASTIC = 0.08;
 const SHORT_SIDE_OVERLAY_WIDTH_VW = 45;
+const FULL_SCREEN_WIDTH_VW = 100;
 
 /**
  * Band-transition continuity contract (F12d): the drawer surface and its children keep
@@ -83,7 +87,7 @@ const SHORT_SIDE_OVERLAY_WIDTH_VW = 45;
  * a different element tree.
  */
 export function DrawerShell(props: DrawerShellProps) {
-  const { modality, ariaLabel = 'Content drawer', restoreFocusRef, children } = props;
+  const { modality, ariaLabel = 'Content drawer', restoreFocusRef, onEscape, children } = props;
   const snap = props.presentation === 'bottomSheet' ? props.snap : undefined;
   const onSnapChange = props.presentation === 'bottomSheet' ? props.onSnapChange : undefined;
   const panelOpen = props.presentation === 'bottomSheet' ? true : (props.open ?? true);
@@ -105,7 +109,9 @@ export function DrawerShell(props: DrawerShellProps) {
   const targetSheetHeightPx = snap ? heights[snap] : null;
   const targetPanelWidthVw = props.presentation === 'persistent'
     ? PANEL_WIDTH_VW[props.state]
-    : SHORT_SIDE_OVERLAY_WIDTH_VW;
+    : props.presentation === 'fullScreen'
+      ? FULL_SCREEN_WIDTH_VW
+      : SHORT_SIDE_OVERLAY_WIDTH_VW;
   const dragControls = useDragControls();
   const dragConstraints = useMemo(
     () => ({ top: viewportHeightPx - heights.full, bottom: viewportHeightPx - heights.peek }),
@@ -237,6 +243,18 @@ export function DrawerShell(props: DrawerShellProps) {
 
   const isModal = modality === 'modal';
 
+  useEffect(() => {
+    if (!isModal || !onEscape || !panelOpen) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.isComposing) return;
+      onEscape();
+    };
+    surface.addEventListener('keydown', handleKeyDown);
+    return () => surface.removeEventListener('keydown', handleKeyDown);
+  }, [isModal, onEscape, panelOpen]);
+
   // Published to panel content so it can lay out at the destination width rather than
   // riding the surface's per-frame width animation. `transitioning` brackets exactly
   // the span in which the two disagree.
@@ -252,9 +270,11 @@ export function DrawerShell(props: DrawerShellProps) {
     ? resting.width
     : props.presentation === 'sideOverlay'
       ? panelOpen ? viewportWidthPx * (SHORT_SIDE_OVERLAY_WIDTH_VW / 100) : 0
-      : resting.width > 0 && previousPanelVw !== null
-        ? resting.width * (PANEL_WIDTH_VW[props.state] / previousPanelVw)
-        : 0;
+      : props.presentation === 'fullScreen'
+        ? panelOpen ? viewportWidthPx : 0
+        : resting.width > 0 && previousPanelVw !== null
+          ? resting.width * (PANEL_WIDTH_VW[props.state] / previousPanelVw)
+          : 0;
 
   const settledWidth = useMemo(
     () => ({
@@ -325,7 +345,11 @@ export function DrawerShell(props: DrawerShellProps) {
         ? panelOpen
           ? `${SHORT_SIDE_OVERLAY_WIDTH_VW}vw`
           : '0vw'
-        : props.state === 'expanded' ? `${PANEL_WIDTH_VW.expanded}vw` : `${PANEL_WIDTH_VW.compact}vw`,
+        : props.presentation === 'fullScreen'
+          ? panelOpen
+            ? `${FULL_SCREEN_WIDTH_VW}vw`
+            : '0vw'
+          : props.state === 'expanded' ? `${PANEL_WIDTH_VW.expanded}vw` : `${PANEL_WIDTH_VW.compact}vw`,
     };
   // The property a presentation does not animate is corrected instantly: a band crossing
   // is a presentation swap, not a movement the user should watch.
@@ -340,60 +364,61 @@ export function DrawerShell(props: DrawerShellProps) {
     };
 
   return (
-    <motion.aside
-      ref={surfaceRef}
-      aria-label={ariaLabel}
-      aria-modal={isModal || undefined}
-      aria-hidden={panelOpen ? undefined : true}
-      inert={!panelOpen}
-      role={isModal ? 'dialog' : undefined}
-      className={`${styles.surface} ${materialClasses.panel}`}
-      data-drawer-presentation={props.presentation}
-      data-drawer-state={props.presentation === 'bottomSheet' ? undefined : props.state}
-      data-drawer-snap={props.presentation === 'bottomSheet' ? props.snap : undefined}
-      data-drawer-modality={modality}
-      initial={false}
-      animate={animate}
-      transition={transition}
-      drag={props.presentation === 'bottomSheet' ? 'y' : false}
-      dragControls={props.presentation === 'bottomSheet' ? dragControls : undefined}
-      dragListener={props.presentation === 'bottomSheet' ? !contentScrolledFromTop : undefined}
-      dragConstraints={props.presentation === 'bottomSheet' ? dragConstraints : undefined}
-      dragElastic={props.presentation === 'bottomSheet' ? SHEET_DRAG_ELASTIC : undefined}
-      dragMomentum={false}
-      onDrag={props.presentation === 'bottomSheet' ? handleSheetDrag : undefined}
-      onDragEnd={props.presentation === 'bottomSheet' ? handleSheetDragEnd : undefined}
-      onAnimationComplete={() => {
-        const bounds = surfaceRef.current?.getBoundingClientRect();
-        if (bounds) publishDrawerGeometry(bounds);
-        transitioningRef.current = false;
-        setTransitioning(false);
-      }}
-    >
-      {snap !== undefined && (
-        <div
-          className={styles.dragHandle}
-          data-drawer-sheet-handle
-          onPointerDown={(event) => dragControls.start(event)}
-        />
-      )}
-      {/*
-        * These providers are mounted in every presentation on purpose. Wrapping the
-        * children only in the sheet branch would change the element type at this
-        * position on a band crossing, so React would unmount and rebuild the whole
-        * panel subtree — losing the draft text, focus, and scroll position F12d
-        * exists to preserve. Outside a sheet the registration is inert: the
-        * arbitration effect below returns early when there is no snap.
-        */}
-      <PanelSettledWidthContext.Provider value={settledWidth}>
-        <SheetScrollOwnerContext.Provider value={registerScrollOwner}>
-          <SheetContentScrollContext.Provider
-            value={props.presentation === 'bottomSheet' ? props.snap === 'full' : true}
-          >
-            {children}
-          </SheetContentScrollContext.Provider>
-        </SheetScrollOwnerContext.Provider>
-      </PanelSettledWidthContext.Provider>
-    </motion.aside>
+    <FocusTrap active={isModal && panelOpen} innerRef={surfaceRef}>
+      <motion.aside
+        aria-label={ariaLabel}
+        aria-modal={isModal || undefined}
+        aria-hidden={panelOpen ? undefined : true}
+        inert={!panelOpen}
+        role={isModal ? 'dialog' : undefined}
+        className={`${styles.surface} ${materialClasses.panel}`}
+        data-drawer-presentation={props.presentation}
+        data-drawer-state={props.presentation === 'bottomSheet' ? undefined : props.state}
+        data-drawer-snap={props.presentation === 'bottomSheet' ? props.snap : undefined}
+        data-drawer-modality={modality}
+        initial={false}
+        animate={animate}
+        transition={transition}
+        drag={props.presentation === 'bottomSheet' ? 'y' : false}
+        dragControls={props.presentation === 'bottomSheet' ? dragControls : undefined}
+        dragListener={props.presentation === 'bottomSheet' ? !contentScrolledFromTop : undefined}
+        dragConstraints={props.presentation === 'bottomSheet' ? dragConstraints : undefined}
+        dragElastic={props.presentation === 'bottomSheet' ? SHEET_DRAG_ELASTIC : undefined}
+        dragMomentum={false}
+        onDrag={props.presentation === 'bottomSheet' ? handleSheetDrag : undefined}
+        onDragEnd={props.presentation === 'bottomSheet' ? handleSheetDragEnd : undefined}
+        onAnimationComplete={() => {
+          const bounds = surfaceRef.current?.getBoundingClientRect();
+          if (bounds) publishDrawerGeometry(bounds);
+          transitioningRef.current = false;
+          setTransitioning(false);
+        }}
+      >
+        {snap !== undefined && (
+          <div
+            className={styles.dragHandle}
+            data-drawer-sheet-handle
+            onPointerDown={(event) => dragControls.start(event)}
+          />
+        )}
+        {/*
+          * These providers are mounted in every presentation on purpose. Wrapping the
+          * children only in the sheet branch would change the element type at this
+          * position on a band crossing, so React would unmount and rebuild the whole
+          * panel subtree — losing the draft text, focus, and scroll position F12d
+          * exists to preserve. Outside a sheet the registration is inert: the
+          * arbitration effect below returns early when there is no snap.
+          */}
+        <PanelSettledWidthContext.Provider value={settledWidth}>
+          <SheetScrollOwnerContext.Provider value={registerScrollOwner}>
+            <SheetContentScrollContext.Provider
+              value={props.presentation === 'bottomSheet' ? props.snap === 'full' : true}
+            >
+              {children}
+            </SheetContentScrollContext.Provider>
+          </SheetScrollOwnerContext.Provider>
+        </PanelSettledWidthContext.Provider>
+      </motion.aside>
+    </FocusTrap>
   );
 }
