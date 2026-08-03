@@ -25,3 +25,10 @@
   color: var(--wa-text-muted);
   line-height: 1.45;
 }
+
+.drawerContent {
+  padding: var(--mantine-spacing-xs);
+  overflow-y: auto;
+  height: 100%;
+  box-sizing: border-box;
+}

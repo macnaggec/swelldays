@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
   type RefObject,
 } from 'react';
@@ -22,6 +23,7 @@ import {
   publishDrawerTargetGeometry,
   type DrawerGeometry,
 } from './geometry';
+import { deriveKeyboardInsetPx } from './keyboardInset';
 import { DRAWER_SHELL_TRANSITION } from './motion';
 import { PanelSettledWidthContext } from './panelSettledWidth';
 import {
@@ -101,7 +103,14 @@ export function DrawerShell(props: DrawerShellProps) {
   const {
     layoutViewportWidthPx: viewportWidthPx,
     layoutViewportHeightPx: viewportHeightPx,
+    visualViewportHeightPx,
+    visualViewportOffsetTopPx,
   } = useViewportMetrics();
+  const keyboardInsetPx = deriveKeyboardInsetPx({
+    layoutViewportHeightPx: viewportHeightPx,
+    visualViewportHeightPx,
+    visualViewportOffsetTopPx,
+  });
   const heights = useMemo(
     () => resolveSheetSnapHeights({ viewportHeightPx, peekHeightPx: SHEET_PEEK_HEIGHT_PX }),
     [viewportHeightPx],
@@ -377,6 +386,7 @@ export function DrawerShell(props: DrawerShellProps) {
         data-drawer-snap={props.presentation === 'bottomSheet' ? props.snap : undefined}
         data-drawer-modality={modality}
         initial={false}
+        style={{ '--wa-keyboard-inset-bottom': `${keyboardInsetPx}px` } as CSSProperties}
         animate={animate}
         transition={transition}
         drag={props.presentation === 'bottomSheet' ? 'y' : false}

@@ -1294,6 +1294,79 @@ describe('Panel compact browse sheet', () => {
   });
 });
 
+describe('Panel compact upload sheet', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.isAuthenticated = true;
+    mocks.matches = [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: {} }];
+    mocks.params = {};
+    mocks.sizeBand = 'compact';
+    mocks.heightBand = 'regular';
+    usePanelExpansionStore.setState({ browsingExpanded: true, galleryExpanded: true });
+    useAddSpotStore.getState().exit();
+  });
+
+  afterEach(() => {
+    mocks.sizeBand = 'wide';
+    mocks.heightBand = 'regular';
+    useAddSpotStore.getState().exit();
+  });
+
+  it('opens the upload sheet at its own default position, independent of the browse sheet state', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'full');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Land on peek' }));
+
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'peek');
+    // Landing Upload's own sheet on peek must not write through Browse's persisted
+    // expand preference: that preference belongs to useBrowseSurface(), not Upload's
+    // own local snap state. If the two were wired together, this would flip false.
+    expect(usePanelExpansionStore.getState().browsingExpanded).toBe(true);
+  });
+});
+
+describe('Panel compact add-spot suppression', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.isAuthenticated = true;
+    mocks.matches = [{ routeId: '/_panel/', staticData: {} }];
+    mocks.params = {};
+    mocks.sizeBand = 'compact';
+    mocks.heightBand = 'regular';
+    usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: true });
+    useAddSpotStore.getState().exit();
+  });
+
+  afterEach(() => {
+    mocks.sizeBand = 'wide';
+    mocks.heightBand = 'regular';
+    // The test below leaves Add Spot active when it finishes, and RTL's own unmount
+    // runs after this hook — so this reset is a real true -> false flip landing on a
+    // still-mounted tree. Wrapping it in act() keeps that inside a tracked act() scope.
+    act(() => {
+      useAddSpotStore.getState().exit();
+    });
+  });
+
+  it('suppresses the side panel while Add Spot is active on a newly activated Phase M band', async () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(screen.getByTestId('side-panel')).toBeInTheDocument();
+
+    act(() => {
+      useAddSpotStore.getState().enter('New Spot');
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('side-panel')).not.toBeInTheDocument();
+    });
+  });
+});
+
 describe('Panel short-height browse section shell', () => {
   beforeEach(() => {
     vi.clearAllMocks();

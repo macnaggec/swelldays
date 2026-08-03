@@ -478,6 +478,13 @@ const rules = [
     ),
   },
   {
+    id: 'viewport-metrics-owns-visual-viewport',
+    message: 'Read visual-viewport geometry (the keyboard-aware viewport) through shared/model/viewportMetrics.',
+    pattern: /\bvisualViewport\b/,
+    include: isRuntimeTypeScript,
+    exclude: file => file === 'src/shared/model/viewportMetrics.ts',
+  },
+  {
     id: 'app-shell-layout-policy-has-one-owner',
     message: 'Derive shell presentation through shared/model/appShellLayoutPolicy.',
     pattern: /\b(?:deriveAppChromePolicy|derivePanelTargetPolicy|deriveGlobeInteractionPolicy|deriveDesktopFoundationAppShellLayoutPolicy)\b/,

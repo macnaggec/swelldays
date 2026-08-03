@@ -7,7 +7,7 @@
   width: 25vw;
   z-index: var(--wa-z-panel);
   box-sizing: border-box;
-  padding-block: var(--wa-safe-area-top) var(--wa-safe-area-bottom);
+  padding-block: var(--wa-safe-area-top) calc(var(--wa-safe-area-bottom) + var(--wa-keyboard-inset-bottom, 0px));
   padding-inline: var(--wa-safe-area-left) var(--wa-safe-area-right);
   border-right: none;
   border-radius: var(--wa-radius-panel) 0 0 var(--wa-radius-panel);

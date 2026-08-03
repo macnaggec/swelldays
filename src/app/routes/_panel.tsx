@@ -10,7 +10,7 @@ import {
 } from 'entities/SurfSession';
 import { EMPTY_BROWSE_FILTERS, type BrowseDateFilter, type BrowseFilters } from 'shared/model/browseFilters';
 import { SidePanel } from 'widgets/SidePanel';
-import { useBrowseSurface } from 'shared/ui/DrawerShell';
+import { useBrowseSurface, type SheetSnap } from 'shared/ui/DrawerShell';
 import { useCartStore } from 'entities/Commerce';
 import { CartDrawerHeader } from 'features/Cart';
 import { useUploadStore } from 'features/Upload';
@@ -106,6 +106,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
   const setUserPreferredExpanded = usePanelExpansionStore((state) => state.setBrowsingPanelExpanded);
   const setGalleryPreferredExpanded = usePanelExpansionStore((state) => state.setGalleryPanelExpanded);
   const [routeBackAction, setRouteBackAction] = useState<PanelRouteBackAction | null>(null);
+  const [uploadSheetSnap, setUploadSheetSnap] = useState<SheetSnap>('full');
   const navigate = useNavigate();
   const router = useRouter();
   const matches = useMatches();
@@ -221,7 +222,10 @@ function PanelFrame({ children }: { children: ReactNode }) {
     showMap: showBrowseMap,
     showResults: revealBrowseResults,
   } = useBrowseSurface();
-  const isBrowseSheet = layoutPolicy.drawer.presentation === 'bottomSheet';
+  const isBrowseSheet = layoutPolicy.drawer.presentation === 'bottomSheet'
+    && (appRouteIntent === 'browse' || appRouteIntent === 'galleryWorkspace');
+  const isUploadSheet = layoutPolicy.drawer.presentation === 'bottomSheet'
+    && appRouteIntent === 'mapInput';
   const isBrowseSectionRoute = Boolean(spotMatch || allGalleryMatch || isDefaultIndex);
   const isShortBrowseSideOverlay = layoutPolicy.drawer.presentation === 'sideOverlay'
     && isBrowseSectionRoute;
@@ -414,13 +418,13 @@ function PanelFrame({ children }: { children: ReactNode }) {
               {subheader}
             </FloatingPanelSearchToolbar>
           )}
-          {layoutPolicy.drawer.presentation !== 'hidden' && (
+          {layoutPolicy.drawer.presentation !== 'hidden' && appRouteIntent !== 'immersiveMapInput' && (
             <SidePanel
               drawerPresentation={layoutPolicy.drawer.presentation}
               drawerModality={layoutPolicy.drawer.modality === 'modal' ? 'modal' : 'nonmodal'}
               open={!showsStandaloneMapToolbar}
-              sheetSnap={isBrowseSheet ? sheetSnap : undefined}
-              onSheetSnapChange={isBrowseSheet ? handleSheetSnapChange : undefined}
+              sheetSnap={isBrowseSheet ? sheetSnap : isUploadSheet ? uploadSheetSnap : undefined}
+              onSheetSnapChange={isBrowseSheet ? handleSheetSnapChange : isUploadSheet ? setUploadSheetSnap : undefined}
               expanded={renderedExpanded}
               onExpandToggle={handlePanelExpandToggle}
               onBack={routeBackActionForPanel?.onBack ?? defaultBackAction}

@@ -119,6 +119,96 @@ describe('DrawerShell geometry projection', () => {
 
 });
 
+describe('DrawerShell keyboard inset', () => {
+  const originalInnerHeight = window.innerHeight;
+
+  afterEach(() => {
+    Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+    vi.unstubAllGlobals();
+  });
+
+  it('grows the surface bottom padding by the strip a software keyboard covers, without moving the surface', () => {
+    Object.defineProperty(window, 'innerHeight', { value: 844, configurable: true });
+    vi.stubGlobal('visualViewport', {
+      width: 390,
+      height: 550,
+      offsetLeft: 0,
+      offsetTop: 0,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    } as unknown as VisualViewport);
+
+    render(
+      <DrawerShell presentation="persistent" state="compact" modality="nonmodal">
+        Drawer content
+      </DrawerShell>,
+    );
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    expect(surface.style.getPropertyValue('--wa-keyboard-inset-bottom')).toBe('294px');
+  });
+
+  it('leaves the measured drawer geometry unpublished when only the keyboard visual-viewport changes', () => {
+    const queuedFrames: FrameRequestCallback[] = [];
+
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      queuedFrames.push(callback);
+      return queuedFrames.length;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    const listeners = new Set<() => void>();
+    const stubVisualViewport = {
+      width: 390,
+      height: 844,
+      offsetLeft: 0,
+      offsetTop: 0,
+      addEventListener: (_type: string, listener: () => void) => {
+        listeners.add(listener);
+      },
+      removeEventListener: (_type: string, listener: () => void) => {
+        listeners.delete(listener);
+      },
+    };
+    vi.stubGlobal('visualViewport', stubVisualViewport as unknown as VisualViewport);
+
+    render(
+      <>
+        <DrawerShell presentation="persistent" state="compact" modality="nonmodal">
+          Drawer content
+        </DrawerShell>
+        <GeometryProbe />
+      </>,
+    );
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    vi.spyOn(surface, 'getBoundingClientRect').mockImplementation(() => (
+      DOMRect.fromRect({ x: 1080, y: 0, width: 360, height: 900 })
+    ));
+
+    act(() => queuedFrames.shift()?.(0));
+    expect(screen.getByTestId('drawer-geometry').textContent).toBe('1080:0:1440:900:360:900');
+
+    // A keyboard opening dispatches a visualViewport resize, not a window resize — the
+    // measurement loop above is mounted once (empty dependency array) and must not
+    // re-run from this, so the published geometry (and the map camera insets it drives)
+    // stays exactly where it was.
+    act(() => {
+      stubVisualViewport.height = 550;
+      listeners.forEach((listener) => listener());
+    });
+
+    expect(screen.getByTestId('drawer-geometry').textContent).toBe('1080:0:1440:900:360:900');
+  });
+});
+
 describe('DrawerShell focus continuity', () => {
   it('leaves focus untouched when the surface unmounts while focus is outside the drawer', () => {
     const triggerRef = createRef<HTMLButtonElement>();

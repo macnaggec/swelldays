@@ -39,6 +39,12 @@ const ACTIVE_CELLS: readonly ActivationCell[] = [
   { sizeBand: 'wide', heightBand: 'regular', routeIntent: 'mapInput' },
   { sizeBand: 'wide', heightBand: 'regular', routeIntent: 'fullPage' },
   { sizeBand: 'wide', heightBand: 'regular', routeIntent: 'immersiveMapInput' },
+  { sizeBand: 'compact', heightBand: 'short', routeIntent: 'mapInput' },
+  { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'mapInput' },
+  { sizeBand: 'constrained', heightBand: 'short', routeIntent: 'mapInput' },
+  { sizeBand: 'compact', heightBand: 'short', routeIntent: 'immersiveMapInput' },
+  { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'immersiveMapInput' },
+  { sizeBand: 'constrained', heightBand: 'short', routeIntent: 'immersiveMapInput' },
 ];
 
 export function isCellActive(cell: ActivationCell): boolean {

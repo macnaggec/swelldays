@@ -119,10 +119,34 @@ describe('the mobile browse section shell cells', () => {
     expect(resolved.map.interaction).toBe('interactive');
   });
 
+  it.each([
+    ['compact', 'short', 'mapInput', 'sideOverlay'],
+    ['compact', 'regular', 'mapInput', 'bottomSheet'],
+    ['constrained', 'short', 'mapInput', 'sideOverlay'],
+    ['compact', 'short', 'immersiveMapInput', 'sideOverlay'],
+    ['compact', 'regular', 'immersiveMapInput', 'bottomSheet'],
+    ['constrained', 'short', 'immersiveMapInput', 'sideOverlay'],
+  ] as const)('activates the %s/%s %s cell as a %s drawer over the interactive map', (
+    sizeBand,
+    heightBand,
+    routeIntent,
+    expectedPresentation,
+  ) => {
+    const cell = { sizeBand, heightBand, routeIntent } as const;
+    const resolved = resolveShellLayoutPolicy({ ...cell, preferences });
+
+    expect(isCellActive(cell)).toBe(true);
+    expect(resolved).toEqual(deriveAppShellLayoutPolicy({ ...cell, preferences }));
+    expect(resolved.drawer.presentation).toBe(expectedPresentation);
+    expect(resolved.drawer.modality).toBe('nonmodal');
+    expect(resolved.map.interaction).toBe('interactive');
+  });
+
   it('leaves every other compact and constrained cell falling back to the complete wide lifecycle', () => {
     const stillInactiveCells: readonly ActivationCell[] = [
       { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'browse' },
-      { sizeBand: 'compact', heightBand: 'regular', routeIntent: 'mapInput' },
+      { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'mapInput' },
+      { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'immersiveMapInput' },
     ];
 
     for (const cell of stillInactiveCells) {
