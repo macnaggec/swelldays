@@ -10,7 +10,8 @@ import {
 } from 'react';
 import { ActionIcon, Modal, Skeleton } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight, IconX, IconPhotoOff } from '@tabler/icons-react';
-import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, animate, motion, useMotionValue } from 'framer-motion';
+import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import classes from './CarouselLightbox.module.css';
 
 const lightboxIconActionData = { 'data-lightbox-icon-action': 'true' };
@@ -139,7 +140,7 @@ const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
 }) => {
   const [nav, setNav] = useState({ index: initialIndex, direction: 0 });
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
-  const prefersReducedMotion = useReducedMotion();
+  const { prefersReducedMotion } = useViewportCapabilities();
   // Elastic drag offset applied to the whole media layer while a touch swipe is in flight.
   const dragX = useMotionValue(0);
   // Urls proven loadable — a successful decode() or a mounted element's load event. This is

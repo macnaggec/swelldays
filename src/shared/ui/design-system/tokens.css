@@ -145,6 +145,14 @@
   --wa-status-success: rgb(74, 222, 128);
 }
 
+@media (pointer: coarse) {
+  :root {
+    --wa-control-size-compact: 44px;
+    --wa-control-height-default: 44px;
+    --wa-control-size-navigation-compact: 44px;
+  }
+}
+
 /* Mantine global interaction states that are part of the Swelldays glass adapter. */
 .mantine-Menu-item:hover,
 .mantine-Menu-item[data-hovered],

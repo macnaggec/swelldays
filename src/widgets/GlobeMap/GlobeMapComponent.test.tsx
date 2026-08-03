@@ -504,6 +504,30 @@ describe('GlobeMapComponent selected spot focus', () => {
     expect(mocks.flyTo).toHaveBeenCalledTimes(1);
   });
 
+  it('skips the initial focus animation duration when reduced motion disables globe motion', () => {
+    const { rerender } = render(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId={null}
+        onSpotSelect={vi.fn()}
+        motionPolicy="disabled"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /load map/i }));
+
+    rerender(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId="spot-1"
+        onSpotSelect={vi.fn()}
+        motionPolicy="disabled"
+      />,
+    );
+
+    expect(mocks.flyTo).toHaveBeenCalledWith(expect.objectContaining({ duration: 0 }));
+  });
+
   it('focuses a selected route spot when its spot record arrives after map load', () => {
     const { rerender } = render(
       <GlobeMapComponent
@@ -911,6 +935,30 @@ describe('GlobeMapComponent camera inset changes', () => {
       essential: true,
     });
     expect(mocks.setPadding).not.toHaveBeenCalled();
+  });
+
+  it('skips the recenter animation duration when reduced motion disables globe motion', () => {
+    const { rerender } = render(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId={null}
+        onSpotSelect={vi.fn()}
+        motionPolicy="disabled"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /load map/i }));
+
+    rerender(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId="spot-1"
+        onSpotSelect={vi.fn()}
+        motionPolicy="disabled"
+      />,
+    );
+
+    expect(mocks.easeTo).toHaveBeenCalledWith(expect.objectContaining({ duration: 0 }));
   });
 
   it('does not move the camera when insets change with no spot selected', () => {

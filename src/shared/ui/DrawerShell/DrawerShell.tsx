@@ -24,7 +24,7 @@ import {
   type DrawerGeometry,
 } from './geometry';
 import { deriveKeyboardInsetPx } from './keyboardInset';
-import { DRAWER_SHELL_TRANSITION } from './motion';
+import { deriveDrawerSurfaceTransition, DRAWER_SHELL_TRANSITION } from './motion';
 import { PanelSettledWidthContext } from './panelSettledWidth';
 import {
   nearestSheetSnap,
@@ -362,15 +362,10 @@ export function DrawerShell(props: DrawerShellProps) {
     };
   // The property a presentation does not animate is corrected instantly: a band crossing
   // is a presentation swap, not a movement the user should watch.
-  const transition = props.presentation === 'bottomSheet'
-    ? {
-      y: prefersReducedMotion ? { duration: 0 } : DRAWER_SHELL_TRANSITION,
-      width: { duration: 0 },
-    }
-    : {
-      width: DRAWER_SHELL_TRANSITION,
-      y: { duration: 0 },
-    };
+  const transition = deriveDrawerSurfaceTransition({
+    isBottomSheet: props.presentation === 'bottomSheet',
+    prefersReducedMotion,
+  });
 
   return (
     <FocusTrap active={isModal && panelOpen} innerRef={surfaceRef}>

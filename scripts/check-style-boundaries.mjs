@@ -848,6 +848,13 @@ const rules = [
     include: file => file.endsWith('.css'),
     exclude: isDesignSystemOwner,
   },
+  {
+    id: 'safe-area-insets-have-one-owner',
+    message: 'Read safe-area insets through the --wa-safe-area-* custom properties in design-system/tokens.css instead of a raw env() call.',
+    pattern: /env\(\s*safe-area-inset-/,
+    include: file => file.endsWith('.css'),
+    exclude: file => file === 'src/shared/ui/design-system/tokens.css',
+  },
 ];
 
 const files = listFiles(srcRoot).filter(isCodeOrCss);

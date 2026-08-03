@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
+import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import { DRAWER_SHELL_TRANSITION } from 'shared/ui/DrawerShell';
 import { usePanelSettledWidth } from 'shared/ui/DrawerShell/panelSettledWidth';
 
@@ -25,13 +26,14 @@ interface PanelChromeSlotProps {
  */
 export function PanelChromeSlot({ className, children }: PanelChromeSlotProps) {
   const settled = usePanelSettledWidth();
+  const { prefersReducedMotion } = useViewportCapabilities();
 
   return (
     <motion.div
       className={className}
       layout="position"
       layoutDependency={settled?.destinationWidth ?? 0}
-      transition={{ layout: DRAWER_SHELL_TRANSITION }}
+      transition={{ layout: prefersReducedMotion ? { duration: 0 } : DRAWER_SHELL_TRANSITION }}
     >
       {children}
     </motion.div>

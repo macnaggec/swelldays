@@ -10,6 +10,12 @@
     var(--wa-motion-easing-standard);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .toolbar {
+    transition: none;
+  }
+}
+
 .toolbar[data-hidden] {
   transform: translateY(-100%);
 }

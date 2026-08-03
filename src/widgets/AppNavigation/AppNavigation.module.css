@@ -23,6 +23,12 @@
     opacity var(--wa-motion-duration-chrome) var(--wa-motion-easing-standard);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .root[data-navigation-presentation='topBar'] {
+    transition: none;
+  }
+}
+
 .root[data-navigation-presentation='topBar'][data-sheet-snap='half'] {
   --wa-browse-navigation-translate-y: -100%;
 

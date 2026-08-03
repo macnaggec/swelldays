@@ -31,6 +31,13 @@
   opacity: 1;
 }
 
+@media (hover: none) {
+  .globeContainer :global(.mapboxgl-ctrl-bottom-left),
+  .globeContainer :global(.mapboxgl-ctrl-bottom-right) {
+    opacity: 1;
+  }
+}
+
 /* Globe atmosphere glow effect */
 .globeContainer :global(.mapboxgl-map) {
   background: radial-gradient(
@@ -71,6 +78,12 @@
 @keyframes pin-pulse {
   0%, 100% { box-shadow: 0 0 0 2px var(--wa-accent-marker), 0 2px 8px rgba(0, 0, 0, 0.4); }
   50%       { box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0, 0, 0, 0.4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tempPin {
+    animation: none;
+  }
 }
 
 /* Make Mapbox Popup transparent so Mantine component controls the look */

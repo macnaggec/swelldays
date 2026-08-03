@@ -37,6 +37,12 @@
     background-color var(--wa-motion-duration-control) var(--wa-motion-easing-standard);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .item {
+    transition: none;
+  }
+}
+
 .root[data-compact] .item {
   width: var(--wa-control-size-navigation);
   padding-inline: 0;

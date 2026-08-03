@@ -182,12 +182,13 @@ export function GlobeMapComponent({
       left: insetLeftPx,
     };
     const center: [number, number] = [spot.coords.lng, spot.coords.lat];
+    const skipAnimation = motionPolicy === 'disabled';
 
     if (currentZoom >= 12) {
       map.easeTo({
         center,
         padding,
-        duration: 600,
+        duration: skipAnimation ? 0 : 600,
         essential: true,
       });
       return;
@@ -197,10 +198,10 @@ export function GlobeMapComponent({
       center,
       zoom: 12,
       padding,
-      duration: 1000,
+      duration: skipAnimation ? 0 : 1000,
       essential: true,
     });
-  }, [insetTopPx, insetRightPx, insetBottomPx, insetLeftPx]);
+  }, [insetTopPx, insetRightPx, insetBottomPx, insetLeftPx, motionPolicy]);
 
   const focusSpotById = useCallback((spotId: string) => {
     const spot = spots.find((candidate) => candidate.id === spotId);
