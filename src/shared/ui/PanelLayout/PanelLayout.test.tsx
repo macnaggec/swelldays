@@ -25,9 +25,9 @@ function stubResizeObserver() {
       observedTarget = target;
     }
 
-    unobserve() {}
+    unobserve() { }
 
-    disconnect() {}
+    disconnect() { }
   }
 
   vi.stubGlobal('ResizeObserver', ResizeObserverStub);
@@ -38,7 +38,7 @@ function stubResizeObserver() {
         throw new Error('ResizeObserver was never constructed and observed');
       }
       const size: ResizeObserverSize = { blockSize: 0, inlineSize: width };
-      const inertObserver: ResizeObserver = { observe() {}, unobserve() {}, disconnect() {} };
+      const inertObserver: ResizeObserver = { observe() { }, unobserve() { }, disconnect() { } };
       act(() => {
         capturedCallback!(
           [{

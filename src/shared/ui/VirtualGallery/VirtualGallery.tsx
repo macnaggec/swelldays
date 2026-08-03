@@ -19,8 +19,8 @@ interface MeasuredVirtualRow {
 }
 
 type GalleryRowAnchor<_T extends { id: string }> =
-  | { type: 'divider'; key: string; index: number }
-  | { type: 'media'; itemId: string; index: number };
+  | { type: 'divider'; key: string; index: number; viewportOffset: number }
+  | { type: 'media'; itemId: string; index: number; viewportOffset: number };
 
 export function getAnchoredVisibleRowIndex(
   virtualItems: MeasuredVirtualRow[],
@@ -106,6 +106,17 @@ export interface VirtualGalleryProps<T extends { id: string }> {
   renderDivider?: (date: Date) => ReactNode;
 }
 
+function firstVisibleRowIndex(
+  virtualItems: MeasuredVirtualRow[],
+  scrollTop: number,
+  coveredTop: number,
+): number {
+  const visibleTop = scrollTop + coveredTop;
+  return virtualItems.find((item) => item.start + item.size > visibleTop)?.index
+    ?? virtualItems[0]?.index
+    ?? 0;
+}
+
 function VirtualGalleryInner<T extends { id: string }>(
   {
     rows,
@@ -133,6 +144,29 @@ function VirtualGalleryInner<T extends { id: string }>(
   }, []);
   const measuredRowHeightsRef = useRef<Map<number, number>>(new Map());
   const measurementEpochRef = useRef(0);
+  const layoutAnchorIndexRef = useRef(0);
+  const committedLayoutRef = useRef({ columns, dense });
+  const layoutChanged = committedLayoutRef.current.columns !== columns
+    || committedLayoutRef.current.dense !== dense;
+  const correctionFrameRef = useRef<number | null>(null);
+  const correctionScrollOwnerRef = useRef<HTMLElement | null>(null);
+  const virtualCanvasRef = useRef<HTMLDivElement | null>(null);
+
+  const isolateLayoutCorrection = useCallback(() => {
+    if (!scrollElement) return;
+    if (correctionFrameRef.current !== null) cancelAnimationFrame(correctionFrameRef.current);
+    scrollElement.setAttribute('data-scroll-direction-isolated', 'gallery-layout');
+    correctionScrollOwnerRef.current = scrollElement;
+    correctionFrameRef.current = requestAnimationFrame(() => {
+      correctionFrameRef.current = requestAnimationFrame(() => {
+        if (scrollElement.getAttribute('data-scroll-direction-isolated') === 'gallery-layout') {
+          scrollElement.removeAttribute('data-scroll-direction-isolated');
+        }
+        correctionFrameRef.current = null;
+        correctionScrollOwnerRef.current = null;
+      });
+    });
+  }, [scrollElement]);
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual exposes imperative functions that React Compiler intentionally leaves un-memoized.
   const virtualizer = useVirtualizer({
@@ -144,7 +178,7 @@ function VirtualGalleryInner<T extends { id: string }>(
       return CARD_ROW_ESTIMATE;
     },
     measureElement: (el) => {
-      const height = el.getBoundingClientRect().height;
+      const height = (el as HTMLElement).offsetHeight;
       const indexAttr = el.getAttribute('data-index');
       if (indexAttr !== null && recordRowMeasurement(measuredRowHeightsRef.current, Number(indexAttr), height)) {
         measurementEpochRef.current += 1;
@@ -153,6 +187,15 @@ function VirtualGalleryInner<T extends { id: string }>(
     },
     overscan: 3,
   });
+  // TanStack's default also adjusts when the partially visible row itself changes
+  // height, which preserves the content after it instead of that row's top edge.
+  // Only accumulated size changes before the saved visible row move scrollTop.
+  virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (item) => {
+    if (layoutChanged) return false;
+    const shouldAdjust = item.index < layoutAnchorIndexRef.current;
+    if (shouldAdjust) isolateLayoutCorrection();
+    return shouldAdjust;
+  };
 
   React.useImperativeHandle(ref, () => ({
     // An imperative jump (e.g. the date menu) is not the user scrolling —
@@ -225,6 +268,59 @@ function VirtualGalleryInner<T extends { id: string }>(
   const virtualItems = virtualizer.getVirtualItems();
   const lastIndex = virtualItems[virtualItems.length - 1]?.index ?? -1;
   const firstIndex = virtualItems[0]?.index ?? -1;
+  const previousAnchorRef = useRef<GalleryRowAnchor<T> | null>(null);
+
+  const captureAnchor = useCallback(() => {
+    const virtualRows = virtualizer.getVirtualItems();
+    const scrollTop = scrollElement?.scrollTop ?? 0;
+    const coveredTop = Number(scrollElement?.dataset.panelChromeHeight ?? '0');
+    const scrollViewportTop = scrollElement?.getBoundingClientRect().top;
+    const canvasViewportTop = virtualCanvasRef.current?.getBoundingClientRect().top;
+    const visibleCanvasOffset = scrollViewportTop !== undefined && canvasViewportTop !== undefined
+      ? scrollViewportTop + coveredTop - canvasViewportTop
+      : scrollTop + coveredTop;
+    const anchorRow = virtualRows.find((row) => row.start + row.size > visibleCanvasOffset);
+    const anchorIndex = anchorRow?.index ?? virtualRows[0]?.index ?? 0;
+    const viewportOffset = anchorRow
+      ? scrollViewportTop !== undefined && canvasViewportTop !== undefined
+        ? canvasViewportTop + anchorRow.start - scrollViewportTop
+        : anchorRow.start - scrollTop
+      : undefined;
+    layoutAnchorIndexRef.current = anchorIndex;
+    const row = rows[anchorIndex];
+    if (!row) {
+      previousAnchorRef.current = null;
+      return;
+    }
+    previousAnchorRef.current = row.type === 'divider'
+      ? { type: 'divider', key: row.key, index: anchorIndex, viewportOffset: viewportOffset ?? coveredTop }
+      : { type: 'media', itemId: row.items[0]!.id, index: anchorIndex, viewportOffset: viewportOffset ?? coveredTop };
+  }, [rows, scrollElement, virtualizer]);
+
+  const captureAnchorRef = useRef(captureAnchor);
+  useLayoutEffect(() => {
+    captureAnchorRef.current = captureAnchor;
+  }, [captureAnchor]);
+
+  useEffect(() => {
+    if (!scrollElement) return;
+    captureAnchorRef.current();
+    const handleScroll = () => {
+      if (!scrollElement.hasAttribute('data-scroll-direction-isolated')) {
+        captureAnchorRef.current();
+      }
+    };
+    scrollElement.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollElement.removeEventListener('scroll', handleScroll);
+  }, [scrollElement]);
+
+  useEffect(() => () => {
+    if (correctionFrameRef.current !== null) cancelAnimationFrame(correctionFrameRef.current);
+    const correctionScrollOwner = correctionScrollOwnerRef.current;
+    if (correctionScrollOwner?.getAttribute('data-scroll-direction-isolated') === 'gallery-layout') {
+      correctionScrollOwner.removeAttribute('data-scroll-direction-isolated');
+    }
+  }, []);
 
   useEffect(() => {
     if (lastIndex >= rows.length - 3) onEndReached?.();
@@ -243,10 +339,12 @@ function VirtualGalleryInner<T extends { id: string }>(
   // chunk-boundary shift from a recolumn (a manual panel toggle or a
   // capability-band crossing changing the column count) is followed
   // correctly even when the anchored row is not a group's first chunk.
-  const previousAnchorRef = useRef<GalleryRowAnchor<T> | null>(null);
   useLayoutEffect(() => {
     const previous = previousAnchorRef.current;
-    let anchorIndex = virtualizer.getVirtualItems()[0]?.index ?? 0;
+    const virtualRows = virtualizer.getVirtualItems();
+    const scrollTop = scrollElement?.scrollTop ?? 0;
+    const coveredTop = Number(scrollElement?.dataset.panelChromeHeight ?? '0');
+    let anchorIndex = firstVisibleRowIndex(virtualRows, scrollTop, coveredTop);
 
     if (previous) {
       const matchesAnchor = (row: GalleryRow<T> | undefined): boolean => {
@@ -256,22 +354,84 @@ function VirtualGalleryInner<T extends { id: string }>(
           : row.type === 'media' && row.items.some((item) => item.id === previous.itemId);
       };
 
-      if (!matchesAnchor(rows[previous.index])) {
+      if (matchesAnchor(rows[previous.index])) {
+        anchorIndex = previous.index;
+      } else {
         const newIndex = rows.findIndex(matchesAnchor);
         if (newIndex !== -1 && newIndex !== previous.index) {
-          virtualizer.scrollToIndex(newIndex, { align: 'start' });
           anchorIndex = newIndex;
+          if (!layoutChanged) virtualizer.scrollToIndex(newIndex, { align: 'start' });
         }
       }
     }
 
+    layoutAnchorIndexRef.current = anchorIndex;
+
+    if (layoutChanged) {
+      const renderedRows = rootRef.current?.querySelectorAll<HTMLElement>('[data-virtual-gallery-row]');
+      let mediaRowHeight: number | null = null;
+      let dividerRowHeight: number | null = null;
+
+      renderedRows?.forEach((rowElement) => {
+        const index = Number(rowElement.dataset.index);
+        const row = rows[index];
+        if (row?.type === 'media' && mediaRowHeight === null) mediaRowHeight = rowElement.offsetHeight;
+        if (row?.type === 'divider' && dividerRowHeight === null) dividerRowHeight = rowElement.offsetHeight;
+      });
+
+      rows.forEach((row, index) => {
+        virtualizer.resizeItem(
+          index,
+          row.type === 'divider'
+            ? dividerRowHeight ?? DIVIDER_HEIGHT
+            : mediaRowHeight ?? CARD_ROW_ESTIMATE,
+        );
+      });
+
+      const totalSize = virtualizer.getTotalSize();
+      if (virtualCanvasRef.current) virtualCanvasRef.current.style.height = `${totalSize}px`;
+
+      if (previous && scrollElement) {
+        const anchorOffset = virtualizer.getOffsetForIndex(anchorIndex, 'start')?.[0];
+        if (anchorOffset !== undefined) {
+          const canvasViewportOffset = virtualCanvasRef.current
+            ? virtualCanvasRef.current.getBoundingClientRect().top
+              - scrollElement.getBoundingClientRect().top
+            : -scrollElement.scrollTop;
+          const currentAnchorViewportOffset = canvasViewportOffset + anchorOffset;
+          isolateLayoutCorrection();
+          virtualizer.scrollToOffset(
+            Math.max(
+              0,
+              scrollElement.scrollTop + currentAnchorViewportOffset - previous.viewportOffset,
+            ),
+            { align: 'start' },
+          );
+        }
+      }
+    }
+
+    committedLayoutRef.current = { columns, dense };
     const topRow = rows[anchorIndex];
+    const currentAnchorRow = virtualRows.find((row) => row.index === anchorIndex);
+    const currentViewportOffset = currentAnchorRow
+      ? currentAnchorRow.start - scrollTop
+      : undefined;
+    const viewportOffset = previous?.viewportOffset ?? currentViewportOffset ?? coveredTop;
     previousAnchorRef.current = topRow
       ? topRow.type === 'divider'
-        ? { type: 'divider', key: topRow.key, index: anchorIndex }
-        : { type: 'media', itemId: topRow.items[0]!.id, index: anchorIndex }
+        ? { type: 'divider', key: topRow.key, index: anchorIndex, viewportOffset }
+        : {
+          type: 'media',
+          itemId: previous?.type === 'media'
+            && topRow.items.some((item) => item.id === previous.itemId)
+            ? previous.itemId
+            : topRow.items[0]!.id,
+          index: anchorIndex,
+          viewportOffset,
+        }
       : null;
-  }, [rows, virtualizer]);
+  }, [rows, columns, dense, layoutChanged, scrollElement, virtualizer, isolateLayoutCorrection]);
 
   // Scroll tracking — feeds onFirstVisibleIndexChange for external sidebars
   const [scrollTop, setScrollTop] = useState(0);
@@ -320,7 +480,11 @@ function VirtualGalleryInner<T extends { id: string }>(
           {toolbar}
         </div>
       )}
-      <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+      <div
+        ref={virtualCanvasRef}
+        data-virtual-gallery-canvas
+        style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
+      >
         {isFetchingPrevious && (
           <div className={styles.loaderTop}>
             <Loader size="sm" />
@@ -334,6 +498,7 @@ function VirtualGalleryInner<T extends { id: string }>(
             <div
               key={virtualItem.key}
               data-index={virtualItem.index}
+              data-virtual-gallery-row
               ref={virtualizer.measureElement}
               style={{ position: 'absolute', top: virtualItem.start, left: 0, width: '100%' }}
             >

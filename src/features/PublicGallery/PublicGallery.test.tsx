@@ -11,6 +11,7 @@ import type { CardContext } from 'shared/ui/BaseGallery/BaseGallery';
 import { PanelScrollChromeStateProvider } from 'shared/ui/PanelScrollChrome';
 import { PanelLayout } from 'shared/ui/PanelLayout';
 import { PanelSettledWidthContext } from 'shared/ui/DrawerShell/panelSettledWidth';
+import { publishDrawerGeometry } from 'shared/ui/DrawerShell/geometry';
 
 const mediaItem: PublicMedia = {
   id: 'media-1',
@@ -35,9 +36,10 @@ const galleryState = vi.hoisted(() => ({
   isLoading: false,
   measuredWidth: 0,
   columns: 0,
+  dense: false,
   scrollToIndex: vi.fn(),
   focusItem: vi.fn(),
-  reportFirstVisibleIndex: (_index: number) => {},
+  reportFirstVisibleIndex: (_index: number) => { },
 }));
 
 const useSpotMediaFeedMock = vi.hoisted(() => vi.fn());
@@ -73,6 +75,7 @@ vi.mock('shared/ui/VirtualGallery/VirtualGallery', () => ({
       toolbar,
       rows,
       columns,
+      dense,
       renderCard,
       renderDivider,
       onFirstVisibleIndexChange,
@@ -80,6 +83,7 @@ vi.mock('shared/ui/VirtualGallery/VirtualGallery', () => ({
       toolbar?: React.ReactNode;
       rows: GalleryRow<PublicMedia>[];
       columns: number;
+      dense?: boolean;
       renderCard: (item: PublicMedia, context: CardContext) => React.ReactNode;
       renderDivider?: (date: Date) => React.ReactNode;
       onFirstVisibleIndexChange?: (index: number) => void;
@@ -90,8 +94,9 @@ vi.mock('shared/ui/VirtualGallery/VirtualGallery', () => ({
       scrollToIndex: galleryState.scrollToIndex,
       focusItem: galleryState.focusItem,
     }));
-    galleryState.reportFirstVisibleIndex = onFirstVisibleIndexChange ?? (() => {});
+    galleryState.reportFirstVisibleIndex = onFirstVisibleIndexChange ?? (() => { });
     galleryState.columns = columns;
+    galleryState.dense = dense ?? false;
     let itemIndex = 0;
     return (
       <div data-testid="virtual-gallery">
@@ -123,7 +128,7 @@ vi.mock('shared/ui/VirtualGallery/VirtualGallery', () => ({
 
 vi.mock('shared/hooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('shared/hooks')>()),
-  useMeasuredWidth: () => [galleryState.measuredWidth, () => {}] as const,
+  useMeasuredWidth: () => [galleryState.measuredWidth, () => { }] as const,
 }));
 
 vi.mock('./ui/GalleryDateSidebar', () => ({
@@ -168,6 +173,7 @@ describe('PublicGallery', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    publishDrawerGeometry(null);
     galleryState.flatItems = [mediaItem];
     galleryState.availableDates = [mediaItem.capturedAt];
     galleryState.hasNextPage = false;
@@ -203,7 +209,7 @@ describe('PublicGallery', () => {
     expect(screen.queryByTestId('gallery-date-sidebar')).not.toBeInTheDocument();
   });
 
-  it('freezes the column count at the destination width during a live drawer transition', () => {
+  it('keeps the wide gallery intact while closing, then switches to compact once motion ends', () => {
     const atDrawer = (destinationWidth: number, transitioning: boolean, expanded: boolean) => (
       <PanelSettledWidthContext.Provider value={{ destinationWidth, open: true, transitioning }}>
         <PublicGallery expanded={expanded} spotId="spot-1" />
@@ -214,25 +220,55 @@ describe('PublicGallery', () => {
     galleryState.measuredWidth = 1020;
     const { rerender } = render(atDrawer(1020, false, true));
     expect(galleryState.columns).toBe(3);
+    expect(galleryState.dense).toBe(false);
+    expect(screen.getByTestId('gallery-date-sidebar')).toBeInTheDocument();
 
-    // The toggle to compact is pressed. Density flips to 'compact' (120px tile)
-    // immediately, but the surface has not animated yet — measuredWidth is still
-    // 1020. Under the raw width this used to spike to 6 columns (round(1020/120),
-    // clamped); the destination (340px) wants 3.
+    // Closing clips the existing wide gallery instead of shrinking it before
+    // the drawer has moved.
     rerender(atDrawer(340, true, false));
     expect(galleryState.columns).toBe(3);
+    expect(galleryState.dense).toBe(false);
+    expect(screen.getByTestId('gallery-date-sidebar')).toBeInTheDocument();
+    expect(screen.getByTestId('virtual-gallery').parentElement).toHaveStyle({ width: '1020px' });
 
-    // Mid-sweep: the live measured width is partway through the animation, but the
-    // destination has not changed, so the column count must not move either. Under
-    // the raw width this used to read 6 again (round(700/120)).
+    // A live measurement partway through the sweep must not alter that held layout.
     galleryState.measuredWidth = 700;
     rerender(atDrawer(340, true, false));
     expect(galleryState.columns).toBe(3);
+    expect(galleryState.dense).toBe(false);
+    expect(screen.getByTestId('virtual-gallery').parentElement).toHaveStyle({ width: '1020px' });
 
-    // Settled at the destination.
+    // Framer Motion reports completion; only now does Gallery compact once.
     galleryState.measuredWidth = 340;
     rerender(atDrawer(340, false, false));
     expect(galleryState.columns).toBe(3);
+    expect(galleryState.dense).toBe(true);
+    expect(screen.queryByTestId('gallery-date-sidebar')).not.toBeInTheDocument();
+
+    // Opening keeps the existing behavior: arrange wide immediately, then let
+    // the widening drawer reveal the destination cards.
+    rerender(atDrawer(1020, true, true));
+    expect(galleryState.columns).toBe(3);
+    expect(galleryState.dense).toBe(false);
+    expect(screen.getByTestId('gallery-date-sidebar')).toBeInTheDocument();
+    expect(screen.getByTestId('virtual-gallery').parentElement).toHaveStyle({ width: '1020px' });
+  });
+
+  it('leaves the virtual gallery canvas untransformed while the drawer moves', () => {
+    const atDrawer = (destinationWidth: number, transitioning: boolean, expanded: boolean) => (
+      <PanelSettledWidthContext.Provider value={{ destinationWidth, open: true, transitioning }}>
+        <PublicGallery expanded={expanded} spotId="spot-1" />
+      </PanelSettledWidthContext.Provider>
+    );
+
+    galleryState.measuredWidth = 1020;
+    const { rerender } = render(atDrawer(1020, false, true));
+    const virtualCanvas = screen.getByTestId('virtual-gallery').parentElement as HTMLElement;
+
+    rerender(atDrawer(340, true, false));
+    act(() => publishDrawerGeometry(DOMRect.fromRect({ width: 700 })));
+
+    expect(virtualCanvas.style.transform).toBe('');
   });
 
   it('renders published media without a gallery-local selection toolbar', () => {

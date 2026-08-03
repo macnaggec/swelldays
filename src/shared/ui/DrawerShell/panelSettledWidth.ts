@@ -1,5 +1,4 @@
-import { createContext, useContext, useLayoutEffect, useState, type RefObject } from 'react';
-import { getDrawerGeometrySnapshot, subscribeDrawerGeometry } from './geometry';
+import { createContext, useContext, useState } from 'react';
 
 export interface PanelSettledWidth {
   /**
@@ -54,66 +53,6 @@ export interface SettledLayout {
   contentWidth: number | null;
   /** True while the drawer is moving between its two states. */
   transitioning: boolean;
-}
-
-/**
- * Applies the panel's width *right now*, mid-animation, minus this element's own inset,
- * to `elementRef`'s DOM node as a `transform: scale(...)` relative to `scaleBasisWidth`
- * — or clears it, when the panel is standing still.
- *
- * The opposite choice from `useSettledLayout`, and right for the opposite case. Content
- * whose arrangement changes between the two panel states must not follow the moving
- * width, or it re-flows on every frame. Content that keeps the same arrangement and only
- * changes *size* — the photo grid, which holds its column count and simply scales its
- * tiles — has nothing to re-flow, so following the width is what makes it grow and
- * shrink with the panel instead of jumping to its final size and waiting to be uncovered.
- *
- * A CSS transform rather than `width`: `elementRef` is expected to hold dozens of mounted
- * cards, and animating `width` forces the browser to re-run layout for that whole subtree
- * on every frame, competing with the animation itself for the frame budget. `transform`
- * is compositor-only — it never triggers layout or paint — so `elementRef` should be laid
- * out once at `scaleBasisWidth` (its caller's own settled `contentWidth`) and left there;
- * this only ever touches its rendered scale.
- *
- * Written to the DOM directly rather than returned as a value, for the same reason:
- * `elementRef`'s caller would otherwise re-render on every one of geometry's per-frame
- * publishes just to pass a new scale prop through. Callers of `useSettledLayout` are
- * unaffected either way; that hook already only changes at rest, not per frame.
- */
-export function useLivePanelScaleOnElement(
-  measuredWidth: number,
-  scaleBasisWidth: number,
-  elementRef: RefObject<HTMLElement | null>,
-): void {
-  const settled = usePanelSettledWidth();
-  const transitioning = settled?.transitioning ?? false;
-  const destinationSurface = settled?.destinationWidth ?? 0;
-
-  const [inset, setInset] = useState(-1);
-  if (!transitioning && measuredWidth > 0 && destinationSurface > 0) {
-    const next = destinationSurface - measuredWidth;
-    if (next !== inset) setInset(next);
-  }
-
-  useLayoutEffect(() => {
-    const element = elementRef.current;
-    if (!element) return;
-
-    const applyScale = () => {
-      if (!transitioning || inset < 0 || scaleBasisWidth <= 0) {
-        element.style.transform = '';
-        return;
-      }
-      const geometry = getDrawerGeometrySnapshot();
-      if (!geometry) return;
-      const liveContentWidth = Math.max(0, geometry.width - inset);
-      element.style.transform = `scale(${liveContentWidth / scaleBasisWidth})`;
-    };
-
-    applyScale();
-    const unsubscribe = subscribeDrawerGeometry(applyScale);
-    return () => { unsubscribe(); };
-  }, [elementRef, transitioning, inset, scaleBasisWidth]);
 }
 
 /**

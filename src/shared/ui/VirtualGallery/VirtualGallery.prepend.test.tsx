@@ -6,11 +6,19 @@ import { render } from 'test/setup/render';
 import { VirtualGallery, type VirtualGalleryHandle } from './VirtualGallery';
 
 const scrollToIndexMock = vi.hoisted(() => vi.fn());
+const scrollToOffsetMock = vi.hoisted(() => vi.fn());
+const getOffsetForIndexMock = vi.hoisted(() => vi.fn(() => [100 as number, 'start'] as const));
+const resizeItemMock = vi.hoisted(() => vi.fn());
 const virtualItemsMock = vi.hoisted(() => vi.fn(() => [{ key: 'v', index: 0, start: 0, size: 220 }]));
 // Captures VirtualGallery's real `measureElement` config function (not the mocked
 // virtualizer's own returned ref-callback) so tests can invoke it directly to
 // simulate a row's measured height changing, without needing a real layout engine.
 const capturedMeasureElement = vi.hoisted(() => ({ current: null as ((el: Element) => number) | null }));
+const capturedSizeAdjustment = vi.hoisted(() => ({
+  current: null as ((item: { index: number; start: number }, delta: number, instance: {
+    getScrollOffset: () => number;
+  }) => boolean) | null,
+}));
 
 vi.mock('@tanstack/react-virtual', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-virtual')>();
@@ -19,19 +27,26 @@ vi.mock('@tanstack/react-virtual', async (importOriginal) => {
     useVirtualizer: (config: { measureElement: (el: Element) => number }) => {
       capturedMeasureElement.current = config.measureElement;
       return {
+        set shouldAdjustScrollPositionOnItemSizeChange(callback: typeof capturedSizeAdjustment.current) {
+          capturedSizeAdjustment.current = callback;
+        },
         getVirtualItems: virtualItemsMock,
         getTotalSize: () => 1000,
+        getOffsetForIndex: getOffsetForIndexMock,
         scrollToIndex: scrollToIndexMock,
+        scrollToOffset: scrollToOffsetMock,
+        resizeItem: resizeItemMock,
         measureElement: () => 0,
       };
     },
   };
 });
 
-function fakeRowElement(index: number, height: number): Element {
+function fakeRowElement(index: number, height: number, paintedHeight = height): Element {
   return {
+    offsetHeight: height,
     getAttribute: (name: string) => (name === 'data-index' ? String(index) : null),
-    getBoundingClientRect: () => ({ height }) as DOMRect,
+    getBoundingClientRect: () => ({ height: paintedHeight }) as DOMRect,
   } as unknown as Element;
 }
 
@@ -89,9 +104,140 @@ describe('VirtualGallery prepend anchor preservation', () => {
 describe('VirtualGallery recolumn anchor preservation', () => {
   beforeEach(() => {
     scrollToIndexMock.mockClear();
+    scrollToOffsetMock.mockClear();
+    getOffsetForIndexMock.mockReset();
+    getOffsetForIndexMock.mockReturnValue([100, 'start']);
+    resizeItemMock.mockClear();
   });
 
-  it('relocates the anchor when a recolumn moves its item to a different row', () => {
+  it('measures a row from layout while the gallery is visually scaled', () => {
+    render(<VirtualGallery rows={[mediaRow('a')]} renderCard={() => null} />);
+
+    expect(capturedMeasureElement.current?.(fakeRowElement(0, 220, 660))).toBe(220);
+  });
+
+  it('adjusts resized rows before the visible row but not the visible row itself', () => {
+    const rows = [
+      mediaRowOf(['a', 'b', 'c']),
+      mediaRowOf(['d', 'e', 'f']),
+      mediaRowOf(['g', 'h', 'i']),
+    ];
+    virtualItemsMock.mockReturnValue([
+      { key: 'v-0', index: 0, start: 0, size: 300 },
+      { key: 'v-1', index: 1, start: 300, size: 300 },
+      { key: 'v-2', index: 2, start: 600, size: 300 },
+    ]);
+
+    const { container } = render(
+      <div data-panel-scroll-owner>
+        <VirtualGallery rows={rows} columns={3} renderCard={() => null} />
+      </div>,
+    );
+    const scrollOwner = container.querySelector('[data-panel-scroll-owner]') as HTMLElement;
+    const virtualCanvas = container.querySelector('[data-virtual-gallery-canvas]') as HTMLElement;
+    scrollOwner.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
+    virtualCanvas.getBoundingClientRect = () => ({ top: -350 }) as DOMRect;
+    scrollOwner.scrollTop = 350;
+    act(() => {
+      scrollOwner.dispatchEvent(new Event('scroll'));
+    });
+
+    const instance = { getScrollOffset: () => scrollOwner.scrollTop };
+    expect(capturedSizeAdjustment.current?.({ index: 0, start: 0 }, -200, instance)).toBe(true);
+    expect(capturedSizeAdjustment.current?.({ index: 1, start: 300 }, -200, instance)).toBe(false);
+    expect(capturedSizeAdjustment.current?.({ index: 2, start: 600 }, -200, instance)).toBe(false);
+  });
+
+  it('updates every row without per-row scroll adjustment, then restores the anchor once', () => {
+    const rows = [
+      mediaRow('a'),
+      mediaRow('b'),
+      mediaRow('c'),
+      mediaRow('d'),
+    ];
+    virtualItemsMock.mockReturnValue([
+      { key: 'v-1', index: 1, start: 300, size: 300 },
+      { key: 'v-2', index: 2, start: 600, size: 300 },
+    ]);
+
+    const { container, rerender } = render(
+      <div data-panel-scroll-owner>
+        <VirtualGallery rows={rows} columns={3} dense={false} renderCard={() => null} />
+      </div>,
+    );
+    const scrollOwner = container.querySelector('[data-panel-scroll-owner]') as HTMLElement;
+    const virtualCanvas = container.querySelector('[data-virtual-gallery-canvas]') as HTMLElement;
+    const renderedRows = container.querySelectorAll<HTMLElement>('[data-index]');
+    let canvasTop = -240;
+    scrollOwner.getBoundingClientRect = () => ({ top: 10 }) as DOMRect;
+    virtualCanvas.getBoundingClientRect = () => ({ top: canvasTop }) as DOMRect;
+    scrollOwner.scrollTop = 350;
+    act(() => {
+      scrollOwner.dispatchEvent(new Event('scroll'));
+    });
+
+    Object.defineProperty(renderedRows[0], 'offsetHeight', { configurable: true, value: 100 });
+    Object.defineProperty(renderedRows[1], 'offsetHeight', { configurable: true, value: 100 });
+    resizeItemMock.mockClear();
+    canvasTop = 20;
+
+    rerender(
+      <div data-panel-scroll-owner>
+        <VirtualGallery rows={rows} columns={3} dense renderCard={() => null} />
+      </div>,
+    );
+
+    expect(resizeItemMock.mock.calls).toEqual([
+      [0, 100],
+      [1, 100],
+      [2, 100],
+      [3, 100],
+    ]);
+    expect(capturedSizeAdjustment.current?.(
+      { index: 0, start: 0 },
+      -200,
+      { getScrollOffset: () => scrollOwner.scrollTop },
+    )).toBe(false);
+    expect(scrollToOffsetMock).toHaveBeenCalledOnce();
+    // The saved row was 50px below the scroll viewport (60 - 10). In the new
+    // layout it would be 110px below it (root 20 - viewport 10 + row start 100),
+    // so one 60px correction preserves the exact on-screen position.
+    expect(scrollToOffsetMock).toHaveBeenCalledWith(410, { align: 'start' });
+  });
+
+  it('anchors the first row actually visible below the panel chrome', () => {
+    const rows = [mediaRow('a'), mediaRow('b'), mediaRow('c')];
+    virtualItemsMock.mockReturnValue([
+      { key: 'v-0', index: 0, start: 0, size: 100 },
+      { key: 'v-1', index: 1, start: 100, size: 100 },
+      { key: 'v-2', index: 2, start: 200, size: 100 },
+    ]);
+
+    const { container, rerender } = render(
+      <div data-panel-scroll-owner data-panel-chrome-height="50">
+        <VirtualGallery rows={rows} columns={3} dense={false} renderCard={() => null} />
+      </div>,
+    );
+    const scrollOwner = container.querySelector('[data-panel-scroll-owner]') as HTMLElement;
+    const virtualCanvas = container.querySelector('[data-virtual-gallery-canvas]') as HTMLElement;
+    scrollOwner.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
+    virtualCanvas.getBoundingClientRect = () => ({ top: -30 }) as DOMRect;
+    scrollOwner.scrollTop = 80;
+    act(() => {
+      scrollOwner.dispatchEvent(new Event('scroll'));
+    });
+    getOffsetForIndexMock.mockClear();
+
+    rerender(
+      <div data-panel-scroll-owner data-panel-chrome-height="50">
+        <VirtualGallery rows={rows} columns={3} dense renderCard={() => null} />
+      </div>,
+    );
+
+    expect(getOffsetForIndexMock).toHaveBeenCalledWith(0, 'start');
+  });
+
+  it('retains the same anchor item across repeated recolumns', () => {
     // 10 items in one day, chunked at 3 columns: [a,b,c], [d,e,f], [g,h,i], [j].
     // The anchor sits on the second row ('d,e,f' — not the group's first
     // chunk), matching "scrolled a couple of screens down" from the bug
@@ -105,15 +251,25 @@ describe('VirtualGallery recolumn anchor preservation', () => {
     ];
     virtualItemsMock.mockReturnValue([{ key: 'v', index: 1, start: 0, size: 220 }]);
 
-    const { rerender } = render(<VirtualGallery rows={threeColumnRows} renderCard={() => null} />);
+    const { rerender } = render(
+      <VirtualGallery rows={threeColumnRows} columns={3} renderCard={() => null} />,
+    );
 
     const sixColumnRows = [
       mediaRowOf(['a', 'b', 'c', 'd', 'e', 'f']),
       mediaRowOf(['g', 'h', 'i', 'j']),
     ];
-    rerender(<VirtualGallery rows={sixColumnRows} renderCard={() => null} />);
+    getOffsetForIndexMock.mockReturnValue([0, 'start']);
+    rerender(<VirtualGallery rows={sixColumnRows} columns={6} renderCard={() => null} />);
 
-    expect(scrollToIndexMock).toHaveBeenCalledWith(0, { align: 'start' });
+    expect(scrollToIndexMock).not.toHaveBeenCalled();
+    expect(scrollToOffsetMock).toHaveBeenCalledOnce();
+    expect(scrollToOffsetMock).toHaveBeenCalledWith(0, { align: 'start' });
+
+    getOffsetForIndexMock.mockClear();
+    rerender(<VirtualGallery rows={threeColumnRows} columns={3} renderCard={() => null} />);
+
+    expect(getOffsetForIndexMock).toHaveBeenCalledWith(1, 'start');
   });
 });
 

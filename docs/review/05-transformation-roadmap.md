@@ -4,10 +4,10 @@
 
 - **Current state (verified 2026-07-30):** pre-launch solo-built marketplace, about 40.3k TypeScript/TSX LOC. The audited implementation baseline has 60 dirty paths (57 tracked changes plus three untracked files); this audit additionally changes the two existing tracked roadmap files.
 - **Baseline:** all five mandatory gates pass (114 client/server test files, 699 tests). The Postgres integration suite also passes (10 files, 44 tests) after starting its documented test database.
-- **Top risks:** the public feed and its date index can show different lifecycle versions; date navigation scans every matching media row and may fetch every intervening page; equal capture timestamps make cursor order unstable; the implemented mobile date control contradicts its approved product contract; bottom-sheet target geometry has two producers.
-- **Direction:** stop adding responsive scope to the current diff. Reconcile the active M03 work through the Media and DrawerShell ownership seams, then resume the existing responsive roadmap.
+- **Top risks:** the public feed and its date index can show different lifecycle versions; date navigation scans every matching media row and may fetch every intervening page; equal capture timestamps make cursor order unstable; the implemented compact date control contradicts its approved contract; eight user-reported shell/date regressions are now recorded in the executable responsive roadmap.
+- **Direction:** M03-a restored DrawerShell geometry ownership. Close the three focused post-M02 shell regressions (M02-e/f/g), then continue M03-b through M03-i without adding unrelated responsive scope.
 - **Existing roadmap policy:** completed initiatives remain historical. Partially implemented work is split and left open. Unimplemented work remains unchecked. No replacement roadmap is created.
-- **Highest-value sequence:** finish A0's decisions/hunk ownership → A2 → narrow A3 → H1a → the H2/H3 vertical slice → A1 → H4. Then resume M04. H1b is a focused follow-up; A4, S4, and S5 are outside this critical path.
+- **Highest-value sequence:** finish A0's decisions/hunk ownership and M02-e/f/g → narrow A3 → H1a → the H2/H3 vertical slice → A1 → M03-f/g/h/i. Then resume M04. H1b is a focused follow-up; A4, S4, and S5 are outside this critical path.
 - **Deferred mechanisms:** materialized calendar index, caching tier, spatial index, distributed rate limiting, server cart, and automated payouts retain named triggers.
 
 ---
@@ -112,12 +112,12 @@ The executive sequence and each item's dependency line determine execution. The 
 #### H4 — Finish M03 against the approved mobile date contract `[retrofit-expensive]`
 
 - **Priority:** P0
-- **Expected benefit:** the date control on the phone behaves as approved instead of presenting a different interaction that tests and static checks accidentally canonize.
+- **Expected benefit:** compact Gallery date controls behave consistently across mobile and compact desktop instead of presenting contradictory interaction, stale data, overlapping chrome, and unstable grid geometry.
 - **Risk:** medium because it changes the current uncommitted UI.
 - **Dependencies:** A2, A3, H2, H3, then A1 against the final query keys.
-- **Scope:** implement one horizontal native-scroll sequence with year labels only at year boundaries, month controls only at month boundaries, and deduplicated day controls. A month tap jumps to its first day; a day tap jumps to that day; the active day is highlighted and brought into view. Finish lightbox coordination, large-text behavior, both-shell nonvisual verification, and the required user appearance checklist.
-- **Owning verification:** semantic interaction/accessibility/scroll tests for the date control and both mobile shells; manual checklist only for appearance.
-- **Completion condition:** no separate month/day row contract remains; month and day taps perform their approved jumps; search/filter and active-date rows remain mutually exclusive; large text, focus, lightbox, shell crossing, and all five gates pass; user accepts the appearance-only checklist.
+- **Scope:** implement one horizontal native-scroll sequence with year labels only at year boundaries, month controls only at month boundaries, and deduplicated day controls. A month/day selection jumps, closes the menu, updates the label, and preserves date chrome; scrolling inside the open menu cannot dismiss it through the panel scroll-direction signal. Give search↔date chrome one stable animated slot so the grid does not shift. Reuse the same control and current calendar index in compact persistent desktop; its in-grid dividers become simple non-interactive date separators. Finish lightbox coordination, large-text behavior, cross-shell nonvisual verification, and the required user appearance checklist.
+- **Owning verification:** parameterized semantic interaction/accessibility/scroll tests for bottom-sheet, short-side, and compact-persistent presentations; PanelLayout geometry/motion tests for the handoff; manual checklist only for appearance.
+- **Completion condition:** no separate month/day row contract or compact-desktop date copy remains; menu scroll/select lifecycle matches UI-03/UI-04; search/date handoff does not move the grid; compact-desktop dividers are non-interactive and its date list is current; large text, focus, lightbox, shell crossing, UI-01–UI-08 regression coverage, and all five gates pass; user accepts the appearance-only checklist.
 
 ## Structural refactors
 

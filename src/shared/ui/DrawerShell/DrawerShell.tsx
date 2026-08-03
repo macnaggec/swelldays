@@ -252,9 +252,9 @@ export function DrawerShell(props: DrawerShellProps) {
     ? resting.width
     : props.presentation === 'sideOverlay'
       ? panelOpen ? viewportWidthPx * (SHORT_SIDE_OVERLAY_WIDTH_VW / 100) : 0
-    : resting.width > 0 && previousPanelVw !== null
-      ? resting.width * (PANEL_WIDTH_VW[props.state] / previousPanelVw)
-      : 0;
+      : resting.width > 0 && previousPanelVw !== null
+        ? resting.width * (PANEL_WIDTH_VW[props.state] / previousPanelVw)
+        : 0;
 
   const settledWidth = useMemo(
     () => ({
@@ -269,12 +269,12 @@ export function DrawerShell(props: DrawerShellProps) {
 
   // The panel scroll owner the sheet arbitrates with (step 8): registered by PanelLayout
   // through SheetScrollOwnerContext, never queried by attribute.
-  const removeScrollOwnerListenerRef = useRef<() => void>(() => {});
+  const removeScrollOwnerListenerRef = useRef<() => void>(() => { });
   const [contentScrolledFromTop, setContentScrolledFromTop] = useState(false);
 
   const registerScrollOwner = useCallback((element: HTMLElement | null) => {
     removeScrollOwnerListenerRef.current();
-    removeScrollOwnerListenerRef.current = () => {};
+    removeScrollOwnerListenerRef.current = () => { };
     if (!element) return;
 
     if (snap !== undefined && snap !== 'full') element.scrollTop = 0;

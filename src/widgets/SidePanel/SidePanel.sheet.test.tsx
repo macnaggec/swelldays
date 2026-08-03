@@ -32,7 +32,7 @@ function BrowseSheetWithSectionBar() {
         <BrowseSectionBar
           active="sessions"
           onMap={() => setSnap('peek')}
-          onSectionChange={() => {}}
+          onSectionChange={() => { }}
         />
       )}
     >
@@ -50,7 +50,7 @@ function renderBrowseSheetWithSectionBar() {
     >
       <BrowseSurfaceProvider
         preferredExpanded
-        onPreferredExpandedChange={() => {}}
+        onPreferredExpandedChange={() => { }}
       >
         <BrowseSheetWithSectionBar />
       </BrowseSurfaceProvider>
@@ -61,7 +61,7 @@ function renderBrowseSheetWithSectionBar() {
 describe('SidePanel bottom sheet', () => {
   it('reports the snap it was given and a new one when the prop changes', () => {
     const { rerender } = render(
-      <SidePanel drawerPresentation="bottomSheet" sheetSnap="half" onSheetSnapChange={() => {}}>
+      <SidePanel drawerPresentation="bottomSheet" sheetSnap="half" onSheetSnapChange={() => { }}>
         <div>Sheet body</div>
       </SidePanel>,
     );
@@ -70,7 +70,7 @@ describe('SidePanel bottom sheet', () => {
     expect(surface).toHaveAttribute('data-drawer-snap', 'half');
 
     rerender(
-      <SidePanel drawerPresentation="bottomSheet" sheetSnap="full" onSheetSnapChange={() => {}}>
+      <SidePanel drawerPresentation="bottomSheet" sheetSnap="full" onSheetSnapChange={() => { }}>
         <div>Sheet body</div>
       </SidePanel>,
     );
@@ -83,8 +83,8 @@ describe('SidePanel bottom sheet', () => {
       <SidePanel
         drawerPresentation="bottomSheet"
         sheetSnap="half"
-        onSheetSnapChange={() => {}}
-        onExpandToggle={() => {}}
+        onSheetSnapChange={() => { }}
+        onExpandToggle={() => { }}
       >
         <div>Sheet body</div>
       </SidePanel>,
@@ -99,7 +99,7 @@ describe('SidePanel bottom sheet', () => {
       <SidePanel
         drawerPresentation="bottomSheet"
         sheetSnap="half"
-        onSheetSnapChange={() => {}}
+        onSheetSnapChange={() => { }}
       >
         <div>Sheet body</div>
       </SidePanel>,
@@ -111,7 +111,7 @@ describe('SidePanel bottom sheet', () => {
 
   it('renders the expand/collapse button for the same tree in the panel presentation', () => {
     render(
-      <SidePanel onExpandToggle={() => {}}>
+      <SidePanel onExpandToggle={() => { }}>
         <div>Panel body</div>
       </SidePanel>,
     );
@@ -124,7 +124,7 @@ describe('SidePanel bottom sheet', () => {
       <SidePanel
         drawerPresentation="bottomSheet"
         sheetSnap="full"
-        onSheetSnapChange={() => {}}
+        onSheetSnapChange={() => { }}
         subheader={<div>Search and filters</div>}
       >
         <div style={{ height: '2000px' }}>Tall sheet content</div>
@@ -151,7 +151,7 @@ describe('SidePanel bottom sheet', () => {
       <SidePanel
         drawerPresentation="bottomSheet"
         sheetSnap={sheetSnap}
-        onSheetSnapChange={() => {}}
+        onSheetSnapChange={() => { }}
         subheader={<div>Search and filters</div>}
       >
         <div style={{ height: '2000px' }}>Tall sheet content</div>

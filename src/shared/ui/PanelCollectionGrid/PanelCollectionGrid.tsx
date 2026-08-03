@@ -163,7 +163,7 @@ export function PanelCollectionGrid({
       if (!anchorCaptureSuspendedRef.current
         && !isPanelCollectionScrollCorrection(scrollOwner)) {
         endPanelCollectionScrollCorrection(scrollOwner);
-    captureAnchor();
+        captureAnchor();
       }
     };
     scrollOwner.addEventListener('scroll', handleScroll, { passive: true });

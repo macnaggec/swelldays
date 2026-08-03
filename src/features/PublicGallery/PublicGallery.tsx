@@ -1,12 +1,11 @@
 import React, { FC, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SimpleGrid, Skeleton } from '@mantine/core';
-import { useMergedRef } from '@mantine/hooks';
 import { useMediaFavorites, type PublicMedia } from 'entities/Media';
 import { useSpotMediaFeed, useSpotPreview } from 'entities/Spot';
 import { buildGalleryRows } from 'shared/lib/buildGalleryRows';
 import { galleryColumns, type GalleryDensity } from 'shared/lib/galleryColumns';
 import { useMeasuredWidth } from 'shared/hooks';
-import { useLivePanelScaleOnElement, useSettledLayout } from 'shared/ui/DrawerShell/panelSettledWidth';
+import { useSettledLayout } from 'shared/ui/DrawerShell/panelSettledWidth';
 import { VirtualGallery, type VirtualGalleryHandle } from 'shared/ui/VirtualGallery/VirtualGallery';
 import { useCartToggle } from 'entities/Commerce';
 import {
@@ -75,26 +74,21 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
     hasShare: !!onShare,
   });
 
-  // Measured gallery width drives column count and card density: compact packs
-  // a dense grid with actions moved to the lightbox; expanded keeps the roomy
-  // card layout. Column count is read from the settled destination width, not
-  // the live one below, so a toggle re-columns once instead of walking through
-  // every intermediate width — the same reason PanelCollectionGrid reads it.
+  // Opening arranges the roomy destination grid immediately so the drawer reveals
+  // it. Closing keeps that grid intact while it travels, then compacts once after
+  // motion completes. Neither direction follows the live intermediate width.
   const [measuredWidth, galleryViewportRef] = useMeasuredWidth();
   const { boxWidth, contentWidth, transitioning } = useSettledLayout(measuredWidth);
-  const density: GalleryDensity = expanded ? 'comfortable' : 'compact';
-  const columns = galleryColumns(contentWidth ?? measuredWidth, density);
+  const holdsExpandedLayout = transitioning && !expanded;
+  const layoutExpanded = expanded || holdsExpandedLayout;
+  const layoutWidth = holdsExpandedLayout
+    ? boxWidth ?? measuredWidth
+    : contentWidth ?? measuredWidth;
+  const density: GalleryDensity = layoutExpanded ? 'comfortable' : 'compact';
+  const columns = galleryColumns(layoutWidth, density);
 
-  // The outer box only resizes at rest (the wider of where the panel is and where it's
-  // heading, per useSettledLayout — never per animation frame, so it never fights the
-  // date rail beside it for space). The inner content is laid out once at its final,
-  // destination size and only its rendered *scale* follows the panel's live width, so
-  // the tiles still visibly grow and shrink with the toggle without the browser
-  // re-running layout for the whole card grid on every frame.
-  const galleryBoxNodeRef = useRef<HTMLDivElement | null>(null);
-  const galleryBoxRef = useMergedRef(galleryViewportRef, galleryBoxNodeRef);
-  const galleryScaleNodeRef = useRef<HTMLDivElement | null>(null);
-  useLivePanelScaleOnElement(measuredWidth, contentWidth ?? measuredWidth, galleryScaleNodeRef);
+  // The moving drawer edge clips the fixed layout. Transforming the virtual canvas
+  // would also scale its off-screen spacer and produce blank bands.
 
   // ========================================================================
   // LIGHTBOX STATE
@@ -143,10 +137,9 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   // Container-aware date navigation (F12g/M03-h): a wide-enough gallery gets
   // the pinned date rail; every other case — mobile drawers always, or a
   // desktop panel simply narrowed below that width — shares the same compact
-  // date control instead of a second, forked one. Reads the settled destination
-  // width, not the live one, so the rail cannot mount/unmount mid-toggle merely
-  // because the live width swept past the threshold on its way elsewhere.
-  const railVisible = !isMobileDrawerPresentation && showsDateRail(contentWidth ?? measuredWidth);
+  // date control instead of a second, forked one. It follows the same held layout
+  // as the cards, so it leaves only when a close has finished.
+  const railVisible = !isMobileDrawerPresentation && showsDateRail(layoutWidth);
   const usesCompactDateChrome = !railVisible;
   const dayHighlights = useMemo(
     () => mergeGalleryDateHighlights(availableDates, loadedHighlights),
@@ -261,7 +254,7 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
       )}
       <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex' }}>
         <div
-          ref={galleryBoxRef}
+          ref={galleryViewportRef}
           style={{
             flex: boxWidth === null ? 1 : '0 0 auto',
             width: boxWidth === null ? undefined : `${boxWidth}px`,
@@ -271,12 +264,10 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
           }}
         >
           <div
-            ref={galleryScaleNodeRef}
             style={{
               flex: transitioning ? '0 0 auto' : 1,
-              width: transitioning ? `${contentWidth ?? measuredWidth}px` : undefined,
+              width: transitioning ? `${layoutWidth}px` : undefined,
               minWidth: 0,
-              transformOrigin: 'top left',
               display: 'flex',
             }}
           >
@@ -284,7 +275,7 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
               ref={galleryRef}
               rows={rows}
               columns={columns}
-              dense={!expanded}
+              dense={!layoutExpanded}
               renderDivider={isMobileDrawerPresentation ? renderNoDivider : undefined}
               renderCard={(item) => {
                 const { actions, activeActions, isOwn } = getCardActions(item, false);
@@ -298,7 +289,7 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
                     onCardClick={() => handleCardClick(item.id)}
                     showOwnerBadge={isOwn}
                     showPurchasedBadge={isPurchased}
-                    dense={!expanded}
+                    dense={!layoutExpanded}
                   />
                 );
               }}
