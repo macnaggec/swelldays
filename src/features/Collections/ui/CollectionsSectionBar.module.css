@@ -1,0 +1,45 @@
+.floating {
+  position: fixed;
+  left: var(--wa-collections-switcher-center-x, 50%);
+  bottom: calc(var(--wa-safe-area-bottom) + var(--wa-shell-edge-clearance));
+  z-index: var(--wa-z-floating-chrome);
+  transform: translateX(-50%);
+}
+
+/* Docks directly below the account bar instead of centering over the panel: same
+   left/top formula the account bar's own stack uses, offset down by that stack's
+   own full height (its two reserved button slots, the gap between them, and its
+   own top+bottom padding) plus one more clearance gap — the same gap the account
+   bar itself keeps from the screen's top edge, so the two gaps read as even.
+   Padding and gap also match the account bar's own stack exactly (8px, not
+   SectionSwitcher's shared 4px default), so the two containers are the same width
+   and read as one continuous column instead of two misaligned pills. */
+.floating[data-avoid-drawer] {
+  top: calc(
+    var(--wa-safe-area-top) + var(--wa-shell-edge-clearance)
+    + (var(--wa-control-size-navigation) * 2) + 8px + 16px
+    + var(--wa-shell-edge-clearance)
+  );
+  left: calc(var(--wa-safe-area-left) + var(--wa-shell-edge-clearance));
+  bottom: auto;
+  transform: none;
+  flex-direction: column;
+  padding: 8px;
+  gap: 8px;
+}
+
+/* Same 44px width as the account button regardless of label visibility — unlike
+   SectionSwitcher's own [data-compact], which ties a narrower width to hiding the
+   label, this bar keeps the label on (see labelsHidden={false} in the .tsx) at a
+   small enough size to still fit it. Selects the item buttons by element, not
+   SectionSwitcher's own scoped .item class, which this stylesheet has no access to. */
+.floating[data-avoid-drawer] :global(button) {
+  width: var(--wa-control-size-navigation);
+  padding-inline: 0;
+}
+
+.floating[data-avoid-drawer] :global(button span) {
+  font-size: var(--wa-font-size-2xs);
+  text-align: center;
+  overflow-wrap: break-word;
+}

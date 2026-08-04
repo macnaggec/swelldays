@@ -8,8 +8,12 @@ vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => options,
 }));
 
-vi.mock('shared/lib/trpc', () => ({
-  useTRPC: () => ({ media: { favorites: { queryOptions: () => ({ queryKey: ['favorites'], queryFn: async () => [] }) } } }),
+vi.mock('./_panel.me.collections', () => ({
+  useCollectionsContext: () => ({
+    favorites: [],
+    visibleFavorites: [],
+    isLoadingFavorites: false,
+  }),
 }));
 
 vi.mock('entities/Media', () => ({
@@ -17,7 +21,6 @@ vi.mock('entities/Media', () => ({
 }));
 
 vi.mock('shared/hooks/useUser', () => ({ useUser: () => ({ user: { id: 'user-1' } }) }));
-vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: [], isLoading: false }) }));
 
 describe('FavoritesTab', () => {
   it('renders favorites empty state inside the shared panel gallery inset', () => {

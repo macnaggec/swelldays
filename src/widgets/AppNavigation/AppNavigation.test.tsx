@@ -37,22 +37,13 @@ vi.mock('./UserControl', () => ({
 }));
 
 describe('AppNavigation', () => {
-  it('shows the cart control for an anonymous user when the cart has items', () => {
-    mocks.isAuthenticated = false;
-    mocks.count = 2;
-
-    render(<AppNavigation presentation="leftStrip" drawerPresentation="persistent" />);
-
-    expect(screen.getByTestId('cart-control')).toBeInTheDocument();
-  });
-
-  it('hides the cart control when the cart is empty, regardless of auth', () => {
+  it('always reserves the cart button slot, regardless of cart count — CartControl itself decides whether to show content', () => {
     mocks.isAuthenticated = false;
     mocks.count = 0;
 
     render(<AppNavigation presentation="leftStrip" drawerPresentation="persistent" />);
 
-    expect(screen.queryByTestId('cart-control')).not.toBeInTheDocument();
+    expect(screen.getByTestId('cart-control')).toBeInTheDocument();
   });
 
   it.each(['leftStrip', 'topBar', 'compactBar'] as const)(

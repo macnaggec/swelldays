@@ -68,6 +68,10 @@ vi.mock('features/Purchases', () => ({
   }),
 }));
 
+vi.mock('./_panel.me.collections', () => ({
+  useCollectionsContext: () => ({ galleryMaxColumns: undefined }),
+}));
+
 describe('PurchasesTab', () => {
   const purchasedItem: CartItem = {
     id: 'media-1',

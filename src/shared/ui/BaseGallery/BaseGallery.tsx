@@ -48,6 +48,9 @@ export interface BaseGalleryProps<T extends { id: string }> {
 
   /** Accessibility label for the gallery */
   'aria-label'?: string;
+
+  /** Tightens the grid's own column ceiling for this gallery only. */
+  maxColumns?: number;
 }
 
 /**
@@ -82,6 +85,7 @@ function BaseGallery<T extends { id: string }>({
   emptyState,
   gap = 'md',
   'aria-label': ariaLabel = 'Gallery',
+  maxColumns,
 }: BaseGalleryProps<T>) {
   // Stable click handler to avoid creating new functions per item
   const handleItemClick = useCallback(
@@ -113,6 +117,7 @@ function BaseGallery<T extends { id: string }>({
         className={styles.gallery}
         role="grid"
         aria-label={ariaLabel}
+        maxColumns={maxColumns}
       >
         {/* Prepend slot - for special first items like AddFileCard */}
         {prepend && (

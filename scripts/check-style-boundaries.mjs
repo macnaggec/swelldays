@@ -48,6 +48,7 @@ const isMigratedMaterialSurface = (file) => (
   || file.startsWith('src/widgets/SidePanel/SidePanel')
   || file.startsWith('src/widgets/AppNavigation/AppNavigation')
   || file.startsWith('src/widgets/BrowseSectionBar/')
+  || file.startsWith('src/shared/ui/SectionSwitcher/')
   || file === 'src/widgets/AppNavigation/CartControl.tsx'
   || file.startsWith('src/views/GlobeScene/')
   || file === 'src/widgets/GlobeMap/LocationPicker.module.css'
@@ -227,12 +228,18 @@ const requiredResponsiveTokensByFile = new Map([
   ]],
   ['src/widgets/BrowseSectionBar/BrowseSectionBar.module.css', [
     '--wa-shell-edge-clearance',
+    '--wa-safe-area-bottom',
+    '--wa-z-floating-chrome',
+  ]],
+  // Followed the pill/item declarations here when BrowseSectionBar's visual
+  // styling was extracted into the shared SectionSwitcher so a second
+  // consumer (CollectionsSectionBar) would not duplicate it — the rule
+  // travels with the declarations, not the original filename.
+  ['src/shared/ui/SectionSwitcher/SectionSwitcher.module.css', [
     '--wa-control-size-navigation',
     '--wa-control-width-section-navigation',
     '--wa-motion-duration-control',
     '--wa-motion-easing-standard',
-    '--wa-safe-area-bottom',
-    '--wa-z-floating-chrome',
   ]],
   ['src/widgets/SidePanel/SidePanel.module.css', [
     '--wa-panel-chrome-height',

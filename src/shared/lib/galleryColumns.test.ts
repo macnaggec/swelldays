@@ -58,5 +58,18 @@ describe('galleryColumns', () => {
     it('floors to 1 column when width is zero', () => {
       expect(galleryColumns(0, 'panelCard')).toBe(1);
     });
+
+    it('tightens the ceiling to maxColumnsOverride at a width that would otherwise clamp to 3', () => {
+      expect(galleryColumns(1416, 'panelCard', 2)).toBe(2);
+    });
+
+    it('never loosens the ceiling past the density\'s own max via maxColumnsOverride', () => {
+      expect(galleryColumns(1416, 'panelCard', 5)).toBe(3);
+    });
+
+    it('still applies the 1/2 column boundary beneath an override of 2', () => {
+      expect(galleryColumns(509, 'panelCard', 2)).toBe(1);
+      expect(galleryColumns(510, 'panelCard', 2)).toBe(2);
+    });
   });
 });

@@ -26,6 +26,13 @@
   justify-self: stretch;
 }
 
+.headerTrailing {
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
 /* ── Top-row icon button (expand/back) ───────────────────────────────────── */
 .topBtn {
   justify-self: start;

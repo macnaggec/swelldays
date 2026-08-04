@@ -27,12 +27,24 @@ export const GALLERY_MIN_COLUMNS = 1;
  * tile, so the same policy yields one column on a phone through six on a wide
  * monitor with no per-band table — Phase M consumes it unchanged. A non-positive
  * width (before the container is measured) yields the single-column floor.
+ *
+ * `maxColumnsOverride` tightens (never loosens) a density's own ceiling for one
+ * caller's own layout constraint — e.g. a side-overlay panel that shares its
+ * width with the map beside it — without giving that caller its own named
+ * density or changing the tile size everyone else's grid still uses.
  */
-export function galleryColumns(measuredWidthPx: number, density: GalleryDensity): number {
+export function galleryColumns(
+  measuredWidthPx: number,
+  density: GalleryDensity,
+  maxColumnsOverride?: number,
+): number {
   if (measuredWidthPx <= 0) return GALLERY_MIN_COLUMNS;
   const { targetTilePx, maxColumns } = GALLERY_DENSITY[density];
+  const effectiveMaxColumns = maxColumnsOverride !== undefined
+    ? Math.min(maxColumns, maxColumnsOverride)
+    : maxColumns;
   return Math.min(
-    maxColumns,
+    effectiveMaxColumns,
     Math.max(GALLERY_MIN_COLUMNS, Math.round(measuredWidthPx / targetTilePx)),
   );
 }

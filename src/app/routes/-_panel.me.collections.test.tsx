@@ -1,11 +1,15 @@
-import { screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { screen } from '@testing-library/react';
 import type { ComponentType } from 'react';
-import { describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { PanelLayout } from 'shared/ui/PanelLayout';
+import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { Route } from './_panel.me.collections';
 
 const mocks = vi.hoisted(() => ({
+  activeTab: 'uploads' as string,
+  sizeBand: 'wide' as 'compact' | 'constrained' | 'wide',
+  heightBand: 'regular' as 'short' | 'regular',
   sessions: [
     {
       id: 'session-1',
@@ -40,7 +44,7 @@ vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => options,
   Outlet: () => <div data-testid="collections-outlet" />,
   useNavigate: () => vi.fn(),
-  useRouterState: () => 'uploads',
+  useRouterState: () => mocks.activeTab,
 }));
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -61,38 +65,83 @@ vi.mock('shared/lib/trpc', () => ({
         queryOptions: () => ({}),
       },
     },
+    media: {
+      favorites: {
+        queryOptions: () => ({}),
+      },
+    },
   }),
 }));
 
-describe('CollectionsLayout', () => {
-  it('owns the collection state tabs and outlet', () => {
-    const Component = (Route as unknown as { component: ComponentType }).component;
+vi.mock('shared/model/viewportCapabilities', () => ({
+  useViewportCapabilities: () => ({
+    sizeBand: mocks.sizeBand,
+    heightBand: mocks.heightBand,
+    primaryPointer: 'fine',
+    supportsHover: true,
+    prefersReducedMotion: false,
+  }),
+}));
 
-    render(
+function renderCollections() {
+  const Component = (Route as unknown as { component: ComponentType }).component;
+
+  return render(
+    <AppShellLayoutPolicyProvider routeIntent="routeWorkspace" browseExpanded={false} galleryExpanded={false}>
       <PanelLayout>
         <Component />
-      </PanelLayout>,
-    );
+      </PanelLayout>
+    </AppShellLayoutPolicyProvider>,
+  );
+}
 
-    expect(screen.getByText('Uploads')).toBeInTheDocument();
-    expect(screen.getByText('Purchases')).toBeInTheDocument();
-    expect(screen.getByText('Favorites')).toBeInTheDocument();
+describe('CollectionsLayout', () => {
+  afterEach(() => {
+    mocks.activeTab = 'uploads';
+    mocks.sizeBand = 'wide';
+    mocks.heightBand = 'regular';
+  });
+
+  it('owns the collection outlet', () => {
+    renderCollections();
+
     expect(screen.getByTestId('collections-outlet')).toBeInTheDocument();
   });
 
-  it('places the upload spot filter in the same pills toolbar as the tabs', () => {
-    const Component = (Route as unknown as { component: ComponentType }).component;
-
-    render(
-      <PanelLayout>
-        <Component />
-      </PanelLayout>,
-    );
+  it('places the upload spot filter in the sticky toolbar', () => {
+    renderCollections();
 
     const toolbar = screen.getByTestId('collections-toolbar');
     expect(toolbar).not.toHaveAttribute('data-panel-scroll-hide');
     expect(toolbar.closest('[data-panel-scroll-chrome]')).not.toBeNull();
-    expect(within(toolbar).getByTestId('collections-tabs')).toHaveAttribute('data-variant', 'pills');
-    expect(within(toolbar).getByRole('textbox', { name: 'Filter uploads by spot' })).toBeInTheDocument();
+    expect(toolbar).toHaveAccessibleName('Filter uploads by spot');
+  });
+
+  it('does not render the tab switcher without a real SidePanel to portal into', () => {
+    renderCollections();
+
+    // The switcher is a SidePanelFloating portal — proven at SidePanel's own boundary
+    // (SidePanel.test.tsx), which is what actually owns that portal target; this
+    // bare-PanelLayout render has no real SidePanel to deliver into.
+    expect(screen.queryByRole('navigation', { name: 'Collections sections' })).not.toBeInTheDocument();
+  });
+
+  it('also places a spot filter in the toolbar for the favorites tab', () => {
+    mocks.activeTab = 'favorites';
+    renderCollections();
+
+    const toolbar = screen.getByTestId('collections-toolbar');
+    expect(toolbar).toHaveAccessibleName('Filter favorites by spot');
+  });
+
+  it('stops rendering the spot filter in the sticky toolbar when the drawer is a side overlay beside the map', () => {
+    mocks.sizeBand = 'constrained';
+    mocks.heightBand = 'short';
+    renderCollections();
+
+    // The route hands the filter to SidePanel's header-trailing slot instead — proven at
+    // SidePanel's own boundary (SidePanel.test.tsx), which is what actually owns that
+    // portal target; this bare-PanelLayout render has no real SidePanel to deliver into.
+    expect(screen.queryByTestId('collections-toolbar')).not.toBeInTheDocument();
   });
 });

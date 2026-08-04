@@ -95,11 +95,14 @@ interface PanelCollectionGridProps extends HTMLAttributes<HTMLDivElement> {
    * placeholder fills the same visual block at any column count.
    */
   preview?: boolean;
+  /** Tightens the panelCard density's own column ceiling for this grid only. */
+  maxColumns?: number;
 }
 
 export function PanelCollectionGrid({
   className,
   preview = false,
+  maxColumns,
   style,
   children,
   ...props
@@ -121,7 +124,7 @@ export function PanelCollectionGrid({
   // measurement lands a frame later, and for that frame the grid would still be
   // arranged for the width it just left — long enough to see one card stretched across
   // the panel when opening, or three squeezed into a narrow one when closing.
-  const columns = galleryColumns(arrangementWidth, 'panelCard');
+  const columns = galleryColumns(arrangementWidth, 'panelCard', maxColumns);
 
   // No width of its own: PanelLayout gives the card area the destination width, so the
   // grid fills it and the cards are placed relative to the panel — the top card already

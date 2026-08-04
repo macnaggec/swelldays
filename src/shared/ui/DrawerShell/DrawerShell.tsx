@@ -65,6 +65,8 @@ interface DrawerShellPanelProps extends DrawerShellBaseProps {
   presentation: DrawerShellPanelPresentation;
   state: DrawerShellState;
   open?: boolean;
+  /** Overrides the default side-overlay width (45vw) for this consumer only. Ignored by every other presentation. */
+  sideOverlayWidthVw?: number;
 }
 
 interface DrawerShellSheetProps extends DrawerShellBaseProps {
@@ -116,11 +118,14 @@ export function DrawerShell(props: DrawerShellProps) {
     [viewportHeightPx],
   );
   const targetSheetHeightPx = snap ? heights[snap] : null;
+  const sideOverlayWidthVw = props.presentation === 'sideOverlay'
+    ? props.sideOverlayWidthVw ?? SHORT_SIDE_OVERLAY_WIDTH_VW
+    : SHORT_SIDE_OVERLAY_WIDTH_VW;
   const targetPanelWidthVw = props.presentation === 'persistent'
     ? PANEL_WIDTH_VW[props.state]
     : props.presentation === 'fullScreen'
       ? FULL_SCREEN_WIDTH_VW
-      : SHORT_SIDE_OVERLAY_WIDTH_VW;
+      : sideOverlayWidthVw;
   const dragControls = useDragControls();
   const dragConstraints = useMemo(
     () => ({ top: viewportHeightPx - heights.full, bottom: viewportHeightPx - heights.peek }),
@@ -278,7 +283,7 @@ export function DrawerShell(props: DrawerShellProps) {
   const destinationWidth = props.presentation === 'bottomSheet'
     ? resting.width
     : props.presentation === 'sideOverlay'
-      ? panelOpen ? viewportWidthPx * (SHORT_SIDE_OVERLAY_WIDTH_VW / 100) : 0
+      ? panelOpen ? viewportWidthPx * (sideOverlayWidthVw / 100) : 0
       : props.presentation === 'fullScreen'
         ? panelOpen ? viewportWidthPx : 0
         : resting.width > 0 && previousPanelVw !== null
@@ -352,7 +357,7 @@ export function DrawerShell(props: DrawerShellProps) {
       y: 0,
       width: props.presentation === 'sideOverlay'
         ? panelOpen
-          ? `${SHORT_SIDE_OVERLAY_WIDTH_VW}vw`
+          ? `${sideOverlayWidthVw}vw`
           : '0vw'
         : props.presentation === 'fullScreen'
           ? panelOpen

@@ -1,4 +1,4 @@
-import { Select, Tabs } from '@mantine/core';
+import { Select } from '@mantine/core';
 import { IconMapPin } from '@tabler/icons-react';
 import styles from './CollectionsToolbar.module.css';
 
@@ -12,7 +12,10 @@ type CollectionsToolbarProps = {
   spotOptions: SpotOption[];
   spotFilter: string | null;
   onSpotFilterChange: (spotId: string | null) => void;
-  onTabChange: (tab: string | null) => void;
+  /** Centers the select in its host row. Off when the header-trailing slot's own
+   * right alignment already places it, since an auto-margin centering it here would
+   * fight that flex alignment. */
+  centered?: boolean;
 };
 
 export function CollectionsToolbar({
@@ -20,42 +23,23 @@ export function CollectionsToolbar({
   spotOptions,
   spotFilter,
   onSpotFilterChange,
-  onTabChange,
+  centered = false,
 }: CollectionsToolbarProps) {
-  return (
-    <div
-      className={styles.toolbar}
-      data-testid="collections-toolbar"
-    >
-      <Tabs
-        className={styles.tabs}
-        data-testid="collections-tabs"
-        radius="xl"
-        value={activeTab}
-        variant="pills"
-        onChange={onTabChange}
-      >
-        <Tabs.List>
-          <Tabs.Tab value="uploads">Uploads</Tabs.Tab>
-          <Tabs.Tab value="purchases">Purchases</Tabs.Tab>
-          <Tabs.Tab value="favorites">Favorites</Tabs.Tab>
-        </Tabs.List>
-      </Tabs>
+  if (!(activeTab === 'uploads' || activeTab === 'favorites') || spotOptions.length <= 1) return null;
 
-      {activeTab === 'uploads' && spotOptions.length > 1 && (
-        <Select
-          aria-label="Filter uploads by spot"
-          className={styles.spotSelect}
-          placeholder="All spots"
-          data={spotOptions}
-          value={spotFilter}
-          onChange={onSpotFilterChange}
-          clearable
-          size="xs"
-          radius="xl"
-          leftSection={<IconMapPin size={13} />}
-        />
-      )}
-    </div>
+  return (
+    <Select
+      data-testid="collections-toolbar"
+      aria-label={activeTab === 'favorites' ? 'Filter favorites by spot' : 'Filter uploads by spot'}
+      className={centered ? `${styles.spotSelect} ${styles.spotSelectCentered}` : styles.spotSelect}
+      placeholder="All spots"
+      data={spotOptions}
+      value={spotFilter}
+      onChange={onSpotFilterChange}
+      clearable
+      size="xs"
+      radius="xl"
+      leftSection={<IconMapPin size={13} />}
+    />
   );
 }

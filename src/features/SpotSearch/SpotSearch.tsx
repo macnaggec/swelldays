@@ -159,7 +159,7 @@ export default function SpotSearch({
           }
           rightSection={renderRightSection()}
           rightSectionPointerEvents="auto"
-          classNames={{ input: isFiltering ? classes.filteringInput : undefined }}
+          classNames={{ input: isFiltering ? `${classes.input} ${classes.filteringInput}` : classes.input }}
         />
       </Combobox.Target>
 

@@ -1,56 +1,14 @@
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--mantine-spacing-xs);
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
-}
-
-.tabs {
-  min-width: 0;
-}
-
-.tabs :global(.mantine-Tabs-list) {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 20px;
-}
-
-.tabs :global(.mantine-Tabs-tab) {
-  min-height: 0;
-  padding: 4px 14px;
-  border-radius: 16px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: var(--wa-font-size-sm);
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  transition: background 150ms ease, color 150ms ease;
-}
-
-.tabs :global(.mantine-Tabs-tab:not([data-active]):hover) {
-  background: transparent;
-  color: rgba(255, 255, 255, 0.82);
-}
-
-.tabs :global(.mantine-Tabs-tab[data-active]) {
-  background: var(--wa-control-fill-hover);
-  color: var(--wa-text-media-overlay);
-}
-
-.tabs :global(.mantine-Tabs-tabLabel) {
-  line-height: 1.2;
-}
-
 .spotSelect {
-  flex: 0 0 100%;
+  max-width: min(220px, 44vw);
+}
+
+.spotSelectCentered {
+  margin-inline: auto;
 }
 
 .spotSelect :global(.mantine-Input-input) {
-  min-height: 30px;
-  height: 30px;
+  min-height: var(--wa-control-height-default);
+  height: var(--wa-control-height-default);
   border-radius: 20px;
   color: var(--wa-text-status);
   font-size: var(--wa-font-size-sm);
@@ -62,14 +20,4 @@
 
 .spotSelect :global(.mantine-Input-section) {
   color: rgba(255, 255, 255, 0.58);
-}
-
-@container panel (min-width: 520px) {
-  .toolbar {
-    flex-wrap: nowrap;
-  }
-
-  .spotSelect {
-    flex-basis: min(220px, 44vw);
-  }
 }

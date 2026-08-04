@@ -1,0 +1,55 @@
+.root {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--wa-radius-chrome);
+}
+
+.item {
+  width: var(--wa-control-width-section-navigation);
+  min-height: var(--wa-control-size-navigation);
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--wa-radius-control-md);
+  background: transparent;
+  color: var(--wa-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font: inherit;
+  font-size: var(--wa-font-size-xs);
+  line-height: 1;
+  transition:
+    width var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    background-color var(--wa-motion-duration-control) var(--wa-motion-easing-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item {
+    transition: none;
+  }
+}
+
+.root[data-compact] .item {
+  width: var(--wa-control-size-navigation);
+  padding-inline: 0;
+}
+
+.item[aria-current='page'] {
+  color: var(--wa-text-inverse);
+  background: var(--wa-control-fill-active);
+  cursor: default;
+}
+
+.item:not([aria-current='page']):hover {
+  color: var(--wa-text-primary);
+  background: var(--wa-control-fill-subtle-hover);
+}
+
+.item :global(svg) {
+  flex: 0 0 auto;
+}

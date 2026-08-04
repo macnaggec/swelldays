@@ -1,5 +1,7 @@
 import {
+  createContext,
   useCallback,
+  useContext,
   useLayoutEffect,
   useRef,
   useState,
@@ -7,6 +9,7 @@ import {
   type RefObject,
   type UIEvent,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { IconChevronLeft, IconMaximize, IconMinimize } from '@tabler/icons-react';
 import {
   DrawerShell,
@@ -40,11 +43,46 @@ interface ScrollChromeState {
   open: boolean;
 }
 
+const SidePanelHeaderTrailingTargetContext = createContext<HTMLElement | null>(null);
+
+/**
+ * The header row's trailing slot, beside the back/expand button and the
+ * centered title — e.g. a route-owned filter control. Portaled so a route
+ * deep inside SidePanel's children can reach the single header row SidePanel
+ * itself owns. Renders nothing when mounted outside SidePanel, or when the
+ * header row isn't shown at all (headerFullWidth, or no header/back/expand).
+ */
+export function SidePanelHeaderTrailing({ children }: { children: ReactNode }) {
+  const target = useContext(SidePanelHeaderTrailingTargetContext);
+  return target ? createPortal(children, target) : null;
+}
+
+const SidePanelFloatingTargetContext = createContext<HTMLElement | null>(null);
+
+/**
+ * A mount point beside SidePanel's own DrawerShell, not inside it — for a
+ * route-owned control that must itself use `position: fixed` against the
+ * viewport (e.g. docking beside the app's own fixed-positioned shell
+ * controls, mounted the same way). DrawerShell's animated surface carries
+ * an inline transform from its animation library once any animated value is
+ * set on it, even one evaluating to no visible change — and a transform on
+ * an ancestor becomes the containing block for every `position: fixed`
+ * descendant. Content portaled here escapes that surface, so its `left`/
+ * `top` measure against the real viewport instead of the surface's own box.
+ * Renders nothing when mounted outside SidePanel.
+ */
+export function SidePanelFloating({ children }: { children: ReactNode }) {
+  const target = useContext(SidePanelFloatingTargetContext);
+  return target ? createPortal(children, target) : null;
+}
+
 interface SidePanelProps {
   drawerPresentation?: DrawerShellPresentation;
   drawerModality?: DrawerShellModality;
   /** Keeps a side overlay mounted while removing it from view and interaction. */
   open?: boolean;
+  /** Overrides the default side-overlay width (45vw) for this consumer only. Ignored by every other presentation. */
+  sideOverlayWidthVw?: number;
   /** Sheet position. Required when drawerPresentation is 'bottomSheet', ignored otherwise. */
   sheetSnap?: SheetSnap;
   /** Called when the sheet lands on a new snap. Required when drawerPresentation is 'bottomSheet'. */
@@ -79,6 +117,7 @@ export function SidePanel({
   drawerPresentation = 'persistent',
   drawerModality = 'nonmodal',
   open = true,
+  sideOverlayWidthVw,
   sheetSnap,
   onSheetSnapChange,
   restoreFocusRef,
@@ -93,6 +132,8 @@ export function SidePanel({
   bottomBar,
   children,
 }: SidePanelProps) {
+  const [headerTrailingTarget, setHeaderTrailingTarget] = useState<HTMLElement | null>(null);
+  const [floatingTarget, setFloatingTarget] = useState<HTMLElement | null>(null);
   const scrollPositionByTargetRef = useRef<WeakMap<HTMLElement, ScrollPosition>>(new WeakMap());
   const scrollChromeTrackerRef = useRef<ScrollChromeState>({
     hidden: false,
@@ -220,7 +261,7 @@ export function SidePanel({
               {header}
             </PanelChromeSlot>
           )}
-          {!headerFullWidth && <div aria-hidden="true" />}
+          {!headerFullWidth && <div ref={setHeaderTrailingTarget} className={styles.headerTrailing} />}
         </div>
       ) : undefined}
     >
@@ -230,37 +271,43 @@ export function SidePanel({
   );
 
   return (
-    <PanelScrollChromeStateProvider
-      value={{
-        hidden,
-        sheetSnap,
-        drawerPresentation,
-        pinChromeHidden: setChromePinned,
-      }}
-    >
-      {drawerPresentation === 'bottomSheet' && sheetSnap !== undefined && onSheetSnapChange !== undefined ? (
-        <DrawerShell
-          presentation="bottomSheet"
-          modality={drawerModality}
-          restoreFocusRef={restoreFocusRef}
-          snap={sheetSnap}
-          onSnapChange={onSheetSnapChange}
+    <SidePanelHeaderTrailingTargetContext.Provider value={headerTrailingTarget}>
+      <SidePanelFloatingTargetContext.Provider value={floatingTarget}>
+        <PanelScrollChromeStateProvider
+          value={{
+            hidden,
+            sheetSnap,
+            drawerPresentation,
+            pinChromeHidden: setChromePinned,
+          }}
         >
-          {panelLayout}
-        </DrawerShell>
-      ) : drawerPresentation !== 'bottomSheet' ? (
-        <DrawerShell
-          presentation={drawerPresentation}
-          state={expanded ? 'expanded' : 'compact'}
-          open={open}
-          modality={drawerModality}
-          restoreFocusRef={restoreFocusRef}
-          onEscape={onBack}
-        >
-          {panelLayout}
-        </DrawerShell>
-      ) : null}
-      {bottomBar}
-    </PanelScrollChromeStateProvider>
+          {drawerPresentation === 'bottomSheet' && sheetSnap !== undefined && onSheetSnapChange !== undefined ? (
+            <DrawerShell
+              presentation="bottomSheet"
+              modality={drawerModality}
+              restoreFocusRef={restoreFocusRef}
+              snap={sheetSnap}
+              onSnapChange={onSheetSnapChange}
+            >
+              {panelLayout}
+            </DrawerShell>
+          ) : drawerPresentation !== 'bottomSheet' ? (
+            <DrawerShell
+              presentation={drawerPresentation}
+              state={expanded ? 'expanded' : 'compact'}
+              open={open}
+              sideOverlayWidthVw={sideOverlayWidthVw}
+              modality={drawerModality}
+              restoreFocusRef={restoreFocusRef}
+              onEscape={onBack}
+            >
+              {panelLayout}
+            </DrawerShell>
+          ) : null}
+          {bottomBar}
+          <div ref={setFloatingTarget} />
+        </PanelScrollChromeStateProvider>
+      </SidePanelFloatingTargetContext.Provider>
+    </SidePanelHeaderTrailingTargetContext.Provider>
   );
 }

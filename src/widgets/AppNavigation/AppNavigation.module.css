@@ -48,10 +48,6 @@
   align-items: center;
 }
 
-.root[data-navigation-presentation='compactBar'] .stack {
-  flex-direction: row;
-}
-
 .button {
   width: var(--wa-control-size-navigation);
   height: var(--wa-control-size-navigation);

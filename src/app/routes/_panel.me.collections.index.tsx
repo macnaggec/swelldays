@@ -16,7 +16,7 @@ export const Route = createFileRoute('/_panel/me/collections/')({
 
 function UploadsTab() {
   const navigate = useNavigate();
-  const { sessions, visibleUploads, isLoadingUploads } = useCollectionsContext();
+  const { sessions, visibleUploads, isLoadingUploads, galleryMaxColumns } = useCollectionsContext();
   const { mutateAsync: startSessionEdit, isPending: isOpeningEdit } = useStartSessionEdit();
 
   const [removingSession, setRemovingSession] = useState<SurfSessionItem | null>(null);
@@ -34,7 +34,7 @@ function UploadsTab() {
   if (isLoadingUploads) {
     return (
       <PanelGalleryLayout>
-        <PanelCollectionGrid preview>
+        <PanelCollectionGrid preview maxColumns={galleryMaxColumns}>
           {Array.from({ length: 9 }).map((_, i) => (
             <Skeleton key={i} height={160} radius="sm" />
           ))}
@@ -61,6 +61,7 @@ function UploadsTab() {
       <BaseGallery
         items={visibleUploads}
         aria-label="Uploads"
+        maxColumns={galleryMaxColumns}
         renderCard={(session) => (
           <SurfSessionCard
             session={session}

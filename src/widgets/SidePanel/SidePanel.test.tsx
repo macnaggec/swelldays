@@ -3,7 +3,7 @@ import { act, fireEvent, screen } from '@testing-library/react';
 import { useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
-import { SidePanel } from './SidePanel';
+import { SidePanel, SidePanelFloating, SidePanelHeaderTrailing } from './SidePanel';
 import { PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
 import { usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
 
@@ -92,6 +92,59 @@ describe('SidePanel', () => {
     expect(screen.queryByRole('button', { name: /expand panel/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /collapse panel/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /hide panel/i })).not.toBeInTheDocument();
+  });
+
+  it('portals SidePanelHeaderTrailing content into the header row, not the scrollable body', () => {
+    render(
+      <SidePanel onBack={vi.fn()} header={<div>My Collections</div>}>
+        <SidePanelHeaderTrailing>
+          <button>All spots</button>
+        </SidePanelHeaderTrailing>
+        <div>Panel body</div>
+      </SidePanel>,
+    );
+
+    const trailingButton = screen.getByRole('button', { name: 'All spots' });
+    expect(trailingButton).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+    expect(screen.getByText('Panel body').closest('[data-panel-layout-content]'))
+      .not.toContainElement(trailingButton);
+  });
+
+  it('renders nothing for SidePanelHeaderTrailing content mounted without a SidePanel ancestor', () => {
+    render(
+      <SidePanelHeaderTrailing>
+        <button>All spots</button>
+      </SidePanelHeaderTrailing>,
+    );
+
+    expect(screen.queryByRole('button', { name: 'All spots' })).not.toBeInTheDocument();
+  });
+
+  it('portals SidePanelFloating content beside the drawer surface, not inside it', () => {
+    render(
+      <SidePanel>
+        <SidePanelFloating>
+          <button>Collections sections</button>
+        </SidePanelFloating>
+        <div>Panel body</div>
+      </SidePanel>,
+    );
+
+    const floatingButton = screen.getByRole('button', { name: 'Collections sections' });
+    const drawer = screen.getByRole('complementary', { name: 'Content drawer' });
+    expect(floatingButton).toBeInTheDocument();
+    expect(drawer).not.toContainElement(floatingButton);
+  });
+
+  it('renders nothing for SidePanelFloating content mounted without a SidePanel ancestor', () => {
+    render(
+      <SidePanelFloating>
+        <button>Collections sections</button>
+      </SidePanelFloating>,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Collections sections' })).not.toBeInTheDocument();
   });
 
   it('gives browse content one declared scroll owner with sticky chrome inside it', () => {

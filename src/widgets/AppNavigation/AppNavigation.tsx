@@ -8,7 +8,6 @@ import {
   type BrowseSheetNavigationPlacement,
   type SheetSnap,
 } from 'shared/ui/DrawerShell';
-import { useCartStore } from 'entities/Commerce';
 import { CartControl } from './CartControl';
 import { UserControl } from './UserControl';
 
@@ -33,7 +32,6 @@ function NavigationSurface({
   sheetSnap,
   placement,
 }: NavigationSurfaceProps): ReactElement {
-  const cartCount = useCartStore((s) => s.items.length);
   const hidden = placement?.hidden ?? false;
   const style: BrowseNavigationStyle | undefined = placement === undefined
     ? undefined
@@ -56,11 +54,12 @@ function NavigationSurface({
         <div className={styles.button}>
           <UserControl />
         </div>
-        {cartCount > 0 && (
-          <div className={styles.button}>
-            <CartControl />
-          </div>
-        )}
+        {/* Reserved even when the cart is empty (CartControl renders nothing then) so
+            adding the first item doesn't shift the account button or anything docked
+            beneath this bar. */}
+        <div className={styles.button}>
+          <CartControl />
+        </div>
       </div>
     </div>
   );
