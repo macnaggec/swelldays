@@ -1,15 +1,27 @@
+import { readFileSync } from 'node:fs';
 import { act, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { PanelSettledWidthContext } from 'shared/ui/DrawerShell/panelSettledWidth';
 import { PanelScrollChromeStateProvider } from 'shared/ui/PanelScrollChrome';
+import { materialClasses } from 'shared/ui/design-system';
 import {
   PanelLayout,
+  PanelLayoutFooter,
   PanelLayoutMetadata,
   PanelLayoutRail,
   PanelLayoutStickyChrome,
   PanelLayoutStickyChromeReplacement,
 } from './PanelLayout';
+
+const panelLayoutCss = readFileSync('src/shared/ui/PanelLayout/PanelLayout.module.css', 'utf8');
+
+function cssRule(selector: string) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = panelLayoutCss.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`));
+
+  return match?.[1]?.replace(/\s+/g, ' ').trim() ?? '';
+}
 
 /** As in PanelCollectionGrid.test.tsx: drives a chosen contentRect width on demand. */
 function stubResizeObserver() {
@@ -243,6 +255,50 @@ describe('PanelLayoutStickyChrome', () => {
     rerender(layout(true));
 
     expect(rowsPresent().every(Boolean)).toBe(true);
+  });
+});
+
+describe('PanelLayout sheet-bound visible height and floating footer', () => {
+  it("marks the panel root with the sheet's current snap, for the sheet-scoped height and footer CSS to key off", () => {
+    const { container } = render(
+      <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation: 'bottomSheet', sheetSnap: 'half' }}>
+        <PanelLayout>content</PanelLayout>
+      </PanelScrollChromeStateProvider>,
+    );
+
+    const root = container.querySelector('[data-panel-layout]');
+    expect(root).toHaveAttribute('data-sheet-snap', 'half');
+  });
+
+  it('gives the footer the floating-chrome material only while mounted inside a sheet', () => {
+    const { container: sheetContainer } = render(
+      <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation: 'bottomSheet', sheetSnap: 'half' }}>
+        <PanelLayout>
+          <PanelLayoutFooter>
+            <button type="button">Publish</button>
+          </PanelLayoutFooter>
+        </PanelLayout>
+      </PanelScrollChromeStateProvider>,
+    );
+    const sheetFooter = sheetContainer.querySelector('[data-panel-layout-footer]');
+    expect(sheetFooter?.className.split(' ')).toContain(materialClasses.chrome);
+
+    const { container: plainContainer } = render(
+      <PanelLayout>
+        <PanelLayoutFooter>
+          <button type="button">Publish</button>
+        </PanelLayoutFooter>
+      </PanelLayout>,
+    );
+    const plainFooter = plainContainer.querySelector('[data-panel-layout-footer]');
+    expect(plainFooter?.className.split(' ')).not.toContain(materialClasses.chrome);
+  });
+
+  it('height-binds the root to the sheet-visible-height custom property while inside a sheet', () => {
+    const rule = cssRule('.root[data-sheet-snap]');
+
+    expect(rule).toContain('height:');
+    expect(rule).toContain('var(--wa-sheet-visible-height');
   });
 });
 

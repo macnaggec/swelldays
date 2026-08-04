@@ -17,6 +17,7 @@ import {
 } from 'shared/ui/DrawerShell/sheetScrollCoupling';
 import { useSettledLayout } from 'shared/ui/DrawerShell/panelSettledWidth';
 import { usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
+import { materialClasses } from 'shared/ui/design-system';
 import styles from './PanelLayout.module.css';
 
 const PanelLayoutFooterTargetContext = createContext<HTMLElement | null>(null);
@@ -77,6 +78,25 @@ export function PanelLayout({
     scrollOwner.dataset.panelChromeHeight = String(hidden ? 0 : stickyChromeTarget?.offsetHeight ?? 0);
   }, [hidden, stickyChromeTarget, contentWidth]);
 
+  // The floating footer's own height, so the sheet-scoped `.content` can reserve exactly
+  // that much bottom clearance and the footer never overlaps the last field it floats
+  // above. A ResizeObserver — the same mechanism `useMeasuredWidth` above uses for the
+  // panel's own width — rather than a dependency-array effect that calls setState
+  // directly: the latter trips `react-hooks/set-state-in-effect` (setState is meant to
+  // synchronize with an external system's own change notifications, not be invoked
+  // unconditionally from inside the effect body), and it reacts to every actual height
+  // change (e.g. from a content-width or sheet-snap driven reflow) without having to
+  // enumerate each possible cause as a dependency.
+  const [footerHeight, setFooterHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (!footerTarget) return;
+    const observer = new ResizeObserver(() => {
+      setFooterHeight(footerTarget.offsetHeight);
+    });
+    observer.observe(footerTarget);
+    return () => observer.disconnect();
+  }, [footerTarget]);
+
   // Closing, these differ, and the panel needs both at once. Its *box* stays wide so
   // cards still travelling across the space being given up are not clipped away; its
   // *chrome* — header, search row, card area, footer — takes the width it will settle
@@ -93,6 +113,7 @@ export function PanelLayout({
   ) {
     rootStyle['--wa-panel-content-width'] = `${contentWidth}px`;
   }
+  if (sheetSnap !== undefined) rootStyle['--wa-panel-footer-height'] = `${footerHeight}px`;
 
   return (
     <PanelLayoutFooterTargetContext.Provider value={footerTarget}>
@@ -145,7 +166,7 @@ export function PanelLayout({
 
               <div
                 ref={setFooterTarget}
-                className={styles.footer}
+                className={sheetSnap !== undefined ? `${styles.footer} ${materialClasses.chrome}` : styles.footer}
                 data-panel-layout-footer
               />
             </div>

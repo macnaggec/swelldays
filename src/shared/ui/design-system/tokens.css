@@ -33,6 +33,7 @@
   --wa-control-width-section-navigation: 64px;
   --wa-sheet-grabber-width: 36px;
   --wa-sheet-grabber-height: 5px;
+  --wa-sheet-drag-handle-height: 24px;
 
   /* Motion */
   --wa-motion-duration-control: 150ms;

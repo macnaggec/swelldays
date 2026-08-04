@@ -340,6 +340,24 @@ describe('DrawerShell bottom-sheet geometry', () => {
     expect(screen.getByTestId('drawer-geometry').textContent).toBe(
       `0:${844 - visibleHeight}:390:844:390:${visibleHeight}`,
     );
+    // The published CSS custom property is driven by the real window viewport height
+    // (via useViewportMetrics), independent of the synthetic 844px geometry mocked above.
+    const realViewportHeights = resolveSheetSnapHeights({
+      viewportHeightPx: window.innerHeight,
+      peekHeightPx: SHEET_PEEK_HEIGHT_PX,
+    });
+    expect(sheet.style.getPropertyValue('--wa-sheet-visible-height')).toBe(`${realViewportHeights[snap]}px`);
+  });
+
+  it('never sets a visible-height custom property on a non-bottomSheet presentation', () => {
+    render(
+      <DrawerShell presentation="persistent" state="compact" modality="nonmodal">
+        Drawer content
+      </DrawerShell>,
+    );
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    expect(surface.style.getPropertyValue('--wa-sheet-visible-height')).toBe('');
   });
 
   it('republishes the transformed bounds after the sheet lands at another snap', async () => {

@@ -1,4 +1,5 @@
 .root {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -196,4 +197,26 @@
 
 .root[data-sheet-snap='peek'] .stickyChrome {
   padding-block: 20px;
+}
+
+.root[data-sheet-snap] {
+  height: calc(
+    var(--wa-sheet-visible-height)
+    - var(--wa-safe-area-top)
+    - var(--wa-safe-area-bottom)
+    - var(--wa-keyboard-inset-bottom, 0px)
+    - var(--wa-sheet-drag-handle-height)
+  );
+}
+
+.root[data-sheet-snap] .footer {
+  position: absolute;
+  inset-inline: 0;
+  bottom: var(--wa-safe-area-bottom);
+  z-index: var(--wa-z-floating-chrome);
+  border-radius: var(--wa-radius-chrome);
+}
+
+.root[data-sheet-snap] .content {
+  padding-bottom: calc(var(--wa-panel-footer-height, 0px) + var(--wa-panel-content-inset));
 }

@@ -386,7 +386,12 @@ export function DrawerShell(props: DrawerShellProps) {
         data-drawer-snap={props.presentation === 'bottomSheet' ? props.snap : undefined}
         data-drawer-modality={modality}
         initial={false}
-        style={{ '--wa-keyboard-inset-bottom': `${keyboardInsetPx}px` } as CSSProperties}
+        style={{
+          '--wa-keyboard-inset-bottom': `${keyboardInsetPx}px`,
+          ...(props.presentation === 'bottomSheet'
+            ? { '--wa-sheet-visible-height': `${heights[props.snap]}px` }
+            : {}),
+        } as CSSProperties}
         animate={animate}
         transition={transition}
         drag={props.presentation === 'bottomSheet' ? 'y' : false}
