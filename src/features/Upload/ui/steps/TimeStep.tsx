@@ -68,7 +68,7 @@ export function TimeStep({
       </Text>
 
       <Stack gap="var(--upload-nested-gap)">
-        <Center>
+        <Center className={styles.dateCalendarTouch}>
           <DatePicker
             value={date}
             onChange={handleDateChange}
@@ -110,20 +110,13 @@ export function TimeStep({
             minRange={15}
             label={null}
             size="xs"
+            classNames={{ thumb: styles.rangeThumb }}
             styles={{
               root: {
                 '--slider-radius': '2px',
                 '--slider-track-bg': 'var(--wa-control-fill)',
                 '--slider-color': 'var(--wa-glass-border-media-overlay-hover)',
               } as React.CSSProperties,
-              thumb: {
-                border: 'none',
-                width: 22,
-                height: 10,
-                borderRadius: 99,
-                backgroundColor: 'var(--wa-text-primary)',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
-              },
             }}
           />
         </Stack>

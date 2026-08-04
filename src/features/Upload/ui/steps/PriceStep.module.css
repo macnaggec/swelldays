@@ -20,3 +20,9 @@
     animation: none;
   }
 }
+
+@media (pointer: coarse) {
+  .priceInputTouch {
+    --input-height-sm: var(--wa-control-height-default);
+  }
+}

@@ -19,3 +19,25 @@
     animation: none;
   }
 }
+
+@media (pointer: coarse) {
+  .dateCalendarTouch {
+    --day-size-sm: var(--wa-control-height-default);
+  }
+}
+
+.rangeThumb {
+  border: none;
+  width: 22px;
+  height: 10px;
+  border-radius: 99px;
+  background-color: var(--wa-text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+@media (pointer: coarse) {
+  .rangeThumb {
+    width: var(--wa-control-height-default);
+    height: var(--wa-control-height-default);
+  }
+}

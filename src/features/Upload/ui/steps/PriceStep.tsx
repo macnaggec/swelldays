@@ -74,7 +74,7 @@ export function PriceStep({
               w={80}
               data-ready={photoPrice >= MIN_MEDIA_PRICE_CENTS ? 'true' : 'false'}
               error={photoError ? `Min $${minDollars}` : undefined}
-              classNames={{ input: isFlashing && photoError ? styles.inputPulse : undefined }}
+              classNames={{ wrapper: styles.priceInputTouch, input: isFlashing && photoError ? styles.inputPulse : undefined }}
               styles={getInputStyles(photoPrice, photoError)}
             />
           </Group>
@@ -97,7 +97,7 @@ export function PriceStep({
               w={80}
               data-ready={videoPrice >= MIN_MEDIA_PRICE_CENTS ? 'true' : 'false'}
               error={videoError ? `Min $${minDollars}` : undefined}
-              classNames={{ input: isFlashing && !photoError && videoError ? styles.inputPulse : undefined }}
+              classNames={{ wrapper: styles.priceInputTouch, input: isFlashing && !photoError && videoError ? styles.inputPulse : undefined }}
               styles={getInputStyles(videoPrice, videoError)}
             />
           </Group>
