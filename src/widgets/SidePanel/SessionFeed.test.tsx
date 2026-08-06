@@ -1,6 +1,7 @@
 import { MantineProvider } from '@mantine/core';
 import { render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { SessionFeed } from './SessionFeed';
 
 const mocks = vi.hoisted(() => ({
@@ -44,7 +45,9 @@ describe('SessionFeed', () => {
     mocks.isLoading = true;
     const { rerender, unmount } = render(
       <MantineProvider>
-        <SessionFeed onLayoutReadyChange={onLayoutReadyChange} />
+        <AppShellLayoutPolicyProvider routeIntent="browse" browseExpanded={false} galleryExpanded={false}>
+          <SessionFeed onLayoutReadyChange={onLayoutReadyChange} />
+        </AppShellLayoutPolicyProvider>
       </MantineProvider>,
     );
 
@@ -53,7 +56,9 @@ describe('SessionFeed', () => {
     mocks.isLoading = false;
     rerender(
       <MantineProvider>
-        <SessionFeed onLayoutReadyChange={onLayoutReadyChange} />
+        <AppShellLayoutPolicyProvider routeIntent="browse" browseExpanded={false} galleryExpanded={false}>
+          <SessionFeed onLayoutReadyChange={onLayoutReadyChange} />
+        </AppShellLayoutPolicyProvider>
       </MantineProvider>,
     );
 

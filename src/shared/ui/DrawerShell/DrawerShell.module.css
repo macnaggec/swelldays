@@ -28,6 +28,10 @@
   overflow: hidden;
 }
 
+.surface[data-drawer-presentation='sideWorkspace'] {
+  overflow: hidden;
+}
+
 .surface[data-drawer-presentation='bottomSheet'][data-drawer-snap='peek'] .dragHandle {
   position: absolute;
   inset-block-start: 0;

@@ -54,6 +54,7 @@ const routeIntents: readonly AppRouteIntent[] = [
   'browse',
   'galleryWorkspace',
   'routeWorkspace',
+  'siteWorkspace',
   'mapInput',
   'fullPage',
   'immersiveMapInput',
@@ -142,11 +143,33 @@ describe('the mobile browse section shell cells', () => {
     expect(resolved.map.interaction).toBe('interactive');
   });
 
+  it.each([
+    ['compact', 'short', 'fullScreen'],
+    ['compact', 'regular', 'fullScreen'],
+    ['constrained', 'short', 'sideWorkspace'],
+  ] as const)('activates the %s/%s siteWorkspace cell as a %s drawer over the decorative map', (
+    sizeBand,
+    heightBand,
+    expectedPresentation,
+  ) => {
+    const cell = { sizeBand, heightBand, routeIntent: 'siteWorkspace' } as const;
+    const resolved = resolveShellLayoutPolicy({ ...cell, preferences });
+
+    expect(isCellActive(cell)).toBe(true);
+    expect(resolved).toEqual(deriveAppShellLayoutPolicy({ ...cell, preferences }));
+    expect(resolved.drawer.presentation).toBe(expectedPresentation);
+    expect(resolved.drawer.control).toBe('routeBack');
+    expect(resolved.drawer.modality).toBe('nonmodal');
+    expect(resolved.map.interaction).toBe('decorative');
+    expect(resolved.map.navigationControl).toBe('hidden');
+  });
+
   it('leaves every other compact and constrained cell falling back to the complete wide lifecycle', () => {
     const stillInactiveCells: readonly ActivationCell[] = [
       { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'browse' },
       { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'mapInput' },
       { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'immersiveMapInput' },
+      { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'siteWorkspace' },
     ];
 
     for (const cell of stillInactiveCells) {

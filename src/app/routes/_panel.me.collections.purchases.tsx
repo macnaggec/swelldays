@@ -7,7 +7,6 @@ import { useCartStore } from 'entities/Commerce';
 import { PurchaseCard, PurchaseLightbox, usePurchaseDownload } from 'features/Purchases';
 import { PanelGalleryLayout } from 'shared/ui/PanelGalleryLayout';
 import { BaseGallery } from 'shared/ui/BaseGallery';
-import { useCollectionsContext } from './_panel.me.collections';
 
 export const Route = createFileRoute('/_panel/me/collections/purchases')({
   validateSearch: (search): { order?: string } => ({
@@ -20,7 +19,6 @@ function PurchasesTab() {
   const { order } = Route.useSearch();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const { galleryMaxColumns } = useCollectionsContext();
   const { data: purchases = [], isLoading } = useQuery(trpc.checkout.myPurchases.queryOptions());
   const { download, isDownloading, isAnyDownloading } = usePurchaseDownload();
   const removeFromCart = useCartStore((s) => s.remove);
@@ -68,7 +66,6 @@ function PurchasesTab() {
         <BaseGallery
           items={purchases}
           aria-label="Purchases"
-          maxColumns={galleryMaxColumns}
           renderCard={(purchase) => (
             <PurchaseCard
               purchase={purchase}

@@ -5,6 +5,16 @@ import { render } from 'test/setup/render';
 import { PanelSettledWidthContext } from 'shared/ui/DrawerShell/panelSettledWidth';
 import { PanelCollectionGrid, usePanelCollectionColumns } from './PanelCollectionGrid';
 
+const mocks = vi.hoisted(() => ({
+  drawerPresentation: 'persistent' as string,
+}));
+
+vi.mock('shared/model/appShellPresentation', () => ({
+  useAppShellLayoutPolicy: () => ({
+    drawer: { presentation: mocks.drawerPresentation },
+  }),
+}));
+
 /**
  * Stubs the global ResizeObserver in the shape used by useMeasuredWidth.test.tsx: a
  * class capturing the callback passed by the hook under test, with observe/unobserve/
@@ -60,6 +70,7 @@ describe('PanelCollectionGrid', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    mocks.drawerPresentation = 'persistent';
   });
 
   it('steps columns, tracks, and the preview reveal together across the captured breakpoints', () => {
@@ -106,6 +117,37 @@ describe('PanelCollectionGrid', () => {
     expect(root.style.getPropertyValue('grid-template-columns')).toBe('repeat(1, minmax(0, 1fr))');
     expect(root.children.length).toBe(3);
   });
+
+  it('tightens to exactly two columns inside a sideWorkspace drawer, at a width that would otherwise clamp to three', () => {
+    const resizeObserver = stubResizeObserver();
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(
+      DOMRect.fromRect({ width: 1416, height: 0, x: 0, y: 0 }),
+    );
+    mocks.drawerPresentation = 'sideWorkspace';
+
+    const { container } = render(<PanelCollectionGrid>{NINE_CHILDREN}</PanelCollectionGrid>);
+    resizeObserver.emit(1416);
+
+    const root = container.querySelector('[data-panel-collection-grid]') as HTMLElement;
+    expect(root.dataset.columns).toBe('2');
+  });
+
+  it.each(['persistent', 'sideOverlay', 'fullScreen'] as const)(
+    'renders three columns at the same width for a plain %s presentation',
+    (drawerPresentation) => {
+      const resizeObserver = stubResizeObserver();
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(
+        DOMRect.fromRect({ width: 1416, height: 0, x: 0, y: 0 }),
+      );
+      mocks.drawerPresentation = drawerPresentation;
+
+      const { container } = render(<PanelCollectionGrid>{NINE_CHILDREN}</PanelCollectionGrid>);
+      resizeObserver.emit(1416);
+
+      const root = container.querySelector('[data-panel-collection-grid]') as HTMLElement;
+      expect(root.dataset.columns).toBe('3');
+    },
+  );
 });
 
 describe('PanelCollectionGrid scroll anchoring', () => {

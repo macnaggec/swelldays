@@ -1,9 +1,21 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
+import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { Route } from './_panel.me.collections.index';
+
+// Uploads inherits the siteWorkspace intent from /_panel/me (M06c); PanelCollectionGrid
+// now derives its own column density from the shell policy, so every render here needs a
+// real AppShellLayoutPolicyProvider ancestor.
+function renderUploads(ui: ReactNode) {
+  return render(
+    <AppShellLayoutPolicyProvider routeIntent="siteWorkspace" browseExpanded={false} galleryExpanded={false}>
+      {ui}
+    </AppShellLayoutPolicyProvider>,
+  );
+}
 
 const mocks = vi.hoisted(() => ({
   isLoading: false,
@@ -47,7 +59,7 @@ describe('UploadsTab', () => {
     mocks.sessions = [];
     const Component = (Route as unknown as { component: ComponentType }).component;
 
-    render(<Component />);
+    renderUploads(<Component />);
 
     expect(screen.getByText('No sessions yet').closest('[data-panel-gallery-inset]')).not.toBeNull();
 
@@ -69,7 +81,7 @@ describe('UploadsTab', () => {
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
 
-    render(<Component />);
+    renderUploads(<Component />);
 
     expect(screen.getByText('Pipeline').closest('[data-panel-gallery-inset]')).not.toBeNull();
     expect(screen.getByRole('grid', { name: 'Uploads' })).toBeInTheDocument();

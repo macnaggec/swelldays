@@ -209,7 +209,8 @@
   );
 }
 
-.root[data-sheet-snap] .footer {
+.root[data-sheet-snap] .footer,
+.root[data-drawer-presentation='sideWorkspace'] .footer {
   position: absolute;
   inset-inline: 0;
   bottom: var(--wa-safe-area-bottom);
@@ -217,6 +218,7 @@
   border-radius: var(--wa-radius-chrome);
 }
 
-.root[data-sheet-snap] .content {
+.root[data-sheet-snap] .content,
+.root[data-drawer-presentation='sideWorkspace'] .content {
   padding-bottom: calc(var(--wa-panel-footer-height, 0px) + var(--wa-panel-content-inset));
 }

@@ -432,7 +432,7 @@ describe('Panel upload entry', () => {
   });
 
   it('does not show the panel minimize control on the cart route', () => {
-    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
+    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'siteWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
@@ -489,7 +489,7 @@ describe('Panel upload entry', () => {
   });
 
   it('opens the cart route in the full-size panel', () => {
-    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
+    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'siteWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
@@ -498,7 +498,7 @@ describe('Panel upload entry', () => {
 
   it('forces a route workspace open without overwriting browse or gallery preferences', () => {
     usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: false });
-    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
+    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'siteWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
@@ -688,7 +688,7 @@ describe('Panel upload entry', () => {
   });
 
   it('lets the cart header span the full panel width', () => {
-    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
+    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'siteWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
@@ -696,7 +696,7 @@ describe('Panel upload entry', () => {
   });
 
   it('routes cart visitors without a spot origin back to the feed', () => {
-    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'routeWorkspace' }, search: {} }];
+    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'siteWorkspace' }, search: {} }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 

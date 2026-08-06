@@ -2,6 +2,7 @@ export type AppRouteIntent =
   | 'browse'
   | 'galleryWorkspace'
   | 'routeWorkspace'
+  | 'siteWorkspace'
   | 'mapInput'
   | 'fullPage'
   | 'immersiveMapInput';

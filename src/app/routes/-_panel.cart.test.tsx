@@ -1,8 +1,10 @@
 import { screen } from '@testing-library/react';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
+import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { PanelLayout } from 'shared/ui/PanelLayout';
+import { PanelScrollChromeStateProvider } from 'shared/ui/PanelScrollChrome';
 import { Route } from './_panel.cart';
 
 const mocks = vi.hoisted(() => ({
@@ -40,12 +42,31 @@ vi.mock('features/Cart', () => ({
   CheckoutButton: () => <button type="button">Checkout</button>,
 }));
 
+// Cart is a siteWorkspace route (M06c); PanelCollectionGrid (inside BaseGallery) now
+// derives its own column density from the shell policy, so every render here needs a
+// real AppShellLayoutPolicyProvider ancestor.
+function renderCart(ui: ReactNode, drawerPresentation?: 'sideWorkspace') {
+  const panelLayout = <PanelLayout>{ui}</PanelLayout>;
+
+  return render(
+    <AppShellLayoutPolicyProvider routeIntent="siteWorkspace" browseExpanded={false} galleryExpanded={false}>
+      {drawerPresentation
+        ? (
+          <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation }}>
+            {panelLayout}
+          </PanelScrollChromeStateProvider>
+        )
+        : panelLayout}
+    </AppShellLayoutPolicyProvider>,
+  );
+}
+
 describe('CartPanelRoute', () => {
   it('renders the cart gallery inside the shared panel gallery inset', () => {
     mocks.items = [];
     const Component = (Route as unknown as { component: ComponentType }).component;
 
-    render(<PanelLayout><Component /></PanelLayout>);
+    renderCart(<Component />);
 
     expect(screen.getByText('Your cart is empty').closest('[data-panel-gallery-inset]')).not.toBeNull();
   });
@@ -61,8 +82,27 @@ describe('CartPanelRoute', () => {
     }];
     const Component = (Route as unknown as { component: ComponentType }).component;
 
-    render(<PanelLayout><Component /></PanelLayout>);
+    renderCart(<Component />);
 
+    expect(screen.getByRole('button', { name: 'Checkout' }).closest('[data-panel-layout-footer]')).not.toBeNull();
+  });
+
+  it('floats the checkout footer above the gallery once the drawer is a sideWorkspace', () => {
+    mocks.items = [{
+      id: 'cart-item-1',
+      label: 'Cart item',
+      thumbnailUrl: 'https://example.com/cart.jpg',
+      spotName: 'Malibu',
+      capturedAt: '2026-06-01T06:00:00.000Z',
+      priceCents: 1200,
+    }];
+    const Component = (Route as unknown as { component: ComponentType }).component;
+
+    const { container } = renderCart(<Component />, 'sideWorkspace');
+
+    const root = container.querySelector('[data-panel-layout]') as HTMLElement;
+    expect(root).toHaveAttribute('data-drawer-presentation', 'sideWorkspace');
+    expect(root.style.getPropertyValue('--wa-panel-footer-height')).toBe('0px');
     expect(screen.getByRole('button', { name: 'Checkout' }).closest('[data-panel-layout-footer]')).not.toBeNull();
   });
 });

@@ -302,6 +302,44 @@ describe('PanelLayout sheet-bound visible height and floating footer', () => {
   });
 });
 
+describe('PanelLayout sideWorkspace floating footer', () => {
+  it('reserves the floating-footer clearance property for a sideWorkspace drawer with no sheetSnap set', () => {
+    const { container } = render(
+      <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation: 'sideWorkspace' }}>
+        <PanelLayout>
+          <PanelLayoutFooter>
+            <button type="button">Checkout</button>
+          </PanelLayoutFooter>
+        </PanelLayout>
+      </PanelScrollChromeStateProvider>,
+    );
+
+    const root = container.querySelector('[data-panel-layout]') as HTMLElement;
+    expect(root).toHaveAttribute('data-drawer-presentation', 'sideWorkspace');
+    expect(root).not.toHaveAttribute('data-sheet-snap');
+    expect(root.style.getPropertyValue('--wa-panel-footer-height')).toBe('0px');
+  });
+
+  it.each(['sideOverlay', 'persistent'] as const)(
+    'reserves no floating-footer clearance property for a plain %s drawer',
+    (drawerPresentation) => {
+      const { container } = render(
+        <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation }}>
+          <PanelLayout>
+            <PanelLayoutFooter>
+              <button type="button">Checkout</button>
+            </PanelLayoutFooter>
+          </PanelLayout>
+        </PanelScrollChromeStateProvider>,
+      );
+
+      const root = container.querySelector('[data-panel-layout]') as HTMLElement;
+      expect(root).toHaveAttribute('data-drawer-presentation', drawerPresentation);
+      expect(root.style.getPropertyValue('--wa-panel-footer-height')).toBe('');
+    },
+  );
+});
+
 describe('PanelLayoutMetadata', () => {
   it('pins metadata content between the header and the scroller, outside the scroll owner', () => {
     render(

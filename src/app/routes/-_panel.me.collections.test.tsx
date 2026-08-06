@@ -87,7 +87,7 @@ function renderCollections() {
   const Component = (Route as unknown as { component: ComponentType }).component;
 
   return render(
-    <AppShellLayoutPolicyProvider routeIntent="routeWorkspace" browseExpanded={false} galleryExpanded={false}>
+    <AppShellLayoutPolicyProvider routeIntent="siteWorkspace" browseExpanded={false} galleryExpanded={false}>
       <PanelLayout>
         <Component />
       </PanelLayout>
@@ -117,12 +117,12 @@ describe('CollectionsLayout', () => {
     expect(toolbar).toHaveAccessibleName('Filter uploads by spot');
   });
 
-  it('does not render the tab switcher without a real SidePanel to portal into', () => {
+  it('does not render the tab switcher without a real AppNavigation to portal into', () => {
     renderCollections();
 
-    // The switcher is a SidePanelFloating portal — proven at SidePanel's own boundary
-    // (SidePanel.test.tsx), which is what actually owns that portal target; this
-    // bare-PanelLayout render has no real SidePanel to deliver into.
+    // The switcher is an AppNavigationSupplement portal — proven at AppNavigation's own
+    // boundary (AppNavigation.test.tsx), which is what actually owns that portal target;
+    // this bare-PanelLayout render has no real AppNavigation to deliver into.
     expect(screen.queryByRole('navigation', { name: 'Collections sections' })).not.toBeInTheDocument();
   });
 

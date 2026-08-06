@@ -2,6 +2,7 @@ import { Children, createContext, useCallback, useContext, useEffect, useLayoutE
 import { useMergedRef } from '@mantine/hooks';
 import { galleryColumns } from 'shared/lib/galleryColumns';
 import { useMeasuredWidth } from 'shared/hooks/useMeasuredWidth';
+import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import {
   usePanelSettledWidth,
   useSettledLayout,
@@ -14,6 +15,7 @@ import {
   settlePanelCollectionScrollCorrection,
 } from './scrollCorrection';
 
+const SITE_WORKSPACE_COLLECTION_MAX_COLUMNS = 2;
 const PanelCollectionColumnsContext = createContext(1);
 const SCROLL_RUNWAY_PROPERTY = '--wa-panel-collection-scroll-runway';
 const SCROLL_HEAD_RUNWAY_PROPERTY = '--wa-panel-collection-scroll-head-runway';
@@ -95,14 +97,11 @@ interface PanelCollectionGridProps extends HTMLAttributes<HTMLDivElement> {
    * placeholder fills the same visual block at any column count.
    */
   preview?: boolean;
-  /** Tightens the panelCard density's own column ceiling for this grid only. */
-  maxColumns?: number;
 }
 
 export function PanelCollectionGrid({
   className,
   preview = false,
-  maxColumns,
   style,
   children,
   ...props
@@ -124,7 +123,11 @@ export function PanelCollectionGrid({
   // measurement lands a frame later, and for that frame the grid would still be
   // arranged for the width it just left — long enough to see one card stretched across
   // the panel when opening, or three squeezed into a narrow one when closing.
-  const columns = galleryColumns(arrangementWidth, 'panelCard', maxColumns);
+  const layoutPolicy = useAppShellLayoutPolicy();
+  const maxColumnsOverride = layoutPolicy.drawer.presentation === 'sideWorkspace'
+    ? SITE_WORKSPACE_COLLECTION_MAX_COLUMNS
+    : undefined;
+  const columns = galleryColumns(arrangementWidth, 'panelCard', maxColumnsOverride);
 
   // No width of its own: PanelLayout gives the card area the destination width, so the
   // grid fills it and the cards are placed relative to the panel — the top card already

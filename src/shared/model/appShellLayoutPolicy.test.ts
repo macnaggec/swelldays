@@ -44,6 +44,7 @@ describe('deriveAppShellLayoutPolicy — wide', () => {
   it.each([
     ['routeWorkspace', 'expanded', 'routeBack', 'background'],
     ['mapInput', 'compact', 'workflowBack', 'interactive'],
+    ['siteWorkspace', 'expanded', 'routeBack', 'decorative'],
   ] as const)('gives %s its required persistent workspace behavior', (
     routeIntent,
     expectedState,
@@ -93,6 +94,7 @@ describe('deriveAppShellLayoutPolicy — constrained', () => {
     ['routeWorkspace', 'expanded', 'routeBack', 'modal', 'background', 'hidden'],
     ['mapInput', 'compact', 'workflowBack', 'nonmodal', 'interactive', 'hidden'],
     ['immersiveMapInput', 'compact', 'workflowBack', 'nonmodal', 'interactive', 'hidden'],
+    ['siteWorkspace', 'expanded', 'routeBack', 'nonmodal', 'decorative', 'hidden'],
   ] as const)('defines the future %s side-overlay policy without mounting it', (
     routeIntent,
     expectedState,
@@ -164,6 +166,7 @@ describe('deriveAppShellLayoutPolicy — compact', () => {
     ['routeWorkspace', 'fullScreen', 'routeBack', 'modal', 'background'],
     ['mapInput', 'bottomSheet', 'workflowBack', 'nonmodal', 'interactive'],
     ['immersiveMapInput', 'bottomSheet', 'workflowBack', 'nonmodal', 'interactive'],
+    ['siteWorkspace', 'fullScreen', 'routeBack', 'nonmodal', 'decorative'],
   ] as const)('defines the future %s compact workspace', (
     routeIntent,
     expectedPresentation,
@@ -183,6 +186,18 @@ describe('deriveAppShellLayoutPolicy — compact', () => {
     expect(policy.drawer.control).toBe(expectedControl);
     expect(policy.drawer.modality).toBe(expectedModality);
     expect(policy.map.interaction).toBe(expectedMapInteraction);
+  });
+
+  it('gives compact siteWorkspace a full-screen drawer at its full state', () => {
+    const policy = deriveAppShellLayoutPolicy({
+      routeIntent: 'siteWorkspace',
+      sizeBand: 'compact',
+      heightBand: 'regular',
+      preferences: compactPreferences,
+    });
+
+    expect(policy.drawer.presentation).toBe('fullScreen');
+    expect(policy.drawer.state).toBe('full');
   });
 
   it('keeps a full-page route outside the compact map shell', () => {
@@ -254,6 +269,36 @@ describe('deriveAppShellLayoutPolicy — height band', () => {
     expect(policy.drawer.presentation).toBe('sideOverlay');
   });
 
+  it('gives siteWorkspace its own sideWorkspace presentation at constrained/short height', () => {
+    const policy = deriveAppShellLayoutPolicy({
+      routeIntent: 'siteWorkspace',
+      sizeBand: 'constrained',
+      heightBand: 'short',
+      preferences: compactPreferences,
+    });
+
+    expect(policy.drawer.presentation).toBe('sideWorkspace');
+  });
+
+  it.each([
+    ['wide', 'regular'],
+    ['constrained', 'short'],
+    ['compact', 'regular'],
+  ] as const)('hides the map navigation control for siteWorkspace at every band (%s/%s)', (
+    sizeBand,
+    heightBand,
+  ) => {
+    const policy = deriveAppShellLayoutPolicy({
+      routeIntent: 'siteWorkspace',
+      sizeBand,
+      heightBand,
+      preferences: compactPreferences,
+    });
+
+    expect(policy.map.interaction).toBe('decorative');
+    expect(policy.map.navigationControl).toBe('hidden');
+  });
+
   it('never downgrades wide at short height', () => {
     const policy = deriveAppShellLayoutPolicy({
       routeIntent: 'browse',
@@ -271,6 +316,7 @@ describe('deriveAppShellLayoutPolicy — band-crossing continuity', () => {
     'browse',
     'galleryWorkspace',
     'routeWorkspace',
+    'siteWorkspace',
     'mapInput',
     'fullPage',
     'immersiveMapInput',

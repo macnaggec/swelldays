@@ -12,6 +12,7 @@ import {
 import { animate as animateSurface, motion, useDragControls, type DragHandler } from 'framer-motion';
 import { FocusTrap } from '@mantine/core';
 import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
+import { useNavigationRailGeometry } from 'shared/model/navigationRailGeometry';
 import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import { useViewportMetrics } from 'shared/model/viewportMetrics';
 import { PANEL_WIDTH_VW } from 'shared/model/panelExpansionStore';
@@ -65,8 +66,6 @@ interface DrawerShellPanelProps extends DrawerShellBaseProps {
   presentation: DrawerShellPanelPresentation;
   state: DrawerShellState;
   open?: boolean;
-  /** Overrides the default side-overlay width (45vw) for this consumer only. Ignored by every other presentation. */
-  sideOverlayWidthVw?: number;
 }
 
 interface DrawerShellSheetProps extends DrawerShellBaseProps {
@@ -118,14 +117,16 @@ export function DrawerShell(props: DrawerShellProps) {
     [viewportHeightPx],
   );
   const targetSheetHeightPx = snap ? heights[snap] : null;
-  const sideOverlayWidthVw = props.presentation === 'sideOverlay'
-    ? props.sideOverlayWidthVw ?? SHORT_SIDE_OVERLAY_WIDTH_VW
-    : SHORT_SIDE_OVERLAY_WIDTH_VW;
+  const railGeometry = useNavigationRailGeometry();
+  const sideWorkspaceWidthPx = Math.max(0, viewportWidthPx - (railGeometry?.right ?? 0));
   const targetPanelWidthVw = props.presentation === 'persistent'
     ? PANEL_WIDTH_VW[props.state]
     : props.presentation === 'fullScreen'
       ? FULL_SCREEN_WIDTH_VW
-      : sideOverlayWidthVw;
+      : SHORT_SIDE_OVERLAY_WIDTH_VW;
+  const targetWidthPx = props.presentation === 'sideWorkspace'
+    ? sideWorkspaceWidthPx
+    : viewportWidthPx * (targetPanelWidthVw / 100);
   const dragControls = useDragControls();
   const dragConstraints = useMemo(
     () => ({ top: viewportHeightPx - heights.full, bottom: viewportHeightPx - heights.peek }),
@@ -185,7 +186,7 @@ export function DrawerShell(props: DrawerShellProps) {
       };
     } else {
       const targetWidth = panelOpen
-        ? viewportWidthPx * (targetPanelWidthVw / 100)
+        ? targetWidthPx
         : 0;
       target = {
         left: viewportWidthPx - targetWidth,
@@ -201,7 +202,7 @@ export function DrawerShell(props: DrawerShellProps) {
   }, [
     panelOpen,
     props.presentation,
-    targetPanelWidthVw,
+    targetWidthPx,
     targetSheetHeightPx,
     viewportHeightPx,
     viewportWidthPx,
@@ -283,12 +284,12 @@ export function DrawerShell(props: DrawerShellProps) {
   const destinationWidth = props.presentation === 'bottomSheet'
     ? resting.width
     : props.presentation === 'sideOverlay'
-      ? panelOpen ? viewportWidthPx * (sideOverlayWidthVw / 100) : 0
-      : props.presentation === 'fullScreen'
-        ? panelOpen ? viewportWidthPx : 0
-        : resting.width > 0 && previousPanelVw !== null
-          ? resting.width * (PANEL_WIDTH_VW[props.state] / previousPanelVw)
-          : 0;
+      || props.presentation === 'fullScreen'
+      || props.presentation === 'sideWorkspace'
+      ? panelOpen ? targetWidthPx : 0
+      : resting.width > 0 && previousPanelVw !== null
+        ? resting.width * (PANEL_WIDTH_VW[props.state] / previousPanelVw)
+        : 0;
 
   const settledWidth = useMemo(
     () => ({
@@ -355,15 +356,19 @@ export function DrawerShell(props: DrawerShellProps) {
     ? { y: viewportHeightPx - heights[props.snap], width: '100%' }
     : {
       y: 0,
-      width: props.presentation === 'sideOverlay'
+      width: props.presentation === 'sideWorkspace'
         ? panelOpen
-          ? `${sideOverlayWidthVw}vw`
-          : '0vw'
-        : props.presentation === 'fullScreen'
+          ? `${sideWorkspaceWidthPx}px`
+          : '0px'
+        : props.presentation === 'sideOverlay'
           ? panelOpen
-            ? `${FULL_SCREEN_WIDTH_VW}vw`
+            ? `${SHORT_SIDE_OVERLAY_WIDTH_VW}vw`
             : '0vw'
-          : props.state === 'expanded' ? `${PANEL_WIDTH_VW.expanded}vw` : `${PANEL_WIDTH_VW.compact}vw`,
+          : props.presentation === 'fullScreen'
+            ? panelOpen
+              ? `${FULL_SCREEN_WIDTH_VW}vw`
+              : '0vw'
+            : props.state === 'expanded' ? `${PANEL_WIDTH_VW.expanded}vw` : `${PANEL_WIDTH_VW.compact}vw`,
     };
   // The property a presentation does not animate is corrected instantly: a band crossing
   // is a presentation swap, not a movement the user should watch.

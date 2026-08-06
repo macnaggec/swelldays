@@ -48,15 +48,6 @@ interface PanelRouteBackAction {
   disabled?: boolean;
 }
 
-// Wider than the shared 45vw side-overlay default so the collections grid can
-// hold two columns in this band, with the map's remaining width still hosting
-// the switcher. Collections-only: every other side-overlay panel (browse,
-// session detail, cart, account, earnings) keeps the shared default. 75vw
-// (not a narrower value) so the grid clears the two-column width threshold
-// with margin even at the narrowest constrained-band viewport (768px) once
-// panel insets and the grid gap are subtracted from the raw vw width.
-const COLLECTIONS_SIDE_OVERLAY_WIDTH_VW = 75;
-
 const PanelFilterContext = createContext<PanelFilterCtx>({
   filters: EMPTY_BROWSE_FILTERS,
   setDateFilter: () => { },
@@ -139,7 +130,6 @@ function PanelFrame({ children }: { children: ReactNode }) {
   const layoutPolicy = useAppShellLayoutPolicy();
 
   const cartMatch = matches.find((match) => match.routeId === '/_panel/cart');
-  const collectionsMatch = matches.find((match) => match.routeId === '/_panel/me/collections');
   const spotMatch = matches.find((match) => match.routeId === '/_panel/$spotId');
   const uploadMatch = matches.find((match) => match.routeId === '/_panel/upload');
   const spotGalleryMatch = matches.find((match) => match.routeId === '/_panel/$spotId/gallery');
@@ -397,7 +387,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
   const routeBackActionForPanel = uploadMatch ? routeBackAction : null;
   const defaultBackAction = layoutPolicy.drawer.control !== 'routeBack' || cartMatch || galleryMatch || routeRequiresCompactMapInput
     ? undefined
-    : appRouteIntent === 'routeWorkspace'
+    : (appRouteIntent === 'routeWorkspace' || appRouteIntent === 'siteWorkspace')
       ? () => {
         if (sessionDetailMatch && router.history.canGoBack()) router.history.back();
         else if (cameFromCollections) void navigate({ to: '/me/collections' });
@@ -433,7 +423,6 @@ function PanelFrame({ children }: { children: ReactNode }) {
               drawerPresentation={layoutPolicy.drawer.presentation}
               drawerModality={layoutPolicy.drawer.modality === 'modal' ? 'modal' : 'nonmodal'}
               open={!showsStandaloneMapToolbar}
-              sideOverlayWidthVw={collectionsMatch ? COLLECTIONS_SIDE_OVERLAY_WIDTH_VW : undefined}
               sheetSnap={isBrowseSheet ? sheetSnap : isUploadSheet ? uploadSheetSnap : undefined}
               onSheetSnapChange={isBrowseSheet ? handleSheetSnapChange : isUploadSheet ? setUploadSheetSnap : undefined}
               expanded={renderedExpanded}

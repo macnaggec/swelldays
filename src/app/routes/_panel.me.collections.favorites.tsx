@@ -13,7 +13,7 @@ export const Route = createFileRoute('/_panel/me/collections/favorites')({ compo
 
 function FavoritesTab() {
   const { user } = useUser();
-  const { favorites, visibleFavorites, isLoadingFavorites, galleryMaxColumns } = useCollectionsContext();
+  const { favorites, visibleFavorites, isLoadingFavorites } = useCollectionsContext();
   const { toggleFavorite } = useMediaFavorites();
   const { cartItemIds, toggleCartItem } = useCartToggle('');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -30,7 +30,6 @@ function FavoritesTab() {
         <BaseGallery
           items={visibleFavorites}
           aria-label="Favorites"
-          maxColumns={galleryMaxColumns}
           renderCard={(item, { index }) => {
             const isOwn = ownedItemIds.has(item.id);
             const isPurchased = purchasedItemIds.has(item.id);

@@ -6,26 +6,18 @@
   transform: translateX(-50%);
 }
 
-/* Docks directly below the account bar instead of centering over the panel: same
-   left/top formula the account bar's own stack uses, offset down by that stack's
-   own full height (its two reserved button slots, the gap between them, and its
-   own top+bottom padding) plus one more clearance gap — the same gap the account
-   bar itself keeps from the screen's top edge, so the two gaps read as even.
-   Padding and gap also match the account bar's own stack exactly (8px, not
-   SectionSwitcher's shared 4px default), so the two containers are the same width
-   and read as one continuous column instead of two misaligned pills. */
+/* Docks as a real flow child of AppNavigation's own account/cart stack instead of
+   floating fixed over the panel — no position/top/left of its own at all, since it
+   inherits its place directly below the two reserved buttons from ordinary DOM
+   order and the stack's own flex-direction/gap. Still needs its own stacked item
+   layout (flex-direction: column) so its three tabs read as one narrow column
+   matching the stack's own 44px button width, rather than a wide row. `transform`
+   is reset because it is independent of `position` and would otherwise carry over
+   the base rule's centering offset. */
 .floating[data-avoid-drawer] {
-  top: calc(
-    var(--wa-safe-area-top) + var(--wa-shell-edge-clearance)
-    + (var(--wa-control-size-navigation) * 2) + 8px + 16px
-    + var(--wa-shell-edge-clearance)
-  );
-  left: calc(var(--wa-safe-area-left) + var(--wa-shell-edge-clearance));
-  bottom: auto;
+  position: static;
   transform: none;
   flex-direction: column;
-  padding: 8px;
-  gap: 8px;
 }
 
 /* Same 44px width as the account button regardless of label visibility — unlike

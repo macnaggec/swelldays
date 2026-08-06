@@ -75,6 +75,10 @@
   transform: translate(-50%, -50%);
 }
 
+.supplement:empty {
+  display: none;
+}
+
 .button :global(svg) {
   display: block;
 }

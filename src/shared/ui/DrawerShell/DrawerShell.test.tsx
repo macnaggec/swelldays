@@ -3,6 +3,7 @@ import { createRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { PANEL_WIDTH_VW } from 'shared/model/panelExpansionStore';
+import type { NavigationRailGeometry } from 'shared/model/navigationRailGeometry';
 import {
   DrawerShell,
   useDrawerGeometry,
@@ -15,6 +16,9 @@ import { resolveSheetSnapHeights, SHEET_PEEK_HEIGHT_PX, SHEET_SNAPS } from './sh
 
 const animateMock = vi.hoisted(() => vi.fn());
 const nearestSheetSnapMock = vi.hoisted(() => vi.fn());
+const useNavigationRailGeometryMock = vi.hoisted(
+  () => vi.fn<() => NavigationRailGeometry | null>(() => null),
+);
 
 vi.mock('framer-motion', async (importOriginal) => {
   const actual = await importOriginal<typeof import('framer-motion')>();
@@ -26,6 +30,10 @@ vi.mock('./sheetSnapPolicy', async (importOriginal) => {
   nearestSheetSnapMock.mockImplementation(actual.nearestSheetSnap);
   return { ...actual, nearestSheetSnap: nearestSheetSnapMock };
 });
+
+vi.mock('shared/model/navigationRailGeometry', () => ({
+  useNavigationRailGeometry: useNavigationRailGeometryMock,
+}));
 
 /** Panel content carrying state a rebuilt subtree would silently discard. */
 function DraftField() {
@@ -793,6 +801,87 @@ describe('DrawerShell fullScreen geometry', () => {
     await vi.waitFor(() => expect(surface.style.width).toBe('100vw'));
 
     unmount();
+  });
+});
+
+describe('DrawerShell sideWorkspace geometry', () => {
+  const originalInnerWidth = window.innerWidth;
+  const originalInnerHeight = window.innerHeight;
+
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+    useNavigationRailGeometryMock.mockReturnValue(null);
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    { width: 375, height: 667 },
+    { width: 900, height: 500 },
+  ])('lands the target and rendered geometry at the rail\'s measured right edge, at $width x $height', ({ width, height }) => {
+    Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: height, configurable: true });
+    const railRight = 60;
+    useNavigationRailGeometryMock.mockReturnValue({
+      left: 0, top: 0, right: railRight, bottom: height, width: railRight, height,
+    });
+
+    const queuedFrames: FrameRequestCallback[] = [];
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() { }
+      unobserve() { }
+      disconnect() { }
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      queuedFrames.push(callback);
+      return queuedFrames.length;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    render(
+      <>
+        <DrawerShell presentation="sideWorkspace" state="expanded" modality="nonmodal" open>
+          Workspace content
+        </DrawerShell>
+        <GeometryProbe />
+        <TargetGeometryProbe />
+      </>,
+    );
+
+    const expectedWidth = width - railRight;
+    expect(screen.getByTestId('drawer-target-geometry').textContent).toBe(
+      `${railRight}:0:${width}:${height}:${expectedWidth}:${height}`,
+    );
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue(
+      DOMRect.fromRect({ x: railRight, y: 0, width: expectedWidth, height }),
+    );
+    act(() => queuedFrames.shift()?.(0));
+
+    expect(screen.getByTestId('drawer-geometry').textContent).toBe(
+      `${railRight}:0:${width}:${height}:${expectedWidth}:${height}`,
+    );
+  });
+
+  it('falls back to the full viewport width when the rail has not published its geometry yet', () => {
+    useNavigationRailGeometryMock.mockReturnValue(null);
+
+    render(
+      <>
+        <DrawerShell presentation="sideWorkspace" state="expanded" modality="nonmodal" open>
+          Workspace content
+        </DrawerShell>
+        <TargetGeometryProbe />
+      </>,
+    );
+
+    const viewportWidthPx = window.innerWidth;
+    const viewportHeightPx = window.innerHeight;
+    expect(screen.getByTestId('drawer-target-geometry').textContent).toBe(
+      `0:0:${viewportWidthPx}:${viewportHeightPx}:${viewportWidthPx}:${viewportHeightPx}`,
+    );
   });
 });
 

@@ -1,8 +1,9 @@
-import { screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import type { BrowseSheetNavigationPlacement } from 'shared/ui/DrawerShell';
-import { AppNavigation } from './AppNavigation';
+import { getNavigationRailGeometrySnapshot } from 'shared/model/navigationRailGeometry';
+import { AppNavigation, AppNavigationSupplement } from './AppNavigation';
 
 const mocks = vi.hoisted(() => ({
   isAuthenticated: true,
@@ -112,5 +113,81 @@ describe('BrowseSheetNavigation placement', () => {
 
     const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]');
     expect(root).not.toHaveAttribute('data-navigation-tracking');
+  });
+});
+
+describe('NavigationSurface rail geometry', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('publishes its own measured rail box once mounted', () => {
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() { }
+      unobserve() { }
+      disconnect() { }
+    }
+    const queuedFrames: FrameRequestCallback[] = [];
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      queuedFrames.push(callback);
+      return queuedFrames.length;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    mocks.isAuthenticated = true;
+    mocks.count = 1;
+
+    render(<AppNavigation presentation="leftStrip" drawerPresentation="persistent" />);
+
+    const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]') as HTMLElement;
+    vi.spyOn(root, 'getBoundingClientRect').mockReturnValue(
+      DOMRect.fromRect({ x: 0, y: 0, width: 60, height: 900 }),
+    );
+
+    act(() => queuedFrames.shift()?.(0));
+
+    expect(getNavigationRailGeometrySnapshot()).toEqual({
+      left: 0, top: 0, right: 60, bottom: 900, width: 60, height: 900,
+    });
+  });
+});
+
+describe('AppNavigationSupplement', () => {
+  it('renders nothing when mounted without an AppNavigation ancestor', () => {
+    render(
+      <AppNavigationSupplement>
+        <button>Uploads</button>
+      </AppNavigationSupplement>,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Uploads' })).not.toBeInTheDocument();
+  });
+
+  it('portals content into the rail below the account/cart buttons when rendered as a sibling, matching the real composition root', () => {
+    // AppShell and the routed Outlet are mounted as siblings of each other at
+    // the composition root (__root.tsx), never nested — this reproduces that
+    // shape rather than nesting AppNavigationSupplement inside AppNavigation's
+    // own subtree, which would pass even if the portal target could only be
+    // reached from inside AppNavigation's own tree.
+    render(
+      <>
+        <AppNavigation presentation="leftStrip" drawerPresentation="persistent" />
+        <AppNavigationSupplement>
+          <button>Uploads</button>
+        </AppNavigationSupplement>
+      </>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Uploads' });
+    const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]') as HTMLElement;
+    expect(root).toContainElement(button);
+
+    // DOCUMENT_POSITION_FOLLOWING: the portaled button comes after the cart
+    // control in tree order, i.e. it renders below the account/cart buttons
+    // rather than above or interleaved between them.
+    const cartControl = screen.getByTestId('cart-control');
+    expect(cartControl.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
   });
 });

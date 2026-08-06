@@ -107,7 +107,7 @@ export function GlobeMapComponent({
   // Gates camera movement only (pan/zoom/rotate/scroll). Spot clicks and the popup stay
   // available even while backgrounded (e.g. sidebar expanded) — see acceptsSpotInteraction.
   const acceptsCameraGestures = interactionPolicy === 'interactive';
-  const acceptsSpotInteraction = !isCoordinatePickerActive;
+  const acceptsSpotInteraction = !isCoordinatePickerActive && interactionPolicy !== 'decorative';
 
   // On hard nav to a spot URL with no prior session (camera at default Bali position),
   // derive the initial viewport from the spot coords at zoom 12 — same as the soft-nav
@@ -333,7 +333,11 @@ export function GlobeMapComponent({
   }, [isLoaded, motionPolicy, startSpinning, stopSpinning]);
 
   return (
-    <div className={classes.globeContainer}>
+    <div
+      className={classes.globeContainer}
+      aria-hidden={interactionPolicy === 'decorative' || undefined}
+      inert={interactionPolicy === 'decorative'}
+    >
       {!isLoaded && (
         <div className={classes.loading}>
           <Loader color="blue" size="lg" />

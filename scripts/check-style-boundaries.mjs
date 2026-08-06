@@ -555,7 +555,9 @@ const rules = [
   {
     id: 'app-navigation-is-mounted-once-by-the-shell',
     message: 'Navigation is mounted once by AppShell from the shell policy; features and routes must not mount a navigation presentation.',
-    pattern: /\bAppNavigation\b/,
+    // JSX-mount only, not the bare identifier: routes/features may still import the
+    // AppNavigationSupplement portal named export from the same module.
+    pattern: /<AppNavigation[\s/>]/,
     include: isRuntimeTypeScript,
     exclude: file => (
       file === 'src/app/AppShell.tsx'
@@ -604,6 +606,12 @@ const rules = [
     id: 'no-legacy-right-edge-map-occlusion',
     message: 'Map camera occlusion is a four-sided inset projection (M00b); the right-edge-only occlusion vocabulary is retired.',
     pattern: /\b(?:rightOccludedPx|sidebarOccludedPx|deriveDrawerViewportOcclusionPx|drawerViewportOcclusion)\b/,
+    include: file => /\.tsx?$/.test(file),
+  },
+  {
+    id: 'no-legacy-site-workspace-escape-hatches',
+    message: 'siteWorkspace geometry and column density are owned by DrawerShell and PanelCollectionGrid; the per-route width/column overrides and outside-drawer floating mount this replaces must not be reintroduced.',
+    pattern: /\b(?:sideOverlayWidthVw|galleryMaxColumns|COLLECTIONS_SIDE_OVERLAY_WIDTH_VW|COLLECTIONS_SIDE_OVERLAY_MAX_COLUMNS|SidePanelFloating)\b/,
     include: file => /\.tsx?$/.test(file),
   },
   {

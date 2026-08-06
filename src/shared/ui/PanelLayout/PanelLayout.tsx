@@ -43,7 +43,12 @@ export function PanelLayout({
   const [railTarget, setRailTarget] = useState<HTMLDivElement | null>(null);
   const [metadataTarget, setMetadataTarget] = useState<HTMLDivElement | null>(null);
   const [stickyChromeTarget, setStickyChromeTarget] = useState<HTMLDivElement | null>(null);
-  const { hidden, sheetSnap } = usePanelScrollChromeState();
+  const { hidden, sheetSnap, drawerPresentation } = usePanelScrollChromeState();
+  // The footer floats above content — absolute-positioned chrome rather than a flex
+  // sibling reserving its own row — both while the panel is a bottom sheet (any snap)
+  // and while it is a sideWorkspace drawer, whose Cart/Collections actions need the
+  // same "floats above the scroll owner" treatment `sheetSnap` already established.
+  const floatsFooter = sheetSnap !== undefined || drawerPresentation === 'sideWorkspace';
 
   // Everything in the panel — search row, filter pills, cards — lays itself out once,
   // at the width the drawer is heading for, instead of being re-flowed on every frame
@@ -113,7 +118,7 @@ export function PanelLayout({
   ) {
     rootStyle['--wa-panel-content-width'] = `${contentWidth}px`;
   }
-  if (sheetSnap !== undefined) rootStyle['--wa-panel-footer-height'] = `${footerHeight}px`;
+  if (floatsFooter) rootStyle['--wa-panel-footer-height'] = `${footerHeight}px`;
 
   return (
     <PanelLayoutFooterTargetContext.Provider value={footerTarget}>
@@ -124,6 +129,7 @@ export function PanelLayout({
               className={styles.root}
               data-panel-layout
               data-sheet-snap={sheetSnap}
+              data-drawer-presentation={drawerPresentation}
               ref={measureRef}
               style={Object.keys(rootStyle).length === 0 ? undefined : rootStyle}
             >
@@ -166,7 +172,7 @@ export function PanelLayout({
 
               <div
                 ref={setFooterTarget}
-                className={sheetSnap !== undefined ? `${styles.footer} ${materialClasses.chrome}` : styles.footer}
+                className={floatsFooter ? `${styles.footer} ${materialClasses.chrome}` : styles.footer}
                 data-panel-layout-footer
               />
             </div>

@@ -50,6 +50,7 @@ export function deriveMapCameraInsets({
         bottom: clippedOverlap(drawerBounds.top, drawerBounds.bottom, viewportHeightPx),
         left: 0,
       };
+    case 'sideWorkspace':
     case 'fullScreen':
     case 'hidden':
       return NO_MAP_CAMERA_INSETS;

@@ -33,12 +33,14 @@ describe('CartControl', () => {
     expect(screen.getByRole('button', { name: /cart, 2 items/i })).toBeInTheDocument();
   });
 
-  it('hides the cart icon when the cart is empty, regardless of auth', () => {
+  it('keeps the cart icon visible but dimmed when the cart is empty, regardless of auth', () => {
     mocks.count = 0;
     mocks.isAuthenticated = false;
 
     render(<CartControl />);
 
-    expect(screen.queryByRole('button', { name: /cart,/i })).not.toBeInTheDocument();
+    const button = screen.getByRole('button', { name: /cart,/i });
+    expect(button).toBeInTheDocument();
+    expect(button.style.opacity).toBe('0.4');
   });
 });

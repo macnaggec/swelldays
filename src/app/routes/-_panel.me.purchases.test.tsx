@@ -1,10 +1,22 @@
 import { waitFor } from '@testing-library/react';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCartStore } from 'entities/Commerce/model/cartStore';
 import type { CartItem } from 'entities/Commerce/model/types';
 import { render } from 'test/setup/render';
+import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { Route } from './_panel.me.collections.purchases';
+
+// Purchases inherits the siteWorkspace intent from /_panel/me (M06c); PanelCollectionGrid
+// (inside BaseGallery) now derives its own column density from the shell policy, so every
+// render here needs a real AppShellLayoutPolicyProvider ancestor.
+function renderPurchases(ui: ReactNode) {
+  return render(
+    <AppShellLayoutPolicyProvider routeIntent="siteWorkspace" browseExpanded={false} galleryExpanded={false}>
+      {ui}
+    </AppShellLayoutPolicyProvider>,
+  );
+}
 
 const mocks = vi.hoisted(() => ({
   isLoading: false,
@@ -68,10 +80,6 @@ vi.mock('features/Purchases', () => ({
   }),
 }));
 
-vi.mock('./_panel.me.collections', () => ({
-  useCollectionsContext: () => ({ galleryMaxColumns: undefined }),
-}));
-
 describe('PurchasesTab', () => {
   const purchasedItem: CartItem = {
     id: 'media-1',
@@ -109,7 +117,7 @@ describe('PurchasesTab', () => {
   it('removes fulfilled purchase items from the cart after a paid return', async () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
 
-    render(<Component />);
+    renderPurchases(<Component />);
 
     await waitFor(() => {
       expect(useCartStore.getState().items).toEqual([unpaidItem]);
@@ -119,7 +127,7 @@ describe('PurchasesTab', () => {
   it('refreshes purchases from the server after a paid return', async () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
 
-    render(<Component />);
+    renderPurchases(<Component />);
 
     await waitFor(() => {
       expect(mocks.invalidateQueries).toHaveBeenCalledWith({
@@ -131,7 +139,7 @@ describe('PurchasesTab', () => {
   it('renders purchase cards inside the shared panel gallery inset', () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
 
-    render(<Component />);
+    renderPurchases(<Component />);
 
     expect(document.querySelector('article')?.closest('[data-panel-gallery-inset]')).not.toBeNull();
     expect(document.querySelector('[role="grid"][aria-label="Purchases"]')).not.toBeNull();

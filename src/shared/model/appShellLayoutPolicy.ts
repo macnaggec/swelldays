@@ -16,7 +16,7 @@ export interface AppShellLayoutPolicyInput {
 export interface AppShellLayoutPolicy {
   navigation: 'leftStrip' | 'compactBar' | 'topBar' | 'hidden';
   drawer: {
-    presentation: 'persistent' | 'sideOverlay' | 'bottomSheet' | 'fullScreen' | 'hidden';
+    presentation: 'persistent' | 'sideOverlay' | 'sideWorkspace' | 'bottomSheet' | 'fullScreen' | 'hidden';
     state: 'compact' | 'expanded' | 'collapsed' | 'full' | 'hidden';
     control: 'expandCollapse' | 'routeBack' | 'workflowBack' | 'none';
     modality: 'nonmodal' | 'modal' | 'none';
@@ -24,7 +24,7 @@ export interface AppShellLayoutPolicy {
     canWaitForContent: boolean;
   };
   map: {
-    interaction: 'interactive' | 'background' | 'hidden';
+    interaction: 'interactive' | 'background' | 'decorative' | 'hidden';
     navigationControl: 'visible' | 'hidden';
   };
   chrome: {
@@ -75,11 +75,11 @@ export function deriveAppShellLayoutPolicy(
       if (routeIntent === 'browse' || routeIntent === 'galleryWorkspace') {
         return preferredExpanded ? 'full' : 'collapsed';
       }
-      if (routeIntent === 'routeWorkspace') return 'full';
+      if (routeIntent === 'routeWorkspace' || routeIntent === 'siteWorkspace') return 'full';
       return 'expanded';
     }
 
-    if (routeIntent === 'routeWorkspace') return 'expanded';
+    if (routeIntent === 'routeWorkspace' || routeIntent === 'siteWorkspace') return 'expanded';
     if (routeIntent === 'mapInput' || isImmersiveMapInput) return 'compact';
     return preferredExpanded ? 'expanded' : 'compact';
   })();
@@ -87,25 +87,33 @@ export function deriveAppShellLayoutPolicy(
     ? 'persistent'
     : sizeBand === 'constrained'
       ? 'sideOverlay'
-      : routeIntent === 'routeWorkspace'
+      : routeIntent === 'routeWorkspace' || routeIntent === 'siteWorkspace'
         ? 'fullScreen'
         : 'bottomSheet';
-  const heightAdjustedPresentation =
+  const bottomSheetHeightAdjustedPresentation =
     drawerPresentation === 'bottomSheet' && heightBand === 'short'
       ? 'sideOverlay'
       : drawerPresentation;
+  const heightAdjustedPresentation =
+    bottomSheetHeightAdjustedPresentation === 'sideOverlay'
+      && heightBand === 'short'
+      && routeIntent === 'siteWorkspace'
+      ? 'sideWorkspace'
+      : bottomSheetHeightAdjustedPresentation;
   const drawerControl = routeIntent === 'browse'
     || routeIntent === 'galleryWorkspace'
     ? 'expandCollapse'
-    : routeIntent === 'routeWorkspace'
+    : routeIntent === 'routeWorkspace' || routeIntent === 'siteWorkspace'
       ? 'routeBack'
       : routeIntent === 'mapInput' || isImmersiveMapInput
         ? 'workflowBack'
         : 'none';
   const isModal = routeIntent === 'routeWorkspace' && sizeBand !== 'wide';
-  const mapInteraction = routeIntent === 'routeWorkspace'
-    ? 'background'
-    : 'interactive';
+  const mapInteraction = routeIntent === 'siteWorkspace'
+    ? 'decorative'
+    : routeIntent === 'routeWorkspace'
+      ? 'background'
+      : 'interactive';
   const panelControls = routeIntent === 'browse' || routeIntent === 'galleryWorkspace'
     ? sizeBand === 'wide' ? 'adjacent' : 'insideDrawer'
     : 'hidden';
@@ -132,6 +140,7 @@ export function deriveAppShellLayoutPolicy(
       interaction: mapInteraction,
       navigationControl: isImmersiveMapInput
         || (sizeBand !== 'wide' && mapInteraction === 'background')
+        || mapInteraction === 'decorative'
         ? 'hidden'
         : 'visible',
     },

@@ -1,15 +1,12 @@
 import { IconHeart, IconShoppingBag, IconUpload } from '@tabler/icons-react';
 import type { CSSProperties } from 'react';
+import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import { useDrawerGeometry } from 'shared/ui/DrawerShell';
 import { SectionSwitcher } from 'shared/ui/SectionSwitcher';
 import styles from './CollectionsSectionBar.module.css';
 
 interface CollectionsSectionBarProps {
   activeTab: string;
-  /** True when the drawer is a side overlay beside the map (e.g. landscape phone) — the
-   * switcher docks below the account button in the remaining map area instead of
-   * centering over the panel. */
-  avoidDrawer?: boolean;
   onTabChange: (tab: string | null) => void;
 }
 
@@ -42,22 +39,24 @@ const items = (activeTab: string, onTabChange: (tab: string | null) => void) => 
 ];
 
 /**
- * The Uploads/Purchases/Favorites switcher floats above the gallery grid the
- * same way the Map/Feed/Gallery bar floats above the map. By default it is
+ * The Uploads/Purchases/Favorites switcher's mount point is the same at every
+ * band (AppNavigationSupplement, portaled into AppNavigation's own account/
+ * cart stack) — only its own presentation changes, self-derived from the
+ * shell's navigation presentation. At wide (`leftStrip`), it floats above the
+ * gallery grid the same way the Map/Feed/Gallery bar floats above the map,
  * centered on the drawer's own measured horizontal midpoint rather than the
- * viewport's — this switcher belongs to the panel's content, not the app
- * shell, so the grid keeps scrolling underneath it instead of losing space
- * to a reserved footer row. When the drawer is a side overlay beside the map
- * (`avoidDrawer`), it instead docks directly below the account button — same
- * left edge, same 44px width — so the two read as one vertical stack of
- * app-level controls beside the map rather than two independently placed
- * floating elements. Labels stay on (smaller, so they still fit the 44px
- * width) rather than hiding on scroll: this bar isn't part of the panel's
- * own scrolling chrome, so that scroll state isn't actually about it.
+ * viewport's — pixel-identical to browse's existing floating pill. At every
+ * other band, it instead docks directly below the account/cart buttons — same
+ * left edge, same 44px width — reading as one vertical stack of app-level
+ * controls, with no positioning math of its own since it's a real DOM child
+ * of that stack. Labels stay on there (smaller, so they still fit the 44px
+ * width) rather than hiding on scroll: this bar isn't part of the panel's own
+ * scrolling chrome, so that scroll state isn't actually about it.
  */
-export function CollectionsSectionBar({ activeTab, avoidDrawer = false, onTabChange }: CollectionsSectionBarProps) {
+export function CollectionsSectionBar({ activeTab, onTabChange }: CollectionsSectionBarProps) {
+  const isWide = useAppShellLayoutPolicy().navigation === 'leftStrip';
   const geometry = useDrawerGeometry();
-  const style: CollectionsSectionBarStyle | undefined = !avoidDrawer && geometry
+  const style: CollectionsSectionBarStyle | undefined = isWide && geometry
     ? { '--wa-collections-switcher-center-x': `${geometry.left + geometry.width / 2}px` }
     : undefined;
 
@@ -65,8 +64,8 @@ export function CollectionsSectionBar({ activeTab, avoidDrawer = false, onTabCha
     <SectionSwitcher
       className={styles.floating}
       aria-label="Collections sections"
-      labelsHidden={avoidDrawer ? false : undefined}
-      data-avoid-drawer={avoidDrawer || undefined}
+      labelsHidden={isWide ? undefined : false}
+      data-avoid-drawer={!isWide || undefined}
       style={style}
       items={items(activeTab, onTabChange)}
     />

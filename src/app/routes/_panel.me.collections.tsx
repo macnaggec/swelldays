@@ -7,7 +7,8 @@ import type { SurfSessionItem } from 'entities/SurfSession';
 import type { PublicMedia } from 'shared/types/media';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import { CollectionsSectionBar, CollectionsToolbar } from 'features/Collections';
-import { SidePanelFloating, SidePanelHeaderTrailing } from 'widgets/SidePanel';
+import { SidePanelHeaderTrailing } from 'widgets/SidePanel';
+import { AppNavigationSupplement } from 'widgets/AppNavigation';
 import { PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
 
 const TAB_ROUTES = {
@@ -16,12 +17,6 @@ const TAB_ROUTES = {
   favorites: '/me/collections/favorites',
 } as const;
 
-// Narrower than the shared panelCard density's own 3-column ceiling: this band's
-// wider-than-default panel (see COLLECTIONS_SIDE_OVERLAY_WIDTH_VW in _panel.tsx)
-// still shares its width with the map beside it, so it settles for two comfortable
-// columns rather than three cramped ones.
-const COLLECTIONS_SIDE_OVERLAY_MAX_COLUMNS = 2;
-
 type CollectionsContextValue = {
   sessions: SurfSessionItem[];
   visibleUploads: SurfSessionItem[];
@@ -29,7 +24,6 @@ type CollectionsContextValue = {
   favorites: PublicMedia[];
   visibleFavorites: PublicMedia[];
   isLoadingFavorites: boolean;
-  galleryMaxColumns: number | undefined;
 };
 
 const CollectionsContext = createContext<CollectionsContextValue | null>(null);
@@ -51,7 +45,7 @@ export const Route = createFileRoute('/_panel/me/collections')({
 function CollectionsLayout() {
   const trpc = useTRPC();
   const layoutPolicy = useAppShellLayoutPolicy();
-  const floatsOverMap = layoutPolicy.drawer.presentation === 'sideOverlay';
+  const floatsOverMap = layoutPolicy.drawer.presentation === 'sideWorkspace';
   const { activeTab, handleTabChange } = useTabNavigation(TAB_ROUTES);
   const { data: sessions = [], isLoading: isLoadingUploads } = useQuery({
     ...trpc.sessions.mine.queryOptions(),
@@ -93,8 +87,6 @@ function CollectionsLayout() {
     [favorites, spotFilter],
   );
 
-  const galleryMaxColumns = floatsOverMap ? COLLECTIONS_SIDE_OVERLAY_MAX_COLUMNS : undefined;
-
   const contextValue = useMemo(
     () => ({
       sessions,
@@ -103,9 +95,8 @@ function CollectionsLayout() {
       favorites,
       visibleFavorites,
       isLoadingFavorites,
-      galleryMaxColumns,
     }),
-    [sessions, visibleUploads, isLoadingUploads, favorites, visibleFavorites, isLoadingFavorites, galleryMaxColumns],
+    [sessions, visibleUploads, isLoadingUploads, favorites, visibleFavorites, isLoadingFavorites],
   );
 
   const toolbar = (
@@ -123,13 +114,12 @@ function CollectionsLayout() {
       {floatsOverMap
         ? <SidePanelHeaderTrailing>{toolbar}</SidePanelHeaderTrailing>
         : <PanelLayoutStickyChrome>{toolbar}</PanelLayoutStickyChrome>}
-      <SidePanelFloating>
+      <AppNavigationSupplement>
         <CollectionsSectionBar
           activeTab={activeTab ?? 'uploads'}
-          avoidDrawer={floatsOverMap}
           onTabChange={handleTabChange}
         />
-      </SidePanelFloating>
+      </AppNavigationSupplement>
       <Outlet />
     </CollectionsContext.Provider>
   );

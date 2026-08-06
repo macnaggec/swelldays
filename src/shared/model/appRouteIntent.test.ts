@@ -21,6 +21,18 @@ describe('resolveAppRouteIntent', () => {
     ])).toBe('galleryWorkspace');
   });
 
+  it('lets a declared site workspace win over a browse/route-workspace ancestor and stay distinct from route workspace', () => {
+    expect(resolveAppRouteIntent([
+      { staticData: { appRouteIntent: 'browse' } },
+      { staticData: { appRouteIntent: 'routeWorkspace' } },
+      { staticData: { appRouteIntent: 'siteWorkspace' } },
+    ])).toBe('siteWorkspace');
+
+    expect(resolveAppRouteIntent([
+      { staticData: { appRouteIntent: 'siteWorkspace' } },
+    ])).not.toBe('routeWorkspace');
+  });
+
   it('classifies route-driven map input separately from immersive map input', () => {
     const matches = [
       { staticData: { appRouteIntent: 'browse' as const } },

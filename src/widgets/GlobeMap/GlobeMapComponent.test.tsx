@@ -399,6 +399,91 @@ describe('GlobeMapComponent interaction policy', () => {
   });
 });
 
+describe('GlobeMapComponent decorative interaction policy', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('does not fire onSpotSelect when a spot is clicked while decorative', () => {
+    const onSpotSelect = vi.fn();
+    render(
+      <GlobeMapComponent
+        spots={spots}
+        onSpotSelect={onSpotSelect}
+        motionPolicy="paused"
+        interactionPolicy="decorative"
+      />,
+    );
+
+    // The globe container is `inert` while decorative, which removes its descendants
+    // from the accessible tree — `hidden: true` reaches this mocked map's own inert
+    // buttons the same way a real assistive-tech pass would skip them.
+    fireEvent.click(screen.getByRole('button', { name: /load map/i, hidden: true }));
+    fireEvent.click(screen.getByRole('button', { name: /click map/i, hidden: true }));
+
+    expect(onSpotSelect).not.toHaveBeenCalled();
+  });
+
+  it('does not show the hover tooltip popup while decorative', () => {
+    render(
+      <GlobeMapComponent
+        spots={spots}
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        interactionPolicy="decorative"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /enter spot/i, hidden: true }));
+
+    expect(screen.queryByText('Uluwatu')).not.toBeInTheDocument();
+  });
+
+  it('does not render the selected-spot popup while decorative, even with a spot selected', () => {
+    render(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId="spot-1"
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        interactionPolicy="decorative"
+      />,
+    );
+
+    expect(mocks.selectedSpotPopup).not.toHaveBeenCalled();
+  });
+
+  it('marks the globe container inert and hidden from the accessibility tree while decorative', () => {
+    const { container } = render(
+      <GlobeMapComponent
+        spots={spots}
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        interactionPolicy="decorative"
+      />,
+    );
+
+    const globeContainer = container.firstElementChild as HTMLElement;
+    expect(globeContainer).toHaveAttribute('aria-hidden', 'true');
+    expect(globeContainer).toHaveAttribute('inert');
+  });
+
+  it('carries neither aria-hidden nor inert while interactive', () => {
+    const { container } = render(
+      <GlobeMapComponent
+        spots={spots}
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        interactionPolicy="interactive"
+      />,
+    );
+
+    const globeContainer = container.firstElementChild as HTMLElement;
+    expect(globeContainer).not.toHaveAttribute('aria-hidden');
+    expect(globeContainer).not.toHaveAttribute('inert');
+  });
+});
+
 describe('GlobeMapComponent selected spot focus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
