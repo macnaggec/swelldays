@@ -68,14 +68,6 @@ function NavigationSurface({
   const setSupplementTarget = useCallback((node: HTMLDivElement | null) => {
     publishNavigationSupplementTarget(node);
   }, []);
-  // A plain sibling of `.root`, not a descendant — `.root` always carries a
-  // `transform` (even at its resting translateY(0), for browse-sheet
-  // tracking), which makes it the containing block for any `position: fixed`
-  // descendant. Content that needs to position itself against the real
-  // viewport (AppNavigationFloating) mounts here instead of inside `.root`.
-  const setFloatingTarget = useCallback((node: HTMLDivElement | null) => {
-    publishNavigationFloatingTarget(node);
-  }, []);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -103,34 +95,50 @@ function NavigationSurface({
   }, []);
 
   return (
-    <>
-      <div
-        ref={rootRef}
-        className={styles.root}
-        data-navigation-presentation={presentation}
-        data-drawer-presentation={drawerPresentation}
-        data-sheet-snap={sheetSnap}
-        data-navigation-tracking={placement?.live || undefined}
-        style={style}
-        inert={hidden}
-        aria-hidden={hidden || undefined}
-      >
-        <div className={`${styles.stack} ${materialClasses.chrome}`}>
-          <div className={styles.button}>
-            <UserControl />
-          </div>
-          {/* Reserved even when the cart is empty (CartControl renders nothing then) so
-              adding the first item doesn't shift the account button or anything docked
-              beneath this bar. */}
-          <div className={styles.button}>
-            <CartControl />
-          </div>
-          <div ref={setSupplementTarget} className={styles.supplement} />
+    <div
+      ref={rootRef}
+      className={styles.root}
+      data-navigation-presentation={presentation}
+      data-drawer-presentation={drawerPresentation}
+      data-sheet-snap={sheetSnap}
+      data-navigation-tracking={placement?.live || undefined}
+      style={style}
+      inert={hidden}
+      aria-hidden={hidden || undefined}
+    >
+      <div className={`${styles.stack} ${materialClasses.chrome}`}>
+        <div className={styles.button}>
+          <UserControl />
         </div>
+        {/* Reserved even when the cart is empty (CartControl renders nothing then) so
+            adding the first item doesn't shift the account button or anything docked
+            beneath this bar. */}
+        <div className={styles.button}>
+          <CartControl />
+        </div>
+        <div ref={setSupplementTarget} className={styles.supplement} />
       </div>
-      <div ref={setFloatingTarget} />
-    </>
+    </div>
   );
+}
+
+/**
+ * Mounted unconditionally by AppNavigation, independent of whether the rail
+ * itself renders (`presentation === 'hidden'` on most non-browse routes at
+ * portrait mobile) — a switcher pill that floats independently of the rail
+ * (AppNavigationFloating) must still have somewhere to portal into even when
+ * there is no rail. Also a plain sibling of `.root`, not a descendant of it:
+ * `.root` always carries a `transform` (even at its resting translateY(0),
+ * for browse-sheet tracking), which makes it the containing block for any
+ * `position: fixed` descendant — content that positions itself against the
+ * real viewport needs to mount outside that box regardless.
+ */
+function FloatingTargetAnchor(): ReactElement {
+  const setFloatingTarget = useCallback((node: HTMLDivElement | null) => {
+    publishNavigationFloatingTarget(node);
+  }, []);
+
+  return <div ref={setFloatingTarget} />;
 }
 
 /**
@@ -172,12 +180,17 @@ function BrowseSheetNavigation(): ReactElement {
 export function AppNavigation({
   presentation,
   drawerPresentation,
-}: AppNavigationProps): ReactElement | null {
-  if (presentation === 'hidden') return null;
-  if (presentation === 'topBar' && drawerPresentation === 'bottomSheet') {
-    return <BrowseSheetNavigation />;
-  }
-  return <NavigationSurface presentation={presentation} drawerPresentation={drawerPresentation} />;
+}: AppNavigationProps): ReactElement {
+  return (
+    <>
+      {presentation === 'hidden' ? null : presentation === 'topBar' && drawerPresentation === 'bottomSheet' ? (
+        <BrowseSheetNavigation />
+      ) : (
+        <NavigationSurface presentation={presentation} drawerPresentation={drawerPresentation} />
+      )}
+      <FloatingTargetAnchor />
+    </>
+  );
 }
 
 export default AppNavigation;

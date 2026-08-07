@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import type { BrowseSheetNavigationPlacement } from 'shared/ui/DrawerShell';
 import { getNavigationRailGeometrySnapshot } from 'shared/model/navigationRailGeometry';
-import { AppNavigation, AppNavigationSupplement } from './AppNavigation';
+import { AppNavigation, AppNavigationFloating, AppNavigationSupplement } from './AppNavigation';
 
 const mocks = vi.hoisted(() => ({
   isAuthenticated: true,
@@ -196,5 +196,51 @@ describe('AppNavigationSupplement', () => {
     const cartControl = screen.getByTestId('cart-control');
     expect(cartControl.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING)
       .toBeTruthy();
+  });
+});
+
+describe('AppNavigationFloating', () => {
+  it('renders nothing when mounted without an AppNavigation ancestor', () => {
+    render(
+      <AppNavigationFloating>
+        <button>Uploads</button>
+      </AppNavigationFloating>,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Uploads' })).not.toBeInTheDocument();
+  });
+
+  it('still portals content when the rail itself is hidden (portrait mobile on a non-browse route)', () => {
+    // The regression this covers: the rail's own mount point used to live
+    // inside the part of AppNavigation that returns null for a hidden
+    // presentation, so a switcher meant to float independently of the rail
+    // had nowhere to portal into on exactly the routes it needs to appear on.
+    render(
+      <>
+        <AppNavigation presentation="hidden" drawerPresentation="fullScreen" />
+        <AppNavigationFloating>
+          <button>Uploads</button>
+        </AppNavigationFloating>
+      </>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Uploads' })).toBeInTheDocument();
+    expect(screen.queryByTestId('user-control')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('cart-control')).not.toBeInTheDocument();
+  });
+
+  it('portals content beside the rail, not inside it, when the rail is visible', () => {
+    render(
+      <>
+        <AppNavigation presentation="topBar" drawerPresentation="fullScreen" />
+        <AppNavigationFloating>
+          <button>Uploads</button>
+        </AppNavigationFloating>
+      </>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Uploads' });
+    const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]');
+    expect(root).not.toContainElement(button);
   });
 });

@@ -58,6 +58,8 @@ describe('deriveAppShellLayoutPolicy — wide', () => {
       preferences: compactPreferences,
     });
 
+    // leftStrip (wide) shows the rail unconditionally, for every intent.
+    expect(policy.navigation).toBe('leftStrip');
     expect(policy.drawer.presentation).toBe('persistent');
     expect(policy.drawer.state).toBe(expectedState);
     expect(policy.drawer.control).toBe(expectedControl);
@@ -110,6 +112,8 @@ describe('deriveAppShellLayoutPolicy — constrained', () => {
       preferences: compactPreferences,
     });
 
+    // compactBar (sizeBand === 'constrained' here) shows the rail
+    // unconditionally, for every intent except immersiveMapInput.
     expect(policy.navigation).toBe(routeIntent === 'immersiveMapInput' ? 'hidden' : 'compactBar');
     expect(policy.drawer.presentation).toBe('sideOverlay');
     expect(policy.drawer.state).toBe(expectedState);
@@ -181,7 +185,7 @@ describe('deriveAppShellLayoutPolicy — compact', () => {
       preferences: compactPreferences,
     });
 
-    expect(policy.navigation).toBe(routeIntent === 'immersiveMapInput' ? 'hidden' : 'topBar');
+    expect(policy.navigation).toBe(routeIntent === 'galleryWorkspace' ? 'topBar' : 'hidden');
     expect(policy.drawer.presentation).toBe(expectedPresentation);
     expect(policy.drawer.control).toBe(expectedControl);
     expect(policy.drawer.modality).toBe(expectedModality);

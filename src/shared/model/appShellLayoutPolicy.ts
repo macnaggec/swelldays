@@ -119,13 +119,22 @@ export function deriveAppShellLayoutPolicy(
     : 'hidden';
 
   return {
+    // The account/cart rail stays exactly as it always has at wide (leftStrip)
+    // and landscape mobile (compactBar) — every intent, unconditionally. Only
+    // portrait mobile (topBar) is a main-screen utility there: it shows for
+    // browse and its gallery workspace and hides for every other intent —
+    // routeWorkspace, siteWorkspace, mapInput, and immersiveMapInput alike.
+    // Each of those already has its own way back to the main screen (a back
+    // control), where the rail reappears.
     navigation: isImmersiveMapInput
       ? 'hidden'
       : sizeBand === 'wide'
         ? 'leftStrip'
         : heightBand === 'short' || sizeBand === 'constrained'
           ? 'compactBar'
-          : 'topBar',
+          : routeIntent === 'browse' || routeIntent === 'galleryWorkspace'
+            ? 'topBar'
+            : 'hidden',
     drawer: {
       presentation: heightAdjustedPresentation,
       state: drawerState,
