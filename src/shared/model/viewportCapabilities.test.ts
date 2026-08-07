@@ -76,6 +76,9 @@ describe('viewport capabilities', () => {
   });
 
   it('reports height, input, hover, and reduced-motion capabilities semantically', () => {
+    // Wider than tall at this height (default jsdom width), so this also covers the
+    // landscape case of the heightBand test below — kept as its own test since it
+    // asserts every other capability field too, not just heightBand.
     Object.defineProperty(window, 'innerHeight', { value: 699, configurable: true });
     mediaQueries.set('(pointer: coarse)', createMediaQuery('(pointer: coarse)', true));
     mediaQueries.set('(hover: hover)', createMediaQuery('(hover: hover)', true));
@@ -90,6 +93,30 @@ describe('viewport capabilities', () => {
     expect(capabilities.primaryPointer).toBe('coarse');
     expect(capabilities.supportsHover).toBe(true);
     expect(capabilities.prefersReducedMotion).toBe(true);
+  });
+
+  it.each([
+    [667, 375, 'short', 'landscape — wider than tall, genuinely short on vertical room'],
+    [375, 667, 'regular', 'portrait — narrower than tall, a bottom sheet still fits'],
+    [699, 699, 'regular', 'square — not wider than tall, treated like portrait'],
+    [900, 500, 'short', 'a wide but sub-threshold landscape tablet'],
+  ] as const)('classifies a %ix%ipx viewport under the 700px height threshold as %s (%s)', (
+    width,
+    height,
+    expectedHeightBand,
+    _description,
+  ) => {
+    Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: height, configurable: true });
+
+    expect(getViewportCapabilitiesSnapshot().heightBand).toBe(expectedHeightBand);
+  });
+
+  it('never downgrades a viewport at or above the 700px height threshold, regardless of orientation', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 1200, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 700, configurable: true });
+
+    expect(getViewportCapabilitiesSnapshot().heightBand).toBe('regular');
   });
 
   it('falls back to the compact base band without hover or fine pointer when indeterminate', () => {

@@ -66,7 +66,13 @@ export function getViewportCapabilitiesSnapshot(): ViewportCapabilities {
       : viewportWidthPx >= CONSTRAINED_MIN_WIDTH_PX
         ? 'constrained'
         : 'compact',
-    heightBand: viewportHeightPx >= REGULAR_MIN_HEIGHT_PX ? 'regular' : 'short',
+    // 'short' means landscape-constrained — genuinely not enough vertical room for a
+    // bottom sheet — not merely a small screen. An upright phone that happens to be
+    // short (e.g. a compact device's own portrait height) keeps 'regular': it is
+    // narrower, not shorter-for-its-width, and a bottom sheet still fits it fine.
+    heightBand: viewportHeightPx >= REGULAR_MIN_HEIGHT_PX || viewportWidthPx <= viewportHeightPx
+      ? 'regular'
+      : 'short',
     primaryPointer: coarsePointer ? 'coarse' : finePointer ? 'fine' : 'none',
     supportsHover: window.matchMedia('(hover: hover)').matches,
     prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,

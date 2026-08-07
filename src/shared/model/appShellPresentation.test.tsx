@@ -229,9 +229,12 @@ describe('AppShellLayoutPolicyProvider', () => {
     Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
   });
 
-  it('projects a compact, short-height browse viewport to the active side-overlay policy', () => {
-    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
-    Object.defineProperty(window, 'innerHeight', { value: 600, configurable: true });
+  it('projects a compact, short-height (landscape) browse viewport to the active side-overlay policy', () => {
+    // Landscape, not portrait: heightBand only reads 'short' when the viewport is
+    // wider than tall — an upright phone with this same small height keeps 'regular'
+    // and its bottom sheet (see viewportCapabilities.test.ts).
+    Object.defineProperty(window, 'innerWidth', { value: 667, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 375, configurable: true });
 
     const { result } = renderHook(() => useAppShellLayoutPolicy(), {
       wrapper: ({ children }) => (
