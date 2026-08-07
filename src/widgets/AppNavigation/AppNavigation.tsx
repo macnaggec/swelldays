@@ -8,6 +8,10 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
+import {
+  publishNavigationFloatingTarget,
+  useNavigationFloatingTarget,
+} from 'shared/model/navigationFloatingTarget';
 import { publishNavigationRailGeometry } from 'shared/model/navigationRailGeometry';
 import {
   publishNavigationSupplementTarget,
@@ -64,6 +68,14 @@ function NavigationSurface({
   const setSupplementTarget = useCallback((node: HTMLDivElement | null) => {
     publishNavigationSupplementTarget(node);
   }, []);
+  // A plain sibling of `.root`, not a descendant — `.root` always carries a
+  // `transform` (even at its resting translateY(0), for browse-sheet
+  // tracking), which makes it the containing block for any `position: fixed`
+  // descendant. Content that needs to position itself against the real
+  // viewport (AppNavigationFloating) mounts here instead of inside `.root`.
+  const setFloatingTarget = useCallback((node: HTMLDivElement | null) => {
+    publishNavigationFloatingTarget(node);
+  }, []);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -91,41 +103,55 @@ function NavigationSurface({
   }, []);
 
   return (
-    <div
-      ref={rootRef}
-      className={styles.root}
-      data-navigation-presentation={presentation}
-      data-drawer-presentation={drawerPresentation}
-      data-sheet-snap={sheetSnap}
-      data-navigation-tracking={placement?.live || undefined}
-      style={style}
-      inert={hidden}
-      aria-hidden={hidden || undefined}
-    >
-      <div className={`${styles.stack} ${materialClasses.chrome}`}>
-        <div className={styles.button}>
-          <UserControl />
+    <>
+      <div
+        ref={rootRef}
+        className={styles.root}
+        data-navigation-presentation={presentation}
+        data-drawer-presentation={drawerPresentation}
+        data-sheet-snap={sheetSnap}
+        data-navigation-tracking={placement?.live || undefined}
+        style={style}
+        inert={hidden}
+        aria-hidden={hidden || undefined}
+      >
+        <div className={`${styles.stack} ${materialClasses.chrome}`}>
+          <div className={styles.button}>
+            <UserControl />
+          </div>
+          {/* Reserved even when the cart is empty (CartControl renders nothing then) so
+              adding the first item doesn't shift the account button or anything docked
+              beneath this bar. */}
+          <div className={styles.button}>
+            <CartControl />
+          </div>
+          <div ref={setSupplementTarget} className={styles.supplement} />
         </div>
-        {/* Reserved even when the cart is empty (CartControl renders nothing then) so
-            adding the first item doesn't shift the account button or anything docked
-            beneath this bar. */}
-        <div className={styles.button}>
-          <CartControl />
-        </div>
-        <div ref={setSupplementTarget} className={styles.supplement} />
       </div>
-    </div>
+      <div ref={setFloatingTarget} />
+    </>
   );
 }
 
 /**
  * A mount point inside AppNavigation's own account/cart stack, below the two
- * reserved buttons — for route-owned navigation content that belongs beside
- * the app's own chrome rather than inside any one drawer (e.g. a collection's
- * own section switcher). Renders nothing when mounted outside AppNavigation.
+ * reserved buttons — for route-owned navigation content that belongs in real
+ * DOM flow there (e.g. a switcher docked below the icons on a landscape
+ * phone). Renders nothing when mounted outside AppNavigation.
  */
 export function AppNavigationSupplement({ children }: { children: ReactNode }): ReactElement | null {
   const target = useNavigationSupplementTarget();
+  return target ? createPortal(children, target) : null;
+}
+
+/**
+ * A mount point beside AppNavigation's own account/cart stack, not inside it
+ * — for content that positions itself with `position: fixed` against the
+ * real viewport (e.g. a switcher pill centered over the drawer). Renders
+ * nothing when mounted outside AppNavigation.
+ */
+export function AppNavigationFloating({ children }: { children: ReactNode }): ReactElement | null {
+  const target = useNavigationFloatingTarget();
   return target ? createPortal(children, target) : null;
 }
 

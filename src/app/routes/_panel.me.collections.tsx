@@ -8,7 +8,7 @@ import type { PublicMedia } from 'shared/types/media';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import { CollectionsSectionBar, CollectionsToolbar } from 'features/Collections';
 import { SidePanelHeaderTrailing } from 'widgets/SidePanel';
-import { AppNavigationSupplement } from 'widgets/AppNavigation';
+import { AppNavigationFloating, AppNavigationSupplement } from 'widgets/AppNavigation';
 import { PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
 
 const TAB_ROUTES = {
@@ -46,6 +46,12 @@ function CollectionsLayout() {
   const trpc = useTRPC();
   const layoutPolicy = useAppShellLayoutPolicy();
   const floatsOverMap = layoutPolicy.drawer.presentation === 'sideWorkspace';
+  // Same split CollectionsSectionBar uses for its own presentation: landscape
+  // mobile docks the switcher into the account/cart rail; every other band
+  // floats it as its own independent pill instead.
+  const SectionBarPortal = layoutPolicy.navigation === 'compactBar'
+    ? AppNavigationSupplement
+    : AppNavigationFloating;
   const { activeTab, handleTabChange } = useTabNavigation(TAB_ROUTES);
   const { data: sessions = [], isLoading: isLoadingUploads } = useQuery({
     ...trpc.sessions.mine.queryOptions(),
@@ -114,12 +120,12 @@ function CollectionsLayout() {
       {floatsOverMap
         ? <SidePanelHeaderTrailing>{toolbar}</SidePanelHeaderTrailing>
         : <PanelLayoutStickyChrome>{toolbar}</PanelLayoutStickyChrome>}
-      <AppNavigationSupplement>
+      <SectionBarPortal>
         <CollectionsSectionBar
           activeTab={activeTab ?? 'uploads'}
           onTabChange={handleTabChange}
         />
-      </AppNavigationSupplement>
+      </SectionBarPortal>
       <Outlet />
     </CollectionsContext.Provider>
   );

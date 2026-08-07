@@ -39,24 +39,35 @@ const items = (activeTab: string, onTabChange: (tab: string | null) => void) => 
 ];
 
 /**
- * The Uploads/Purchases/Favorites switcher's mount point is the same at every
- * band (AppNavigationSupplement, portaled into AppNavigation's own account/
- * cart stack) — only its own presentation changes, self-derived from the
- * shell's navigation presentation. At wide (`leftStrip`), it floats above the
- * gallery grid the same way the Map/Feed/Gallery bar floats above the map,
- * centered on the drawer's own measured horizontal midpoint rather than the
- * viewport's — pixel-identical to browse's existing floating pill. At every
- * other band, it instead docks directly below the account/cart buttons — same
- * left edge, same 44px width — reading as one vertical stack of app-level
- * controls, with no positioning math of its own since it's a real DOM child
- * of that stack. Labels stay on there (smaller, so they still fit the 44px
- * width) rather than hiding on scroll: this bar isn't part of the panel's own
- * scrolling chrome, so that scroll state isn't actually about it.
+ * The Uploads/Purchases/Favorites switcher is its own independent bar, never
+ * merged with the account/cart icons — matching the main screen's own Map/
+ * Feed/Gallery bar, which floats separately from them at every band. Its
+ * caller chooses which of AppNavigation's two mount points to portal this
+ * into (AppNavigationFloating vs AppNavigationSupplement) using the same
+ * `navigation !== 'compactBar'` split this component uses for its own
+ * presentation below — kept as one canonical field read twice, not two
+ * independent formulas, since importing widgets/AppNavigation directly here
+ * would invert the feature→widget dependency direction.
+ *
+ * At every band except landscape mobile (`compactBar`), it floats as its own
+ * pill centered on the drawer's own measured horizontal midpoint — at wide
+ * (`leftStrip`) that midpoint is the persistent panel's own center, same as
+ * today; at portrait mobile (`topBar`), the drawer is `fullScreen`, so its
+ * measured midpoint is simply the viewport's own center, landing the pill at
+ * the screen's bottom center exactly like the main screen's own switcher.
+ * Labels hide on scroll in both cases, matching that same reference bar.
+ *
+ * Landscape mobile (`compactBar`) is the one exception, and the only band
+ * where the combined account/cart/switcher rail is the approved design: there
+ * the drawer sits beside a narrow decorative map strip rather than filling
+ * the screen, and the switcher docks directly below the account/cart buttons
+ * instead — same left edge, same 44px width, real DOM flow, no positioning
+ * math, labels always on since it isn't part of the panel's own scroll chrome.
  */
 export function CollectionsSectionBar({ activeTab, onTabChange }: CollectionsSectionBarProps) {
-  const isWide = useAppShellLayoutPolicy().navigation === 'leftStrip';
+  const usesFloatingPill = useAppShellLayoutPolicy().navigation !== 'compactBar';
   const geometry = useDrawerGeometry();
-  const style: CollectionsSectionBarStyle | undefined = isWide && geometry
+  const style: CollectionsSectionBarStyle | undefined = usesFloatingPill && geometry
     ? { '--wa-collections-switcher-center-x': `${geometry.left + geometry.width / 2}px` }
     : undefined;
 
@@ -64,8 +75,8 @@ export function CollectionsSectionBar({ activeTab, onTabChange }: CollectionsSec
     <SectionSwitcher
       className={styles.floating}
       aria-label="Collections sections"
-      labelsHidden={isWide ? undefined : false}
-      data-avoid-drawer={!isWide || undefined}
+      labelsHidden={usesFloatingPill ? undefined : false}
+      data-avoid-drawer={!usesFloatingPill || undefined}
       style={style}
       items={items(activeTab, onTabChange)}
     />
