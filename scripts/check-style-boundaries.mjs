@@ -367,14 +367,6 @@ const requiredFilterPillStyles = [
     'a no-wrap pill row inside that owner',
     /\.root\[data-horizontal-scroll\]\s+\.row\s*\{[^}]*flex-wrap:\s*nowrap/s,
   ],
-  [
-    // width:max-content + margin-inline:auto centers the row when it fits and collapses
-    // margins to zero (standard block-box math) when it overflows — chosen over
-    // justify-content: safe center because Chromium does not honor `safe` for flex
-    // containers, which let the first pill render pre-clipped at rest.
-    'centered pills when they fit, without clipping the first pill when they overflow',
-    /\.root\[data-horizontal-scroll\]\s+\.row\s*\{[^}]*width:\s*max-content[^}]*margin-inline:\s*auto/s,
-  ],
 ];
 
 const requiredPanelLayoutStyles = [
@@ -815,6 +807,12 @@ const rules = [
       || file === 'src/features/Collections/ui/CollectionsToolbar.module.css'
       || file === 'src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css'
     ),
+  },
+  {
+    id: 'no-filter-pill-row-centering',
+    message: 'The filter-pill row must stay left-aligned, flush with the card grid below it, not centered (user-confirmed 2026-08-07).',
+    pattern: /justify-content:\s*(?:safe\s+)?center|margin-inline:\s*auto/,
+    include: file => file === 'src/widgets/SidePanel/FilterPills.module.css',
   },
   {
     id: 'mobile-gallery-large-text-uses-minimum-heights',

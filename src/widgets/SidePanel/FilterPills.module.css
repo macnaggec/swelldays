@@ -24,14 +24,9 @@
   display: none;
 }
 
-/* The scroll owner (.root) stays a fixed-width box; .row is left free to size to its own
-   content and self-center via block-level width/margin math (not flexbox's justify-content:
-   safe, which Chromium doesn't honor for flex containers) — width:max-content plus
-   margin-inline:auto centers the row when it's narrower than the panel, and auto margins
-   collapse to zero once the row's own content width already exceeds it, so nothing before
-   the first pill is ever pre-clipped when the row needs to scroll. */
+/* Left-aligned, flush with the content grid below (user-confirmed 2026-08-07) — a prior
+   attempt centered this row when it fit the panel, which visually detached it from the
+   card grid's own left edge. No justify-content/margin-inline centering here on purpose. */
 .root[data-horizontal-scroll] .row {
   flex-wrap: nowrap;
-  width: max-content;
-  margin-inline: auto;
 }
