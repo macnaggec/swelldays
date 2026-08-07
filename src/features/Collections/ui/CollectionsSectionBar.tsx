@@ -3,18 +3,19 @@ import type { CSSProperties } from 'react';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import { useDrawerGeometry } from 'shared/ui/DrawerShell';
 import { SectionSwitcher } from 'shared/ui/SectionSwitcher';
+import type { CollectionTab } from '../model/CollectionTab';
 import styles from './CollectionsSectionBar.module.css';
 
 interface CollectionsSectionBarProps {
-  activeTab: string;
-  onTabChange: (tab: string | null) => void;
+  activeTab: CollectionTab;
+  onTabChange: (tab: CollectionTab) => void;
 }
 
 interface CollectionsSectionBarStyle extends CSSProperties {
   '--wa-collections-switcher-center-x'?: string;
 }
 
-const items = (activeTab: string, onTabChange: (tab: string | null) => void) => [
+const items = (activeTab: CollectionTab, onTabChange: (tab: CollectionTab) => void) => [
   {
     key: 'uploads',
     label: 'Uploads',

@@ -1,43 +1,61 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ComponentType } from 'react';
 import { render } from 'test/setup/render';
 import { PanelLayout } from 'shared/ui/PanelLayout';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { Route } from './_panel.me.collections';
 
+const INITIAL_SESSIONS = [
+  {
+    id: 'session-1',
+    spotId: 'spot-1',
+    photographerId: 'photographer-1',
+    status: 'PUBLISHED',
+    thumbnailUrl: null,
+    startsAt: new Date('2026-06-01T06:00:00.000Z'),
+    endsAt: new Date('2026-06-01T08:00:00.000Z'),
+    createdAt: new Date('2026-06-01T05:00:00.000Z'),
+    mediaCount: 2,
+    spot: { id: 'spot-1', name: 'Pipeline', location: 'North Shore' },
+    photographer: { id: 'photographer-1', name: 'Kai' },
+  },
+  {
+    id: 'session-2',
+    spotId: 'spot-2',
+    photographerId: 'photographer-1',
+    status: 'PUBLISHED',
+    thumbnailUrl: null,
+    startsAt: new Date('2026-06-02T06:00:00.000Z'),
+    endsAt: new Date('2026-06-02T08:00:00.000Z'),
+    createdAt: new Date('2026-06-02T05:00:00.000Z'),
+    mediaCount: 3,
+    spot: { id: 'spot-2', name: 'Uluwatu', location: 'Bali' },
+    photographer: { id: 'photographer-1', name: 'Kai' },
+  },
+];
+
+// Distinct spot IDs from INITIAL_SESSIONS on purpose: this is what lets the
+// tab-switch test tell "the filter was cleared" apart from "the stale spot ID
+// coincidentally still matched an option in the destination tab".
+const INITIAL_FAVORITES = [
+  {
+    id: 'favorite-1',
+    spot: { id: 'spot-3', name: 'Teahupoo', location: 'Tahiti' },
+  },
+  {
+    id: 'favorite-2',
+    spot: { id: 'spot-4', name: 'Jeffreys Bay', location: 'South Africa' },
+  },
+];
+
 const mocks = vi.hoisted(() => ({
   activeTab: 'uploads' as string,
   sizeBand: 'wide' as 'compact' | 'constrained' | 'wide',
   heightBand: 'regular' as 'short' | 'regular',
-  sessions: [
-    {
-      id: 'session-1',
-      spotId: 'spot-1',
-      photographerId: 'photographer-1',
-      status: 'PUBLISHED',
-      thumbnailUrl: null,
-      startsAt: new Date('2026-06-01T06:00:00.000Z'),
-      endsAt: new Date('2026-06-01T08:00:00.000Z'),
-      createdAt: new Date('2026-06-01T05:00:00.000Z'),
-      mediaCount: 2,
-      spot: { id: 'spot-1', name: 'Pipeline', location: 'North Shore' },
-      photographer: { id: 'photographer-1', name: 'Kai' },
-    },
-    {
-      id: 'session-2',
-      spotId: 'spot-2',
-      photographerId: 'photographer-1',
-      status: 'PUBLISHED',
-      thumbnailUrl: null,
-      startsAt: new Date('2026-06-02T06:00:00.000Z'),
-      endsAt: new Date('2026-06-02T08:00:00.000Z'),
-      createdAt: new Date('2026-06-02T05:00:00.000Z'),
-      mediaCount: 3,
-      spot: { id: 'spot-2', name: 'Uluwatu', location: 'Bali' },
-      photographer: { id: 'photographer-1', name: 'Kai' },
-    },
-  ],
+  sessions: [] as Array<{ spot: { id: string; name: string } }>,
+  favorites: [] as Array<{ spot: { id: string; name: string } }>,
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -51,8 +69,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();
   return {
     ...actual,
-    useQuery: () => ({
-      data: mocks.sessions,
+    useQuery: (options: { queryKey?: unknown[] }) => ({
+      data: options.queryKey?.[0] === 'favorites' ? mocks.favorites : mocks.sessions,
       isLoading: false,
     }),
   };
@@ -62,12 +80,12 @@ vi.mock('shared/lib/trpc', () => ({
   useTRPC: () => ({
     sessions: {
       mine: {
-        queryOptions: () => ({}),
+        queryOptions: () => ({ queryKey: ['sessions'] }),
       },
     },
     media: {
       favorites: {
-        queryOptions: () => ({}),
+        queryOptions: () => ({ queryKey: ['favorites'] }),
       },
     },
   }),
@@ -85,21 +103,29 @@ vi.mock('shared/model/viewportCapabilities', () => ({
 
 function renderCollections() {
   const Component = (Route as unknown as { component: ComponentType }).component;
-
-  return render(
+  // A fresh element on every call, not a captured/reused one: passing the
+  // identical element reference to RTL's rerender() hits React's referential-
+  // equality bailout and skips re-invoking the whole subtree, which would
+  // silently stop these tests from ever observing a mocks.activeTab change.
+  const buildUi = () => (
     <AppShellLayoutPolicyProvider routeIntent="siteWorkspace" browseExpanded={false} galleryExpanded={false}>
       <PanelLayout>
         <Component />
       </PanelLayout>
-    </AppShellLayoutPolicyProvider>,
+    </AppShellLayoutPolicyProvider>
   );
+  const result = render(buildUi());
+
+  return { ...result, rerenderCollections: () => result.rerender(buildUi()) };
 }
 
 describe('CollectionsLayout', () => {
-  afterEach(() => {
+  beforeEach(() => {
     mocks.activeTab = 'uploads';
     mocks.sizeBand = 'wide';
     mocks.heightBand = 'regular';
+    mocks.sessions = INITIAL_SESSIONS;
+    mocks.favorites = INITIAL_FAVORITES;
   });
 
   it('owns the collection outlet', () => {
@@ -143,5 +169,50 @@ describe('CollectionsLayout', () => {
     // SidePanel's own boundary (SidePanel.test.tsx), which is what actually owns that
     // portal target; this bare-PanelLayout render has no real SidePanel to deliver into.
     expect(screen.queryByTestId('collections-toolbar')).not.toBeInTheDocument();
+  });
+
+  it('clears the spot filter when the active tab changes, so a stale spot ID cannot carry into another collection', async () => {
+    const { rerenderCollections } = renderCollections();
+
+    const uploadsInput = screen.getByRole('textbox', { name: 'Filter uploads by spot' }) as HTMLInputElement;
+    await userEvent.click(uploadsInput);
+    fireEvent.click(screen.getByText('Pipeline'));
+    expect(uploadsInput.value).toBe('Pipeline');
+
+    mocks.activeTab = 'favorites';
+    rerenderCollections();
+
+    const favoritesInput = screen.getByRole('textbox', { name: 'Filter favorites by spot' }) as HTMLInputElement;
+    expect(favoritesInput.value).toBe('');
+  });
+
+  it('rejects a selected spot filter that is no longer among its own tab options once the underlying data changes', async () => {
+    const sessionWithSpot1 = INITIAL_SESSIONS[0];
+    const sessionWithSpot2 = INITIAL_SESSIONS[1];
+    if (!sessionWithSpot1 || !sessionWithSpot2) throw new Error('fixture sessions missing');
+    mocks.sessions = [
+      sessionWithSpot1,
+      sessionWithSpot2,
+      {
+        ...sessionWithSpot2,
+        id: 'session-3',
+        spot: { id: 'spot-5', name: 'Mundaka', location: 'Spain' },
+      },
+    ];
+    const { rerenderCollections } = renderCollections();
+
+    const uploadsInput = screen.getByRole('textbox', { name: 'Filter uploads by spot' }) as HTMLInputElement;
+    await userEvent.click(uploadsInput);
+    fireEvent.click(screen.getByText('Pipeline'));
+    expect(uploadsInput.value).toBe('Pipeline');
+
+    // The spot-1 session is gone; spot-2 and spot-5 remain, so the toolbar
+    // still has 2 options and stays visible, but the selected spot-1 filter
+    // is no longer one of them.
+    mocks.sessions = mocks.sessions.filter((session) => session.spot.id !== 'spot-1');
+    rerenderCollections();
+
+    expect(screen.getByTestId('collections-toolbar')).toBeInTheDocument();
+    expect(uploadsInput.value).toBe('');
   });
 });

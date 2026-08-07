@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useTabNavigation } from 'shared/hooks';
@@ -6,16 +6,16 @@ import { useTRPC } from 'shared/lib/trpc';
 import type { SurfSessionItem } from 'entities/SurfSession';
 import type { PublicMedia } from 'shared/types/media';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
-import { CollectionsSectionBar, CollectionsToolbar } from 'features/Collections';
+import { CollectionsSectionBar, CollectionsToolbar, isCollectionTab, type CollectionTab } from 'features/Collections';
 import { SidePanelHeaderTrailing } from 'widgets/SidePanel';
 import { AppNavigationFloating, AppNavigationSupplement } from 'widgets/AppNavigation';
 import { PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
 
-const TAB_ROUTES = {
+const TAB_ROUTES: Record<CollectionTab, string> = {
   uploads: '/me/collections',
   purchases: '/me/collections/purchases',
   favorites: '/me/collections/favorites',
-} as const;
+};
 
 type CollectionsContextValue = {
   sessions: SurfSessionItem[];
@@ -52,7 +52,8 @@ function CollectionsLayout() {
   const SectionBarPortal = layoutPolicy.navigation === 'compactBar'
     ? AppNavigationSupplement
     : AppNavigationFloating;
-  const { activeTab, handleTabChange } = useTabNavigation(TAB_ROUTES);
+  const { activeTab: rawActiveTab, handleTabChange } = useTabNavigation(TAB_ROUTES);
+  const activeTab: CollectionTab = rawActiveTab && isCollectionTab(rawActiveTab) ? rawActiveTab : 'uploads';
   const { data: sessions = [], isLoading: isLoadingUploads } = useQuery({
     ...trpc.sessions.mine.queryOptions(),
     enabled: activeTab === 'uploads',
@@ -62,6 +63,14 @@ function CollectionsLayout() {
     enabled: activeTab === 'favorites',
   });
   const [spotFilter, setSpotFilter] = useState<string | null>(null);
+
+  const handleCollectionTabChange = useCallback(
+    (tab: CollectionTab) => {
+      setSpotFilter(null);
+      handleTabChange(tab);
+    },
+    [handleTabChange],
+  );
 
   const uploadSpotOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -83,14 +92,22 @@ function CollectionsLayout() {
 
   const spotOptions = activeTab === 'favorites' ? favoriteSpotOptions : uploadSpotOptions;
 
+  // A spot ID selected on another tab, or on this tab before its data changed
+  // underneath it, may no longer be one of this tab's own options — reject it
+  // rather than filtering against a spot the current collection doesn't have.
+  const validSpotFilter = useMemo(
+    () => (spotFilter && spotOptions.some((option) => option.value === spotFilter) ? spotFilter : null),
+    [spotFilter, spotOptions],
+  );
+
   const visibleUploads = useMemo(
-    () => (spotFilter ? sessions.filter((session) => session.spot.id === spotFilter) : sessions),
-    [sessions, spotFilter],
+    () => (validSpotFilter ? sessions.filter((session) => session.spot.id === validSpotFilter) : sessions),
+    [sessions, validSpotFilter],
   );
 
   const visibleFavorites = useMemo(
-    () => (spotFilter ? favorites.filter((item) => item.spot?.id === spotFilter) : favorites),
-    [favorites, spotFilter],
+    () => (validSpotFilter ? favorites.filter((item) => item.spot?.id === validSpotFilter) : favorites),
+    [favorites, validSpotFilter],
   );
 
   const contextValue = useMemo(
@@ -107,9 +124,9 @@ function CollectionsLayout() {
 
   const toolbar = (
     <CollectionsToolbar
-      activeTab={activeTab ?? 'uploads'}
+      activeTab={activeTab}
       spotOptions={spotOptions}
-      spotFilter={spotFilter}
+      spotFilter={validSpotFilter}
       onSpotFilterChange={setSpotFilter}
       centered={!floatsOverMap}
     />
@@ -122,8 +139,8 @@ function CollectionsLayout() {
         : <PanelLayoutStickyChrome>{toolbar}</PanelLayoutStickyChrome>}
       <SectionBarPortal>
         <CollectionsSectionBar
-          activeTab={activeTab ?? 'uploads'}
-          onTabChange={handleTabChange}
+          activeTab={activeTab}
+          onTabChange={handleCollectionTabChange}
         />
       </SectionBarPortal>
       <Outlet />

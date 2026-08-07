@@ -1,5 +1,6 @@
 import { Select } from '@mantine/core';
 import { IconMapPin } from '@tabler/icons-react';
+import type { CollectionTab } from '../model/CollectionTab';
 import styles from './CollectionsToolbar.module.css';
 
 type SpotOption = {
@@ -8,7 +9,7 @@ type SpotOption = {
 };
 
 type CollectionsToolbarProps = {
-  activeTab: string;
+  activeTab: CollectionTab;
   spotOptions: SpotOption[];
   spotFilter: string | null;
   onSpotFilterChange: (spotId: string | null) => void;
