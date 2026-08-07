@@ -21,3 +21,9 @@
 .spotSelect :global(.mantine-Input-section) {
   color: rgba(255, 255, 255, 0.58);
 }
+
+.spotSelectOption {
+  min-height: var(--wa-control-height-default);
+  display: flex;
+  align-items: center;
+}

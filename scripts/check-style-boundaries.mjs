@@ -264,6 +264,13 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-gallery-tile-comfortable',
   ]],
   ['src/features/Upload/ui/UploadSidebar.module.css', ['--wa-control-height-default']],
+  ['src/widgets/SidePanel/FilterPills.module.css', [
+    '--wa-control-height-default',
+    '--wa-panel-content-inset',
+  ]],
+  ['src/features/Collections/ui/CollectionsToolbar.module.css', [
+    '--wa-control-height-default',
+  ]],
 ]);
 
 const requiredDrawerShellStyles = [
@@ -793,6 +800,8 @@ const rules = [
       || file === 'src/widgets/SidePanel/SidePanel.module.css'
       || file === 'src/shared/ui/PanelRouteLayout.module.css'
       || file === 'src/features/Upload/ui/UploadSidebar.module.css'
+      || file === 'src/widgets/SidePanel/FilterPills.module.css'
+      || file === 'src/features/Collections/ui/CollectionsToolbar.module.css'
     ),
   },
   {

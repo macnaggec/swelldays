@@ -5,6 +5,11 @@
   gap: 6px;
 }
 
+.pill {
+  height: var(--wa-control-height-default);
+  padding: 0 13px;
+}
+
 .root[data-horizontal-scroll] {
   width: 100%;
   max-width: 100%;
@@ -13,6 +18,8 @@
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
+  margin-inline: calc(-1 * var(--wa-panel-content-inset));
+  padding-inline: var(--wa-panel-content-inset);
 }
 
 .root[data-horizontal-scroll]::-webkit-scrollbar {

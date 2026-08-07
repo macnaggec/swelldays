@@ -14,7 +14,6 @@ const pillStyle: React.CSSProperties = {
   color: 'rgba(255,255,255,0.82)',
   fontSize: 'var(--wa-font-size-xs)',
   fontWeight: 500,
-  padding: '5px 13px',
   cursor: 'pointer',
   whiteSpace: 'nowrap',
   display: 'flex',
@@ -59,6 +58,7 @@ export function FilterPills({
     const isActive = active === key;
     return (
       <button
+        className={styles.pill}
         aria-pressed={isActive}
         style={{ ...pillStyle, ...(isActive ? pillActiveStyle : {}) }}
         onClick={() => onChange(isActive ? null : key)}
@@ -79,6 +79,7 @@ export function FilterPills({
       <Popover opened={open} onChange={setOpen} position="bottom-start" shadow="md">
         <Popover.Target>
           <button
+            className={styles.pill}
             aria-pressed={isCustom}
             style={{ ...pillStyle, ...(isCustom ? pillActiveStyle : {}) }}
             onClick={() => isCustom ? onChange(null) : setOpen((isOpen) => !isOpen)}
@@ -101,6 +102,7 @@ export function FilterPills({
       </Popover>
       {onFavoritesChange && (
         <button
+          className={styles.pill}
           aria-pressed={favoritesOnly}
           style={{ ...pillStyle, ...(favoritesOnly ? pillActiveStyle : {}) }}
           onClick={() => onFavoritesChange(!favoritesOnly)}
