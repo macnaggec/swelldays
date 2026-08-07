@@ -1,4 +1,4 @@
-.root {
+.row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -13,8 +13,6 @@
 .root[data-horizontal-scroll] {
   width: 100%;
   max-width: 100%;
-  flex-wrap: nowrap;
-  justify-content: safe center;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
@@ -24,4 +22,16 @@
 
 .root[data-horizontal-scroll]::-webkit-scrollbar {
   display: none;
+}
+
+/* The scroll owner (.root) stays a fixed-width box; .row is left free to size to its own
+   content and self-center via block-level width/margin math (not flexbox's justify-content:
+   safe, which Chromium doesn't honor for flex containers) — width:max-content plus
+   margin-inline:auto centers the row when it's narrower than the panel, and auto margins
+   collapse to zero once the row's own content width already exceeds it, so nothing before
+   the first pill is ever pre-clipped when the row needs to scroll. */
+.root[data-horizontal-scroll] .row {
+  flex-wrap: nowrap;
+  width: max-content;
+  margin-inline: auto;
 }

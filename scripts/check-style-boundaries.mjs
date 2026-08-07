@@ -271,6 +271,9 @@ const requiredResponsiveTokensByFile = new Map([
   ['src/features/Collections/ui/CollectionsToolbar.module.css', [
     '--wa-control-height-default',
   ]],
+  ['src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css', [
+    '--wa-control-height-default',
+  ]],
 ]);
 
 const requiredDrawerShellStyles = [
@@ -357,12 +360,20 @@ const requiredCompactBrowseToolbarStyles = [
 
 const requiredFilterPillStyles = [
   [
-    'single-row horizontal overflow',
-    /\.root\[data-horizontal-scroll\]\s*\{[^}]*flex-wrap:\s*nowrap[^}]*overflow-x:\s*auto/s,
+    'a horizontally scrollable owner',
+    /\.root\[data-horizontal-scroll\]\s*\{[^}]*overflow-x:\s*auto/s,
   ],
   [
-    'centered pills when they fit',
-    /\.root\[data-horizontal-scroll\]\s*\{[^}]*justify-content:\s*safe center/s,
+    'a no-wrap pill row inside that owner',
+    /\.root\[data-horizontal-scroll\]\s+\.row\s*\{[^}]*flex-wrap:\s*nowrap/s,
+  ],
+  [
+    // width:max-content + margin-inline:auto centers the row when it fits and collapses
+    // margins to zero (standard block-box math) when it overflows — chosen over
+    // justify-content: safe center because Chromium does not honor `safe` for flex
+    // containers, which let the first pill render pre-clipped at rest.
+    'centered pills when they fit, without clipping the first pill when they overflow',
+    /\.root\[data-horizontal-scroll\]\s+\.row\s*\{[^}]*width:\s*max-content[^}]*margin-inline:\s*auto/s,
   ],
 ];
 
@@ -802,6 +813,7 @@ const rules = [
       || file === 'src/features/Upload/ui/UploadSidebar.module.css'
       || file === 'src/widgets/SidePanel/FilterPills.module.css'
       || file === 'src/features/Collections/ui/CollectionsToolbar.module.css'
+      || file === 'src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css'
     ),
   },
   {

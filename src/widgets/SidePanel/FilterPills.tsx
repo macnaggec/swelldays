@@ -73,44 +73,46 @@ export function FilterPills({
       className={styles.root}
       data-horizontal-scroll={horizontalScroll || undefined}
     >
-      {renderPill('Today', 'today')}
-      {renderPill('Yesterday', 'yesterday')}
-      {renderPill('Last 7 Days', 'last7')}
-      <Popover opened={open} onChange={setOpen} position="bottom-start" shadow="md">
-        <Popover.Target>
+      <div className={styles.row}>
+        {renderPill('Today', 'today')}
+        {renderPill('Yesterday', 'yesterday')}
+        {renderPill('Last 7 Days', 'last7')}
+        <Popover opened={open} onChange={setOpen} position="bottom-start" shadow="md">
+          <Popover.Target>
+            <button
+              className={styles.pill}
+              aria-pressed={isCustom}
+              style={{ ...pillStyle, ...(isCustom ? pillActiveStyle : {}) }}
+              onClick={() => isCustom ? onChange(null) : setOpen((isOpen) => !isOpen)}
+            >
+              {customLabel ?? 'Date'}
+              <IconCalendar size={12} />
+            </button>
+          </Popover.Target>
+          <Popover.Dropdown p="xs">
+            <DatePicker
+              maxDate={new Date()}
+              value={isCustom ? (active as { date: Date }).date : null}
+              onChange={(d) => {
+                setOpen(false);
+                if (!d) { onChange(null); return; }
+                onChange({ date: typeof d === 'string' ? new Date(d) : d });
+              }}
+            />
+          </Popover.Dropdown>
+        </Popover>
+        {onFavoritesChange && (
           <button
             className={styles.pill}
-            aria-pressed={isCustom}
-            style={{ ...pillStyle, ...(isCustom ? pillActiveStyle : {}) }}
-            onClick={() => isCustom ? onChange(null) : setOpen((isOpen) => !isOpen)}
+            aria-pressed={favoritesOnly}
+            style={{ ...pillStyle, ...(favoritesOnly ? pillActiveStyle : {}) }}
+            onClick={() => onFavoritesChange(!favoritesOnly)}
           >
-            {customLabel ?? 'Date'}
-            <IconCalendar size={12} />
+            <IconHeart size={12} fill={favoritesOnly ? 'currentColor' : 'none'} aria-hidden="true" />
+            Favorites
           </button>
-        </Popover.Target>
-        <Popover.Dropdown p="xs">
-          <DatePicker
-            maxDate={new Date()}
-            value={isCustom ? (active as { date: Date }).date : null}
-            onChange={(d) => {
-              setOpen(false);
-              if (!d) { onChange(null); return; }
-              onChange({ date: typeof d === 'string' ? new Date(d) : d });
-            }}
-          />
-        </Popover.Dropdown>
-      </Popover>
-      {onFavoritesChange && (
-        <button
-          className={styles.pill}
-          aria-pressed={favoritesOnly}
-          style={{ ...pillStyle, ...(favoritesOnly ? pillActiveStyle : {}) }}
-          onClick={() => onFavoritesChange(!favoritesOnly)}
-        >
-          <IconHeart size={12} fill={favoritesOnly ? 'currentColor' : 'none'} aria-hidden="true" />
-          Favorites
-        </button>
-      )}
+        )}
+      </div>
     </div>
   );
 }
