@@ -10,20 +10,27 @@
   padding: 0 13px;
 }
 
-/* No bleed here on purpose (reverted 2026-08-08): PanelLayout.module.css's .scroller — an
-   ancestor of this row via .stickyChrome — carries overflow-x: hidden (to hide a transient
-   scrollbar flash while the panel is mid-resize), which hard-clips anything that bleeds past
-   .stickyChrome's own padding, no matter how precisely the negative margin is calculated. The
-   row instead simply fills .stickyChrome's own already-inset content box, landing at the same
-   --wa-panel-content-inset edge the card grid below (VirtualGallery.module.css) already uses,
-   so it reads as aligned with the grid rather than flush with the panel's outer edge. */
+/* No bleed on .root itself (reverted 2026-08-08, then superseded 2026-08-08): the true
+   edge-to-edge bleed now happens one level up, on .toolbarTrailing in
+   PanelRouteLayout.module.css, using an absolute 100vw reference instead of a value derived
+   from .stickyChrome's own measured width — see that file's comment for why the measured
+   version fell a few pixels short of the true edge and got clipped by .scroller's
+   overflow-x: hidden. Because that ancestor now already spans the true viewport width, .root
+   just needs its own resting inset back: padding-inline reproduces the same
+   --wa-panel-content-inset gap the card grid below uses at rest, while still leaving the full
+   bled width available to scroll into — nothing before the first pill is clipped, and nothing
+   after the last pill is clipped, at either scroll extreme. display: flex is user-verified
+   2026-08-08 as also required here (not just on .row) for the leftmost scroll position to
+   land correctly. */
 .root[data-horizontal-scroll] {
+  display: flex;
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
   overflow-anchor: none;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
+  padding-inline: var(--wa-panel-content-inset);
 }
 
 .root[data-horizontal-scroll]::-webkit-scrollbar {

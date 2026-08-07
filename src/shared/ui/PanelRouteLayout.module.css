@@ -141,9 +141,16 @@
   margin-inline: auto;
 }
 
+/* 100vw + a matching negative margin (not width:100%/margin-left:0) bleeds this row to the
+   true viewport edge with no measurement in between: width:100% would instead resolve against
+   .stickyChrome's own JS-measured --wa-panel-content-width, which in this narrow-viewport
+   sheet context did not exactly equal the true viewport width — the residual few-pixel gap
+   was enough for .scroller's overflow-x: hidden (PanelLayout.module.css) to clip the row's
+   first pill. User-verified fix, 2026-08-08: 100vw is an absolute reference the scroller's own
+   edges also coincide with here, so nothing overshoots and nothing gets clipped. */
 :global([data-drawer-presentation='bottomSheet']) .toolbarTrailing {
-  width: 100%;
-  margin-left: 0;
+  width: 100vw;
+  margin-left: calc(-1 * var(--wa-panel-content-inset));
 }
 
 :global([data-drawer-presentation='sideOverlay']) .toolbar {

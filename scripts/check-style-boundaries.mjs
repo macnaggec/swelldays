@@ -266,6 +266,7 @@ const requiredResponsiveTokensByFile = new Map([
   ['src/features/Upload/ui/UploadSidebar.module.css', ['--wa-control-height-default']],
   ['src/widgets/SidePanel/FilterPills.module.css', [
     '--wa-control-height-default',
+    '--wa-panel-content-inset',
   ]],
   ['src/features/Collections/ui/CollectionsToolbar.module.css', [
     '--wa-control-height-default',
