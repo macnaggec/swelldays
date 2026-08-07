@@ -17,7 +17,6 @@
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   margin-inline: calc(-1 * var(--wa-panel-content-inset));
-  padding-inline: var(--wa-panel-content-inset);
 }
 
 .root[data-horizontal-scroll]::-webkit-scrollbar {

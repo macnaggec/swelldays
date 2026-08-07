@@ -17,6 +17,13 @@ interface GalleryDateJumpHeadingProps {
   onJump: (day: GalleryDateHighlight) => void;
 }
 
+// Decoupled from the trigger's own (deliberately narrow) width: Mantine's width="target"
+// makes the dropdown match the closed bar exactly, too narrow to show more than a few
+// months/days at once. clamp(), not min() — Mantine's rem() unit converter passes calc()/
+// clamp()/rgba() strings through untouched, but naively splits any other string on its
+// top-level commas, which would mangle a min(a, b) value.
+const DROPDOWN_WIDTH = 'clamp(280px, calc(100vw - 2 * var(--wa-panel-content-inset)), 400px)';
+
 /**
  * The active-date control shown in the panel's shared chrome slot whenever the
  * wide date rail doesn't fit (mobile drawer or a narrowed desktop panel):
@@ -55,7 +62,7 @@ export function GalleryDateJumpHeading({ date, dayHighlights, onJump }: GalleryD
       shadow="md"
       opened={opened}
       onChange={setOpened}
-      width="target"
+      width={DROPDOWN_WIDTH}
     >
       <Menu.Target>
         <button
