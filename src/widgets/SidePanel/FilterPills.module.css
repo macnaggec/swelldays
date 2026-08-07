@@ -10,10 +10,13 @@
   padding: 0 13px;
 }
 
-/* Without this opt-out, browser scroll anchoring can shift scrollLeft away from 0 to
-   compensate for a layout change inside the row after first paint (e.g. an icon settling
-   its measured size) — the same mechanism PanelLayout.module.css's .scroller already opts
-   out of for scrollTop, here on the horizontal axis instead. */
+/* No bleed here on purpose (reverted 2026-08-08): PanelLayout.module.css's .scroller — an
+   ancestor of this row via .stickyChrome — carries overflow-x: hidden (to hide a transient
+   scrollbar flash while the panel is mid-resize), which hard-clips anything that bleeds past
+   .stickyChrome's own padding, no matter how precisely the negative margin is calculated. The
+   row instead simply fills .stickyChrome's own already-inset content box, landing at the same
+   --wa-panel-content-inset edge the card grid below (VirtualGallery.module.css) already uses,
+   so it reads as aligned with the grid rather than flush with the panel's outer edge. */
 .root[data-horizontal-scroll] {
   width: 100%;
   max-width: 100%;
@@ -21,7 +24,6 @@
   overflow-anchor: none;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
-  margin-inline: calc(-1 * var(--wa-panel-content-inset));
 }
 
 .root[data-horizontal-scroll]::-webkit-scrollbar {
