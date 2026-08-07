@@ -10,10 +10,15 @@
   padding: 0 13px;
 }
 
+/* Without this opt-out, browser scroll anchoring can shift scrollLeft away from 0 to
+   compensate for a layout change inside the row after first paint (e.g. an icon settling
+   its measured size) — the same mechanism PanelLayout.module.css's .scroller already opts
+   out of for scrollTop, here on the horizontal axis instead. */
 .root[data-horizontal-scroll] {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
+  overflow-anchor: none;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   margin-inline: calc(-1 * var(--wa-panel-content-inset));
