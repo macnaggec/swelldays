@@ -1,11 +1,20 @@
 import { readFileSync } from 'node:fs';
 import { act, fireEvent, screen } from '@testing-library/react';
 import { useRef, useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
+import type { NavigationRailGeometry } from 'shared/model/navigationRailGeometry';
 import { SidePanel, SidePanelHeaderTrailing } from './SidePanel';
 import { PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
 import { usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
+
+const useNavigationRailGeometryMock = vi.hoisted(
+  () => vi.fn<() => NavigationRailGeometry | null>(() => null),
+);
+
+vi.mock('shared/model/navigationRailGeometry', () => ({
+  useNavigationRailGeometry: useNavigationRailGeometryMock,
+}));
 
 const sidePanelCss = readFileSync('src/shared/ui/PanelLayout/PanelLayout.module.css', 'utf8');
 const designTokensCss = readFileSync('src/shared/ui/design-system/tokens.css', 'utf8');
@@ -45,6 +54,44 @@ function FocusRestoreHarness() {
 }
 
 describe('SidePanel', () => {
+  afterEach(() => {
+    useNavigationRailGeometryMock.mockReturnValue(null);
+  });
+
+  it('reserves header space for the floating rail\'s measured width when it hovers over a fullScreen panel\'s own corner', () => {
+    useNavigationRailGeometryMock.mockReturnValue({
+      left: 12, top: 0, right: 72, bottom: 400, width: 60, height: 400,
+    });
+
+    render(
+      <SidePanel drawerPresentation="fullScreen" navigation="compactBar" onBack={vi.fn()} header={<div>Title</div>}>
+        <div>Panel body</div>
+      </SidePanel>,
+    );
+
+    const panelTop = screen.getByRole('button', { name: 'Back' }).parentElement as HTMLElement;
+    expect(panelTop.style.getPropertyValue('--wa-fullscreen-rail-inset')).toBe('72px');
+  });
+
+  it.each([
+    ['sideWorkspace presentation, where the surface already starts past the rail', 'sideWorkspace', 'compactBar'],
+    ['leftStrip navigation, which floats over no fullScreen corner', 'fullScreen', 'leftStrip'],
+    ['no navigation supplied', 'fullScreen', undefined],
+  ] as const)('does not reserve header space for %s', (_label, drawerPresentation, navigation) => {
+    useNavigationRailGeometryMock.mockReturnValue({
+      left: 12, top: 0, right: 72, bottom: 400, width: 60, height: 400,
+    });
+
+    render(
+      <SidePanel drawerPresentation={drawerPresentation} navigation={navigation} onBack={vi.fn()} header={<div>Title</div>}>
+        <div>Panel body</div>
+      </SidePanel>,
+    );
+
+    const panelTop = screen.getByRole('button', { name: 'Back' }).parentElement as HTMLElement;
+    expect(panelTop.style.getPropertyValue('--wa-fullscreen-rail-inset')).toBe('');
+  });
+
   it('renders panel content inside one labeled semantic drawer surface', () => {
     render(
       <SidePanel>

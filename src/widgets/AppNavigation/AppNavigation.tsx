@@ -36,12 +36,14 @@ interface BrowseNavigationStyle extends CSSProperties {
 
 interface NavigationSurfaceProps {
   presentation: Exclude<AppShellLayoutPolicy['navigation'], 'hidden'>;
+  drawerPresentation: AppShellLayoutPolicy['drawer']['presentation'];
   sheetSnap?: SheetSnap;
   placement?: BrowseSheetNavigationPlacement;
 }
 
 function NavigationSurface({
   presentation,
+  drawerPresentation,
   sheetSnap,
   placement,
 }: NavigationSurfaceProps): ReactElement {
@@ -93,6 +95,7 @@ function NavigationSurface({
       ref={rootRef}
       className={styles.root}
       data-navigation-presentation={presentation}
+      data-drawer-presentation={drawerPresentation}
       data-sheet-snap={sheetSnap}
       data-navigation-tracking={placement?.live || undefined}
       style={style}
@@ -131,7 +134,12 @@ function BrowseSheetNavigation(): ReactElement {
   const placement = useBrowseSheetNavigationPlacement(snap);
 
   return (
-    <NavigationSurface presentation="topBar" sheetSnap={snap} placement={placement} />
+    <NavigationSurface
+      presentation="topBar"
+      drawerPresentation="bottomSheet"
+      sheetSnap={snap}
+      placement={placement}
+    />
   );
 }
 
@@ -143,7 +151,7 @@ export function AppNavigation({
   if (presentation === 'topBar' && drawerPresentation === 'bottomSheet') {
     return <BrowseSheetNavigation />;
   }
-  return <NavigationSurface presentation={presentation} />;
+  return <NavigationSurface presentation={presentation} drawerPresentation={drawerPresentation} />;
 }
 
 export default AppNavigation;

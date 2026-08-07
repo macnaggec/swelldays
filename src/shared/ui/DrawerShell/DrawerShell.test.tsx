@@ -818,12 +818,17 @@ describe('DrawerShell sideWorkspace geometry', () => {
   it.each([
     { width: 375, height: 667 },
     { width: 900, height: 500 },
-  ])('lands the target and rendered geometry at the rail\'s measured right edge, at $width x $height', ({ width, height }) => {
+  ])('lands the target and rendered geometry one rail-left-offset past the rail\'s measured right edge, at $width x $height', ({ width, height }) => {
     Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
     Object.defineProperty(window, 'innerHeight', { value: height, configurable: true });
+    // A nonzero left proves the gap on the sheet's own side (railRight to
+    // surfaceLeft) equals the rail's own gap from the viewport edge
+    // (railLeft) — not just that the surface starts flush at railRight, which
+    // a left: 0 fixture could never distinguish from a real symmetric gap.
+    const railLeft = 12;
     const railRight = 60;
     useNavigationRailGeometryMock.mockReturnValue({
-      left: 0, top: 0, right: railRight, bottom: height, width: railRight, height,
+      left: railLeft, top: 0, right: railRight, bottom: height, width: railRight - railLeft, height,
     });
 
     const queuedFrames: FrameRequestCallback[] = [];
@@ -849,19 +854,20 @@ describe('DrawerShell sideWorkspace geometry', () => {
       </>,
     );
 
-    const expectedWidth = width - railRight;
+    const surfaceLeft = railRight + railLeft;
+    const expectedWidth = width - surfaceLeft;
     expect(screen.getByTestId('drawer-target-geometry').textContent).toBe(
-      `${railRight}:0:${width}:${height}:${expectedWidth}:${height}`,
+      `${surfaceLeft}:0:${width}:${height}:${expectedWidth}:${height}`,
     );
 
     const surface = screen.getByRole('complementary', { name: 'Content drawer' });
     vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue(
-      DOMRect.fromRect({ x: railRight, y: 0, width: expectedWidth, height }),
+      DOMRect.fromRect({ x: surfaceLeft, y: 0, width: expectedWidth, height }),
     );
     act(() => queuedFrames.shift()?.(0));
 
     expect(screen.getByTestId('drawer-geometry').textContent).toBe(
-      `${railRight}:0:${width}:${height}:${expectedWidth}:${height}`,
+      `${surfaceLeft}:0:${width}:${height}:${expectedWidth}:${height}`,
     );
   });
 

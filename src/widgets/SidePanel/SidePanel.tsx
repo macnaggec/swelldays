@@ -5,12 +5,15 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
   type RefObject,
   type UIEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { IconChevronLeft, IconMaximize, IconMinimize } from '@tabler/icons-react';
+import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
+import { useNavigationRailGeometry } from 'shared/model/navigationRailGeometry';
 import {
   DrawerShell,
   type DrawerShellModality,
@@ -21,6 +24,10 @@ import { PanelScrollChromeStateProvider } from 'shared/ui/PanelScrollChrome';
 import { PanelLayout, PanelChromeSlot, PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
 import { isPanelCollectionScrollCorrection } from 'shared/ui/PanelCollectionGrid';
 import styles from './SidePanel.module.css';
+
+interface PanelTopStyle extends CSSProperties {
+  '--wa-fullscreen-rail-inset'?: string;
+}
 
 const SCROLL_DIRECTION_THRESHOLD_PX = 8;
 
@@ -62,6 +69,13 @@ interface SidePanelProps {
   drawerModality?: DrawerShellModality;
   /** Keeps a side overlay mounted while removing it from view and interaction. */
   open?: boolean;
+  /**
+   * The shell's navigation presentation, used only to detect when the floating
+   * compact rail hovers over this panel's own top-left corner (fullScreen +
+   * compactBar) so the back/expand button can clear it. Omit outside that
+   * combination; the panel behaves exactly as before.
+   */
+  navigation?: AppShellLayoutPolicy['navigation'];
   /** Sheet position. Required when drawerPresentation is 'bottomSheet', ignored otherwise. */
   sheetSnap?: SheetSnap;
   /** Called when the sheet lands on a new snap. Required when drawerPresentation is 'bottomSheet'. */
@@ -96,6 +110,7 @@ export function SidePanel({
   drawerPresentation = 'persistent',
   drawerModality = 'nonmodal',
   open = true,
+  navigation,
   sheetSnap,
   onSheetSnapChange,
   restoreFocusRef,
@@ -204,11 +219,22 @@ export function SidePanel({
     && drawerPresentation !== 'sideOverlay';
   const hasPanelTop = Boolean(header || onBack || showExpandToggle);
 
+  // The compact rail (account/cart/any route-supplied switcher) floats over the
+  // fullScreen panel's own top-left corner rather than beside it — fullScreen
+  // spans the whole viewport, unlike sideWorkspace, which already starts past the
+  // rail's measured edge. Without this, the back button renders directly under
+  // the rail's own box and is neither visible nor clickable.
+  const reservesRailInset = navigation === 'compactBar' && drawerPresentation === 'fullScreen';
+  const railGeometry = useNavigationRailGeometry();
+  const panelTopStyle: PanelTopStyle | undefined = reservesRailInset && railGeometry
+    ? { '--wa-fullscreen-rail-inset': `${railGeometry.right}px` }
+    : undefined;
+
   const panelLayout = (
     <PanelLayout
       onScrollCapture={handleBodyScrollCapture}
       header={hasPanelTop ? (
-        <div className={styles.panelTop}>
+        <div className={styles.panelTop} style={panelTopStyle}>
           {!headerFullWidth && (
             onBack || showExpandToggle ? (
               <button

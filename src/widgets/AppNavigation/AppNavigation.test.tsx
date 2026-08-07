@@ -69,6 +69,13 @@ describe('AppNavigation', () => {
     expect(screen.queryByTestId('user-control')).not.toBeInTheDocument();
     expect(screen.queryByTestId('cart-control')).not.toBeInTheDocument();
   });
+
+  it('marks the rail with the live drawer presentation, so CSS can center it over a sideWorkspace map strip instead of pinning it to the top corner', () => {
+    render(<AppNavigation presentation="compactBar" drawerPresentation="sideWorkspace" />);
+
+    const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]');
+    expect(root).toHaveAttribute('data-drawer-presentation', 'sideWorkspace');
+  });
 });
 
 describe('BrowseSheetNavigation placement', () => {

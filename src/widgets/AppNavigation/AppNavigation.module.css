@@ -39,6 +39,20 @@
   transition: none;
 }
 
+/* The rail hovers over the decorative map strip beside a sideWorkspace drawer
+   (constrained × short: Account/Earnings/Collections/Cart) rather than
+   pinning to the top corner used everywhere else the compact rail appears —
+   there is nothing else in that strip to align with, so it centers in the
+   full available height instead. Horizontal placement is untouched: an equal
+   gap on the strip's other side comes from DrawerShell reserving the same
+   measured offset for the sideWorkspace surface itself, not from moving the
+   rail, so this only needs to override the vertical axis. */
+.root[data-navigation-presentation='compactBar'][data-drawer-presentation='sideWorkspace'] {
+  --wa-browse-navigation-translate-y: -50%;
+
+  top: 50%;
+}
+
 .stack {
   display: flex;
   flex-direction: column;

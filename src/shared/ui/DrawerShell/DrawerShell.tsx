@@ -118,7 +118,14 @@ export function DrawerShell(props: DrawerShellProps) {
   );
   const targetSheetHeightPx = snap ? heights[snap] : null;
   const railGeometry = useNavigationRailGeometry();
-  const sideWorkspaceWidthPx = Math.max(0, viewportWidthPx - (railGeometry?.right ?? 0));
+  // The gap between the rail's own right edge and the surface's left edge matches
+  // the rail's own gap from the viewport's left edge (railGeometry.left) — the same
+  // measured offset used twice, rather than a second mirrored clearance constant, so
+  // the two margins are equal by construction instead of by coincidence.
+  const sideWorkspaceWidthPx = Math.max(
+    0,
+    viewportWidthPx - (railGeometry ? railGeometry.right + railGeometry.left : 0),
+  );
   const targetPanelWidthVw = props.presentation === 'persistent'
     ? PANEL_WIDTH_VW[props.state]
     : props.presentation === 'fullScreen'

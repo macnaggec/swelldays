@@ -6,7 +6,13 @@
   column-gap: 8px;
   min-height: var(--wa-panel-chrome-height);
   box-sizing: border-box;
-  padding: 0 8px;
+  padding-block: 0;
+  /* Cleared to the floating compact rail's own measured edge in fullScreen
+     presentations where the rail hovers over this same top-left corner
+     (SidePanel.tsx); 0px everywhere else, so the back/expand button keeps
+     its ordinary 8px inset. */
+  padding-inline-start: calc(8px + var(--wa-fullscreen-rail-inset, 0px));
+  padding-inline-end: 8px;
   flex-shrink: 0;
 }
 

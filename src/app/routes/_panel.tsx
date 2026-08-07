@@ -422,6 +422,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
             <SidePanel
               drawerPresentation={layoutPolicy.drawer.presentation}
               drawerModality={layoutPolicy.drawer.modality === 'modal' ? 'modal' : 'nonmodal'}
+              navigation={layoutPolicy.navigation}
               open={!showsStandaloneMapToolbar}
               sheetSnap={isBrowseSheet ? sheetSnap : isUploadSheet ? uploadSheetSnap : undefined}
               onSheetSnapChange={isBrowseSheet ? handleSheetSnapChange : isUploadSheet ? setUploadSheetSnap : undefined}
