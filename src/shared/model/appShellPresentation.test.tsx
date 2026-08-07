@@ -144,7 +144,7 @@ describe('the mobile browse section shell cells', () => {
   });
 
   it.each([
-    ['compact', 'short', 'fullScreen'],
+    ['compact', 'short', 'sideWorkspace'],
     ['compact', 'regular', 'fullScreen'],
     ['constrained', 'short', 'sideWorkspace'],
   ] as const)('activates the %s/%s siteWorkspace cell as a %s drawer over the decorative map', (

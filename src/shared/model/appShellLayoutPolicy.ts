@@ -94,10 +94,13 @@ export function deriveAppShellLayoutPolicy(
     drawerPresentation === 'bottomSheet' && heightBand === 'short'
       ? 'sideOverlay'
       : drawerPresentation;
+  // heightBand only ever reads 'short' for a viewport that is also wider than
+  // it is tall (viewportCapabilities.ts), so this is genuinely "landscape
+  // phone or landscape-shaped tablet" regardless of which width band it
+  // falls in — a siteWorkspace there gets the measured-rail map strip
+  // uniformly, not just at the wider (constrained) member of that pair.
   const heightAdjustedPresentation =
-    bottomSheetHeightAdjustedPresentation === 'sideOverlay'
-      && heightBand === 'short'
-      && routeIntent === 'siteWorkspace'
+    heightBand === 'short' && sizeBand !== 'wide' && routeIntent === 'siteWorkspace'
       ? 'sideWorkspace'
       : bottomSheetHeightAdjustedPresentation;
   const drawerControl = routeIntent === 'browse'

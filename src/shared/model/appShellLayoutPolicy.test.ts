@@ -273,15 +273,29 @@ describe('deriveAppShellLayoutPolicy — height band', () => {
     expect(policy.drawer.presentation).toBe('sideOverlay');
   });
 
-  it('gives siteWorkspace its own sideWorkspace presentation at constrained/short height', () => {
+  it.each(['constrained', 'compact'] as const)(
+    'gives siteWorkspace its own sideWorkspace presentation at %s/short height — landscape phones and landscape tablets alike',
+    (sizeBand) => {
+      const policy = deriveAppShellLayoutPolicy({
+        routeIntent: 'siteWorkspace',
+        sizeBand,
+        heightBand: 'short',
+        preferences: compactPreferences,
+      });
+
+      expect(policy.drawer.presentation).toBe('sideWorkspace');
+    },
+  );
+
+  it('never gives siteWorkspace a sideWorkspace presentation at wide/short height — persistent stays authoritative there', () => {
     const policy = deriveAppShellLayoutPolicy({
       routeIntent: 'siteWorkspace',
-      sizeBand: 'constrained',
+      sizeBand: 'wide',
       heightBand: 'short',
       preferences: compactPreferences,
     });
 
-    expect(policy.drawer.presentation).toBe('sideWorkspace');
+    expect(policy.drawer.presentation).toBe('persistent');
   });
 
   it.each([
