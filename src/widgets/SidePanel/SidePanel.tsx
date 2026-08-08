@@ -80,6 +80,9 @@ interface SidePanelProps {
   sheetSnap?: SheetSnap;
   /** Called when the sheet lands on a new snap. Required when drawerPresentation is 'bottomSheet'. */
   onSheetSnapChange?: (snap: SheetSnap) => void;
+  /** True when this sheet keeps its own header row visible at Peek — see DrawerShell's
+   *  identically named prop, which this passes straight through. */
+  sheetPeekIncludesHeader?: boolean;
   restoreFocusRef?: RefObject<HTMLElement | null>;
   /** Expands the panel to cover most of the viewport width. */
   expanded?: boolean;
@@ -113,6 +116,7 @@ export function SidePanel({
   navigation,
   sheetSnap,
   onSheetSnapChange,
+  sheetPeekIncludesHeader,
   restoreFocusRef,
   expanded,
   onExpandToggle,
@@ -290,6 +294,7 @@ export function SidePanel({
             restoreFocusRef={restoreFocusRef}
             snap={sheetSnap}
             onSnapChange={onSheetSnapChange}
+            peekIncludesHeader={sheetPeekIncludesHeader}
           >
             {panelLayout}
           </DrawerShell>

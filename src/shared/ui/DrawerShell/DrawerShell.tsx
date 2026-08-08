@@ -31,6 +31,7 @@ import {
   nearestSheetSnap,
   resolveSheetSnapHeights,
   SHEET_PEEK_HEIGHT_PX,
+  SHEET_PEEK_WITH_HEADER_HEIGHT_PX,
   type SheetSnap,
 } from './sheetSnapPolicy';
 import {
@@ -72,6 +73,9 @@ interface DrawerShellSheetProps extends DrawerShellBaseProps {
   presentation: 'bottomSheet';
   snap: SheetSnap;
   onSnapChange: (snap: SheetSnap) => void;
+  /** True when this sheet keeps its own header row (back chevron + title) visible at
+   *  Peek, unlike Browse's sheet — Peek then needs enough height for that row too. */
+  peekIncludesHeader?: boolean;
 }
 
 export type DrawerShellProps = DrawerShellPanelProps | DrawerShellSheetProps;
@@ -93,6 +97,7 @@ export function DrawerShell(props: DrawerShellProps) {
   const { modality, ariaLabel = 'Content drawer', restoreFocusRef, onEscape, children } = props;
   const snap = props.presentation === 'bottomSheet' ? props.snap : undefined;
   const onSnapChange = props.presentation === 'bottomSheet' ? props.onSnapChange : undefined;
+  const peekIncludesHeader = props.presentation === 'bottomSheet' ? props.peekIncludesHeader : undefined;
   const panelOpen = props.presentation === 'bottomSheet' ? true : (props.open ?? true);
   const positionKey: DrawerShellState | SheetSnap =
     props.presentation === 'bottomSheet' ? props.snap : props.state;
@@ -113,8 +118,11 @@ export function DrawerShell(props: DrawerShellProps) {
     visualViewportOffsetTopPx,
   });
   const heights = useMemo(
-    () => resolveSheetSnapHeights({ viewportHeightPx, peekHeightPx: SHEET_PEEK_HEIGHT_PX }),
-    [viewportHeightPx],
+    () => resolveSheetSnapHeights({
+      viewportHeightPx,
+      peekHeightPx: peekIncludesHeader ? SHEET_PEEK_WITH_HEADER_HEIGHT_PX : SHEET_PEEK_HEIGHT_PX,
+    }),
+    [viewportHeightPx, peekIncludesHeader],
   );
   const targetSheetHeightPx = snap ? heights[snap] : null;
   const railGeometry = useNavigationRailGeometry();

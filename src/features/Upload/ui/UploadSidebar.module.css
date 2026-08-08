@@ -92,7 +92,7 @@
   display: none;
 }
 
-.halfSnapStatus {
+:global([data-panel-layout]:not([data-sheet-snap='half'])) .halfSnapStatus {
   display: none;
 }
 

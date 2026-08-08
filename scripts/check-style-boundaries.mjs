@@ -654,7 +654,7 @@ const rules = [
   {
     id: 'drawer-shell-owns-sheet-snap-geometry',
     message: 'Bottom-sheet snap positions and heights belong to shared/ui/DrawerShell; consume the shell instead of declaring snap geometry.',
-    pattern: /\bSHEET_(?:SNAP_FRACTIONS|HALF_HEIGHT_FRACTION|FULL_TOP_INSET_PX|PEEK_HEIGHT_PX)\b|\bresolveSheetSnapHeights\b|\bnearestSheetSnap\b|\bresolveBrowseSheetNavigationOpacity\b|\[data-drawer-snap/,
+    pattern: /\bSHEET_(?:SNAP_FRACTIONS|HALF_HEIGHT_FRACTION|FULL_TOP_INSET_PX|PEEK_HEIGHT_PX|PEEK_WITH_HEADER_HEIGHT_PX)\b|\bresolveSheetSnapHeights\b|\bnearestSheetSnap\b|\bresolveBrowseSheetNavigationOpacity\b|\[data-drawer-snap/,
     include: file => /\.(?:css|tsx?)$/.test(file) && !file.startsWith('src/shared/ui/DrawerShell/'),
   },
   {

@@ -20,6 +20,14 @@ const SHEET_FULL_TOP_INSET_PX = 24;
  */
 export const SHEET_PEEK_HEIGHT_PX = 84;
 
+/**
+ * Peek height for a sheet whose header row (back chevron + title) stays visible at
+ * Peek, unlike Browse's own sheet, which has no header row at all. 24px drag handle +
+ * 52px header row (--wa-panel-chrome-height) + 8+44+8px spot-search row (coarse-pointer
+ * control height, the real case on a phone) = 136px.
+ */
+export const SHEET_PEEK_WITH_HEADER_HEIGHT_PX = 136;
+
 /** Sheet-top speed, px/s, above which a release reads as a flick rather than a placement. */
 export const SHEET_FLICK_VELOCITY_PX_PER_S = 400;
 

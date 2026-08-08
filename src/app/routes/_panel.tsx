@@ -426,6 +426,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
               open={!showsStandaloneMapToolbar}
               sheetSnap={isBrowseSheet ? sheetSnap : isUploadSheet ? uploadSheetSnap : undefined}
               onSheetSnapChange={isBrowseSheet ? handleSheetSnapChange : isUploadSheet ? setUploadSheetSnap : undefined}
+              sheetPeekIncludesHeader={isUploadSheet}
               expanded={renderedExpanded}
               onExpandToggle={handlePanelExpandToggle}
               onBack={routeBackActionForPanel?.onBack ?? defaultBackAction}
