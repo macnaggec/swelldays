@@ -31,7 +31,7 @@
 }
 
 .sidebar :global([data-upload-zone]) {
-  padding-block: var(--upload-empty-padding);
+  padding: var(--upload-empty-padding);
 }
 
 .sidebar :global([data-upload-block]) {

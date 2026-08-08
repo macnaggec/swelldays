@@ -6,6 +6,7 @@ import {
   BrowseSurfaceProvider,
   useBrowseSurface,
 } from 'shared/ui/DrawerShell';
+import { PanelLayoutFooter } from 'shared/ui/PanelLayout';
 import { BrowseSectionBar } from 'widgets/BrowseSectionBar';
 import { SidePanel } from './SidePanel';
 
@@ -231,5 +232,23 @@ describe('SidePanel bottom sheet', () => {
     fireEvent.scroll(scrollOwner!, { target: { scrollTop: 23 } });
 
     expect(stickyChrome).not.toHaveAttribute('data-hidden');
+  });
+
+  it("marks the panel root that a floating footer mounts inside with the sheet's own snap, so PanelLayout's floating-footer CSS applies to it", () => {
+    render(
+      <SidePanel
+        drawerPresentation="bottomSheet"
+        sheetSnap="full"
+        onSheetSnapChange={() => { }}
+      >
+        <div style={{ height: '2000px' }}>Tall sheet content</div>
+        <PanelLayoutFooter>
+          <button>Publish</button>
+        </PanelLayoutFooter>
+      </SidePanel>,
+    );
+
+    const panelRoot = screen.getByRole('button', { name: 'Publish' }).closest('[data-panel-layout]');
+    expect(panelRoot).toHaveAttribute('data-sheet-snap', 'full');
   });
 });

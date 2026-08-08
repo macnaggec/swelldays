@@ -1,8 +1,16 @@
+import { readFileSync } from 'node:fs';
 import type { ComponentProps } from 'react';
 import { render, screen } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
 import { describe, expect, it, vi } from 'vitest';
 import { TimeStep } from './TimeStep';
+
+const timeStepCss = readFileSync('src/features/Upload/ui/steps/TimeStep.module.css', 'utf8');
+
+function coarsePointerRangeThumbRule() {
+  const match = timeStepCss.match(/@media \(pointer: coarse\) \{\s*\.rangeThumb \{([^}]*)\}/);
+  return match?.[1]?.replace(/\s+/g, ' ').trim() ?? '';
+}
 
 function renderTimeStep(overrides: Partial<ComponentProps<typeof TimeStep>> = {}) {
   return render(
@@ -44,5 +52,11 @@ describe('TimeStep', () => {
       boxShadow: 'inset 3px 0 0 var(--wa-status-danger)',
     });
     expect(title).toHaveAttribute('data-validation-pulse', 'true');
+  });
+
+  it('grows the range-slider thumb touch target under a coarse pointer without squaring it into a circle', () => {
+    expect(coarsePointerRangeThumbRule()).toBe(
+      'width: calc(var(--wa-control-height-default) * 2); height: var(--wa-control-height-default);',
+    );
   });
 });

@@ -325,6 +325,12 @@ describe('UploadSidebar workspace behavior', () => {
     expect(screen.getByRole('button', { name: 'Publish session' }).className).toMatch(/panelControl/);
   });
 
+  it('gives the empty file-selector pad even padding on every side', () => {
+    const uploadZoneRule = cssRule('.sidebar :global([data-upload-zone])');
+
+    expect(uploadZoneRule).toBe('padding: var(--upload-empty-padding);');
+  });
+
   it('uses the spot-style validity rail on the media field without recoloring its full border', () => {
     const readyRule = cssRule(".mediaSection[data-ready='true'] [data-upload-module]");
     const invalidRule = cssRule(".mediaSection[aria-invalid='true'] [data-upload-module]");
