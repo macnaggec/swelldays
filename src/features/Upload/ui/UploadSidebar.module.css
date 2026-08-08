@@ -82,11 +82,6 @@
   width: 100%;
 }
 
-:global([data-panel-layout][data-sheet-snap='peek']) .publishFooter,
-:global([data-panel-layout][data-sheet-snap='half']) .publishFooter {
-  display: none;
-}
-
 :global([data-panel-layout][data-sheet-snap='peek']) .detailSection,
 :global([data-panel-layout][data-sheet-snap='half']) .detailSection {
   display: none;
