@@ -4,7 +4,7 @@ import { GlobeScene } from './GlobeScene';
 import type { LngLat } from 'shared/types/coordinates';
 import { resolveAppRouteIntent, type DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
-import type { DrawerGeometry } from 'shared/ui/DrawerShell';
+import type { DrawerGeometry, SheetSnap } from 'shared/ui/DrawerShell';
 
 const mocks = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   galleryExpanded: true,
   drawerGeometry: null as DrawerGeometry | null,
   drawerTargetGeometry: ((): DrawerGeometry | null => null)(),
+  sheetSnap: null as SheetSnap | null,
   setBrowsingPanelExpanded: vi.fn(),
   setGalleryPanelExpanded: vi.fn(),
   matches: [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: { workspaceId: 'workspace-1' } }] as Array<{
@@ -101,6 +102,7 @@ vi.mock('shared/model/panelExpansionStore', () => ({
 vi.mock('shared/ui/DrawerShell', () => ({
   useDrawerGeometry: () => mocks.drawerGeometry,
   useDrawerTargetGeometry: () => mocks.drawerTargetGeometry,
+  useDrawerSheetSnap: () => mocks.sheetSnap,
   useBrowseSurface: () => ({
     mode: mocks.browseSurfaceMode,
     showResults: mocks.showBrowseResults,
@@ -142,6 +144,7 @@ beforeEach(() => {
   mocks.galleryExpanded = true;
   mocks.drawerGeometry = null;
   mocks.drawerTargetGeometry = null;
+  mocks.sheetSnap = null;
   mocks.browseSurfaceMode = 'results';
 });
 
@@ -558,5 +561,49 @@ describe('GlobeScene map camera insets', () => {
       .toHaveAttribute('data-camera-inset-top-px', '0');
     expect(screen.getByText('Select Pipeline').parentElement)
       .toHaveAttribute('data-camera-inset-right-px', '0');
+  });
+
+  it('holds the bottom sheet inset still while the sheet crosses into its full snap', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 844, configurable: true });
+    mocks.browseSurfaceMode = 'map';
+    mocks.sheetSnap = 'half';
+    mocks.drawerTargetGeometry = {
+      left: 0, top: 557, right: 390, bottom: 844, width: 390, height: 287,
+    };
+
+    const { rerender } = renderGlobeScene();
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-bottom-px', '287');
+
+    // The sheet keeps rising toward full, but the map should not follow it.
+    mocks.sheetSnap = 'full';
+    mocks.drawerTargetGeometry = {
+      left: 0, top: 24, right: 390, bottom: 844, width: 390, height: 820,
+    };
+    rerender(globeSceneTree());
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-bottom-px', '287');
+
+    // Pulling the sheet back down resumes following its real occlusion.
+    mocks.sheetSnap = 'half';
+    mocks.drawerTargetGeometry = {
+      left: 0, top: 557, right: 390, bottom: 844, width: 390, height: 287,
+    };
+    rerender(globeSceneTree());
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-bottom-px', '287');
+
+    mocks.sheetSnap = 'peek';
+    mocks.drawerTargetGeometry = {
+      left: 0, top: 728, right: 390, bottom: 844, width: 390, height: 116,
+    };
+    rerender(globeSceneTree());
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-bottom-px', '116');
   });
 });

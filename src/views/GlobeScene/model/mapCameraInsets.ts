@@ -1,5 +1,5 @@
 import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
-import type { DrawerGeometry } from 'shared/ui/DrawerShell';
+import type { DrawerGeometry, SheetSnap } from 'shared/ui/DrawerShell';
 import { NO_MAP_CAMERA_INSETS, type MapCameraInsets } from 'widgets/GlobeMap';
 
 export interface MapCameraInsetsInput {
@@ -55,4 +55,19 @@ export function deriveMapCameraInsets({
     case 'hidden':
       return NO_MAP_CAMERA_INSETS;
   }
+}
+
+/**
+ * The sheet's `full` snap covers all but a 24px strip of the viewport, so the pin the
+ * bottom inset exists to keep clear of the sheet is about to be fully hidden anyway —
+ * recentering as the sheet crosses into `full` is motion with no payoff, immediately
+ * undone by the sheet covering it. Holding the prior inset keeps the map still through
+ * that crossing; leaving `full` (back to `half` or `peek`) resumes following it.
+ */
+export function resolveFrozenBottomInsetPx(
+  sheetSnap: SheetSnap | null,
+  rawBottomInsetPx: number,
+  previousFrozenBottomInsetPx: number,
+): number {
+  return sheetSnap === 'full' ? previousFrozenBottomInsetPx : rawBottomInsetPx;
 }

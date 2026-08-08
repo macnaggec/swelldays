@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { useViewportMetrics } from 'shared/model/viewportMetrics';
+import type { SheetSnap } from './sheetSnapPolicy';
 
 export interface DrawerGeometry {
   readonly left: number;
@@ -134,6 +135,27 @@ export function useDrawerDragging() {
     },
     () => drawerDragging,
     () => false,
+  );
+}
+
+let sheetSnapSnapshot: SheetSnap | null = null;
+const sheetSnapListeners = new Set<() => void>();
+
+/** The bottom sheet's current (resting or in-flight target) snap, or null when the mounted drawer isn't a bottom sheet. */
+export function publishDrawerSheetSnap(snap: SheetSnap | null) {
+  if (sheetSnapSnapshot === snap) return;
+  sheetSnapSnapshot = snap;
+  sheetSnapListeners.forEach((listener) => listener());
+}
+
+export function useDrawerSheetSnap() {
+  return useSyncExternalStore(
+    (listener) => {
+      sheetSnapListeners.add(listener);
+      return () => sheetSnapListeners.delete(listener);
+    },
+    () => sheetSnapSnapshot,
+    () => null,
   );
 }
 

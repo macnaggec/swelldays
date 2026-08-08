@@ -21,6 +21,7 @@ import {
   publishDrawerDragging,
   publishDrawerGeometry,
   publishDrawerMotion,
+  publishDrawerSheetSnap,
   publishDrawerTargetGeometry,
   type DrawerGeometry,
 } from './geometry';
@@ -217,9 +218,11 @@ export function DrawerShell(props: DrawerShellProps) {
     }
 
     publishDrawerTargetGeometry(target);
+    publishDrawerSheetSnap(snap ?? null);
   }, [
     panelOpen,
     props.presentation,
+    snap,
     targetWidthPx,
     targetSheetHeightPx,
     viewportHeightPx,
@@ -271,6 +274,7 @@ export function DrawerShell(props: DrawerShellProps) {
       publishDrawerTargetGeometry(null);
       publishDrawerMotion(false);
       publishDrawerDragging(false);
+      publishDrawerSheetSnap(null);
     };
   }, []);
 

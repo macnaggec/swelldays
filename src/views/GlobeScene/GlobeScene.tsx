@@ -18,12 +18,13 @@ import { materialClasses } from 'shared/ui/design-system';
 import {
   useBrowseSurface,
   useDrawerGeometry,
+  useDrawerSheetSnap,
   useDrawerTargetGeometry,
 } from 'shared/ui/DrawerShell';
 import classes from './GlobeScene.module.css';
 import { deriveGlobeMotionPolicy } from './model/globeMotionPolicy';
 import { deriveGlobeSceneMode } from './model/globeSceneMode';
-import { deriveMapCameraInsets } from './model/mapCameraInsets';
+import { deriveMapCameraInsets, resolveFrozenBottomInsetPx } from './model/mapCameraInsets';
 import { getOverviewMapBounds } from './model/overviewBoundsStrategy';
 
 function subscribeDocumentVisibility(onStoreChange: () => void) {
@@ -119,10 +120,11 @@ export function GlobeScene() {
     : layoutPolicy.map.interaction;
   const drawerGeometry = useDrawerGeometry();
   const drawerTargetGeometry = useDrawerTargetGeometry();
+  const sheetSnap = useDrawerSheetSnap();
   const canCompactPersistentDrawer = layoutPolicy.drawer.presentation === 'persistent'
     && (layoutPolicy.drawer.state === 'expanded' || layoutPolicy.drawer.state === 'full');
   const cameraDrawerBounds = drawerTargetGeometry ?? drawerGeometry;
-  const cameraInsetsPx = deriveMapCameraInsets({
+  const rawCameraInsetsPx = deriveMapCameraInsets({
     drawerBounds: cameraDrawerBounds,
     drawerPresentation: layoutPolicy.drawer.presentation,
     drawerChromeOnly: layoutPolicy.drawer.presentation === 'sideOverlay'
@@ -131,6 +133,20 @@ export function GlobeScene() {
     viewportWidthPx,
     viewportHeightPx,
   });
+  // The sheet's `full` snap covers nearly the whole viewport, so recentering the map as
+  // it crosses into `full` is motion with no payoff (see resolveFrozenBottomInsetPx).
+  const [frozenBottomInsetPx, setFrozenBottomInsetPx] = useState(rawCameraInsetsPx.bottom);
+  const nextFrozenBottomInsetPx = resolveFrozenBottomInsetPx(
+    sheetSnap,
+    rawCameraInsetsPx.bottom,
+    frozenBottomInsetPx,
+  );
+  if (nextFrozenBottomInsetPx !== frozenBottomInsetPx) {
+    setFrozenBottomInsetPx(nextFrozenBottomInsetPx);
+  }
+  const cameraInsetsPx = sheetSnap === 'full'
+    ? { ...rawCameraInsetsPx, bottom: frozenBottomInsetPx }
+    : rawCameraInsetsPx;
 
   const handleSpotSelect = useCallback(async (spot: MapSpotProjection) => {
     if (isUpdatingWorkspace) return;
