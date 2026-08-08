@@ -16,6 +16,10 @@
   flex-shrink: 0;
 }
 
+:global([data-panel-layout][data-sheet-snap='peek']) .panelTop {
+  display: none;
+}
+
 .headerSlot {
   min-width: 0;
   display: flex;
