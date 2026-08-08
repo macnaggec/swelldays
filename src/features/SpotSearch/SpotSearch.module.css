@@ -22,4 +22,5 @@
    same height at every band, including the coarse-pointer override. */
 .input {
   height: var(--wa-control-height-default);
+  border-radius: var(--wa-radius-chrome);
 }

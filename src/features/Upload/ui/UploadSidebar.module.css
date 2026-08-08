@@ -1,6 +1,6 @@
 .sidebar {
   --upload-gutter: 16px;
-  --upload-section-gap: 20px;
+  --upload-section-gap: 28px;
   --upload-control-height: var(--wa-control-height-default);
   --upload-compact-inset: 8px;
   --upload-block-padding-top: 12px;

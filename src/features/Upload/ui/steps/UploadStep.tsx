@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { Stack, Text } from '@mantine/core';
 import {
   useUploadWarning,
   GalleryCard,
@@ -50,7 +51,20 @@ export function UploadStep({
   const selection = useGallerySelection<GalleryCard>({ items: selectableItems, getId: getItemId });
 
   return (
-    <>
+    <Stack gap={0}>
+      <Text
+        data-upload-block-title
+        size="sm"
+        fw={500}
+        ta="center"
+        style={{
+          letterSpacing: '0.07em',
+          textTransform: 'uppercase',
+          color: 'rgba(255,255,255,0.4)',
+        }}
+      >
+        Add your media
+      </Text>
       {queue.length > 0 && (
         <UploadStatusLabel
           items={queue}
@@ -77,6 +91,6 @@ export function UploadStep({
         onDriveImport={openDrivePicker}
         driveLoading={isPickerLoading}
       />
-    </>
+    </Stack>
   );
 }
