@@ -76,6 +76,8 @@ interface DrawerShellSheetProps extends DrawerShellBaseProps {
   /** True when this sheet keeps its own header row (back chevron + title) visible at
    *  Peek, unlike Browse's sheet — Peek then needs enough height for that row too. */
   peekIncludesHeader?: boolean;
+  /** Snaps this sheet may land on when dragged or flicked. Defaults to all three. */
+  availableSnaps?: readonly SheetSnap[];
 }
 
 export type DrawerShellProps = DrawerShellPanelProps | DrawerShellSheetProps;
@@ -98,6 +100,7 @@ export function DrawerShell(props: DrawerShellProps) {
   const snap = props.presentation === 'bottomSheet' ? props.snap : undefined;
   const onSnapChange = props.presentation === 'bottomSheet' ? props.onSnapChange : undefined;
   const peekIncludesHeader = props.presentation === 'bottomSheet' ? props.peekIncludesHeader : undefined;
+  const availableSnaps = props.presentation === 'bottomSheet' ? props.availableSnaps : undefined;
   const panelOpen = props.presentation === 'bottomSheet' ? true : (props.open ?? true);
   const positionKey: DrawerShellState | SheetSnap =
     props.presentation === 'bottomSheet' ? props.snap : props.state;
@@ -350,7 +353,7 @@ export function DrawerShell(props: DrawerShellProps) {
     const surface = surfaceRef.current;
     if (!surface || snap === undefined || !onSnapChange) return;
     const heightPx = viewportHeightPx - surface.getBoundingClientRect().top;
-    const nextSnap = nearestSheetSnap({ heightPx, velocityPx: info.velocity.y, heights });
+    const nextSnap = nearestSheetSnap({ heightPx, velocityPx: info.velocity.y, heights, availableSnaps });
     if (nextSnap === snap) {
       // The resolved snap did not change, so nothing re-renders and the declarative
       // `animate` prop below never recomputes its target. Settle explicitly instead of

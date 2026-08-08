@@ -58,11 +58,18 @@ export interface NearestSheetSnapInput {
   /** Vertical speed of the sheet's top edge, px/s. Positive means moving down. */
   velocityPx: number;
   heights: SheetSnapHeights;
+  /** Snaps this sheet may land on. Defaults to all three (Browse's own sheet). */
+  availableSnaps?: readonly SheetSnap[];
 }
 
-export function nearestSheetSnap({ heightPx, velocityPx, heights }: NearestSheetSnapInput): SheetSnap {
+export function nearestSheetSnap({
+  heightPx,
+  velocityPx,
+  heights,
+  availableSnaps = SHEET_SNAPS,
+}: NearestSheetSnapInput): SheetSnap {
   if (velocityPx <= -SHEET_FLICK_VELOCITY_PX_PER_S) {
-    for (const snap of SHEET_SNAPS) {
+    for (const snap of availableSnaps) {
       if (heights[snap] > heightPx) return snap;
     }
     return 'full';
@@ -70,7 +77,7 @@ export function nearestSheetSnap({ heightPx, velocityPx, heights }: NearestSheet
 
   if (velocityPx >= SHEET_FLICK_VELOCITY_PX_PER_S) {
     let candidate: SheetSnap | null = null;
-    for (const snap of SHEET_SNAPS) {
+    for (const snap of availableSnaps) {
       if (heights[snap] < heightPx) candidate = snap;
       else break;
     }
@@ -79,7 +86,7 @@ export function nearestSheetSnap({ heightPx, velocityPx, heights }: NearestSheet
 
   let nearest: SheetSnap | null = null;
   let nearestDistance = Infinity;
-  for (const snap of SHEET_SNAPS) {
+  for (const snap of availableSnaps) {
     const distance = Math.abs(heights[snap] - heightPx);
     if (distance < nearestDistance) {
       nearest = snap;

@@ -82,25 +82,8 @@
   width: 100%;
 }
 
-:global([data-panel-layout][data-sheet-snap='peek']) .detailSection,
-:global([data-panel-layout][data-sheet-snap='half']) .detailSection {
+:global([data-panel-layout][data-sheet-snap='peek']) .detailSection {
   display: none;
-}
-
-:global([data-panel-layout]:not([data-sheet-snap='half'])) .halfSnapStatus {
-  display: none;
-}
-
-:global([data-panel-layout][data-sheet-snap='half']) .halfSnapStatus {
-  display: flex;
-}
-
-.statusIconReady {
-  color: var(--wa-accent-spot);
-}
-
-.statusIconPending {
-  color: var(--wa-text-dimmed);
 }
 
 .cancelButton {

@@ -100,6 +100,8 @@ function PanelLayout() {
   );
 }
 
+const UPLOAD_SHEET_SNAPS: readonly SheetSnap[] = ['peek', 'full'];
+
 function PanelFrame({ children }: { children: ReactNode }) {
   const userPreferredExpanded = usePanelExpansionStore((state) => state.browsingExpanded);
   const galleryPreferredExpanded = usePanelExpansionStore((state) => state.galleryExpanded);
@@ -427,6 +429,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
               sheetSnap={isBrowseSheet ? sheetSnap : isUploadSheet ? uploadSheetSnap : undefined}
               onSheetSnapChange={isBrowseSheet ? handleSheetSnapChange : isUploadSheet ? setUploadSheetSnap : undefined}
               sheetPeekIncludesHeader={isUploadSheet}
+              sheetAvailableSnaps={isUploadSheet ? UPLOAD_SHEET_SNAPS : undefined}
               expanded={renderedExpanded}
               onExpandToggle={handlePanelExpandToggle}
               onBack={routeBackActionForPanel?.onBack ?? defaultBackAction}
