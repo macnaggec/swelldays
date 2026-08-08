@@ -13,13 +13,14 @@ const SHEET_FULL_TOP_INSET_PX = 24;
 
 /**
  * Resting height of the peek snap. Sized by its own content — the search row and upload
- * control beneath the drag handle — rather than by the viewport. 24px drag handle +
- * 20px top/bottom .stickyChrome padding at peek + 44px control height (coarse-pointer,
- * the real case on a phone — both FeedSearch's input and the Upload action button use
- * --wa-control-height-default) = 108px. Was 84px, tuned before coarse-pointer controls
- * grew to 44px tall; the mismatch clipped the search row on real phones.
+ * control beneath the drag handle — rather than by the viewport. Measured directly (not
+ * recomputed) at 24px drag handle + 92px .stickyChrome (its real rendered height,
+ * confirmed via DevTools): 20px+20px padding-block, 4px+4px margin-block from
+ * PanelRouteLayout.module.css's compact-toolbar rule, and the 44px coarse-pointer
+ * control height) = 116px. Was 108px — round 7's arithmetic missed the toolbar's own
+ * margin-block, undercounting by exactly the 8px this measurement confirmed.
  */
-export const SHEET_PEEK_HEIGHT_PX = 108;
+export const SHEET_PEEK_HEIGHT_PX = 116;
 
 /**
  * Peek height for a sheet whose header row (back chevron + title) stays visible at
