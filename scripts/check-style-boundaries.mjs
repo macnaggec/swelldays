@@ -400,8 +400,13 @@ const requiredPanelLayoutStyles = [
     /\.scroller:has\(\.stickyChrome\s+\[data-panel-scroll-chrome-primary\]\)\s*\{[^}]*overflow-anchor:\s*none/s,
   ],
   [
+    // Symmetric padding-block alone isn't enough: DrawerShell's drag handle reserves
+    // its own 24px band above this row, and its grabber pill sits 11px above that
+    // band's bottom edge, not flush with it — so a symmetric 20px/20px split still
+    // reads as ~35px above the row vs ~24px below. 9px/20px is what actually lands
+    // both visible gaps on 24px (see SHEET_PEEK_HEIGHT_PX's own comment).
     'peek search row has equal top and bottom clearance around the overlaid grabber',
-    /\.root\[data-sheet-snap='peek'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*20px/s,
+    /\.root\[data-sheet-snap='peek'\]\s+\.stickyChrome\s*\{[^}]*padding-top:\s*9px;[^}]*padding-bottom:\s*20px/s,
   ],
 ];
 

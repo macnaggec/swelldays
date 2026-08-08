@@ -204,7 +204,13 @@
 }
 
 .root[data-sheet-snap='peek'] .stickyChrome {
-  padding-block: 20px;
+  /* Asymmetric on purpose: DrawerShell's drag handle above already leaves 11px of
+     clearance below its own grabber pill before this row starts, so 9px here (not
+     20px) keeps the visible gap above the row equal to the 4px + 20px gap below it
+     to the sheet's own bottom edge — both land on 24px. See the peek-height
+     constant in DrawerShell's sheetSnapPolicy.ts. */
+  padding-top: 9px;
+  padding-bottom: 20px;
 }
 
 .root[data-sheet-snap] {
