@@ -82,17 +82,31 @@
   width: 100%;
 }
 
+:global([data-panel-layout][data-sheet-snap='peek']) .publishFooter,
+:global([data-panel-layout][data-sheet-snap='half']) .publishFooter {
+  display: none;
+}
+
 .cancelButton {
   color: var(--wa-text-dimmed);
-  background: color-mix(in srgb, var(--wa-status-danger) 6%, var(--wa-control-fill));
-  border-color: color-mix(in srgb, var(--wa-status-danger) 22%, var(--wa-glass-border-media-overlay));
-  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 120ms ease;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--wa-status-danger) 6%, var(--wa-panel-control-background)),
+    transparent
+  );
+  backdrop-filter: var(--wa-glass-blur-sm);
+  -webkit-backdrop-filter: var(--wa-glass-blur-sm);
+  border-radius: var(--wa-radius-control-md);
+  transition: color 160ms ease, transform 120ms ease;
 }
 
 .cancelButton:hover {
   color: var(--wa-status-danger);
-  background: color-mix(in srgb, var(--wa-status-danger) 12%, var(--wa-control-fill));
-  border-color: color-mix(in srgb, var(--wa-status-danger) 42%, var(--wa-glass-border-media-overlay));
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--wa-status-danger) 12%, var(--wa-panel-control-background)),
+    transparent
+  );
 }
 
 .cancelButton:active {
@@ -102,16 +116,25 @@
 .publishButton {
   min-width: 164px;
   color: var(--wa-text-muted);
-  background: color-mix(in srgb, var(--wa-accent-spot) 6%, var(--wa-control-fill));
-  border-color: color-mix(in srgb, var(--wa-accent-spot) 22%, var(--wa-glass-border-media-overlay));
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--wa-accent-spot) 6%, var(--wa-panel-control-background)),
+    transparent
+  );
+  backdrop-filter: var(--wa-glass-blur-sm);
+  -webkit-backdrop-filter: var(--wa-glass-blur-sm);
+  border-radius: var(--wa-radius-control-md);
   box-shadow: none;
-  transition: color 160ms ease, transform 120ms ease, background-color 160ms ease, border-color 160ms ease;
+  transition: color 160ms ease, transform 120ms ease;
 }
 
 .publishButton:hover {
   color: var(--wa-text-primary-action);
-  background: color-mix(in srgb, var(--wa-accent-spot) 12%, var(--wa-control-fill));
-  border-color: color-mix(in srgb, var(--wa-accent-spot) 42%, var(--wa-glass-border-media-overlay));
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--wa-accent-spot) 12%, var(--wa-panel-control-background)),
+    transparent
+  );
 }
 
 .publishButton:active {
@@ -120,16 +143,22 @@
 
 .publishFooter[data-ready='true'] .publishButton {
   color: var(--wa-text-primary-action);
-  background: color-mix(in srgb, var(--wa-accent-spot) 22%, transparent);
-  border-color: color-mix(in srgb, var(--wa-accent-spot) 68%, transparent);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--wa-accent-spot) 22%, transparent),
+    transparent
+  );
   box-shadow:
     0 8px 24px color-mix(in srgb, var(--wa-accent-spot) 30%, transparent),
     0 0 16px color-mix(in srgb, var(--wa-accent-spot) 18%, transparent);
 }
 
 .publishFooter[data-ready='true'] .publishButton:hover {
-  background: color-mix(in srgb, var(--wa-accent-spot) 30%, transparent);
-  border-color: color-mix(in srgb, var(--wa-accent-spot) 82%, transparent);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--wa-accent-spot) 30%, transparent),
+    transparent
+  );
 }
 
 @keyframes validationControlPulse {

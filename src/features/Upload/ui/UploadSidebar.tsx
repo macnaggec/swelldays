@@ -19,7 +19,6 @@ import { UploadStep } from './steps/UploadStep';
 import { PriceStep } from './steps/PriceStep';
 import { TimeStep } from './steps/TimeStep';
 import { combineDateAndTime, minutesToTime } from './steps/helpers';
-import materials from 'shared/ui/design-system/materials.module.css';
 import { PanelLayoutFooter } from 'shared/ui/PanelLayout';
 import styles from './UploadSidebar.module.css';
 import type { UploadWorkspaceState } from 'shared/types/uploadWorkspace';
@@ -340,9 +339,8 @@ function UploadSidebarContent({
           >
             <Popover.Target>
               <Button
-                className={`${styles.cancelButton} ${materials.panelControl}`}
+                className={styles.cancelButton}
                 variant="transparent"
-                radius="xl"
                 disabled={isPending}
                 loading={isDiscarding}
                 onClick={handleCancelClick}
@@ -390,9 +388,8 @@ function UploadSidebarContent({
             </Popover.Dropdown>
           </Popover>
           <Button
-            className={`${styles.publishButton} ${materials.panelControl}`}
+            className={styles.publishButton}
             variant="transparent"
-            radius="xl"
             disabled={isDiscarding}
             loading={isPending}
             onClick={() => { void handlePublish(); }}

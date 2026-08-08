@@ -115,7 +115,7 @@ export default function SpotSearch({
 
   const renderRightSection = () => {
     if (isFetching) return <Loader size={16} />;
-    if (inputValue) return <CloseButton size="sm" onClick={handleClearClick} aria-label="Clear search" radius="xl" className={classes.clearButton} />;
+    if (inputValue) return <CloseButton size="sm" onClick={handleClearClick} aria-label="Clear search" className={classes.clearButton} />;
     return null;
   };
 
@@ -151,7 +151,6 @@ export default function SpotSearch({
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           autoFocus={autoFocus}
-          radius="md"
           leftSection={
             isFiltering
               ? <IconMapPin size={16} className={classes.activeIcon} />

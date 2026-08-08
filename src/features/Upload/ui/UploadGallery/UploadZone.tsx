@@ -3,6 +3,7 @@ import { Box, Button, Group, Stack, Text } from '@mantine/core';
 import { IconBrandGoogleDrive, IconFolderOpen, IconUpload } from '@tabler/icons-react';
 import { handleFileSelection } from '../../lib/fileSelection';
 import { materialClasses } from 'shared/ui/design-system';
+import classes from './UploadZone.module.css';
 
 interface UploadZoneProps {
   onFilesSelected: (files: File[]) => void;
@@ -43,8 +44,8 @@ export function UploadZone({ onFilesSelected, onDriveImport, driveLoading, disab
           <Button
             leftSection={<IconBrandGoogleDrive size={14} />}
             size="sm"
-            radius="xl"
             variant="light"
+            className={classes.zoneButton}
             onClick={() => !disabled && onDriveImport?.()}
             loading={driveLoading}
             disabled={disabled}
@@ -54,8 +55,8 @@ export function UploadZone({ onFilesSelected, onDriveImport, driveLoading, disab
           <Button
             leftSection={<IconFolderOpen size={14} />}
             size="sm"
-            radius="xl"
             variant="subtle"
+            className={classes.zoneButton}
             onClick={() => !disabled && inputRef.current?.click()}
             disabled={disabled}
           >

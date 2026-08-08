@@ -307,7 +307,7 @@ describe('UploadSidebar workspace behavior', () => {
     expect(publishButton.closest('footer')).toHaveAttribute('data-ready', 'true');
   });
 
-  it('keeps the projected footer transparent and puts the shared control glass on the publish button', () => {
+  it('keeps the projected footer transparent and gives the publish button its own borderless glass gradient', () => {
     const footerRule = cssRule('.publishFooter');
 
     expect(footerRule).not.toContain('background:');
@@ -322,7 +322,7 @@ describe('UploadSidebar workspace behavior', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Publish session' }).className).toMatch(/panelControl/);
+    expect(screen.getByRole('button', { name: 'Publish session' }).className).not.toMatch(/panelControl/);
   });
 
   it('gives the empty file-selector pad even padding on every side', () => {

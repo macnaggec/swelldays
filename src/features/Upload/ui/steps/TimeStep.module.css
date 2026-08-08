@@ -20,6 +20,10 @@
   }
 }
 
+.dateCalendarTouch {
+  --mantine-radius-default: var(--wa-radius-control-md);
+}
+
 @media (pointer: coarse) {
   .dateCalendarTouch {
     --day-size-sm: var(--wa-control-height-default);

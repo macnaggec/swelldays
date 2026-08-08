@@ -1,5 +1,6 @@
 .clearButton {
   color: var(--wa-text-muted);
+  border-radius: var(--wa-radius-control-md);
 }
 
 .clearButton:hover {

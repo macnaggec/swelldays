@@ -471,6 +471,12 @@ const sessionLifecycleInvalidationCallers = new Set([
   'src/features/Upload/model/usePublishUploadSession.ts',
 ]);
 
+const mantineRadiusLiteralConsumers = new Set([
+  'src/features/Upload/ui/UploadGallery/UploadZone.tsx',
+  'src/features/SpotSearch/SpotSearch.tsx',
+  'src/features/Upload/ui/steps/TimeStep.tsx',
+]);
+
 const rules = [
   {
     id: 'no-route-panel-css-modules',
@@ -888,6 +894,12 @@ const rules = [
     pattern: /env\(\s*safe-area-inset-/,
     include: file => file.endsWith('.css'),
     exclude: file => file === 'src/shared/ui/design-system/tokens.css',
+  },
+  {
+    id: 'no-raw-mantine-radius-literal',
+    message: 'Upload/Search controls must resolve their radius from a --wa-radius-* token (see SectionSwitcher), not a raw Mantine radius prop literal.',
+    pattern: /\bradius="/,
+    include: file => mantineRadiusLiteralConsumers.has(file),
   },
 ];
 
