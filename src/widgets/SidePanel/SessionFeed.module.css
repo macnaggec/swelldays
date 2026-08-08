@@ -3,6 +3,10 @@
   min-height: 0;
 }
 
+:global([data-panel-layout][data-sheet-snap='peek']) .feed {
+  display: none;
+}
+
 .grid {
   padding: var(--wa-panel-content-inset);
 }
