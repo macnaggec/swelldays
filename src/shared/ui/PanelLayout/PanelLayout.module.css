@@ -224,6 +224,10 @@
   );
 }
 
+.root[data-sheet-snap='peek'] {
+  margin-top: var(--wa-sheet-drag-handle-height);
+}
+
 .root[data-sheet-snap] .footer,
 .root[data-drawer-presentation='sideWorkspace'] .footer {
   position: absolute;
