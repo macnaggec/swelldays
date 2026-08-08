@@ -15,7 +15,7 @@ describe('resolveSheetSnapHeights', () => {
     });
 
     expect(heights).toEqual({
-      peek: 84,
+      peek: 108,
       half: 287,
       full: 820,
     });
@@ -24,7 +24,7 @@ describe('resolveSheetSnapHeights', () => {
       half: viewportHeightPx - heights.half,
       full: viewportHeightPx - heights.full,
     }).toEqual({
-      peek: 760,
+      peek: 736,
       half: 557,
       full: 24,
     });
@@ -32,7 +32,7 @@ describe('resolveSheetSnapHeights', () => {
 
   it('resolves the three snap heights at 430x932', () => {
     expect(resolveSheetSnapHeights({ viewportHeightPx: 932, peekHeightPx: SHEET_PEEK_HEIGHT_PX })).toEqual({
-      peek: 84,
+      peek: 108,
       half: 317,
       full: 908,
     });
@@ -50,7 +50,7 @@ describe('resolveSheetSnapHeights', () => {
 
 describe('nearestSheetSnap', () => {
   const heights = resolveSheetSnapHeights({ viewportHeightPx: 844, peekHeightPx: SHEET_PEEK_HEIGHT_PX });
-  // heights: { peek: 84, half: 287, full: 820 }
+  // heights: { peek: 108, half: 287, full: 820 }
 
   it('lands on peek when at rest exactly at the peek height', () => {
     expect(nearestSheetSnap({ heightPx: heights.peek, velocityPx: 0, heights })).toBe('peek');
@@ -65,8 +65,8 @@ describe('nearestSheetSnap', () => {
   });
 
   it('lands on the nearer neighbour at a midpoint biased toward half', () => {
-    // 186 is 102px from peek (84) and 101px from half (287): half is nearer.
-    expect(nearestSheetSnap({ heightPx: 186, velocityPx: 0, heights })).toBe('half');
+    // 220 is 112px from peek (108) and 67px from half (287): half is nearer.
+    expect(nearestSheetSnap({ heightPx: 220, velocityPx: 0, heights })).toBe('half');
   });
 
   it('lands on the nearer neighbour at a midpoint biased toward full', () => {
@@ -75,12 +75,12 @@ describe('nearestSheetSnap', () => {
   });
 
   it('resolves an exact tie between peek and half to the shorter snap', () => {
-    // 185.5 is exactly 101.5px from both peek (84) and half (287).
-    expect(nearestSheetSnap({ heightPx: 185.5, velocityPx: 0, heights })).toBe('peek');
+    // 197.5 is exactly 89.5px from both peek (108) and half (287).
+    expect(nearestSheetSnap({ heightPx: 197.5, velocityPx: 0, heights })).toBe('peek');
   });
 
   it('lands on half on an upward flick from just above peek', () => {
-    expect(nearestSheetSnap({ heightPx: 90, velocityPx: -500, heights })).toBe('half');
+    expect(nearestSheetSnap({ heightPx: 115, velocityPx: -500, heights })).toBe('half');
   });
 
   it('lands on half on a downward flick from just below full', () => {
@@ -98,7 +98,7 @@ describe('nearestSheetSnap', () => {
 
 describe('resolveBrowseSheetNavigationOpacity', () => {
   const heights = resolveSheetSnapHeights({ viewportHeightPx: 844, peekHeightPx: SHEET_PEEK_HEIGHT_PX });
-  // heights: { peek: 84, half: 287, full: 820 }
+  // heights: { peek: 108, half: 287, full: 820 }
 
   it('is fully opaque and not hidden at or below the half height', () => {
     expect(resolveBrowseSheetNavigationOpacity({ visibleHeightPx: heights.half, heights })).toEqual({

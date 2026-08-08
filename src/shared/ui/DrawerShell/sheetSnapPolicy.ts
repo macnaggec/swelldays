@@ -13,12 +13,13 @@ const SHEET_FULL_TOP_INSET_PX = 24;
 
 /**
  * Resting height of the peek snap. Sized by its own content — the search row and upload
- * control beneath the drag handle — rather than by the viewport. M02-d removed the 52px
- * section-switcher header from that composition, reducing the approved 132px peek by the
- * same amount. The compact search row adds 4px above and below the shared 8px chrome
- * inset, producing the approved even 12px breathing room.
+ * control beneath the drag handle — rather than by the viewport. 24px drag handle +
+ * 20px top/bottom .stickyChrome padding at peek + 44px control height (coarse-pointer,
+ * the real case on a phone — both FeedSearch's input and the Upload action button use
+ * --wa-control-height-default) = 108px. Was 84px, tuned before coarse-pointer controls
+ * grew to 44px tall; the mismatch clipped the search row on real phones.
  */
-export const SHEET_PEEK_HEIGHT_PX = 84;
+export const SHEET_PEEK_HEIGHT_PX = 108;
 
 /**
  * Peek height for a sheet whose header row (back chevron + title) stays visible at
