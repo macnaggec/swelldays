@@ -20,6 +20,7 @@ import { PriceStep } from './steps/PriceStep';
 import { TimeStep } from './steps/TimeStep';
 import { combineDateAndTime, minutesToTime } from './steps/helpers';
 import { PanelLayoutFooter } from 'shared/ui/PanelLayout';
+import { IconPhoto, IconCurrencyDollar, IconCalendar } from '@tabler/icons-react';
 import styles from './UploadSidebar.module.css';
 import type { UploadWorkspaceState } from 'shared/types/uploadWorkspace';
 
@@ -257,8 +258,8 @@ function UploadSidebarContent({
     const sectionClassName = violation === 'spot'
       ? styles.spotSection
       : violation === 'media'
-        ? styles.mediaSection
-        : '';
+        ? `${styles.mediaSection} ${styles.detailSection}`
+        : styles.detailSection;
     return {
       'aria-invalid': isInvalid ? true : undefined,
       'data-ready': violations.includes(violation) ? 'false' : 'true',
@@ -280,6 +281,18 @@ function UploadSidebarContent({
           {header}
         </Box>
       )}
+
+      <Group gap="lg" justify="center" className={styles.halfSnapStatus} aria-hidden="true">
+        <Box className={violations.includes('media') ? styles.statusIconPending : styles.statusIconReady}>
+          <IconPhoto size={20} />
+        </Box>
+        <Box className={violations.includes('price') ? styles.statusIconPending : styles.statusIconReady}>
+          <IconCurrencyDollar size={20} />
+        </Box>
+        <Box className={violations.includes('time') ? styles.statusIconPending : styles.statusIconReady}>
+          <IconCalendar size={20} />
+        </Box>
+      </Group>
 
       {/* Files */}
       <Box component="section" ref={mediaSectionRef} aria-label="Media" {...validationProps('media')}>

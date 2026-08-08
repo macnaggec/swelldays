@@ -1,3 +1,4 @@
 .zoneButton {
+  height: var(--wa-control-height-default);
   border-radius: var(--wa-radius-control-md);
 }

@@ -87,26 +87,39 @@
   display: none;
 }
 
+:global([data-panel-layout][data-sheet-snap='peek']) .detailSection,
+:global([data-panel-layout][data-sheet-snap='half']) .detailSection {
+  display: none;
+}
+
+.halfSnapStatus {
+  display: none;
+}
+
+:global([data-panel-layout][data-sheet-snap='half']) .halfSnapStatus {
+  display: flex;
+}
+
+.statusIconReady {
+  color: var(--wa-accent-spot);
+}
+
+.statusIconPending {
+  color: var(--wa-text-dimmed);
+}
+
 .cancelButton {
   color: var(--wa-text-dimmed);
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--wa-status-danger) 6%, var(--wa-panel-control-background)),
-    transparent
-  );
+  background: color-mix(in srgb, var(--wa-status-danger) 6%, var(--wa-panel-control-background));
   backdrop-filter: var(--wa-glass-blur-sm);
   -webkit-backdrop-filter: var(--wa-glass-blur-sm);
-  border-radius: var(--wa-radius-control-md);
-  transition: color 160ms ease, transform 120ms ease;
+  border-radius: var(--wa-radius-pill);
+  transition: color 160ms ease, background-color 160ms ease, transform 120ms ease;
 }
 
 .cancelButton:hover {
   color: var(--wa-status-danger);
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--wa-status-danger) 12%, var(--wa-panel-control-background)),
-    transparent
-  );
+  background: color-mix(in srgb, var(--wa-status-danger) 12%, var(--wa-panel-control-background));
 }
 
 .cancelButton:active {
@@ -114,27 +127,18 @@
 }
 
 .publishButton {
-  min-width: 164px;
   color: var(--wa-text-muted);
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--wa-accent-spot) 6%, var(--wa-panel-control-background)),
-    transparent
-  );
+  background: color-mix(in srgb, var(--wa-accent-spot) 6%, var(--wa-panel-control-background));
   backdrop-filter: var(--wa-glass-blur-sm);
   -webkit-backdrop-filter: var(--wa-glass-blur-sm);
-  border-radius: var(--wa-radius-control-md);
+  border-radius: var(--wa-radius-pill);
   box-shadow: none;
-  transition: color 160ms ease, transform 120ms ease;
+  transition: color 160ms ease, transform 120ms ease, background-color 160ms ease;
 }
 
 .publishButton:hover {
   color: var(--wa-text-primary-action);
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--wa-accent-spot) 12%, var(--wa-panel-control-background)),
-    transparent
-  );
+  background: color-mix(in srgb, var(--wa-accent-spot) 12%, var(--wa-panel-control-background));
 }
 
 .publishButton:active {
@@ -143,22 +147,14 @@
 
 .publishFooter[data-ready='true'] .publishButton {
   color: var(--wa-text-primary-action);
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--wa-accent-spot) 22%, transparent),
-    transparent
-  );
+  background: color-mix(in srgb, var(--wa-accent-spot) 30%, var(--wa-panel-control-background));
   box-shadow:
     0 8px 24px color-mix(in srgb, var(--wa-accent-spot) 30%, transparent),
     0 0 16px color-mix(in srgb, var(--wa-accent-spot) 18%, transparent);
 }
 
 .publishFooter[data-ready='true'] .publishButton:hover {
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--wa-accent-spot) 30%, transparent),
-    transparent
-  );
+  background: color-mix(in srgb, var(--wa-accent-spot) 40%, var(--wa-panel-control-background));
 }
 
 @keyframes validationControlPulse {

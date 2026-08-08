@@ -35,7 +35,7 @@
   width: 22px;
   height: 10px;
   border-radius: 99px;
-  background-color: var(--wa-text-primary);
+  background-color: var(--wa-text-muted);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 

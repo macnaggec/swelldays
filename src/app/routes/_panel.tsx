@@ -317,7 +317,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
     }
 
     if (uploadMatch) {
-      return <Title order={1} size="h4">{activeWorkspace?.kind === 'SESSION_EDIT' ? 'Edit session' : 'Upload'}</Title>;
+      return <Title order={1} size="h6">{activeWorkspace?.kind === 'SESSION_EDIT' ? 'Edit session' : 'Upload'}</Title>;
     }
 
     for (const match of [...matches].reverse()) {

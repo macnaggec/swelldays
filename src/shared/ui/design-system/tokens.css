@@ -130,6 +130,7 @@
   --wa-radius-sheet: 16px;
   --wa-radius-dialog: 16px;
   --wa-radius-status: 16px;
+  --wa-radius-pill: 999px;
 
   /* Type scale */
   --wa-font-size-2xs: 9px;
