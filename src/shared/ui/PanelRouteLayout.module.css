@@ -158,11 +158,27 @@
   align-items: stretch;
 }
 
-:global([data-drawer-presentation='sideOverlay']) .toolbarMain,
-:global([data-drawer-presentation='sideOverlay']) .toolbarTrailing {
+:global([data-drawer-presentation='sideOverlay']) .toolbarMain {
   width: 100%;
   max-width: 100%;
   margin-left: 0;
+}
+
+/* User-verified 2026-08-08. A first attempt only moved the left edge (margin-left) while
+   width stayed 100% of the same containing block, so the whole box just slid left — the right
+   edge lost exactly what the left edge gained instead of also reaching its own true edge.
+   100vw is wrong here (this panel is a 45vw fraction of the screen, not the full viewport, and
+   that constant is deliberately forbidden from this file —
+   drawer-shell-owns-adjacent-control-placement), so width instead grows by the inset on both
+   sides — the calculated-negative-margin approach, applied symmetrically — while margin-left
+   pulls the now-wider box's left edge out to match. Confirms display: flex on FilterPills'
+   own .root (added for the bottom-sheet fix, unscoped so it already covers this presentation
+   too) was the missing piece all along, not a width-precision issue — the same calc() shape
+   that got clipped pre-.root-display:flex now bleeds cleanly on both sides here. */
+:global([data-drawer-presentation='sideOverlay']) .toolbarTrailing {
+  width: calc(100% + 2 * var(--wa-panel-content-inset));
+  max-width: none;
+  margin-left: calc(-1 * var(--wa-panel-content-inset));
 }
 
 /* The short-landscape Map plate shrink-wraps this row, so the inner controls

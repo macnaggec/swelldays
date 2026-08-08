@@ -34,6 +34,14 @@
   overflow-x: hidden;
   overscroll-behavior: contain;
   position: relative;
+  /* Matches .rail below: content still scrolls, only the native scrollbar's own chrome is
+     hidden. Needed since M06e's edge-to-edge pill row now reaches this same true right edge —
+     before, the row sat inset enough that the browser's default scrollbar never overlapped it. */
+  scrollbar-width: none;
+}
+
+.scroller::-webkit-scrollbar {
+  display: none;
 }
 
 .scroller[data-content-scroll='locked'] {
