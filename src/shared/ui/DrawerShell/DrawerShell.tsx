@@ -301,13 +301,16 @@ export function DrawerShell(props: DrawerShellProps) {
     : null;
   const destinationWidth = props.presentation === 'bottomSheet'
     ? resting.width
+    // The side overlay's own width never changes between open and closed — only its
+    // horizontal position does (M06h) — so content always lays out at its one resting
+    // width, whether the overlay is open or sliding off-screen closed.
     : props.presentation === 'sideOverlay'
-      || props.presentation === 'fullScreen'
-      || props.presentation === 'sideWorkspace'
-      ? panelOpen ? targetWidthPx : 0
-      : resting.width > 0 && previousPanelVw !== null
-        ? resting.width * (PANEL_WIDTH_VW[props.state] / previousPanelVw)
-        : 0;
+      ? targetWidthPx
+      : props.presentation === 'fullScreen' || props.presentation === 'sideWorkspace'
+        ? panelOpen ? targetWidthPx : 0
+        : resting.width > 0 && previousPanelVw !== null
+          ? resting.width * (PANEL_WIDTH_VW[props.state] / previousPanelVw)
+          : 0;
 
   const settledWidth = useMemo(
     () => ({
@@ -364,34 +367,38 @@ export function DrawerShell(props: DrawerShellProps) {
     onSnapChange(nextSnap);
   };
 
-  // Both presentations name *both* properties, even though each only animates one of
-  // them. An animated value is written to the element as an inline style and stays there;
-  // a target that mentioned only its own property would leave the other presentation's
-  // last value in place, outranking the stylesheet. Live-resizing a window from wide to
-  // compact would then show the sheet still wearing the panel's 25vw width, and only a
-  // reload — which mounts straight into the sheet — would look right.
+  // Every branch names x, y, and width, even though each only animates the one its own
+  // presentation actually moves. An animated value is written to the element as an inline
+  // style and stays there; a target that omitted a property would leave whichever
+  // presentation set it last in place, outranking the stylesheet. Live-resizing a window
+  // from wide to compact would then show the sheet still wearing the panel's 25vw width,
+  // and only a reload — which mounts straight into the sheet — would look right.
   const animate = props.presentation === 'bottomSheet'
-    ? { y: viewportHeightPx - heights[props.snap], width: '100%' }
-    : {
-      y: 0,
-      width: props.presentation === 'sideWorkspace'
-        ? panelOpen
-          ? `${sideWorkspaceWidthPx}px`
-          : '0px'
-        : props.presentation === 'sideOverlay'
+    ? { x: '0%', y: viewportHeightPx - heights[props.snap], width: '100%' }
+    : props.presentation === 'sideOverlay'
+      // Its own width never moves (M06h): opening/closing translates the unchanged box
+      // on/off screen instead of scaling it down, which used to visibly squeeze whatever
+      // it was showing.
+      ? { x: panelOpen ? '0%' : '100%', y: 0, width: `${SHORT_SIDE_OVERLAY_WIDTH_VW}vw` }
+      : {
+        x: '0%',
+        y: 0,
+        width: props.presentation === 'sideWorkspace'
           ? panelOpen
-            ? `${SHORT_SIDE_OVERLAY_WIDTH_VW}vw`
-            : '0vw'
+            ? `${sideWorkspaceWidthPx}px`
+            : '0px'
           : props.presentation === 'fullScreen'
             ? panelOpen
               ? `${FULL_SCREEN_WIDTH_VW}vw`
               : '0vw'
             : props.state === 'expanded' ? `${PANEL_WIDTH_VW.expanded}vw` : `${PANEL_WIDTH_VW.compact}vw`,
-    };
-  // The property a presentation does not animate is corrected instantly: a band crossing
-  // is a presentation swap, not a movement the user should watch.
+      };
+  // The properties a presentation does not animate are corrected instantly: a band
+  // crossing is a presentation swap, not a movement the user should watch, and opening
+  // or closing a fixed-width presentation moves only the one axis that presentation owns.
   const transition = deriveDrawerSurfaceTransition({
     isBottomSheet: props.presentation === 'bottomSheet',
+    isSideOverlay: props.presentation === 'sideOverlay',
     prefersReducedMotion,
   });
 

@@ -12,6 +12,7 @@ import {
   useSheetContentScrollable,
 } from './index';
 import { DRAWER_SHELL_TRANSITION } from './motion';
+import { usePanelSettledWidth } from './panelSettledWidth';
 import { resolveSheetSnapHeights, SHEET_PEEK_HEIGHT_PX, SHEET_SNAPS } from './sheetSnapPolicy';
 
 const animateMock = vi.hoisted(() => vi.fn());
@@ -64,6 +65,15 @@ function TargetGeometryProbe() {
     : 'unmeasured';
 
   return <output data-testid="drawer-target-geometry">{value}</output>;
+}
+
+function SettledWidthProbe() {
+  const settled = usePanelSettledWidth();
+  return (
+    <output data-testid="settled-destination-width">
+      {settled ? settled.destinationWidth : 'none'}
+    </output>
+  );
 }
 
 describe('DrawerShell geometry projection', () => {
@@ -799,6 +809,63 @@ describe('DrawerShell fullScreen geometry', () => {
 
     const surface = screen.getByRole('dialog', { name: 'Content drawer' });
     await vi.waitFor(() => expect(surface.style.width).toBe('100vw'));
+
+    unmount();
+  });
+});
+
+describe('DrawerShell sideOverlay geometry', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps the surface at its resting width and slides it off-screen by translation when the side overlay closes', async () => {
+    const { rerender, unmount } = render(
+      <DrawerShell presentation="sideOverlay" state="compact" modality="nonmodal" open>
+        Panel content
+      </DrawerShell>,
+    );
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    const translateXPercent = () => {
+      const match = /translateX\((-?[\d.]+)%\)/.exec(surface.style.transform);
+      return match ? Number(match[1]) : 0;
+    };
+
+    await vi.waitFor(() => expect(surface.style.width).toBe('45vw'));
+    expect(translateXPercent()).toBe(0);
+
+    rerender(
+      <DrawerShell presentation="sideOverlay" state="compact" modality="nonmodal" open={false}>
+        Panel content
+      </DrawerShell>,
+    );
+
+    // The bug this guards against (M06h): closing used to shrink the surface's own
+    // width toward 0, visibly squeezing its content, instead of moving the unchanged
+    // box off-screen.
+    await vi.waitFor(() => expect(translateXPercent()).toBe(100));
+    expect(surface.style.width).toBe('45vw');
+
+    unmount();
+  });
+
+  it('never shrinks the destination width panel content lays out for while a side overlay closes', () => {
+    const renderPanel = (open: boolean) => (
+      <DrawerShell presentation="sideOverlay" state="compact" modality="nonmodal" open={open}>
+        <SettledWidthProbe />
+      </DrawerShell>
+    );
+
+    const { rerender, unmount } = render(renderPanel(true));
+    const openWidth = screen.getByTestId('settled-destination-width').textContent;
+    expect(Number(openWidth)).toBeGreaterThan(0);
+
+    rerender(renderPanel(false));
+
+    // A drop here is exactly what would walk content (e.g. the gallery grid) through a
+    // squeezed layout before the surface finishes sliding off-screen.
+    expect(screen.getByTestId('settled-destination-width').textContent).toBe(openWidth);
 
     unmount();
   });
