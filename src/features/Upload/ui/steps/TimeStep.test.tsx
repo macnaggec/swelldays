@@ -54,9 +54,7 @@ describe('TimeStep', () => {
     expect(title).toHaveAttribute('data-validation-pulse', 'true');
   });
 
-  it('grows the range-slider thumb touch target under a coarse pointer without squaring it into a circle', () => {
-    expect(coarsePointerRangeThumbRule()).toBe(
-      'width: calc(var(--wa-control-height-default) * 2); height: var(--wa-control-height-default);',
-    );
+  it('grows the range-slider thumb under a coarse pointer as a small pill, not the base circle', () => {
+    expect(coarsePointerRangeThumbRule()).toBe('width: 32px; height: 18px;');
   });
 });

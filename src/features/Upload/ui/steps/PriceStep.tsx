@@ -37,6 +37,7 @@ export function PriceStep({
     input: {
       background: 'var(--wa-control-fill-muted)',
       border: '1px solid var(--wa-control-border)',
+      borderRadius: 'var(--wa-radius-chrome)',
       boxShadow: hasError
         ? 'inset 3px 0 0 var(--wa-status-danger)'
         : price >= MIN_MEDIA_PRICE_CENTS

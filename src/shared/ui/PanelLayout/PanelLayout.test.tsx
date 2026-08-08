@@ -300,6 +300,12 @@ describe('PanelLayout sheet-bound visible height and floating footer', () => {
     expect(rule).toContain('height:');
     expect(rule).toContain('var(--wa-sheet-visible-height');
   });
+
+  it('pins the root to its calculated height instead of letting the sheet surface\'s flex column grow it past the visible slice', () => {
+    const rule = cssRule('.root[data-sheet-snap]');
+
+    expect(rule).toContain('flex: 0 0 auto');
+  });
 });
 
 describe('PanelLayout sideWorkspace floating footer', () => {

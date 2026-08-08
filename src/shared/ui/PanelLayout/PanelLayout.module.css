@@ -208,6 +208,13 @@
 }
 
 .root[data-sheet-snap] {
+  /* DrawerShell's sheet surface (.surface) is always 100dvh tall and only ever
+     translates — it never shrinks with snap. .root sits inside .surface's own flex
+     column alongside a fixed-height drag handle, so without pinning its flex-basis
+     here, the base rule's `flex: 1 1 auto` would grow .root past this calculated
+     height to consume .surface's constant leftover space, pushing the floating
+     footer below (below, at Peek/Half) the sheet's actual visible slice. */
+  flex: 0 0 auto;
   height: calc(
     var(--wa-sheet-visible-height)
     - var(--wa-safe-area-top)

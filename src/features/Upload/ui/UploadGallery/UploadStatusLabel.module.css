@@ -1,6 +1,6 @@
 .module {
   border: 1px solid var(--wa-control-upload-border);
-  border-radius: var(--wa-radius-control-sm);
+  border-radius: var(--wa-radius-chrome);
 }
 
 .mediaIcon {

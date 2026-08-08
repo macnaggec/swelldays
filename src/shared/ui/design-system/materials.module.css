@@ -41,7 +41,7 @@
 }
 
 .uploadZone {
-  border-radius: var(--wa-radius-control-sm);
+  border-radius: var(--wa-radius-chrome);
   background: var(--wa-surface-upload-zone);
   border: 1px solid var(--wa-control-upload-border);
 }

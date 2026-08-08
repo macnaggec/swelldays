@@ -37,7 +37,7 @@
 
 @media (pointer: coarse) {
   .rangeThumb {
-    width: calc(var(--wa-control-height-default) * 2);
-    height: var(--wa-control-height-default);
+    width: 32px;
+    height: 18px;
   }
 }
