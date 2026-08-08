@@ -4,7 +4,7 @@ import { MantineProvider } from '@mantine/core';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PanelScrollChromeStateProvider } from 'shared/ui/PanelScrollChrome';
 import { render } from 'test/setup/render';
-import { GalleryDateJumpHeading } from './GalleryDateJumpHeading';
+import { dropdownWidthCss, GalleryDateJumpHeading } from './GalleryDateJumpHeading';
 
 const AUG_2 = new Date('2026-08-02T12:00:00.000Z');
 const AUG_1 = new Date('2026-08-01T12:00:00.000Z');
@@ -144,5 +144,25 @@ describe('GalleryDateJumpHeading mobile rail', () => {
     expect(screen.getByRole('navigation', { name: 'Dates' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Jul' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: '13' })).toBeInTheDocument();
+  });
+});
+
+describe('dropdownWidthCss', () => {
+  it('falls back to the viewport when there is no measured panel surface (e.g. no DrawerShell ancestor)', () => {
+    expect(dropdownWidthCss(null)).toBe(
+      'clamp(280px, calc(100vw - 2 * var(--wa-panel-content-inset)), 400px)',
+    );
+  });
+
+  it('falls back to the viewport before the drawer surface has been measured once (0px)', () => {
+    expect(dropdownWidthCss(0)).toBe(
+      'clamp(280px, calc(100vw - 2 * var(--wa-panel-content-inset)), 400px)',
+    );
+  });
+
+  it('sizes from the real panel surface width once known, not the viewport', () => {
+    expect(dropdownWidthCss(300)).toBe(
+      'clamp(280px, calc(300px - 2 * var(--wa-panel-content-inset)), 400px)',
+    );
   });
 });

@@ -3,6 +3,7 @@ import { Menu } from '@mantine/core';
 import { IconChevronDown } from '@tabler/icons-react';
 import { formatCapturedAtDate, getVisibleCalendarDayKey } from 'shared/lib/dateUtils';
 import { usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
+import { usePanelSettledWidth } from 'shared/ui/DrawerShell/panelSettledWidth';
 import { materialClasses } from 'shared/ui/design-system';
 import {
   toDayHighlights,
@@ -17,12 +18,23 @@ interface GalleryDateJumpHeadingProps {
   onJump: (day: GalleryDateHighlight) => void;
 }
 
-// Decoupled from the trigger's own (deliberately narrow) width: Mantine's width="target"
-// makes the dropdown match the closed bar exactly, too narrow to show more than a few
-// months/days at once. clamp(), not min() — Mantine's rem() unit converter passes calc()/
-// clamp()/rgba() strings through untouched, but naively splits any other string on its
-// top-level commas, which would mangle a min(a, b) value.
-const DROPDOWN_WIDTH = 'clamp(280px, calc(100vw - 2 * var(--wa-panel-content-inset)), 400px)';
+/**
+ * Decoupled from the trigger's own (deliberately narrow) width: Mantine's width="target"
+ * makes the dropdown match the closed bar exactly, too narrow to show more than a few
+ * months/days at once. clamp(), not min() — Mantine's rem() unit converter passes calc()/
+ * clamp()/rgba() strings through untouched, but naively splits any other string on its
+ * top-level commas, which would mangle a min(a, b) value.
+ *
+ * The first term is the panel *surface's* own width (a narrow landscape side overlay,
+ * a mobile drawer, or — outside any drawer, e.g. a compact-persistent desktop panel —
+ * the viewport as a stand-in, `100vw`). It is deliberately not a sibling's own measured
+ * content width: a sibling can carry different padding than the row this control sits
+ * in, which would throw off the inset subtracted below.
+ */
+export function dropdownWidthCss(surfaceWidthPx: number | null): string {
+  const surfaceWidthTerm = surfaceWidthPx && surfaceWidthPx > 0 ? `${surfaceWidthPx}px` : '100vw';
+  return `clamp(280px, calc(${surfaceWidthTerm} - 2 * var(--wa-panel-content-inset)), 400px)`;
+}
 
 /**
  * The active-date control shown in the panel's shared chrome slot whenever the
@@ -33,6 +45,8 @@ export function GalleryDateJumpHeading({ date, dayHighlights, onJump }: GalleryD
   const [opened, setOpened] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const { pinChromeHidden } = usePanelScrollChromeState();
+  const settledWidth = usePanelSettledWidth();
+  const dropdownWidth = dropdownWidthCss(settledWidth?.destinationWidth ?? null);
 
   // This bar is only reachable while it's already the visible chrome; opening
   // its menu must not let scrolling the gallery beneath swap it back out
@@ -58,11 +72,11 @@ export function GalleryDateJumpHeading({ date, dayHighlights, onJump }: GalleryD
 
   return (
     <Menu
-      position="bottom-start"
+      position="bottom"
       shadow="md"
       opened={opened}
       onChange={setOpened}
-      width={DROPDOWN_WIDTH}
+      width={dropdownWidth}
     >
       <Menu.Target>
         <button
