@@ -43,9 +43,8 @@ export function UploadZone({ onFilesSelected, onDriveImport, driveLoading, disab
         <Group gap="xs">
           <Button
             leftSection={<IconBrandGoogleDrive size={14} />}
-            size="sm"
-            variant="light"
-            className={classes.zoneButton}
+            variant="transparent"
+            className={`${classes.zoneButton} ${classes.driveButton}`}
             onClick={() => !disabled && onDriveImport?.()}
             loading={driveLoading}
             disabled={disabled}
@@ -54,9 +53,8 @@ export function UploadZone({ onFilesSelected, onDriveImport, driveLoading, disab
           </Button>
           <Button
             leftSection={<IconFolderOpen size={14} />}
-            size="sm"
-            variant="subtle"
-            className={classes.zoneButton}
+            variant="transparent"
+            className={`${classes.zoneButton} ${classes.localButton}`}
             onClick={() => !disabled && inputRef.current?.click()}
             disabled={disabled}
           >

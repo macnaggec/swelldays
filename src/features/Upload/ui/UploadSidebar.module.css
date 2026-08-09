@@ -79,25 +79,51 @@
 }
 
 .publishFooter {
-  width: 100%;
+  width: fit-content;
+}
+
+/* The shared floating-footer chrome (PanelLayout.module.css) is otherwise full width,
+   reading as a second stacked sheet under Cancel/Publish. Narrowed to hug the button
+   pair instead, scoped via :has() to this footer's own content so Cart's checkout
+   footer, which shares the same chrome, is untouched. The existing rounded-all-corners
+   glass background is inherited unchanged — only the shape narrows. Padding and bottom
+   margin are tightened from the shared 12px/0 defaults to sit closer to the buttons and
+   lift slightly off the sheet's own bottom edge. */
+:global([data-panel-layout][data-sheet-snap]) [data-panel-layout-footer]:has(.publishFooter) {
+  width: fit-content;
+  max-width: calc(100% - 2 * var(--wa-panel-content-inset));
+  margin-inline: auto;
+  margin-bottom: 8px;
+  padding: 8px;
 }
 
 :global([data-panel-layout][data-sheet-snap='peek']) .detailSection {
   display: none;
 }
 
+.timeSection {
+  padding-bottom: var(--upload-block-padding-bottom);
+}
+
+/* Shape (height, padding, radius, border, glass fill) matches the toolbar Upload
+   action button (PanelRouteLayout.module.css's .actionButton) — the app's standard
+   pill-control look — instead of each button inventing its own. Cancel stays the
+   plain, unaccented version of that same control ("just outlined, default"); Publish
+   layers a light accent tint on top only once it is actually actionable. */
 .cancelButton {
-  color: var(--wa-text-dimmed);
-  background: color-mix(in srgb, var(--wa-status-danger) 6%, var(--wa-panel-control-background));
-  backdrop-filter: var(--wa-glass-blur-sm);
-  -webkit-backdrop-filter: var(--wa-glass-blur-sm);
+  height: var(--wa-control-height-default);
+  padding: 0 10px;
+  border: 1px solid var(--wa-glass-border-media-overlay);
   border-radius: var(--wa-radius-pill);
-  transition: color 160ms ease, background-color 160ms ease, transform 120ms ease;
+  background: transparent;
+  color: var(--wa-text-primary);
+  font-size: var(--wa-font-size-xs);
+  font-weight: 400;
+  transition: background-color 160ms ease, transform 120ms ease;
 }
 
 .cancelButton:hover {
-  color: var(--wa-status-danger);
-  background: color-mix(in srgb, var(--wa-status-danger) 12%, var(--wa-panel-control-background));
+  background: var(--wa-control-fill-hover);
 }
 
 .cancelButton:active {
@@ -105,18 +131,22 @@
 }
 
 .publishButton {
-  color: var(--wa-text-muted);
-  background: color-mix(in srgb, var(--wa-accent-spot) 6%, var(--wa-panel-control-background));
+  height: var(--wa-control-height-default);
+  padding: 0 10px;
+  border: 1px solid var(--wa-glass-border-media-overlay);
+  border-radius: var(--wa-radius-pill);
+  background: var(--wa-panel-control-background);
   backdrop-filter: var(--wa-glass-blur-sm);
   -webkit-backdrop-filter: var(--wa-glass-blur-sm);
-  border-radius: var(--wa-radius-pill);
+  color: var(--wa-text-muted);
+  font-size: var(--wa-font-size-xs);
+  font-weight: 400;
   box-shadow: none;
-  transition: color 160ms ease, transform 120ms ease, background-color 160ms ease;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, transform 120ms ease;
 }
 
 .publishButton:hover {
-  color: var(--wa-text-primary-action);
-  background: color-mix(in srgb, var(--wa-accent-spot) 12%, var(--wa-panel-control-background));
+  background: var(--wa-control-fill-hover);
 }
 
 .publishButton:active {
@@ -125,14 +155,14 @@
 
 .publishFooter[data-ready='true'] .publishButton {
   color: var(--wa-text-primary-action);
-  background: color-mix(in srgb, var(--wa-accent-spot) 30%, var(--wa-panel-control-background));
-  box-shadow:
-    0 8px 24px color-mix(in srgb, var(--wa-accent-spot) 30%, transparent),
-    0 0 16px color-mix(in srgb, var(--wa-accent-spot) 18%, transparent);
+  background: color-mix(in srgb, var(--wa-accent-spot) 46%, var(--wa-panel-control-background));
+  border-color: color-mix(in srgb, var(--wa-accent-spot) 75%, var(--wa-glass-border-media-overlay));
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--wa-accent-spot) 40%, transparent);
 }
 
 .publishFooter[data-ready='true'] .publishButton:hover {
-  background: color-mix(in srgb, var(--wa-accent-spot) 40%, var(--wa-panel-control-background));
+  background: color-mix(in srgb, var(--wa-accent-spot) 56%, var(--wa-panel-control-background));
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--wa-accent-spot) 48%, transparent);
 }
 
 @keyframes validationControlPulse {

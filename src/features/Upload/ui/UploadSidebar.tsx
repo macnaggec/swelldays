@@ -258,7 +258,9 @@ function UploadSidebarContent({
       ? styles.spotSection
       : violation === 'media'
         ? `${styles.mediaSection} ${styles.detailSection}`
-        : styles.detailSection;
+        : violation === 'time'
+          ? `${styles.detailSection} ${styles.timeSection}`
+          : styles.detailSection;
     return {
       'aria-invalid': isInvalid ? true : undefined,
       'data-ready': violations.includes(violation) ? 'false' : 'true',
@@ -329,73 +331,73 @@ function UploadSidebarContent({
         {/* Cancel discards the draft; Publish finalizes it. PanelLayout owns placement. */}
         <Box component="footer" className={styles.publishFooter} data-ready={canPublish ? 'true' : 'false'}>
           <Group className={styles.footerActions} gap="sm" justify="center">
-          <Popover
-            opened={isConfirmingDiscard}
-            onChange={setIsConfirmingDiscard}
-            position="top"
-            withArrow
-            shadow="md"
-            transitionProps={{ duration: 0 }}
-          >
-            <Popover.Target>
-              <Button
-                className={styles.cancelButton}
-                variant="transparent"
-                disabled={isPending}
-                loading={isDiscarding}
-                onClick={handleCancelClick}
-              >
-                Cancel
-              </Button>
-            </Popover.Target>
-            <Popover.Dropdown>
-              <Stack gap="sm" maw={240}>
-                <Text size="sm" fw={600}>
-                  {isEditMode ? 'Discard changes to this session?' : 'Discard this upload?'}
-                </Text>
-                <Text size="xs" c="dimmed">
-                  {isEditMode
-                    ? 'The session stays published. Staged changes will be reverted.'
-                    : [
-                      queueStatus.readyItems.length > 0
+            <Popover
+              opened={isConfirmingDiscard}
+              onChange={setIsConfirmingDiscard}
+              position="top"
+              withArrow
+              shadow="md"
+              transitionProps={{ duration: 0 }}
+            >
+              <Popover.Target>
+                <Button
+                  className={styles.cancelButton}
+                  variant="transparent"
+                  disabled={isPending}
+                  loading={isDiscarding}
+                  onClick={handleCancelClick}
+                >
+                  Cancel
+                </Button>
+              </Popover.Target>
+              <Popover.Dropdown>
+                <Stack gap="sm" maw={240}>
+                  <Text size="sm" fw={600}>
+                    {isEditMode ? 'Discard changes to this session?' : 'Discard this upload?'}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {isEditMode
+                      ? 'The session stays published. Staged changes will be reverted.'
+                      : [
+                        queueStatus.readyItems.length > 0
                         && `${queueStatus.readyItems.length} uploaded ${queueStatus.readyItems.length === 1 ? 'file' : 'files'} will be deleted.`,
-                      queueStatus.uploadingCount > 0
+                        queueStatus.uploadingCount > 0
                         && `${queueStatus.uploadingCount} ${queueStatus.uploadingCount === 1 ? 'upload' : 'uploads'} in progress will stop.`,
-                      queueStatus.errorCards.length > 0
+                        queueStatus.errorCards.length > 0
                         && `${queueStatus.errorCards.length} failed ${queueStatus.errorCards.length === 1 ? 'upload' : 'uploads'} will be removed.`,
-                    ].filter(Boolean).join(' ')}
-                </Text>
-                <Group gap="xs" grow>
-                  <Button
-                    size="xs"
-                    radius="xl"
-                    color="red"
-                    variant="light"
-                    onClick={() => { void handleDiscard(); }}
-                  >
-                    Discard
-                  </Button>
-                  <Button
-                    size="xs"
-                    radius="xl"
-                    variant="subtle"
-                    onClick={() => setIsConfirmingDiscard(false)}
-                  >
-                    Keep
-                  </Button>
-                </Group>
-              </Stack>
-            </Popover.Dropdown>
-          </Popover>
-          <Button
-            className={styles.publishButton}
-            variant="transparent"
-            disabled={isDiscarding}
-            loading={isPending}
-            onClick={() => { void handlePublish(); }}
-          >
-            {isEditMode ? 'Save' : 'Publish session'}
-          </Button>
+                      ].filter(Boolean).join(' ')}
+                  </Text>
+                  <Group gap="xs" grow>
+                    <Button
+                      size="xs"
+                      radius="xl"
+                      color="red"
+                      variant="light"
+                      onClick={() => { void handleDiscard(); }}
+                    >
+                      Discard
+                    </Button>
+                    <Button
+                      size="xs"
+                      radius="xl"
+                      variant="subtle"
+                      onClick={() => setIsConfirmingDiscard(false)}
+                    >
+                      Keep
+                    </Button>
+                  </Group>
+                </Stack>
+              </Popover.Dropdown>
+            </Popover>
+            <Button
+              className={styles.publishButton}
+              variant="transparent"
+              disabled={isDiscarding}
+              loading={isPending}
+              onClick={() => { void handlePublish(); }}
+            >
+              {isEditMode ? 'Save' : 'Publish'}
+            </Button>
           </Group>
         </Box>
       </PanelLayoutFooter>

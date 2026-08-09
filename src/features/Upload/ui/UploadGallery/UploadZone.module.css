@@ -1,4 +1,36 @@
+/* Same pill shape as the toolbar Upload action button (PanelRouteLayout.module.css's
+   .actionButton) and the sheet footer's own Cancel/Publish buttons, instead of the
+   small control-radius corners Mantine's stock light/subtle variants left behind.
+   Drive and Local files are not peers here — Drive is the emphasized, one-tap import
+   path; Local is the fallback — so they carry the shape in common but not the weight. */
 .zoneButton {
   height: var(--wa-control-height-default);
-  border-radius: var(--wa-radius-control-md);
+  padding: 0 12px;
+  border-radius: var(--wa-radius-pill);
+  font-size: var(--wa-font-size-xs);
+  font-weight: 400;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.driveButton {
+  border: 1px solid color-mix(in srgb, var(--wa-accent-spot) 55%, var(--wa-glass-border-media-overlay));
+  background: color-mix(in srgb, var(--wa-accent-spot) 20%, var(--wa-panel-control-background));
+  backdrop-filter: var(--wa-glass-blur-sm);
+  -webkit-backdrop-filter: var(--wa-glass-blur-sm);
+  color: var(--wa-text-primary-action);
+}
+
+.driveButton:hover {
+  background: color-mix(in srgb, var(--wa-accent-spot) 28%, var(--wa-panel-control-background));
+}
+
+.localButton {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--wa-text-dimmed);
+}
+
+.localButton:hover {
+  background: var(--wa-control-fill-hover);
+  color: var(--wa-text-muted);
 }

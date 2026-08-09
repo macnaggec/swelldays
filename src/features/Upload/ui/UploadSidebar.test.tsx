@@ -130,7 +130,7 @@ describe('UploadSidebar workspace behavior', () => {
     const header = screen.getByTestId('upload-sidebar-header');
     const bodyControl = screen.getByRole('button', { name: 'Commit photo price' });
     const cancelButton = screen.getByRole('button', { name: 'Cancel' });
-    const publishButton = screen.getByRole('button', { name: 'Publish session' });
+    const publishButton = screen.getByRole('button', { name: 'Publish' });
 
     expect(cancelButton.closest('footer')).toBe(publishButton.closest('footer'));
     expect(publishButton.closest('[data-panel-layout-footer]')).not.toBeNull();
@@ -285,7 +285,7 @@ describe('UploadSidebar workspace behavior', () => {
       />,
     );
 
-    const publishButton = screen.getByRole('button', { name: 'Publish session' });
+    const publishButton = screen.getByRole('button', { name: 'Publish' });
     expect(publishButton.closest('footer')).toHaveAttribute('data-ready', 'false');
 
     fireEvent.click(publishButton);
@@ -303,7 +303,7 @@ describe('UploadSidebar workspace behavior', () => {
       />,
     );
 
-    const publishButton = screen.getByRole('button', { name: 'Publish session' });
+    const publishButton = screen.getByRole('button', { name: 'Publish' });
     expect(publishButton.closest('footer')).toHaveAttribute('data-ready', 'true');
   });
 
@@ -322,7 +322,7 @@ describe('UploadSidebar workspace behavior', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Publish session' }).className).not.toMatch(/panelControl/);
+    expect(screen.getByRole('button', { name: 'Publish' }).className).not.toMatch(/panelControl/);
   });
 
   it('gives the empty file-selector pad even padding on every side', () => {
@@ -376,7 +376,7 @@ describe('UploadSidebar workspace behavior', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Publish session' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
     const spot = screen.getByRole('region', { name: 'Spot' });
     const media = screen.getByRole('region', { name: 'Media' });
@@ -410,7 +410,7 @@ describe('UploadSidebar workspace behavior', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Publish session' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
     const time = screen.getByRole('region', { name: 'Shoot time' });
     await waitFor(() => {
