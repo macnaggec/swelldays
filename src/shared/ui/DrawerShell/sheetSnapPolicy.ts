@@ -13,25 +13,31 @@ const SHEET_FULL_TOP_INSET_PX = 24;
 
 /**
  * Resting height of the peek snap. Sized by its own content — the search row and upload
- * control beneath the drag handle — rather than by the viewport. 24px drag handle + 81px
- * .stickyChrome (its real rendered height): 9px+20px padding-block, 4px+4px margin-block
+ * control beneath the drag handle — rather than by the viewport. 24px drag handle + 65px
+ * .stickyChrome (its real rendered height): 9px+4px padding-block, 4px+4px margin-block
  * from PanelRouteLayout.module.css's compact-toolbar rule, and the 44px coarse-pointer
- * control height) = 105px. The 9px/20px padding-block split (not 20px/20px) is deliberate,
- * not a typo: the drag handle's own 24px band already leaves 11px of clearance below its
- * grabber pill before the row starts, so 9px here keeps the *visible* gap above the row
- * (11px handle clearance + 9px + 4px = 24px) equal to the gap below it to the sheet's own
- * bottom edge (4px + 20px = 24px). Was 116px with a symmetric 20px/20px split, which read
- * as nearly 1.5x more clearance above the row than below.
+ * control height) = 89px. The 9px/4px padding-block split is deliberate, not a typo: the
+ * drag handle's own 24px band already leaves 11px of clearance below its grabber pill
+ * before the row starts, so 9px here keeps the *visible* gap above the row (11px handle
+ * clearance + 9px + 4px = 24px). The gap below the row to the sheet's own bottom edge
+ * (4px + 4px = 8px) is set independently, matching Upload's own sheet — the reference
+ * minimum for this gap. Was 105px with a 9px/20px split (24px above, 24px below);
+ * before that, 116px with a symmetric 20px/20px split, nearly 1.5x more clearance
+ * above the row than below.
  */
-export const SHEET_PEEK_HEIGHT_PX = 105;
+export const SHEET_PEEK_HEIGHT_PX = 89;
 
 /**
  * Peek height for a sheet whose header row (back chevron + title) stays visible at
  * Peek, unlike Browse's own sheet, which has no header row at all. 24px drag handle +
- * 52px header row (--wa-panel-chrome-height) + 8+44+8px spot-search row (coarse-pointer
- * control height, the real case on a phone) = 136px.
+ * 44px header row (SidePanel's `.panelTop`, unconstrained by height and so sized by its
+ * tallest child — the back button, `--wa-control-size-compact`, which is 44px under the
+ * `(pointer: coarse)` media query that always matches on the phone this sheet renders
+ * on) + 8+44+8px spot-search row (coarse-pointer control height) = 128px. Was 136px with
+ * an explicit `min-height: 52px` (`--wa-panel-chrome-height`) on `.panelTop` that forced
+ * the row 8px taller than its real content everywhere it renders, not just here.
  */
-export const SHEET_PEEK_WITH_HEADER_HEIGHT_PX = 136;
+export const SHEET_PEEK_WITH_HEADER_HEIGHT_PX = 128;
 
 /** Sheet-top speed, px/s, above which a release reads as a flick rather than a placement. */
 export const SHEET_FLICK_VELOCITY_PX_PER_S = 400;

@@ -4,7 +4,6 @@
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   column-gap: 8px;
-  min-height: var(--wa-panel-chrome-height);
   box-sizing: border-box;
   padding-block: 0;
   /* Cleared to the floating compact rail's own measured edge in fullScreen

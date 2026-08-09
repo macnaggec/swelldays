@@ -163,7 +163,6 @@ const requiredResponsiveLayoutTokens = [
   '--wa-shell-edge-clearance',
   '--wa-panel-content-inset',
   '--wa-panel-grid-gap',
-  '--wa-panel-chrome-height',
   '--wa-panel-section-chrome-height',
   '--wa-control-size-compact',
   '--wa-control-height-default',
@@ -242,7 +241,6 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-motion-easing-standard',
   ]],
   ['src/widgets/SidePanel/SidePanel.module.css', [
-    '--wa-panel-chrome-height',
     '--wa-control-size-compact',
     '--wa-motion-duration-control',
     '--wa-motion-easing-standard',
@@ -400,13 +398,14 @@ const requiredPanelLayoutStyles = [
     /\.scroller:has\(\.stickyChrome\s+\[data-panel-scroll-chrome-primary\]\)\s*\{[^}]*overflow-anchor:\s*none/s,
   ],
   [
-    // Symmetric padding-block alone isn't enough: DrawerShell's drag handle reserves
-    // its own 24px band above this row, and its grabber pill sits 11px above that
-    // band's bottom edge, not flush with it — so a symmetric 20px/20px split still
-    // reads as ~35px above the row vs ~24px below. 9px/20px is what actually lands
-    // both visible gaps on 24px (see SHEET_PEEK_HEIGHT_PX's own comment).
-    'peek search row has equal top and bottom clearance around the overlaid grabber',
-    /\.root\[data-sheet-snap='peek'\]\s+\.stickyChrome\s*\{[^}]*padding-top:\s*9px;[^}]*padding-bottom:\s*20px/s,
+    // The top gap (24px: 11px handle clearance + 9px + 4px toolbar margin) and the
+    // bottom gap are deliberately NOT equal — the bottom is pinned to Upload's own
+    // minimal search-row clearance (4px padding + 4px toolbar margin = 8px) instead,
+    // per the user's own request to match that value. An earlier version of this rule
+    // required a symmetric 20px bottom padding; that invariant was superseded on
+    // purpose, not drifted into by accident — see SHEET_PEEK_HEIGHT_PX's own comment.
+    'peek search row bottom clearance matches Upload\'s own minimal search-row gap',
+    /\.root\[data-sheet-snap='peek'\]\s+\.stickyChrome\s*\{[^}]*padding-top:\s*9px;[^}]*padding-bottom:\s*4px/s,
   ],
 ];
 
@@ -846,7 +845,7 @@ const rules = [
   },
   {
     id: 'no-local-panel-header-height',
-    message: 'The panel header band must use --wa-panel-chrome-height.',
+    message: 'The panel header band must size itself from its content (the back button\'s own --wa-control-size-compact), not a hardcoded height.',
     pattern: /(?:min-)?height:\s*52px|padding:\s*10px\s+8px/,
     include: file => file === 'src/widgets/SidePanel/SidePanel.module.css',
   },

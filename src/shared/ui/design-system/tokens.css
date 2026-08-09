@@ -18,7 +18,6 @@
   --wa-shell-edge-clearance: 12px;
   --wa-panel-content-inset: 12px;
   --wa-panel-grid-gap: 12px;
-  --wa-panel-chrome-height: 52px;
   --wa-panel-section-chrome-height: 32px;
   /* Comfortable gallery card edge; mirrors GALLERY_DENSITY.comfortable.targetTilePx
      (src/shared/lib/galleryColumns.ts) so the search toolbar caps to one card. */

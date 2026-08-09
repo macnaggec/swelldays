@@ -205,12 +205,14 @@
 
 .root[data-sheet-snap='peek'] .stickyChrome {
   /* Asymmetric on purpose: DrawerShell's drag handle above already leaves 11px of
-     clearance below its own grabber pill before this row starts, so 9px here (not
-     20px) keeps the visible gap above the row equal to the 4px + 20px gap below it
-     to the sheet's own bottom edge — both land on 24px. See the peek-height
-     constant in DrawerShell's sheetSnapPolicy.ts. */
+     clearance below its own grabber pill before this row starts, so 9px here keeps
+     the visible gap above the row at 24px (11px handle clearance + 9px + 4px
+     toolbar margin-block). The 4px padding-bottom here plus the toolbar's own 4px
+     margin-block leaves an 8px gap below the row to the sheet's own bottom edge,
+     matching Upload's own sheet. See the peek-height constant in DrawerShell's
+     sheetSnapPolicy.ts. */
   padding-top: 9px;
-  padding-bottom: 20px;
+  padding-bottom: 4px;
 }
 
 .root[data-sheet-snap] {
