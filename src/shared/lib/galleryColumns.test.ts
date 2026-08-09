@@ -72,4 +72,25 @@ describe('galleryColumns', () => {
       expect(galleryColumns(510, 'panelCard', 2)).toBe(2);
     });
   });
+
+  describe('minColumnsOverride', () => {
+    it('raises the floor at a compact width that would otherwise round to 2 — the narrow-landscape-phone case', () => {
+      // A 568px-wide landscape phone's side-overlay panel (45vw = 255.6px)
+      // would naturally round to 2 without the floor.
+      expect(galleryColumns(255.6, 'compact')).toBe(2);
+      expect(galleryColumns(255.6, 'compact', undefined, 3)).toBe(3);
+    });
+
+    it('does not lower a count the natural arithmetic already put above the floor', () => {
+      expect(galleryColumns(600, 'compact', undefined, 3)).toBe(5);
+    });
+
+    it('never raises the count past maxColumnsOverride when the two conflict — the ceiling always wins', () => {
+      expect(galleryColumns(1000, 'compact', 2, 3)).toBe(2);
+    });
+
+    it('still floors to 1 column before measurement (width 0), regardless of the override', () => {
+      expect(galleryColumns(0, 'compact', undefined, 3)).toBe(1);
+    });
+  });
 });

@@ -32,19 +32,32 @@ export const GALLERY_MIN_COLUMNS = 1;
  * caller's own layout constraint — e.g. a side-overlay panel that shares its
  * width with the map beside it — without giving that caller its own named
  * density or changing the tile size everyone else's grid still uses.
+ *
+ * `minColumnsOverride` is its mirror: raises (never lowers) the floor below
+ * which `GALLERY_MIN_COLUMNS` would otherwise let the count fall — mobile
+ * needs a guaranteed column count on every device, at the cost of tiles
+ * narrower than the density's own target on the narrowest ones, since (unlike
+ * a desktop window) it has no wider layout to grow into instead. Still yields
+ * the bare `GALLERY_MIN_COLUMNS` floor before the container has been measured
+ * (`measuredWidthPx <= 0`) — a transient render, not a real width to guarantee
+ * a count against.
  */
 export function galleryColumns(
   measuredWidthPx: number,
   density: GalleryDensity,
   maxColumnsOverride?: number,
+  minColumnsOverride?: number,
 ): number {
   if (measuredWidthPx <= 0) return GALLERY_MIN_COLUMNS;
   const { targetTilePx, maxColumns } = GALLERY_DENSITY[density];
   const effectiveMaxColumns = maxColumnsOverride !== undefined
     ? Math.min(maxColumns, maxColumnsOverride)
     : maxColumns;
+  const effectiveMinColumns = minColumnsOverride !== undefined
+    ? Math.max(GALLERY_MIN_COLUMNS, minColumnsOverride)
+    : GALLERY_MIN_COLUMNS;
   return Math.min(
     effectiveMaxColumns,
-    Math.max(GALLERY_MIN_COLUMNS, Math.round(measuredWidthPx / targetTilePx)),
+    Math.max(effectiveMinColumns, Math.round(measuredWidthPx / targetTilePx)),
   );
 }

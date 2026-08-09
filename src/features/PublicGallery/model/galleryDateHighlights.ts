@@ -1,16 +1,34 @@
 import { getVisibleCalendarDayKey } from 'shared/lib/dateUtils';
 
 /**
- * Minimum measured gallery width at which the pinned date rail earns its strip.
- * Below this the gallery is a dense one-to-few-column grid and the rail would
- * steal usable media width (F12g invariant) — date navigation falls back to
- * sticky date headings with a date-jump menu instead.
+ * Width below which the rail hides. Below this the gallery is a dense one-to-few-
+ * column grid and the rail would steal usable media width (F12g invariant) — date
+ * navigation falls back to sticky date headings with a date-jump menu instead.
  */
-export const DATE_RAIL_MIN_GALLERY_WIDTH_PX = 600;
+export const DATE_RAIL_HIDE_WIDTH_PX = 600;
 
-/** Whether the measured gallery width supports the pinned date rail. Zero width (unmeasured) never does. */
-export function showsDateRail(measuredGalleryWidthPx: number): boolean {
-  return measuredGalleryWidthPx >= DATE_RAIL_MIN_GALLERY_WIDTH_PX;
+/**
+ * Width above which the rail shows, deliberately set past `DATE_RAIL_HIDE_WIDTH_PX`
+ * rather than equal to it. The rail is itself a ~37px-wide column measured inside the
+ * same gallery box it gates on — showing it at the hide threshold would immediately
+ * shrink the measured width back below that threshold, hide the rail, regain the
+ * 37px, cross back over, and repeat forever (a real bug this fixed: watched live as
+ * jitter while resizing through ~800-850px of browser width). The 50px gap between
+ * the two thresholds is wider than that self-inflicted 37px shrink, with margin.
+ */
+export const DATE_RAIL_SHOW_WIDTH_PX = 650;
+
+/**
+ * Whether the measured gallery width supports the pinned date rail — hysteretic, not
+ * a single cutoff: which threshold applies depends on whether the rail is already
+ * showing, so a width that only ever oscillates between the two thresholds settles
+ * on whichever state it last reached instead of flapping. Zero width (unmeasured)
+ * never shows it.
+ */
+export function showsDateRail(measuredGalleryWidthPx: number, currentlyShowing: boolean): boolean {
+  return currentlyShowing
+    ? measuredGalleryWidthPx >= DATE_RAIL_HIDE_WIDTH_PX
+    : measuredGalleryWidthPx >= DATE_RAIL_SHOW_WIDTH_PX;
 }
 
 /** A jump target: the date of a gallery divider row and the row it sits at. */

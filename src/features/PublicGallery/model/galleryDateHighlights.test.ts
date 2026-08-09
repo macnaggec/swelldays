@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  DATE_RAIL_MIN_GALLERY_WIDTH_PX,
+  DATE_RAIL_HIDE_WIDTH_PX,
+  DATE_RAIL_SHOW_WIDTH_PX,
   activeDayIndex,
   groupDaysByMonth,
   mergeGalleryDateHighlights,
@@ -78,15 +79,43 @@ describe('groupDaysByMonth', () => {
 });
 
 describe('showsDateRail', () => {
-  it('shows the rail at the capability threshold', () => {
-    expect(showsDateRail(DATE_RAIL_MIN_GALLERY_WIDTH_PX)).toBe(true);
+  it('hides the rail before the gallery is measured (zero width), starting hidden', () => {
+    expect(showsDateRail(0, false)).toBe(false);
   });
 
-  it('hides the rail just below the capability threshold', () => {
-    expect(showsDateRail(DATE_RAIL_MIN_GALLERY_WIDTH_PX - 1)).toBe(false);
+  describe('while hidden', () => {
+    it('stays hidden right at the hide threshold — that is not the width that shows it', () => {
+      expect(showsDateRail(DATE_RAIL_HIDE_WIDTH_PX, false)).toBe(false);
+    });
+
+    it('stays hidden just below the show threshold', () => {
+      expect(showsDateRail(DATE_RAIL_SHOW_WIDTH_PX - 1, false)).toBe(false);
+    });
+
+    it('shows once the width reaches the (higher) show threshold', () => {
+      expect(showsDateRail(DATE_RAIL_SHOW_WIDTH_PX, false)).toBe(true);
+    });
   });
 
-  it('hides the rail before the gallery is measured (zero width)', () => {
-    expect(showsDateRail(0)).toBe(false);
+  describe('while showing', () => {
+    it('keeps showing at the show threshold', () => {
+      expect(showsDateRail(DATE_RAIL_SHOW_WIDTH_PX, true)).toBe(true);
+    });
+
+    it('keeps showing in the gap between the two thresholds — this is the fix: a single-threshold rule would have hidden here', () => {
+      expect(showsDateRail(DATE_RAIL_HIDE_WIDTH_PX + 10, true)).toBe(true);
+    });
+
+    it('keeps showing right at the hide threshold', () => {
+      expect(showsDateRail(DATE_RAIL_HIDE_WIDTH_PX, true)).toBe(true);
+    });
+
+    it('hides once the width drops below the hide threshold', () => {
+      expect(showsDateRail(DATE_RAIL_HIDE_WIDTH_PX - 1, true)).toBe(false);
+    });
+  });
+
+  it('the gap between the two thresholds exceeds the rail\'s own ~37px measured footprint, which is what makes the hysteresis actually break the oscillation loop', () => {
+    expect(DATE_RAIL_SHOW_WIDTH_PX - DATE_RAIL_HIDE_WIDTH_PX).toBeGreaterThan(37);
   });
 });

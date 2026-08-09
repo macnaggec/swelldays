@@ -209,6 +209,25 @@ describe('PublicGallery', () => {
     expect(screen.queryByTestId('gallery-date-sidebar')).not.toBeInTheDocument();
   });
 
+  it.each([
+    ['bottomSheet' as const],
+    ['sideOverlay' as const],
+  ])('stays compact — 3 columns, dense cards — on mobile even at half/full snap ("expanded"), at %s', (drawerPresentation) => {
+    // 375px: a comfortable-density tile (340px target) would round this down to
+    // 1 column if mobile ever reached that density — the bug this test guards.
+    galleryState.measuredWidth = 375;
+
+    render(
+      <PanelScrollChromeStateProvider value={{ hidden: true, drawerPresentation }}>
+        <PublicGallery expanded spotId="spot-1" />
+      </PanelScrollChromeStateProvider>,
+    );
+
+    expect(galleryState.columns).toBe(3);
+    expect(galleryState.dense).toBe(true);
+    expect(screen.queryByTestId('gallery-date-sidebar')).not.toBeInTheDocument();
+  });
+
   it('keeps the wide gallery intact while closing, then switches to compact once motion ends', () => {
     const atDrawer = (destinationWidth: number, transitioning: boolean, expanded: boolean) => (
       <PanelSettledWidthContext.Provider value={{ destinationWidth, open: true, transitioning }}>
@@ -279,7 +298,7 @@ describe('PublicGallery', () => {
     expect(screen.queryByRole('button', { name: 'Select' })).not.toBeInTheDocument();
   });
 
-  it('publishes one mobile active-date control without repeating date dividers in the feed', () => {
+  it('publishes exactly one mobile active-date control, not a duplicate', () => {
     galleryState.measuredWidth = 420;
     galleryState.flatItems = [
       mediaItem,

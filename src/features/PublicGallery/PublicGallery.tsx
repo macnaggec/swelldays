@@ -74,6 +74,13 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
     hasShare: !!onShare,
   });
 
+  const { drawerPresentation } = usePanelScrollChromeState();
+  // The mobile drawer presentations never show the wide rail regardless of
+  // measured width — a docked sidebar doesn't fit their touch-first, narrow
+  // form factor even on the rare occasion the drawer itself measures wide.
+  const isMobileDrawerPresentation = drawerPresentation === 'bottomSheet'
+    || drawerPresentation === 'sideOverlay';
+
   // Opening arranges the roomy destination grid immediately so the drawer reveals
   // it. Closing keeps that grid intact while it travels, then compacts once after
   // motion completes. Neither direction follows the live intermediate width.
@@ -84,8 +91,19 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   const layoutWidth = holdsExpandedLayout
     ? boxWidth ?? measuredWidth
     : contentWidth ?? measuredWidth;
-  const density: GalleryDensity = layoutExpanded ? 'comfortable' : 'compact';
-  const columns = galleryColumns(layoutWidth, density);
+  // Mobile always renders the same compact tile — icons, size, three-column grid —
+  // regardless of the desktop-oriented expanded/comfortable toggle: "expanded" is a
+  // wide-panel preference (more breathing room in a panel that shares the screen
+  // with the map) that a phone has no wider layout to grow into. On mobile the sheet
+  // still tracks expanded/peek for its own snap-driven behavior elsewhere; it just
+  // never reaches the gallery's own density decision.
+  const isCompactGalleryLayout = isMobileDrawerPresentation || !layoutExpanded;
+  const density: GalleryDensity = isCompactGalleryLayout ? 'compact' : 'comfortable';
+  // 3 is a guaranteed floor here, not just today's typical result: mobile has no
+  // wider layout to grow into the way a desktop window does, so without this the
+  // narrowest phones would round down to 2. Desktop's own compact panel already
+  // measures wide enough to clear 3 on its own (M06s), so this is a no-op there.
+  const columns = galleryColumns(layoutWidth, density, undefined, density === 'compact' ? 3 : undefined);
 
   // The moving drawer edge clips the fixed layout. Transforming the virtual canvas
   // would also scale its off-screen spacer and produce blank bands.
@@ -127,19 +145,24 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
 
   const galleryRef = useRef<VirtualGalleryHandle>(null);
   const [firstVisibleIndex, setFirstVisibleIndex] = useState(0);
-  const { drawerPresentation } = usePanelScrollChromeState();
-  // The mobile drawer presentations never show the wide rail regardless of
-  // measured width — a docked sidebar doesn't fit their touch-first, narrow
-  // form factor even on the rare occasion the drawer itself measures wide.
-  const isMobileDrawerPresentation = drawerPresentation === 'bottomSheet'
-    || drawerPresentation === 'sideOverlay';
 
   // Container-aware date navigation (F12g/M03-h): a wide-enough gallery gets
   // the pinned date rail; every other case — mobile drawers always, or a
   // desktop panel simply narrowed below that width — shares the same compact
   // date control instead of a second, forked one. It follows the same held layout
   // as the cards, so it leaves only when a close has finished.
-  const railVisible = !isMobileDrawerPresentation && showsDateRail(layoutWidth);
+  //
+  // Held in state, not derived fresh each render: the rail is itself part of what
+  // showsDateRail measures (it occupies real width inside the same gallery box), so
+  // a plain re-derivation would oscillate right at the boundary. showsDateRail owns
+  // the hysteresis; this only remembers which side it last settled on.
+  const [railVisible, setRailVisible] = useState(
+    () => !isMobileDrawerPresentation && showsDateRail(layoutWidth, false),
+  );
+  const nextRailVisible = !isMobileDrawerPresentation && showsDateRail(layoutWidth, railVisible);
+  if (nextRailVisible !== railVisible) {
+    setRailVisible(nextRailVisible);
+  }
   const usesCompactDateChrome = !railVisible;
   const dayHighlights = useMemo(
     () => mergeGalleryDateHighlights(availableDates, loadedHighlights),
@@ -166,7 +189,6 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
     galleryRef.current?.scrollToIndex(0, { align: 'start' });
     setPendingScrollAnchor(null);
   }, [pendingScrollAnchor, isLoading]);
-  const renderNoDivider = useCallback(() => null, []);
 
   // ========================================================================
   // ACTION HANDLERS
@@ -275,8 +297,7 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
               ref={galleryRef}
               rows={rows}
               columns={columns}
-              dense={!layoutExpanded}
-              renderDivider={isMobileDrawerPresentation ? renderNoDivider : undefined}
+              dense={isCompactGalleryLayout}
               renderCard={(item) => {
                 const { actions, activeActions, isOwn } = getCardActions(item, false);
                 const isPurchased = item.viewerEntitlement.purchaseState === 'purchased';
@@ -289,7 +310,7 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
                     onCardClick={() => handleCardClick(item.id)}
                     showOwnerBadge={isOwn}
                     showPurchasedBadge={isPurchased}
-                    dense={!layoutExpanded}
+                    dense={isCompactGalleryLayout}
                   />
                 );
               }}
