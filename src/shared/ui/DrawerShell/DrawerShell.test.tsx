@@ -724,7 +724,8 @@ describe('DrawerShell presentation swap geometry', () => {
     );
 
     const surface = screen.getByRole('complementary', { name: 'Content drawer' });
-    await vi.waitFor(() => expect(surface.style.width).toBe('75vw'));
+    const expandedWidthPx = window.innerWidth * (PANEL_WIDTH_VW.expanded / 100);
+    await vi.waitFor(() => expect(surface.style.width).toBe(`${expandedWidthPx}px`));
 
     rerender(
       <DrawerShell
@@ -784,6 +785,69 @@ describe('DrawerShell presentation swap geometry', () => {
     await vi.waitFor(() => expect(restingOffsetPx()).toBe(0));
 
     unmount();
+  });
+});
+
+describe('DrawerShell persistent compact width floor', () => {
+  const originalInnerWidth = window.innerWidth;
+
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
+    vi.unstubAllGlobals();
+  });
+
+  it('holds compact at its 360px floor instead of squeezing narrower on a 1024px desktop window', async () => {
+    Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true });
+
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+
+    render(
+      <>
+        <DrawerShell presentation="persistent" state="compact" modality="nonmodal">
+          Panel content
+        </DrawerShell>
+        <TargetGeometryProbe />
+      </>,
+    );
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    // 1024 * 0.25 = 256px, below the 360px floor — the surface must render at the
+    // floor, not the raw fraction.
+    await vi.waitFor(() => expect(surface.style.width).toBe('360px'));
+
+    // The published target geometry (what content layout and the globe's camera
+    // occlusion both read) must agree with what actually rendered, not the
+    // unfloored 256px the raw vw fraction alone would have produced.
+    const viewportHeightPx = window.innerHeight;
+    expect(screen.getByTestId('drawer-target-geometry').textContent).toBe(
+      `${1024 - 360}:0:1024:${viewportHeightPx}:360:${viewportHeightPx}`,
+    );
+  });
+
+  it('does not floor expanded at the same narrow viewport', async () => {
+    Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true });
+
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+
+    render(
+      <DrawerShell presentation="persistent" state="expanded" modality="nonmodal">
+        Panel content
+      </DrawerShell>,
+    );
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    // 1024 * 0.75 = 768px — well above the compact-only floor, unaffected by it.
+    await vi.waitFor(() => expect(surface.style.width).toBe('768px'));
   });
 });
 

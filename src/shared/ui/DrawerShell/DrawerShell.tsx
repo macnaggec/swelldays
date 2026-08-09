@@ -15,7 +15,7 @@ import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
 import { useNavigationRailGeometry } from 'shared/model/navigationRailGeometry';
 import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import { useViewportMetrics } from 'shared/model/viewportMetrics';
-import { PANEL_WIDTH_VW } from 'shared/model/panelExpansionStore';
+import { PANEL_WIDTH_VW, resolvePanelWidthPx } from 'shared/model/panelExpansionStore';
 import { materialClasses } from 'shared/ui/design-system';
 import {
   publishDrawerDragging,
@@ -138,14 +138,13 @@ export function DrawerShell(props: DrawerShellProps) {
     0,
     viewportWidthPx - (railGeometry ? railGeometry.right + railGeometry.left : 0),
   );
-  const targetPanelWidthVw = props.presentation === 'persistent'
-    ? PANEL_WIDTH_VW[props.state]
-    : props.presentation === 'fullScreen'
-      ? FULL_SCREEN_WIDTH_VW
-      : SHORT_SIDE_OVERLAY_WIDTH_VW;
   const targetWidthPx = props.presentation === 'sideWorkspace'
     ? sideWorkspaceWidthPx
-    : viewportWidthPx * (targetPanelWidthVw / 100);
+    : props.presentation === 'persistent'
+      ? resolvePanelWidthPx(props.state, viewportWidthPx)
+      : viewportWidthPx * (
+        (props.presentation === 'fullScreen' ? FULL_SCREEN_WIDTH_VW : SHORT_SIDE_OVERLAY_WIDTH_VW) / 100
+      );
   const dragControls = useDragControls();
   const dragConstraints = useMemo(
     () => ({ top: viewportHeightPx - heights.full, bottom: viewportHeightPx - heights.peek }),
@@ -395,7 +394,11 @@ export function DrawerShell(props: DrawerShellProps) {
             ? panelOpen
               ? `${FULL_SCREEN_WIDTH_VW}vw`
               : '0vw'
-            : props.state === 'expanded' ? `${PANEL_WIDTH_VW.expanded}vw` : `${PANEL_WIDTH_VW.compact}vw`,
+            // Persistent's own target width already resolves compact's floor
+            // (resolvePanelWidthPx) — reused here so the surface actually renders
+            // at the same width its target geometry (and everything measuring it,
+            // including the globe's camera occlusion) already believes it is.
+            : `${targetWidthPx}px`,
       };
   // The properties a presentation does not animate are corrected instantly: a band
   // crossing is a presentation swap, not a movement the user should watch, and opening
