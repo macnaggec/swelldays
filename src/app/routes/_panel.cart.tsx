@@ -1,11 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Text } from '@mantine/core';
+import { Stack, Text } from '@mantine/core';
 import { useCallback, useState } from 'react';
 import { useCartStore, useCartCheckout } from 'entities/Commerce';
 import type { CartItem } from 'entities/Commerce';
 import { BaseGallery } from 'shared/ui/BaseGallery';
 import { PanelGalleryLayout } from 'shared/ui/PanelGalleryLayout';
-import { CartCard, CartLightbox, CheckoutButton } from 'features/Cart';
+import { CartCard, CartLightbox, CartTotal, CheckoutButton } from 'features/Cart';
 
 export const Route = createFileRoute('/_panel/cart')({
   validateSearch: (search): { from?: string } => ({
@@ -37,11 +37,10 @@ function CartPanelRoute() {
       <PanelGalleryLayout
         footer={
           items.length > 0 ? (
-            <CheckoutButton
-              totalCents={totalCents}
-              isPending={isPending}
-              onCheckout={handleCheckout}
-            />
+            <Stack gap={4} align="center">
+              <CartTotal totalCents={totalCents} />
+              <CheckoutButton isPending={isPending} onCheckout={handleCheckout} />
+            </Stack>
           ) : undefined
         }
       >

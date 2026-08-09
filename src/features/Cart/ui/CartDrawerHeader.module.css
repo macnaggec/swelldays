@@ -1,3 +1,8 @@
+/* Every other panel's header row gets its height from the shared back button
+   (--wa-control-size-compact); Cart's own header (headerFullWidth) replaces that
+   button entirely, so without its own padding this row collapses to its title
+   text's bare line-height. Exclusively Cart's own file — safe from leaking to any
+   other future headerFullWidth consumer of the shared SidePanel row. */
 .header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -5,6 +10,7 @@
   column-gap: 8px;
   width: 100%;
   min-width: 0;
+  padding-block: 8px;
 }
 
 .headerStart {

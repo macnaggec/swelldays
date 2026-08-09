@@ -7,7 +7,6 @@ describe('CheckoutButton', () => {
   it('renders as a compact green glass panel action', () => {
     render(
       <CheckoutButton
-        totalCents={1200}
         isPending={false}
         onCheckout={vi.fn()}
       />,

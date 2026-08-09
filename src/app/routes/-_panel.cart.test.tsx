@@ -39,6 +39,7 @@ vi.mock('entities/Commerce', () => ({
 vi.mock('features/Cart', () => ({
   CartCard: ({ item }: { item: { label: string } }) => <article>{item.label}</article>,
   CartLightbox: () => null,
+  CartTotal: ({ totalCents }: { totalCents: number }) => <span>{`$${totalCents / 100}`}</span>,
   CheckoutButton: () => <button type="button">Checkout</button>,
 }));
 
@@ -85,6 +86,7 @@ describe('CartPanelRoute', () => {
     renderCart(<Component />);
 
     expect(screen.getByRole('button', { name: 'Checkout' }).closest('[data-panel-layout-footer]')).not.toBeNull();
+    expect(screen.getByText('$12')).not.toBeNull();
   });
 
   it('floats the checkout footer above the gallery once the drawer is a sideWorkspace', () => {

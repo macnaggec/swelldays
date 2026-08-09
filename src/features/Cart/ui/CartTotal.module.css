@@ -1,0 +1,8 @@
+.amount {
+  color: var(--wa-text-strong);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
