@@ -885,6 +885,70 @@ describe('GlobeMapComponent camera inset changes', () => {
     mocks.getZoom.mockReturnValue(12);
   });
 
+  it('defers selected spot focus until a covered sheet reveals the map', () => {
+    const { rerender } = render(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId={null}
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        selectedSpotFocusEnabled={false}
+        cameraInsetsPx={{ top: 0, right: 0, bottom: 116, left: 0 }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /load map/i }));
+
+    rerender(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId="spot-1"
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        selectedSpotFocusEnabled={false}
+        cameraInsetsPx={{ top: 0, right: 0, bottom: 116, left: 0 }}
+      />,
+    );
+
+    expect(mocks.easeTo).not.toHaveBeenCalled();
+    expect(mocks.flyTo).not.toHaveBeenCalled();
+
+    rerender(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId="spot-1"
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        selectedSpotFocusEnabled
+        cameraInsetsPx={{ top: 0, right: 0, bottom: 116, left: 0 }}
+      />,
+    );
+
+    expect(mocks.easeTo).toHaveBeenCalledTimes(1);
+    expect(mocks.easeTo).toHaveBeenCalledWith({
+      center: [115.085, -8.815],
+      padding: { top: 0, right: 0, bottom: 116, left: 0 },
+      duration: 600,
+      essential: true,
+    });
+
+    mocks.easeTo.mockClear();
+
+    rerender(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId="spot-1"
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        selectedSpotFocusEnabled={false}
+        cameraInsetsPx={{ top: 0, right: 0, bottom: 116, left: 0 }}
+      />,
+    );
+
+    expect(mocks.easeTo).not.toHaveBeenCalled();
+    expect(mocks.flyTo).not.toHaveBeenCalled();
+  });
+
   it('recenters the selected spot against the final right inset when a side panel lands', () => {
     const { rerender } = render(
       <GlobeMapComponent

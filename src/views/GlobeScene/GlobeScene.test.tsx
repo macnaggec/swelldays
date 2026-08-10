@@ -43,6 +43,7 @@ vi.mock('widgets/GlobeMap', () => ({
     onSpotSelect,
     onCameraGestureStart,
     selectedSpotId,
+    selectedSpotFocusEnabled,
     tempPin,
     ...restProps
   }: {
@@ -52,6 +53,7 @@ vi.mock('widgets/GlobeMap', () => ({
     onSpotSelect: (spot: { id: string }) => void;
     onCameraGestureStart?: () => void;
     selectedSpotId?: string | null;
+    selectedSpotFocusEnabled?: boolean;
     tempPin?: LngLat | null;
     interactionPolicy?: 'interactive' | 'background';
     cameraInsetsPx?: { top: number; right: number; bottom: number; left: number };
@@ -61,6 +63,7 @@ vi.mock('widgets/GlobeMap', () => ({
       data-show-navigation-control={String(showNavigationControl)}
       data-temp-pin={tempPin?.join(',') ?? ''}
       data-selected-spot-id={selectedSpotId ?? ''}
+      data-selected-spot-focus-enabled={String(selectedSpotFocusEnabled)}
       data-has-camera-intent={String('cameraIntent' in restProps)}
       data-interaction-policy={String(restProps.interactionPolicy)}
       data-camera-inset-right-px={String(restProps.cameraInsetsPx?.right)}
@@ -314,6 +317,51 @@ describe('GlobeScene selected spot ownership', () => {
     renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-selected-spot-id', 'new-spot');
+  });
+
+  it('defers upload spot focus while full and enables it when the sheet returns to peek', () => {
+    mocks.matches = [{
+      routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' },
+      search: { workspaceId: 'workspace-1', spotId: 'spot-1' },
+    }];
+    mocks.sheetSnap = 'full';
+    const { rerender } = renderGlobeScene();
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-selected-spot-focus-enabled', 'false');
+
+    mocks.sheetSnap = 'peek';
+    rerender(globeSceneTree());
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-selected-spot-focus-enabled', 'true');
+
+    mocks.sheetSnap = 'full';
+    rerender(globeSceneTree());
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-selected-spot-focus-enabled', 'false');
+  });
+
+  it('defers browse spot focus while full and enables it when the sheet returns to peek', () => {
+    mocks.matches = [{ routeId: '/_panel/$spotId', params: { spotId: 'spot-1' } }];
+    mocks.sheetSnap = 'full';
+    const { rerender } = renderGlobeScene();
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-selected-spot-focus-enabled', 'false');
+
+    mocks.sheetSnap = 'peek';
+    rerender(globeSceneTree());
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-selected-spot-focus-enabled', 'true');
+
+    mocks.sheetSnap = 'full';
+    rerender(globeSceneTree());
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-selected-spot-focus-enabled', 'false');
   });
 
   it('opens the selected spot in Feed and requests the browse results surface', () => {

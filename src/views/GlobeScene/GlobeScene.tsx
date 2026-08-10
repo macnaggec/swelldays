@@ -218,6 +218,7 @@ export function GlobeScene() {
         onSpotSelect={handleSpotSelect}
         motionPolicy={motionPolicy}
         interactionPolicy={interactionPolicy}
+        selectedSpotFocusEnabled={sheetSnap !== 'full'}
         cameraInsetsPx={cameraInsetsPx}
         isCoordinatePickerActive={isImmersiveMapInput}
         showNavigationControl={layoutPolicy.map.navigationControl === 'visible'}

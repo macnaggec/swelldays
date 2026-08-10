@@ -63,6 +63,8 @@ export interface GlobeMapProps {
   onSpotSelect: (spot: MapSpotProjection) => void;
   motionPolicy: GlobeMotionPolicy;
   interactionPolicy?: GlobeInteractionPolicy;
+  /** Whether route-driven selected-spot changes may move the camera. */
+  selectedSpotFocusEnabled?: boolean;
   /** Px of the map canvas covered by app chrome per edge — reserved as camera padding so a focused spot centers in the visible map area. */
   cameraInsetsPx?: MapCameraInsets;
   isCoordinatePickerActive?: boolean;
@@ -84,6 +86,7 @@ export function GlobeMapComponent({
   onSpotSelect,
   motionPolicy,
   interactionPolicy = 'interactive',
+  selectedSpotFocusEnabled = true,
   cameraInsetsPx = NO_MAP_CAMERA_INSETS,
   isCoordinatePickerActive = false,
   showNavigationControl = true,
@@ -117,7 +120,7 @@ export function GlobeMapComponent({
     const isDefaultCamera =
       cameraState.longitude === DEFAULT_VIEW.longitude &&
       cameraState.latitude === DEFAULT_VIEW.latitude;
-    if (isDefaultCamera && selectedSpotId) {
+    if (isDefaultCamera && selectedSpotFocusEnabled && selectedSpotId) {
       const spot = spots.find((s) => s.id === selectedSpotId);
       if (spot) {
         return {
@@ -247,6 +250,10 @@ export function GlobeMapComponent({
       appliedFocusKeyRef.current = null;
       return;
     }
+    if (!selectedSpotFocusEnabled) {
+      pendingFocusRef.current = null;
+      return;
+    }
 
     const focusKey = [
       selectedSpotId,
@@ -267,6 +274,7 @@ export function GlobeMapComponent({
     insetRightPx,
     insetTopPx,
     selectedSpotId,
+    selectedSpotFocusEnabled,
   ]);
 
   useEffect(() => {
