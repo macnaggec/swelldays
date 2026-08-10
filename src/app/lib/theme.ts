@@ -35,6 +35,8 @@ export const theme = createTheme({
           border:     '1px solid var(--wa-control-border)',
           color:      'var(--wa-text-primary)',
           caretColor: 'var(--wa-text-primary)',
+          // Below 16px, iOS Safari zooms the whole page in on focus.
+          fontSize:   'var(--wa-font-size-input)',
           '&::placeholder': {
             color: 'var(--wa-text-placeholder)',
           },

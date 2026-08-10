@@ -137,33 +137,9 @@ describe('DrawerShell geometry projection', () => {
 
 });
 
-describe('DrawerShell keyboard inset', () => {
-  const originalInnerHeight = window.innerHeight;
-
+describe('DrawerShell keyboard viewport geometry', () => {
   afterEach(() => {
-    Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
     vi.unstubAllGlobals();
-  });
-
-  it('grows the surface bottom padding by the strip a software keyboard covers, without moving the surface', () => {
-    Object.defineProperty(window, 'innerHeight', { value: 844, configurable: true });
-    vi.stubGlobal('visualViewport', {
-      width: 390,
-      height: 550,
-      offsetLeft: 0,
-      offsetTop: 0,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    } as unknown as VisualViewport);
-
-    render(
-      <DrawerShell presentation="persistent" state="compact" modality="nonmodal">
-        Drawer content
-      </DrawerShell>,
-    );
-
-    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
-    expect(surface.style.getPropertyValue('--wa-keyboard-inset-bottom')).toBe('294px');
   });
 
   it('leaves the measured drawer geometry unpublished when only the keyboard visual-viewport changes', () => {
@@ -593,6 +569,111 @@ describe('DrawerShell live drag geometry', () => {
     act(() => {
       fireEvent.pointerUp(handle, { pointerId: 1, isPrimary: true, clientX: 195, clientY: 420 });
     });
+  });
+
+  it.each([
+    { dragDistancePx: 8, expectedFocusWhileHeld: 'kept', expectedFocusAfterRelease: 'kept' },
+    { dragDistancePx: 16, expectedFocusWhileHeld: 'kept', expectedFocusAfterRelease: 'dismissed' },
+  ] as const)('$expectedFocusAfterRelease focus after releasing a $dragDistancePx px sheet movement', async ({
+    dragDistancePx,
+    expectedFocusWhileHeld,
+    expectedFocusAfterRelease,
+  }) => {
+    const queuedFrames: FrameRequestCallback[] = [];
+
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      queuedFrames.push(callback);
+      return queuedFrames.length;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    render(
+      <>
+        <DrawerShell
+          presentation="bottomSheet"
+          modality="nonmodal"
+          snap="half"
+          onSnapChange={() => {}}
+        >
+          <DraftField />
+        </DrawerShell>
+        <GeometryProbe />
+      </>,
+    );
+
+    const sheet = screen.getByRole('complementary', { name: 'Content drawer' });
+    let rect = DOMRect.fromRect({ x: 0, y: 500, width: 390, height: 344 });
+    vi.spyOn(sheet, 'getBoundingClientRect').mockImplementation(() => rect);
+    act(() => queuedFrames.shift()?.(0));
+
+    const input = screen.getByLabelText('Draft note');
+    input.focus();
+    expect(document.activeElement).toBe(input);
+    const releaseLifecycle: string[] = [];
+    nearestSheetSnapMock.mockClear();
+    if (expectedFocusAfterRelease === 'dismissed') {
+      nearestSheetSnapMock.mockImplementationOnce(() => {
+        releaseLifecycle.push('resolve');
+        return 'half';
+      });
+      input.addEventListener('blur', () => releaseLifecycle.push('blur'));
+    }
+
+    const handle = sheet.querySelector('[data-drawer-sheet-handle]');
+    if (!handle) throw new Error('Expected the drag handle to be rendered.');
+
+    act(() => {
+      fireEvent.pointerDown(handle, { pointerId: 1, isPrimary: true, clientX: 195, clientY: 500 });
+      rect = DOMRect.fromRect({
+        x: 0,
+        y: 500 - dragDistancePx,
+        width: 390,
+        height: 344 + dragDistancePx,
+      });
+      fireEvent.pointerMove(handle, {
+        pointerId: 1,
+        isPrimary: true,
+        clientX: 195,
+        clientY: 500 - dragDistancePx,
+      });
+    });
+
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(screen.getByTestId('drawer-geometry').textContent).toBe(
+          `0:${500 - dragDistancePx}:390:844:390:${344 + dragDistancePx}`,
+        );
+      });
+    });
+
+    const retainedFocusBeforeRelease = document.activeElement === input;
+    act(() => {
+      fireEvent.pointerUp(handle, {
+        pointerId: 1,
+        isPrimary: true,
+        clientX: 195,
+        clientY: 500 - dragDistancePx,
+      });
+    });
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(nearestSheetSnapMock).toHaveBeenCalledOnce();
+      });
+    });
+    const retainedFocusAfterRelease = document.activeElement === input;
+
+    expect(retainedFocusBeforeRelease).toBe(expectedFocusWhileHeld === 'kept');
+    expect(retainedFocusAfterRelease).toBe(expectedFocusAfterRelease === 'kept');
+    if (expectedFocusAfterRelease === 'dismissed') {
+      expect(releaseLifecycle).toEqual(['resolve', 'blur']);
+    }
   });
 });
 
@@ -1153,6 +1234,112 @@ describe('DrawerShell settles a drag release that resolves to the current snap',
           sheet,
           { y: window.innerHeight - heights.half },
           DRAWER_SHELL_TRANSITION,
+        );
+      });
+    });
+
+    expect(onSnapChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('DrawerShell reduced motion', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.mocked(window.matchMedia).mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+  });
+
+  it('settles a drag release instantly instead of animating it, when the user prefers reduced motion', async () => {
+    vi.mocked(window.matchMedia).mockImplementation((query) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    nearestSheetSnapMock.mockReturnValueOnce('half');
+
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    const queuedFrames: FrameRequestCallback[] = [];
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      queuedFrames.push(callback);
+      return queuedFrames.length;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    const onSnapChange = vi.fn();
+
+    render(
+      <>
+        <DrawerShell
+          presentation="bottomSheet"
+          modality="nonmodal"
+          snap="half"
+          onSnapChange={onSnapChange}
+        >
+          Sheet content
+        </DrawerShell>
+        <GeometryProbe />
+      </>,
+    );
+
+    const sheet = screen.getByRole('complementary', { name: 'Content drawer' });
+    let rect = DOMRect.fromRect({ x: 0, y: 500, width: 390, height: 344 });
+    vi.spyOn(sheet, 'getBoundingClientRect').mockImplementation(() => rect);
+
+    act(() => queuedFrames.shift()?.(0));
+    expect(screen.getByTestId('drawer-geometry').textContent).toBe('0:500:390:844:390:344');
+
+    const handle = sheet.querySelector('[data-drawer-sheet-handle]');
+    if (!handle) throw new Error('Expected the drag handle to be rendered.');
+
+    act(() => {
+      fireEvent.pointerDown(handle, { pointerId: 1, isPrimary: true, clientX: 195, clientY: 500 });
+    });
+
+    rect = DOMRect.fromRect({ x: 0, y: 460, width: 390, height: 384 });
+    act(() => {
+      fireEvent.pointerMove(handle, { pointerId: 1, isPrimary: true, clientX: 195, clientY: 460 });
+    });
+
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(screen.getByTestId('drawer-geometry').textContent).toBe('0:460:390:844:390:384');
+      });
+    });
+
+    act(() => {
+      fireEvent.pointerUp(handle, { pointerId: 1, isPrimary: true, clientX: 195, clientY: 460 });
+    });
+
+    const heights = resolveSheetSnapHeights({
+      viewportHeightPx: window.innerHeight,
+      peekHeightPx: SHEET_PEEK_HEIGHT_PX,
+    });
+
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(animateMock).toHaveBeenCalledWith(
+          sheet,
+          { y: window.innerHeight - heights.half },
+          { duration: 0 },
         );
       });
     });

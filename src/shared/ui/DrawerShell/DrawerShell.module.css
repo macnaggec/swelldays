@@ -25,10 +25,16 @@
 }
 
 .surface[data-drawer-presentation='sideOverlay'] {
+  /* Landscape media may reach both horizontal screen edges; controls inside
+     retain their own panel-content inset. */
+  padding-inline: 0;
   overflow: hidden;
 }
 
 .surface[data-drawer-presentation='sideWorkspace'] {
+  /* Account/workspace pages own their normal content inset; the shell does not
+     add horizontal device-safe padding around that content. */
+  padding-inline: 0;
   overflow: hidden;
 }
 

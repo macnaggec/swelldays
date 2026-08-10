@@ -11,6 +11,7 @@ import { UploadSidebar } from 'features/Upload';
 import type { Spot } from 'entities/Spot';
 import { useSpotPreview } from 'entities/Spot';
 import { useAuthModal } from 'entities/Identity';
+import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import { useSetPanelRouteBackAction } from './_panel';
 
 export const Route = createFileRoute('/_panel/upload')({
@@ -29,6 +30,7 @@ function UploadPanel() {
   const queryClient = useQueryClient();
   const { isAuthenticated, isLoading: isUserLoading } = useUser();
   const { open: openAuthModal } = useAuthModal();
+  const layoutPolicy = useAppShellLayoutPolicy();
   const setPanelRouteBackAction = useSetPanelRouteBackAction();
   const { data: activeWorkspace } = useQuery({
     ...trpc.uploads.getActiveWorkspace.queryOptions(),
@@ -163,7 +165,7 @@ function UploadPanel() {
       activeSpot={activeSpot}
       onSpotSelect={(s) => handleSpotChange(s)}
       onClear={() => handleSpotChange(null)}
-      autoFocus={!activeSpot}
+      autoFocus={!activeSpot && layoutPolicy.drawer.presentation !== 'bottomSheet'}
       placeholder={!activeSpot ? 'Where did you shoot?' : undefined}
     />
   );

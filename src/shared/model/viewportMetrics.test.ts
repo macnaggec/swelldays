@@ -1,6 +1,11 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getViewportMetricsSnapshot, indeterminateViewportMetrics, useViewportMetrics } from './viewportMetrics';
+import {
+  getViewportMetricsSnapshot,
+  indeterminateViewportMetrics,
+  useViewportMetrics,
+  waitForKeyboardViewportToSettle,
+} from './viewportMetrics';
 
 const originalInnerWidth = window.innerWidth;
 const originalInnerHeight = window.innerHeight;
@@ -10,6 +15,8 @@ describe('viewport metrics', () => {
     Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
     Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('falls back to the compact base band size when indeterminate', () => {
@@ -20,6 +27,8 @@ describe('viewport metrics', () => {
       visualViewportHeightPx: 844,
       visualViewportOffsetLeftPx: 0,
       visualViewportOffsetTopPx: 0,
+      safeAreaTopPx: 0,
+      safeAreaBottomPx: 0,
     });
   });
 
@@ -50,6 +59,8 @@ describe('viewport metrics', () => {
       visualViewportHeightPx: 800,
       visualViewportOffsetLeftPx: 0,
       visualViewportOffsetTopPx: 0,
+      safeAreaTopPx: 0,
+      safeAreaBottomPx: 0,
     });
   });
 
@@ -66,6 +77,8 @@ describe('viewport metrics', () => {
       visualViewportHeightPx: 768,
       visualViewportOffsetLeftPx: 0,
       visualViewportOffsetTopPx: 0,
+      safeAreaTopPx: 0,
+      safeAreaBottomPx: 0,
     });
   });
 
@@ -86,6 +99,29 @@ describe('viewport metrics', () => {
       visualViewportHeightPx: 500,
       visualViewportOffsetLeftPx: 0,
       visualViewportOffsetTopPx: 20,
+      safeAreaTopPx: 0,
+      safeAreaBottomPx: 0,
+    });
+  });
+
+  it('keeps the layout viewport stable when iOS Safari shrinks innerHeight for the keyboard', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 395, configurable: true });
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(390);
+    vi.spyOn(document.documentElement, 'clientHeight', 'get').mockReturnValue(663);
+    vi.stubGlobal('visualViewport', {
+      width: 390,
+      height: 395,
+      offsetLeft: 0,
+      offsetTop: 268,
+    } as unknown as VisualViewport);
+
+    expect(getViewportMetricsSnapshot()).toMatchObject({
+      layoutViewportWidthPx: 390,
+      layoutViewportHeightPx: 663,
+      visualViewportWidthPx: 390,
+      visualViewportHeightPx: 395,
+      visualViewportOffsetTopPx: 268,
     });
   });
 
@@ -101,6 +137,8 @@ describe('viewport metrics', () => {
       visualViewportHeightPx: 768,
       visualViewportOffsetLeftPx: 0,
       visualViewportOffsetTopPx: 0,
+      safeAreaTopPx: 0,
+      safeAreaBottomPx: 0,
     });
 
     act(() => {
@@ -116,6 +154,8 @@ describe('viewport metrics', () => {
       visualViewportHeightPx: 900,
       visualViewportOffsetLeftPx: 0,
       visualViewportOffsetTopPx: 0,
+      safeAreaTopPx: 0,
+      safeAreaBottomPx: 0,
     });
   });
 
@@ -149,5 +189,92 @@ describe('viewport metrics', () => {
 
     expect(result.current.visualViewportHeightPx).toBe(500);
     expect(result.current.visualViewportOffsetTopPx).toBe(20);
+  });
+
+  it('waits for a keyboard-reduced visual viewport to recover before settling', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(window, 'innerHeight', { value: 844, configurable: true });
+    const visualViewport = Object.assign(new EventTarget(), {
+      width: 390,
+      height: 500,
+      offsetLeft: 0,
+      offsetTop: 0,
+    });
+    vi.stubGlobal('visualViewport', visualViewport as unknown as VisualViewport);
+
+    let settled = false;
+    const settling = waitForKeyboardViewportToSettle().then(() => {
+      settled = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(100);
+    expect(settled).toBe(false);
+
+    visualViewport.height = 844;
+    visualViewport.dispatchEvent(new Event('resize'));
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(settled).toBe(true);
+    await settling;
+  });
+
+  it('does not delay when the visual viewport is not keyboard-reduced', async () => {
+    Object.defineProperty(window, 'innerHeight', { value: 844, configurable: true });
+    const visualViewport = Object.assign(new EventTarget(), {
+      width: 390,
+      height: 844,
+      offsetLeft: 0,
+      offsetTop: 0,
+    });
+    vi.stubGlobal('visualViewport', visualViewport as unknown as VisualViewport);
+
+    await expect(waitForKeyboardViewportToSettle()).resolves.toBeUndefined();
+  });
+
+  it('stops waiting if the browser never reports keyboard recovery', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(window, 'innerHeight', { value: 844, configurable: true });
+    const visualViewport = Object.assign(new EventTarget(), {
+      width: 390,
+      height: 500,
+      offsetLeft: 0,
+      offsetTop: 0,
+    });
+    vi.stubGlobal('visualViewport', visualViewport as unknown as VisualViewport);
+
+    let settled = false;
+    const settling = waitForKeyboardViewportToSettle().then(() => {
+      settled = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(2_000);
+
+    expect(settled).toBe(true);
+    await settling;
+  });
+
+  it('resolves env(safe-area-inset-*) to real px through the platform, defaulting to 0 when unreported', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 844, configurable: true });
+
+    expect(getViewportMetricsSnapshot()).toMatchObject({ safeAreaTopPx: 0, safeAreaBottomPx: 0 });
+
+    const realGetComputedStyle = window.getComputedStyle.bind(window);
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((element, ...rest) => (
+      element instanceof HTMLElement && element.dataset.waSafeAreaProbe === 'true'
+        ? { paddingTop: '59px', paddingBottom: '34px' } as CSSStyleDeclaration
+        : realGetComputedStyle(element, ...rest)
+    ));
+
+    expect(getViewportMetricsSnapshot()).toEqual({
+      layoutViewportWidthPx: 390,
+      layoutViewportHeightPx: 844,
+      visualViewportWidthPx: 390,
+      visualViewportHeightPx: 844,
+      visualViewportOffsetLeftPx: 0,
+      visualViewportOffsetTopPx: 0,
+      safeAreaTopPx: 59,
+      safeAreaBottomPx: 34,
+    });
   });
 });

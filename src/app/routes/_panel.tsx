@@ -25,10 +25,12 @@ import {
   PanelSearchToolbar,
 } from 'shared/ui/PanelRouteLayout';
 import { formatDateRange } from 'shared/lib/dateUtils';
+import { dismissActiveTextEntry } from 'shared/lib/dismissActiveTextEntry';
 import { useUser } from 'shared/hooks/useUser';
 import { useAuthModal } from 'features/Auth';
 import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
+import { waitForKeyboardViewportToSettle } from 'shared/model/viewportMetrics';
 import { deriveRenderedPanelState } from 'shared/model/panelLayoutPolicy';
 import { BrowseSectionBar, type BrowseSection } from 'widgets/BrowseSectionBar';
 
@@ -162,7 +164,11 @@ function PanelFrame({ children }: { children: ReactNode }) {
     // here has no draft loaded yet. Landing on /upload without a workspaceId is
     // correct: the upload route resolves the active draft itself and replaces
     // the location once that query settles.
-    const submit = () => {
+    const submit = async () => {
+      const dismissedTextEntry = dismissActiveTextEntry();
+      if (dismissedTextEntry && layoutPolicy.drawer.presentation === 'bottomSheet') {
+        await waitForKeyboardViewportToSettle();
+      }
       void navigate({
         to: '/upload',
         search: activeWorkspace
@@ -175,7 +181,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
       return;
     }
     submit();
-  }, [activeWorkspace, isAuthenticated, navigate, openAuthModal, spotId]);
+  }, [activeWorkspace, isAuthenticated, layoutPolicy.drawer.presentation, navigate, openAuthModal, spotId]);
 
   const { spot: activeSpot } = useSelectedSpot();
   const { data: cartFromSpot } = useSpotPreview(cartFrom ?? '', { enabled: !!cartFrom });

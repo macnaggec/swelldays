@@ -26,19 +26,31 @@ export interface BrowseSheetNavigationPlacement {
  * geometry and drag progress — this hook only turns that into a position/opacity pair.
  */
 export function useBrowseSheetNavigationPlacement(snap: SheetSnap): BrowseSheetNavigationPlacement {
-  const { layoutViewportHeightPx: viewportHeightPx } = useViewportMetrics();
+  const {
+    layoutViewportHeightPx: viewportHeightPx,
+    safeAreaTopPx,
+    safeAreaBottomPx,
+  } = useViewportMetrics();
   const dragging = useDrawerDragging();
   const liveGeometry = useDrawerGeometry();
   const live = dragging && liveGeometry !== null;
 
   const heights = useMemo(
-    () => resolveSheetSnapHeights({ viewportHeightPx, peekHeightPx: SHEET_PEEK_HEIGHT_PX }),
-    [viewportHeightPx],
+    () => resolveSheetSnapHeights({
+      viewportHeightPx: viewportHeightPx - safeAreaTopPx - safeAreaBottomPx,
+      peekHeightPx: SHEET_PEEK_HEIGHT_PX,
+    }),
+    [viewportHeightPx, safeAreaTopPx, safeAreaBottomPx],
   );
+  // Mirrors DrawerShell's own sheetRestPx: the sheet's resting `top` is measured up from
+  // the reachable screen's bottom edge, not the true one, now that the home-swipe strip
+  // is real. `liveGeometry.top` needs no equivalent adjustment — it already comes from
+  // the surface's own getBoundingClientRect(), a true on-screen measurement.
+  const sheetRestPx = viewportHeightPx - safeAreaBottomPx;
 
-  const topPx = live ? liveGeometry.top : viewportHeightPx - heights[snap];
+  const topPx = live ? liveGeometry.top : sheetRestPx - heights[snap];
   const { opacity, hidden } = resolveBrowseSheetNavigationOpacity({
-    visibleHeightPx: viewportHeightPx - topPx,
+    visibleHeightPx: sheetRestPx - topPx,
     heights,
   });
 

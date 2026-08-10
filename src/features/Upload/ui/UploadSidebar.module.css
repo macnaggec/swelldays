@@ -13,6 +13,27 @@
   flex: 1;
 }
 
+/* The short landscape Upload workspace is a 45vw side overlay with very little
+   vertical room. Keep the ordinary portrait/desktop rhythm everywhere else, but
+   compact this presentation's section and field insets so the form reads as one
+   workspace instead of a stack of widely separated cards. */
+:global([data-drawer-presentation='sideOverlay']) .sidebar {
+  --upload-gutter: 12px;
+  --upload-section-gap: 12px;
+  --upload-compact-inset: 4px;
+  --upload-block-padding-top: 8px;
+  --upload-block-padding-bottom: 8px;
+  --upload-label-gap: 8px;
+  --upload-nested-gap: 8px;
+  --upload-empty-padding: 12px;
+}
+
+:global([data-drawer-presentation='sideOverlay']) .spotSection,
+:global([data-drawer-presentation='sideOverlay']) .mediaSection,
+:global([data-drawer-presentation='sideOverlay']) .sidebar :global([data-upload-block]) {
+  padding-inline-end: 0;
+}
+
 .validationSection {
   min-width: 0;
 }

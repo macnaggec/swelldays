@@ -7,5 +7,6 @@
 }
 
 .root[data-drawer-adjacent] {
+  bottom: max(var(--wa-safe-area-bottom), var(--wa-shell-edge-clearance));
   inset-inline-start: calc((100% - var(--wa-browse-section-drawer-inset)) / 2);
 }

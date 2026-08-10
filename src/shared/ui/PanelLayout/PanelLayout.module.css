@@ -221,13 +221,15 @@
      column alongside a fixed-height drag handle, so without pinning its flex-basis
      here, the base rule's `flex: 1 1 auto` would grow .root past this calculated
      height to consume .surface's constant leftover space, pushing the floating
-     footer below (below, at Peek/Half) the sheet's actual visible slice. */
+     footer below (below, at Peek/Half) the sheet's actual visible slice.
+
+     DrawerShell publishes the reachable snap height after removing the screen's safe
+     areas, so those strips are already outside this budget. Only the drag handle shares
+     the published height with PanelLayout; subtracting a safe-area inset again would
+     collapse Peek's 65px search-row region to 31px in an installed iPhone app. */
   flex: 0 0 auto;
   height: calc(
     var(--wa-sheet-visible-height)
-    - var(--wa-safe-area-top)
-    - var(--wa-safe-area-bottom)
-    - var(--wa-keyboard-inset-bottom, 0px)
     - var(--wa-sheet-drag-handle-height)
   );
 }
@@ -236,8 +238,7 @@
   margin-top: var(--wa-sheet-drag-handle-height);
 }
 
-.root[data-sheet-snap] .footer,
-.root[data-drawer-presentation='sideWorkspace'] .footer {
+.root[data-sheet-snap] .footer {
   position: absolute;
   inset-inline: 0;
   bottom: var(--wa-safe-area-bottom);
@@ -249,7 +250,6 @@
   display: none;
 }
 
-.root[data-sheet-snap] .content,
-.root[data-drawer-presentation='sideWorkspace'] .content {
+.root[data-sheet-snap] .content {
   padding-bottom: calc(var(--wa-panel-footer-height, 0px) + var(--wa-panel-content-inset));
 }

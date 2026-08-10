@@ -365,11 +365,15 @@ describe('Panel upload entry', () => {
     mocks.params = {};
     mocks.canGoBack = true;
     mocks.activeWorkspace = null;
+    mocks.sizeBand = 'wide';
+    mocks.heightBand = 'regular';
+    mocks.renderRealFeedSearch = false;
     usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: true });
     useAddSpotStore.getState().exit();
   });
 
   afterEach(() => {
+    mocks.renderRealFeedSearch = false;
     useAddSpotStore.getState().exit();
     vi.unstubAllGlobals();
   });
@@ -428,6 +432,43 @@ describe('Panel upload entry', () => {
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: '/upload',
       search: { spotId: undefined },
+    });
+  });
+
+  it('waits for the keyboard viewport to recover after dismissing search before opening Upload', async () => {
+    mocks.isAuthenticated = true;
+    mocks.sizeBand = 'compact';
+    mocks.renderRealFeedSearch = true;
+    vi.stubGlobal('innerHeight', 844);
+    const visualViewport = Object.assign(new EventTarget(), {
+      width: 390,
+      height: 500,
+      offsetLeft: 0,
+      offsetTop: 0,
+    });
+    vi.stubGlobal('visualViewport', visualViewport as unknown as VisualViewport);
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    const searchInput = screen.getByPlaceholderText('Search for a spot...');
+    searchInput.focus();
+    expect(document.activeElement).toBe(searchInput);
+
+    const focusLifecycle: string[] = [];
+    searchInput.addEventListener('blur', () => focusLifecycle.push('blur'));
+    mocks.navigate.mockImplementationOnce(() => {
+      focusLifecycle.push('navigate');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
+
+    expect(focusLifecycle).toEqual(['blur']);
+
+    visualViewport.height = 844;
+    visualViewport.dispatchEvent(new Event('resize'));
+
+    await waitFor(() => {
+      expect(focusLifecycle).toEqual(['blur', 'navigate']);
     });
   });
 

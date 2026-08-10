@@ -6,12 +6,17 @@
   margin-inline: auto;
 }
 
+.spotSelectHeader {
+  max-width: min(140px, 100%);
+  margin-block: 4px;
+}
+
 .spotSelect :global(.mantine-Input-input) {
   min-height: var(--wa-control-height-default);
   height: var(--wa-control-height-default);
   border-radius: 20px;
   color: var(--wa-text-status);
-  font-size: var(--wa-font-size-sm);
+  font-size: var(--wa-font-size-input);
 }
 
 .spotSelect :global(.mantine-Input-input::placeholder) {

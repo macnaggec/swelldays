@@ -118,6 +118,51 @@ describe('SidePanel band-transition continuity', () => {
     expect(after.galleryExpanded).toBe(before.galleryExpanded);
   });
 
+  it('a compact→constrained routeWorkspace crossing (rotating a phone) preserves subtree, draft, focus, and scroll', () => {
+    // The realistic pairing for an actual device rotation: portrait is narrow and tall
+    // (compact/regular), landscape is wide and short (constrained/short) — see
+    // viewportCapabilities.ts's heightBand comment. Both cells are modal (isModal is
+    // sizeBand !== 'wide'), so unlike the wide↔constrained crossing above, role stays
+    // 'dialog' on both sides; what changes is the presentation mechanism underneath it
+    // (fullScreen vs sideOverlay), which is exactly what this test exists to prove
+    // doesn't discard anything.
+    const compact = deriveAppShellLayoutPolicy({
+      routeIntent: 'routeWorkspace', sizeBand: 'compact', heightBand: 'regular', preferences,
+    });
+    const constrained = deriveAppShellLayoutPolicy({
+      routeIntent: 'routeWorkspace', sizeBand: 'constrained', heightBand: 'short', preferences,
+    });
+
+    expect(compact.drawer.presentation).toBe('fullScreen');
+    expect(constrained.drawer.presentation).toBe('sideOverlay');
+    expect(compact.drawer.modality).toBe('modal');
+    expect(constrained.drawer.modality).toBe('modal');
+
+    const { rerender } = render(renderSidePanelForPolicy(compact));
+
+    const surface = screen.getByRole('dialog', { name: 'Content drawer' });
+    const scroller = document.querySelector('[data-panel-scroll-owner]');
+    if (!(scroller instanceof HTMLElement)) throw new Error('the panel scroll owner must be mounted');
+    const draftInput = screen.getByLabelText('Draft note');
+
+    fireEvent.change(draftInput, { target: { value: 'low tide at dawn' } });
+    draftInput.focus();
+    scroller.scrollTop = 320;
+
+    rerender(renderSidePanelForPolicy(constrained));
+
+    expect(screen.getByRole('dialog', { name: 'Content drawer' })).toBe(surface);
+    expect(document.querySelector('[data-panel-scroll-owner]')).toBe(scroller);
+    expect(scroller.scrollTop).toBe(320);
+    expect(screen.getByLabelText('Draft note')).toHaveFocus();
+    expect(screen.getByLabelText('Draft note')).toHaveValue('low tide at dawn');
+
+    rerender(renderSidePanelForPolicy(compact));
+
+    expect(screen.getByRole('dialog', { name: 'Content drawer' })).toBe(surface);
+    expect(screen.getByLabelText('Draft note')).toHaveValue('low tide at dawn');
+  });
+
   it('a wide→constrained browse crossing preserves the expansion preference and rendered expansion', () => {
     const wide = deriveAppShellLayoutPolicy({
       routeIntent: 'browse', sizeBand: 'wide', heightBand: 'regular', preferences,

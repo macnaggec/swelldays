@@ -292,6 +292,18 @@ describe('PanelLayout sheet-bound visible height and floating footer', () => {
     );
     const plainFooter = plainContainer.querySelector('[data-panel-layout-footer]');
     expect(plainFooter?.className.split(' ')).not.toContain(materialClasses.chrome);
+
+    const { container: workspaceContainer } = render(
+      <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation: 'sideWorkspace' }}>
+        <PanelLayout>
+          <PanelLayoutFooter>
+            <button type="button">Checkout</button>
+          </PanelLayoutFooter>
+        </PanelLayout>
+      </PanelScrollChromeStateProvider>,
+    );
+    const workspaceFooter = workspaceContainer.querySelector('[data-panel-layout-footer]');
+    expect(workspaceFooter?.className.split(' ')).not.toContain(materialClasses.chrome);
   });
 
   it('height-binds the root to the sheet-visible-height custom property while inside a sheet', () => {
@@ -308,8 +320,8 @@ describe('PanelLayout sheet-bound visible height and floating footer', () => {
   });
 });
 
-describe('PanelLayout sideWorkspace floating footer', () => {
-  it('reserves the floating-footer clearance property for a sideWorkspace drawer with no sheetSnap set', () => {
+describe('PanelLayout sideWorkspace footer', () => {
+  it('keeps the footer in normal flow without reserving floating-footer clearance', () => {
     const { container } = render(
       <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation: 'sideWorkspace' }}>
         <PanelLayout>
@@ -323,7 +335,7 @@ describe('PanelLayout sideWorkspace floating footer', () => {
     const root = container.querySelector('[data-panel-layout]') as HTMLElement;
     expect(root).toHaveAttribute('data-drawer-presentation', 'sideWorkspace');
     expect(root).not.toHaveAttribute('data-sheet-snap');
-    expect(root.style.getPropertyValue('--wa-panel-footer-height')).toBe('0px');
+    expect(root.style.getPropertyValue('--wa-panel-footer-height')).toBe('');
   });
 
   it.each(['sideOverlay', 'persistent'] as const)(

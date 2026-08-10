@@ -138,6 +138,8 @@
   --wa-font-size-base: 14px;
   --wa-font-size-lg: 18px;
   --wa-font-size-display: 32px;
+  /* Below 16px, iOS Safari zooms the whole page in when a text field is focused. */
+  --wa-font-size-input: 16px;
 
   /* Status feedback */
   --wa-status-danger: #ff4d6d;

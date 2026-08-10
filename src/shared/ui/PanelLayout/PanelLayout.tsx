@@ -45,10 +45,10 @@ export function PanelLayout({
   const [stickyChromeTarget, setStickyChromeTarget] = useState<HTMLDivElement | null>(null);
   const { hidden, sheetSnap, drawerPresentation } = usePanelScrollChromeState();
   // The footer floats above content — absolute-positioned chrome rather than a flex
-  // sibling reserving its own row — both while the panel is a bottom sheet (any snap)
-  // and while it is a sideWorkspace drawer, whose Cart/Collections actions need the
-  // same "floats above the scroll owner" treatment `sheetSnap` already established.
-  const floatsFooter = sheetSnap !== undefined || drawerPresentation === 'sideWorkspace';
+  // sibling reserving its own row — only while the panel is a bottom sheet. A
+  // sideWorkspace already has a full-height panel where the ordinary footer row can
+  // stay visible without covering the cards above it.
+  const floatsFooter = sheetSnap !== undefined;
 
   // Everything in the panel — search row, filter pills, cards — lays itself out once,
   // at the width the drawer is heading for, instead of being re-flowed on every frame

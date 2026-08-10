@@ -3,6 +3,7 @@ import type { ComponentType, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route } from './_panel.upload';
 import type { UploadWorkspaceState, UploadWorkspaceSummary } from 'shared/types/uploadWorkspace';
+import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 
 const activeWorkspace: UploadWorkspaceSummary = {
   id: 'workspace-active',
@@ -44,6 +45,8 @@ const mocks = vi.hoisted(() => ({
     data: { id: 'spot-a', name: 'Spot A', location: 'Beach' } as { id: string; name: string; location: string } | undefined,
   },
   user: { isAuthenticated: true, isLoading: false },
+  sizeBand: 'wide' as 'compact' | 'constrained' | 'wide',
+  heightBand: 'regular' as 'short' | 'regular',
   updateWorkspace: vi.fn(),
   notifyError: vi.fn(),
 }));
@@ -66,6 +69,16 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('shared/hooks/useUser', () => ({
   useUser: () => mocks.user,
+}));
+
+vi.mock('shared/model/viewportCapabilities', () => ({
+  useViewportCapabilities: () => ({
+    sizeBand: mocks.sizeBand,
+    heightBand: mocks.heightBand,
+    primaryPointer: 'fine',
+    supportsHover: true,
+    prefersReducedMotion: false,
+  }),
 }));
 
 vi.mock('shared/lib/notifications', () => ({
@@ -94,11 +107,14 @@ vi.mock('widgets/FeedDrawer', () => ({
   FeedSearch: ({
     activeSpot,
     onSpotSelect,
+    autoFocus,
   }: {
     activeSpot: { id: string } | null;
     onSpotSelect: (spot: { id: string; name: string }) => void;
+    autoFocus?: boolean;
   }) => (
     <div>
+      <input aria-label="Upload spot search" autoFocus={autoFocus} />
       <span data-testid="selected-spot">{activeSpot?.id ?? 'none'}</span>
       <button onClick={() => onSpotSelect({ id: 'spot-b', name: 'Spot B' })}>Select Spot B</button>
     </div>
@@ -134,6 +150,19 @@ vi.mock('features/Upload', () => ({
   ),
 }));
 
+function renderUploadPanel() {
+  const Component = (Route as unknown as { component: ComponentType }).component;
+  return render(
+    <AppShellLayoutPolicyProvider
+      routeIntent="mapInput"
+      browseExpanded={false}
+      galleryExpanded={false}
+    >
+      <Component />
+    </AppShellLayoutPolicyProvider>,
+  );
+}
+
 describe('UploadPanel workspace routing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -147,34 +176,32 @@ describe('UploadPanel workspace routing', () => {
     mocks.spotPreview.data = { id: 'spot-a', name: 'Spot A', location: 'Beach' };
     mocks.user.isAuthenticated = true;
     mocks.user.isLoading = false;
+    mocks.sizeBand = 'wide';
+    mocks.heightBand = 'regular';
     mocks.updateWorkspace.mockResolvedValue({ id: 'workspace-active' });
   });
 
   it('renders the requested workspace state', () => {
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    renderUploadPanel();
 
     expect(screen.getByTestId('workspace-id').textContent).toBe('workspace-active');
     expect(screen.getByTestId('publish-spot').textContent).toBe('spot-a');
   });
 
   it('renders the spot selector in the upload sidebar header', () => {
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    renderUploadPanel();
 
     expect(within(screen.getByTestId('upload-sidebar-header')).getByTestId('selected-spot').textContent).toBe('spot-a');
   });
 
   it('allows the panel title row to own the back action', () => {
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    renderUploadPanel();
 
     expect(screen.getByTestId('has-panel-back-action').textContent).toBe('yes');
   });
 
   it('persists spot selection to the workspace', async () => {
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    renderUploadPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'Select Spot B' }));
 
@@ -184,8 +211,7 @@ describe('UploadPanel workspace routing', () => {
   });
 
   it('stores the selected workspace spot in the upload URL after persisting it', async () => {
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    renderUploadPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'Select Spot B' }));
 
@@ -202,8 +228,7 @@ describe('UploadPanel workspace routing', () => {
     mocks.search.workspaceId = undefined;
     mocks.activeQuery.data = activeWorkspace;
     mocks.stateQuery.data = undefined;
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    renderUploadPanel();
 
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: '/upload',
@@ -215,8 +240,7 @@ describe('UploadPanel workspace routing', () => {
   it('shows a loading state while the requested workspace is opening', () => {
     mocks.stateQuery.data = undefined;
     mocks.stateQuery.isLoading = true;
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    renderUploadPanel();
 
     expect(screen.getByRole('status').textContent).toBe('Opening upload workspace…');
   });
@@ -226,8 +250,7 @@ describe('UploadPanel workspace routing', () => {
     mocks.activeQuery.data = undefined;
     mocks.activeQuery.isLoading = true;
     mocks.stateQuery.data = undefined;
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    renderUploadPanel();
 
     expect(screen.getByTestId('workspace-id').textContent).toBe('none');
     expect(screen.getByTestId('publish-spot').textContent).toBe('none');
@@ -237,8 +260,7 @@ describe('UploadPanel workspace routing', () => {
     mocks.search.workspaceId = undefined;
     mocks.activeQuery.data = undefined;
     mocks.stateQuery.data = undefined;
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    renderUploadPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'Select Spot B' }));
 
@@ -254,8 +276,7 @@ describe('UploadPanel workspace routing', () => {
     mocks.search.workspaceId = undefined;
     mocks.activeQuery.data = undefined;
     mocks.stateQuery.data = undefined;
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    renderUploadPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'Simulate first upload' }));
 
@@ -269,8 +290,7 @@ describe('UploadPanel workspace routing', () => {
   });
 
   it('returns to a fresh upload after gallery discard while preserving the selected spot', () => {
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    renderUploadPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'Simulate gallery discard' }));
 
@@ -284,10 +304,34 @@ describe('UploadPanel workspace routing', () => {
   it('offers sign-in before attempting to load protected workspace state', () => {
     mocks.user.isAuthenticated = false;
     mocks.stateQuery.data = undefined;
-    const Component = (Route as unknown as { component: ComponentType }).component;
-    render(<Component />);
+    renderUploadPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(mocks.openAuthModal).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the keyboard closed when a new upload opens in the compact bottom sheet', () => {
+    mocks.search.workspaceId = undefined;
+    mocks.search.spotId = undefined;
+    mocks.activeQuery.data = undefined;
+    mocks.stateQuery.data = undefined;
+    mocks.spotPreview.data = undefined;
+    mocks.sizeBand = 'compact';
+
+    renderUploadPanel();
+
+    expect(screen.getByRole('textbox', { name: 'Upload spot search' })).not.toHaveFocus();
+  });
+
+  it('focuses the spot search for a new upload in the wide persistent panel', () => {
+    mocks.search.workspaceId = undefined;
+    mocks.search.spotId = undefined;
+    mocks.activeQuery.data = undefined;
+    mocks.stateQuery.data = undefined;
+    mocks.spotPreview.data = undefined;
+
+    renderUploadPanel();
+
+    expect(screen.getByRole('textbox', { name: 'Upload spot search' })).toHaveFocus();
   });
 });

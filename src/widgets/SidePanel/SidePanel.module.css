@@ -9,9 +9,11 @@
   /* Cleared to the floating compact rail's own measured edge in fullScreen
      presentations where the rail hovers over this same top-left corner
      (SidePanel.tsx); 0px everywhere else, so the back/expand button keeps
-     its ordinary 8px inset. */
-  padding-inline-start: calc(8px + var(--wa-fullscreen-rail-inset, 0px));
-  padding-inline-end: 8px;
+     the same shared content inset as the card grid. */
+  padding-inline-start: calc(
+    var(--wa-panel-content-inset) + var(--wa-fullscreen-rail-inset, 0px)
+  );
+  padding-inline-end: var(--wa-panel-content-inset);
   flex-shrink: 0;
 }
 

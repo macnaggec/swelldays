@@ -242,6 +242,7 @@ const requiredResponsiveTokensByFile = new Map([
   ]],
   ['src/widgets/SidePanel/SidePanel.module.css', [
     '--wa-control-size-compact',
+    '--wa-panel-content-inset',
     '--wa-motion-duration-control',
     '--wa-motion-easing-standard',
   ]],
@@ -280,6 +281,14 @@ const requiredDrawerShellStyles = [
   ['right safe-area projection', /--wa-safe-area-right/],
   ['bottom safe-area projection', /--wa-safe-area-bottom/],
   ['left safe-area projection', /--wa-safe-area-left/],
+  [
+    'side-overlay content free of horizontal physical safe areas',
+    /\.surface\[data-drawer-presentation='sideOverlay'\]\s*\{[^}]*padding-inline:\s*0/s,
+  ],
+  [
+    'side-workspace content free of horizontal physical safe areas',
+    /\.surface\[data-drawer-presentation='sideWorkspace'\]\s*\{[^}]*padding-inline:\s*0/s,
+  ],
 ];
 
 const requiredDrawerShellRuntime = [
@@ -295,6 +304,13 @@ const requiredDrawerShellRuntime = [
   [
     'dragging flag cleared when the gesture ends or the sheet unmounts',
     /publishDrawerDragging\(false\)/,
+  ],
+];
+
+const requiredSidePanelStyles = [
+  [
+    'header horizontal edges aligned with the panel card inset',
+    /\.panelTop\s*\{[^}]*padding-inline-start:\s*calc\(\s*var\(--wa-panel-content-inset\)\s*\+\s*var\(--wa-fullscreen-rail-inset,\s*0px\)\s*\)[^}]*padding-inline-end:\s*var\(--wa-panel-content-inset\)/s,
   ],
 ];
 
@@ -325,6 +341,36 @@ const requiredCompactBrowseNavigationStyles = [
     'semantic snap transition',
     /\.root\[data-navigation-presentation='topBar'\]\s*\{[^}]*transition:[^}]*var\(--wa-motion-duration-chrome\)[^}]*var\(--wa-motion-easing-standard\)/s,
   ],
+  [
+    'side-overlay navigation using the larger safe-area or ordinary edge clearance',
+    /\.root\[data-navigation-presentation='compactBar'\]\[data-drawer-presentation='sideOverlay'\]\s*\{[^}]*top:\s*max\(var\(--wa-safe-area-top\),\s*var\(--wa-shell-edge-clearance\)\)[^}]*left:\s*max\(var\(--wa-safe-area-left\),\s*var\(--wa-shell-edge-clearance\)\)/s,
+  ],
+  [
+    'side-workspace navigation balancing the sheet gap without moving visible chrome toward the notch',
+    /\.root\[data-navigation-presentation='compactBar'\]\[data-drawer-presentation='sideWorkspace'\]\s*\{[^}]*left:\s*calc\(var\(--wa-shell-edge-clearance\)\s*\+\s*4px\)[^}]*padding-inline-start:\s*max\(\s*0px,\s*calc\(var\(--wa-safe-area-left\)\s*-\s*\(var\(--wa-shell-edge-clearance\)\s*\+\s*4px\)\)\s*\)/s,
+  ],
+];
+
+const requiredCollectionsToolbarStyles = [
+  [
+    'compact width in the landscape workspace header',
+    /\.spotSelectHeader\s*\{[^}]*max-width:\s*min\(140px,\s*100%\)/s,
+  ],
+  [
+    'equal vertical breathing room in the landscape workspace header',
+    /\.spotSelectHeader\s*\{[^}]*margin-block:\s*4px/s,
+  ],
+];
+
+const requiredUploadSidebarStyles = [
+  [
+    'compact short-landscape spacing owned by the side-overlay presentation',
+    /:global\(\[data-drawer-presentation='sideOverlay'\]\)\s+\.sidebar\s*\{[^}]*--upload-gutter:\s*12px;[^}]*--upload-section-gap:\s*12px;[^}]*--upload-compact-inset:\s*4px;[^}]*--upload-block-padding-top:\s*8px;[^}]*--upload-block-padding-bottom:\s*8px;[^}]*--upload-label-gap:\s*8px;[^}]*--upload-nested-gap:\s*8px;[^}]*--upload-empty-padding:\s*12px;/s,
+  ],
+  [
+    'short-landscape fields free of a redundant inline-end safe gap',
+    /:global\(\[data-drawer-presentation='sideOverlay'\]\)\s+\.spotSection,\s*:global\(\[data-drawer-presentation='sideOverlay'\]\)\s+\.mediaSection,\s*:global\(\[data-drawer-presentation='sideOverlay'\]\)\s+\.sidebar\s+:global\(\[data-upload-block\]\)\s*\{[^}]*padding-inline-end:\s*0;/s,
+  ],
 ];
 
 const requiredBrowseSectionBarRuntime = [
@@ -338,6 +384,10 @@ const requiredBrowseSectionBarStyles = [
   [
     'centering within the measured map remainder',
     /\.root\[data-drawer-adjacent\]\s*\{[^}]*inset-inline-start:\s*calc\(\(100%\s*-\s*var\(--wa-browse-section-drawer-inset\)\)\s*\/\s*2\)/s,
+  ],
+  [
+    'drawer-adjacent bottom chrome using the larger safe-area or ordinary edge clearance',
+    /\.root\[data-drawer-adjacent\]\s*\{[^}]*bottom:\s*max\(var\(--wa-safe-area-bottom\),\s*var\(--wa-shell-edge-clearance\)\)/s,
   ],
 ];
 
@@ -406,6 +456,13 @@ const requiredPanelLayoutStyles = [
     // purpose, not drifted into by accident — see SHEET_PEEK_HEIGHT_PX's own comment.
     'peek search row bottom clearance matches Upload\'s own minimal search-row gap',
     /\.root\[data-sheet-snap='peek'\]\s+\.stickyChrome\s*\{[^}]*padding-top:\s*9px;[^}]*padding-bottom:\s*4px/s,
+  ],
+  [
+    // DrawerShell publishes the snap's reachable content height: safe-area strips are
+    // already outside that budget. PanelLayout owns only the drag handle's share, so
+    // subtracting a safe-area inset here would charge it twice and clip Peek's input.
+    'sheet content height subtracts only the drag handle from the reachable snap height',
+    /\.root\[data-sheet-snap\]\s*\{[^}]*height:\s*calc\(\s*var\(--wa-sheet-visible-height\)\s*-\s*var\(--wa-sheet-drag-handle-height\)\s*\)/s,
   ],
 ];
 
@@ -508,6 +565,13 @@ const rules = [
     id: 'viewport-metrics-owns-visual-viewport',
     message: 'Read visual-viewport geometry (the keyboard-aware viewport) through shared/model/viewportMetrics.',
     pattern: /\bvisualViewport\b/,
+    include: isRuntimeTypeScript,
+    exclude: file => file === 'src/shared/model/viewportMetrics.ts',
+  },
+  {
+    id: 'viewport-metrics-owns-safe-area-insets',
+    message: 'Read safe-area insets as px through shared/model/viewportMetrics (safeAreaTopPx/safeAreaBottomPx), not a raw env() probe.',
+    pattern: /safe-area-inset-(?:top|right|bottom|left)/,
     include: isRuntimeTypeScript,
     exclude: file => file === 'src/shared/model/viewportMetrics.ts',
   },
@@ -850,6 +914,12 @@ const rules = [
     include: file => file === 'src/widgets/SidePanel/SidePanel.module.css',
   },
   {
+    id: 'side-workspace-footer-remains-in-flow',
+    message: 'The short-landscape workspace footer is a normal flex row; only bottom-sheet footers may float over content.',
+    pattern: /\.root\[data-drawer-presentation='sideWorkspace'\]\s+\.(?:footer|content)/,
+    include: file => file === 'src/shared/ui/PanelLayout/PanelLayout.module.css',
+  },
+  {
     id: 'no-local-responsive-control-motion',
     message: 'Shell controls must use the semantic control motion tokens.',
     pattern: /transition:[^;]*150ms\s+ease/,
@@ -963,6 +1033,20 @@ for (const [requirement, pattern] of requiredDrawerShellRuntime) {
   });
 }
 
+const sidePanelStyles = readFileSync(
+  path.join(root, 'src/widgets/SidePanel/SidePanel.module.css'),
+  'utf8',
+);
+for (const [requirement, pattern] of requiredSidePanelStyles) {
+  if (pattern.test(sidePanelStyles)) continue;
+  violations.push({
+    file: 'src/widgets/SidePanel/SidePanel.module.css',
+    line: 1,
+    rule: 'side-panel-required-styles',
+    message: `SidePanel is missing ${requirement}.`,
+  });
+}
+
 const compactBrowseNavigationRuntime = readFileSync(
   path.join(root, 'src/widgets/AppNavigation/AppNavigation.tsx'),
   'utf8',
@@ -988,6 +1072,34 @@ for (const [requirement, pattern] of requiredCompactBrowseNavigationStyles) {
     line: 1,
     rule: 'compact-browse-navigation-required-styles',
     message: `Compact browse navigation is missing ${requirement}.`,
+  });
+}
+
+const collectionsToolbarStyles = readFileSync(
+  path.join(root, 'src/features/Collections/ui/CollectionsToolbar.module.css'),
+  'utf8',
+);
+for (const [requirement, pattern] of requiredCollectionsToolbarStyles) {
+  if (pattern.test(collectionsToolbarStyles)) continue;
+  violations.push({
+    file: 'src/features/Collections/ui/CollectionsToolbar.module.css',
+    line: 1,
+    rule: 'collections-toolbar-required-styles',
+    message: `Collections toolbar is missing ${requirement}.`,
+  });
+}
+
+const uploadSidebarStyles = readFileSync(
+  path.join(root, 'src/features/Upload/ui/UploadSidebar.module.css'),
+  'utf8',
+);
+for (const [requirement, pattern] of requiredUploadSidebarStyles) {
+  if (pattern.test(uploadSidebarStyles)) continue;
+  violations.push({
+    file: 'src/features/Upload/ui/UploadSidebar.module.css',
+    line: 1,
+    rule: 'upload-sidebar-required-styles',
+    message: `Upload sidebar is missing ${requirement}.`,
   });
 }
 

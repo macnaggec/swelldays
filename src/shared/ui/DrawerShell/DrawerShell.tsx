@@ -15,6 +15,7 @@ import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
 import { useNavigationRailGeometry } from 'shared/model/navigationRailGeometry';
 import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import { useViewportMetrics } from 'shared/model/viewportMetrics';
+import { dismissActiveTextEntry } from 'shared/lib/dismissActiveTextEntry';
 import { PANEL_WIDTH_VW, resolvePanelWidthPx } from 'shared/model/panelExpansionStore';
 import { materialClasses } from 'shared/ui/design-system';
 import {
@@ -25,7 +26,6 @@ import {
   publishDrawerTargetGeometry,
   type DrawerGeometry,
 } from './geometry';
-import { deriveKeyboardInsetPx } from './keyboardInset';
 import { deriveDrawerSurfaceTransition, DRAWER_SHELL_TRANSITION } from './motion';
 import { PanelSettledWidthContext } from './panelSettledWidth';
 import {
@@ -86,6 +86,7 @@ export type DrawerShellProps = DrawerShellPanelProps | DrawerShellSheetProps;
 // Small because dragConstraints already bounds the travel between full and peek; this
 // only softens the stop at either end rather than allowing real overshoot.
 const SHEET_DRAG_ELASTIC = 0.08;
+const SHEET_KEYBOARD_DISMISS_DRAG_THRESHOLD_PX = 12;
 const SHORT_SIDE_OVERLAY_WIDTH_VW = 45;
 const FULL_SCREEN_WIDTH_VW = 100;
 
@@ -113,21 +114,29 @@ export function DrawerShell(props: DrawerShellProps) {
   const {
     layoutViewportWidthPx: viewportWidthPx,
     layoutViewportHeightPx: viewportHeightPx,
-    visualViewportHeightPx,
-    visualViewportOffsetTopPx,
+    safeAreaTopPx,
+    safeAreaBottomPx,
   } = useViewportMetrics();
-  const keyboardInsetPx = deriveKeyboardInsetPx({
-    layoutViewportHeightPx: viewportHeightPx,
-    visualViewportHeightPx,
-    visualViewportOffsetTopPx,
-  });
+
+  // A sheet's snap heights are content sized against the *reachable* screen — the strip
+  // behind the notch/status bar and the strip reserved for the home-swipe gesture are
+  // both off limits to them, the same way they always were before the app went
+  // edge-to-edge (env() reported 0 for both then, so this was a no-op). Converting a
+  // resolved height back into an on-screen `top`/`y` must then re-add the bottom strip's
+  // own height (sheetRestPx below), since `viewportHeightPx` itself now spans the whole
+  // physical screen, past that strip.
   const heights = useMemo(
     () => resolveSheetSnapHeights({
-      viewportHeightPx,
+      viewportHeightPx: viewportHeightPx - safeAreaTopPx - safeAreaBottomPx,
       peekHeightPx: peekIncludesHeader ? SHEET_PEEK_WITH_HEADER_HEIGHT_PX : SHEET_PEEK_HEIGHT_PX,
     }),
-    [viewportHeightPx, peekIncludesHeader],
+    [viewportHeightPx, safeAreaTopPx, safeAreaBottomPx, peekIncludesHeader],
   );
+  // Where the reachable screen's own bottom edge sits, measured from the true top of the
+  // physical screen — every sheet `top`/`y` position below is `sheetRestPx - heights[...]`
+  // rather than `viewportHeightPx - heights[...]`, so a snap's height never has to know
+  // its own screen position, only how tall it is.
+  const sheetRestPx = viewportHeightPx - safeAreaBottomPx;
   const targetSheetHeightPx = snap ? heights[snap] : null;
   const railGeometry = useNavigationRailGeometry();
   // The gap between the rail's own right edge and the surface's left edge matches
@@ -147,8 +156,8 @@ export function DrawerShell(props: DrawerShellProps) {
       );
   const dragControls = useDragControls();
   const dragConstraints = useMemo(
-    () => ({ top: viewportHeightPx - heights.full, bottom: viewportHeightPx - heights.peek }),
-    [viewportHeightPx, heights],
+    () => ({ top: sheetRestPx - heights.full, bottom: sheetRestPx - heights.peek }),
+    [sheetRestPx, heights],
   );
 
   const surfaceRef = useRef<HTMLElement>(null);
@@ -194,13 +203,17 @@ export function DrawerShell(props: DrawerShellProps) {
     if (props.presentation === 'bottomSheet') {
       const targetHeight = targetSheetHeightPx;
       if (targetHeight === null) return;
+      // The surface's own opaque background still spans down to the true screen bottom
+      // (bottom stays viewportHeightPx below) — only its top edge shifts, so the reported
+      // bounds keep matching what actually renders, not just the reachable content span.
+      const targetTop = sheetRestPx - targetHeight;
       target = {
         left: 0,
-        top: viewportHeightPx - targetHeight,
+        top: targetTop,
         right: viewportWidthPx,
         bottom: viewportHeightPx,
         width: viewportWidthPx,
-        height: targetHeight,
+        height: viewportHeightPx - targetTop,
       };
     } else {
       const targetWidth = panelOpen
@@ -224,6 +237,7 @@ export function DrawerShell(props: DrawerShellProps) {
     snap,
     targetWidthPx,
     targetSheetHeightPx,
+    sheetRestPx,
     viewportHeightPx,
     viewportWidthPx,
   ]);
@@ -358,13 +372,16 @@ export function DrawerShell(props: DrawerShellProps) {
     publishDrawerDragging(false);
     const surface = surfaceRef.current;
     if (!surface || snap === undefined || !onSnapChange) return;
-    const heightPx = viewportHeightPx - surface.getBoundingClientRect().top;
+    const heightPx = sheetRestPx - surface.getBoundingClientRect().top;
     const nextSnap = nearestSheetSnap({ heightPx, velocityPx: info.velocity.y, heights, availableSnaps });
+    if (Math.abs(info.offset.y) >= SHEET_KEYBOARD_DISMISS_DRAG_THRESHOLD_PX) {
+      dismissActiveTextEntry();
+    }
     if (nextSnap === snap) {
       // The resolved snap did not change, so nothing re-renders and the declarative
       // `animate` prop below never recomputes its target. Settle explicitly instead of
       // leaving the sheet wherever a slow, deliberate drag happened to release it.
-      animateSurface(surface, { y: viewportHeightPx - heights[nextSnap] }, prefersReducedMotion ? { duration: 0 } : DRAWER_SHELL_TRANSITION);
+      animateSurface(surface, { y: sheetRestPx - heights[nextSnap] }, prefersReducedMotion ? { duration: 0 } : DRAWER_SHELL_TRANSITION);
       return;
     }
     onSnapChange(nextSnap);
@@ -377,7 +394,7 @@ export function DrawerShell(props: DrawerShellProps) {
   // from wide to compact would then show the sheet still wearing the panel's 25vw width,
   // and only a reload — which mounts straight into the sheet — would look right.
   const animate = props.presentation === 'bottomSheet'
-    ? { x: '0%', y: viewportHeightPx - heights[props.snap], width: '100%' }
+    ? { x: '0%', y: sheetRestPx - heights[props.snap], width: '100%' }
     : props.presentation === 'sideOverlay'
       // Its own width never moves (M06h): opening/closing translates the unchanged box
       // on/off screen instead of scaling it down, which used to visibly squeeze whatever
@@ -423,12 +440,9 @@ export function DrawerShell(props: DrawerShellProps) {
         data-drawer-snap={props.presentation === 'bottomSheet' ? props.snap : undefined}
         data-drawer-modality={modality}
         initial={false}
-        style={{
-          '--wa-keyboard-inset-bottom': `${keyboardInsetPx}px`,
-          ...(props.presentation === 'bottomSheet'
-            ? { '--wa-sheet-visible-height': `${heights[props.snap]}px` }
-            : {}),
-        } as CSSProperties}
+        style={props.presentation === 'bottomSheet'
+          ? { '--wa-sheet-visible-height': `${heights[props.snap]}px` } as CSSProperties
+          : undefined}
         animate={animate}
         transition={transition}
         drag={props.presentation === 'bottomSheet' ? 'y' : false}

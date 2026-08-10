@@ -10,6 +10,11 @@
   transform: translateY(var(--wa-browse-navigation-translate-y));
 }
 
+.root[data-navigation-presentation='compactBar'][data-drawer-presentation='sideOverlay'] {
+  top: max(var(--wa-safe-area-top), var(--wa-shell-edge-clearance));
+  left: max(var(--wa-safe-area-left), var(--wa-shell-edge-clearance));
+}
+
 .root[data-navigation-presentation='topBar'] {
   top: calc(var(--wa-safe-area-top) + var(--wa-shell-edge-clearance));
   left: auto;
@@ -48,16 +53,19 @@
 }
 
 /* The rail hovers over the decorative map strip beside a sideWorkspace drawer
-   (constrained × short: Account/Earnings/Collections/Cart) rather than
-   pinning to the top corner used everywhere else the compact rail appears —
-   there is nothing else in that strip to align with, so it centers in the
-   full available height instead. Horizontal placement is untouched: an equal
-   gap on the strip's other side comes from DrawerShell reserving the same
-   measured offset for the sideWorkspace surface itself, not from moving the
-   rail, so this only needs to override the vertical axis. */
+   (constrained × short: Account/Earnings/Collections/Cart). Its measured root
+   uses a slightly larger balanced gap while transparent padding keeps the
+   visible stack at the same notch-safe coordinate. DrawerShell includes that
+   padding in the rail width, so the matching measured gap remains between the
+   stack and workspace. */
 .root[data-navigation-presentation='compactBar'][data-drawer-presentation='sideWorkspace'] {
   --wa-browse-navigation-translate-y: -50%;
 
+  left: calc(var(--wa-shell-edge-clearance) + 4px);
+  padding-inline-start: max(
+    0px,
+    calc(var(--wa-safe-area-left) - (var(--wa-shell-edge-clearance) + 4px))
+  );
   top: 50%;
 }
 

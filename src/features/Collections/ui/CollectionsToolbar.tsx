@@ -32,7 +32,9 @@ export function CollectionsToolbar({
     <Select
       data-testid="collections-toolbar"
       aria-label={activeTab === 'favorites' ? 'Filter favorites by spot' : 'Filter uploads by spot'}
-      className={centered ? `${styles.spotSelect} ${styles.spotSelectCentered}` : styles.spotSelect}
+      className={centered
+        ? `${styles.spotSelect} ${styles.spotSelectCentered}`
+        : `${styles.spotSelect} ${styles.spotSelectHeader}`}
       classNames={{ option: styles.spotSelectOption }}
       placeholder="All spots"
       data={spotOptions}
