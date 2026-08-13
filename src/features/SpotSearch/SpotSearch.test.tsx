@@ -87,4 +87,50 @@ describe('SpotSearch result containment', () => {
     });
     expect(resultsScroller!.style.maxHeight).toContain('--wa-spot-search-results-max-height');
   });
+
+  it('shows populated results while the focused input is detached from its clipped sheet', async () => {
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(390);
+    vi.spyOn(document.documentElement, 'clientHeight', 'get').mockReturnValue(844);
+    const visualViewport = Object.assign(new EventTarget(), {
+      width: 390,
+      height: 400,
+      offsetLeft: 0,
+      offsetTop: 200,
+    });
+    vi.stubGlobal('visualViewport', visualViewport);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this instanceof HTMLInputElement) {
+        return rect({ height: 48, left: 16, top: 480, width: 358 });
+      }
+      if (this.dataset.testid === 'clipped-sheet') {
+        return rect({ height: 224, left: 0, top: 620, width: 390 });
+      }
+      return rect({ height: 0, left: 0, top: 0, width: 0 });
+    });
+
+    render(
+      <div data-testid="clipped-sheet" style={{ overflow: 'hidden' }}>
+        <SpotSearch onSpotSelect={vi.fn()} />
+      </div>,
+    );
+    const clippedSheet = screen.getByTestId('clipped-sheet');
+    Object.defineProperties(clippedSheet, {
+      clientHeight: { configurable: true, value: 224 },
+      clientWidth: { configurable: true, value: 390 },
+    });
+    const input = screen.getByPlaceholderText('Search for a spot...');
+
+    await userEvent.type(input, 'ba');
+
+    const listbox = screen.getByRole('listbox', { hidden: true });
+    const dropdown = listbox.parentElement;
+    expect(dropdown).not.toBeNull();
+    await waitFor(() => {
+      expect(dropdown!.style.getPropertyValue('--wa-spot-search-available-height')).not.toBe('');
+    });
+    expect(input).toBe(document.activeElement);
+    expect(dropdown).not.toHaveStyle({ display: 'none' });
+    expect(await screen.findByRole('option', { name: /Bali Spot 0/ })).toBeInTheDocument();
+    expect(clippedSheet).not.toContainElement(listbox);
+  });
 });

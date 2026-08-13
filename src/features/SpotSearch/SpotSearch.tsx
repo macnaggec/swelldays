@@ -177,6 +177,7 @@ export default function SpotSearch({
       onOptionSubmit={handleSelect}
       withinPortal
       floatingStrategy="fixed"
+      hideDetached={false}
       middlewares={dropdownMiddlewares}
     >
       <Combobox.Target>
