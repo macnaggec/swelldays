@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import { Group, MantineProvider } from '@mantine/core';
+import { Group, Input, MantineProvider } from '@mantine/core';
 import {
   createMemoryHistory,
   createRootRoute,
@@ -29,6 +29,7 @@ import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import uploadStyles from 'features/Upload/ui/UploadSidebar.module.css';
 import { TimeStep } from 'features/Upload/ui/steps/TimeStep';
 import { AuthModalProvider, useAuthModal } from 'features/Auth';
+import spotSearchClasses from 'features/SpotSearch/SpotSearch.module.css';
 
 type ContractMode = 'sessions' | 'gallery';
 
@@ -40,9 +41,19 @@ function ContractAuthSurface() {
 
 function AuthContract() {
   return (
-    <AuthModalProvider>
-      <ContractAuthSurface />
-    </AuthModalProvider>
+    <>
+      <div hidden>
+        <div data-auth-search-style-reference>
+          <Input classNames={{ input: spotSearchClasses.input }} />
+        </div>
+        <div data-auth-upload-style-reference>
+          <PanelRouteActionButton onClick={() => {}}>Upload</PanelRouteActionButton>
+        </div>
+      </div>
+      <AuthModalProvider>
+        <ContractAuthSurface />
+      </AuthModalProvider>
+    </>
   );
 }
 

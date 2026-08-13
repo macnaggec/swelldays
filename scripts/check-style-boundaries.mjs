@@ -221,8 +221,9 @@ const requiredResponsiveTokensByFile = new Map([
   ]],
   ['src/features/Auth/ui/AuthForm.module.css', [
     '--wa-control-height-default',
-    '--wa-radius-control-md',
+    '--wa-radius-chrome',
     '--wa-radius-pill',
+    '--wa-font-size-base',
     '--wa-control-fill',
     '--wa-control-border',
     '--wa-surface-dialog-opaque',

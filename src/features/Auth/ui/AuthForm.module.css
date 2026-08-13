@@ -1,13 +1,13 @@
 .input {
   height: var(--wa-control-height-default);
   min-height: var(--wa-control-height-default);
-  border-radius: var(--wa-radius-control-md);
+  border-radius: var(--wa-radius-chrome);
 }
 
 .innerInput {
   height: var(--wa-control-height-default);
   min-height: var(--wa-control-height-default);
-  border-radius: var(--wa-radius-control-md);
+  border-radius: var(--wa-radius-chrome);
 }
 
 .visibilityToggle {
@@ -21,7 +21,10 @@
   min-width: var(--wa-control-height-default);
   height: var(--wa-control-height-default);
   min-height: var(--wa-control-height-default);
-  border-radius: var(--wa-radius-pill);
+  border-radius: 20px;
+  padding-inline: 14px;
+  font-size: var(--wa-font-size-base);
+  line-height: 1.4;
 }
 
 :global([data-auth-presentation]) .input {
@@ -78,7 +81,6 @@
 }
 
 :global([data-auth-presentation]) .submit {
-  width: 100%;
   color: var(--wa-text-on-accent);
   background: var(--wa-accent-spot);
   border: 1px solid var(--wa-accent-spot);

@@ -86,6 +86,18 @@ async function expectRounded(locator: Locator): Promise<void> {
   expect(radius).toBeGreaterThan(0);
 }
 
+async function readControlShapeAndType(locator: Locator) {
+  return locator.evaluate((element) => {
+    const computed = getComputedStyle(element);
+    return {
+      borderRadius: computed.borderRadius,
+      fontSize: computed.fontSize,
+      height: computed.height,
+      lineHeight: computed.lineHeight,
+    };
+  });
+}
+
 async function resolveColorToken(page: Page, token: string): Promise<string> {
   return page.evaluate((tokenName) => {
     const probe = document.createElement('span');
@@ -175,6 +187,15 @@ test.describe('auth mobile workspace', () => {
     await expectRounded(email);
     await expectRounded(submit);
 
+    const searchReference = page
+      .locator('[data-auth-search-style-reference]')
+      .locator('input');
+    const [emailShapeAndType, searchShapeAndType] = await Promise.all([
+      readControlShapeAndType(email),
+      readControlShapeAndType(searchReference),
+    ]);
+    expect(emailShapeAndType).toEqual(searchShapeAndType);
+
     const [submitPaint, accentColor, onAccentColor] = await Promise.all([
       submit.evaluate((element) => {
         const computed = getComputedStyle(element);
@@ -200,8 +221,6 @@ test.describe('auth mobile workspace', () => {
     expect(submitBox).not.toBeNull();
     expect(questionBox).not.toBeNull();
     expect(registerBox).not.toBeNull();
-    expect(Math.abs(submitBox!.width - emailBox!.width)).toBeLessThanOrEqual(1);
-
     const promptTop = Math.min(questionBox!.y, registerBox!.y);
     const promptLeft = Math.min(questionBox!.x, registerBox!.x);
     const promptRight = Math.max(
@@ -214,6 +233,75 @@ test.describe('auth mobile workspace', () => {
     expect(Math.abs(
       (promptLeft + promptRight) / 2 - (emailBox!.x + emailBox!.width / 2),
     )).toBeLessThanOrEqual(1);
+  });
+
+  test('keeps the primary auth action compact and centered with Upload proportions', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await installWritableVisualViewport(page, { width: 390, height: 844 });
+    const dialog = await openAuth(page);
+    const email = dialog.getByRole('textbox', { name: 'Email' });
+    const submit = dialog.getByRole('button', { name: 'Sign in', exact: true });
+    const uploadReference = page
+      .locator('[data-auth-upload-style-reference]')
+      .locator('button');
+
+    const [submitShapeAndType, uploadShapeAndType, submitBox, emailBox, submitPadding, baseFontSize] =
+      await Promise.all([
+      readControlShapeAndType(submit),
+      readControlShapeAndType(uploadReference),
+      submit.boundingBox(),
+      email.boundingBox(),
+      submit.evaluate((element) => {
+        const computed = getComputedStyle(element);
+        return {
+          inlineStart: computed.paddingInlineStart,
+          inlineEnd: computed.paddingInlineEnd,
+        };
+      }),
+      page.evaluate(() => (
+        getComputedStyle(document.documentElement).getPropertyValue('--wa-font-size-base').trim()
+      )),
+    ]);
+
+    expect(submitShapeAndType.height).toBe(uploadShapeAndType.height);
+    expect(submitShapeAndType.borderRadius).toBe(uploadShapeAndType.borderRadius);
+    expect(submitShapeAndType.fontSize).toBe(baseFontSize);
+    expect(submitShapeAndType.lineHeight).toBe('19.6px');
+    expect(submitPadding).toEqual({ inlineStart: '14px', inlineEnd: '14px' });
+    expect(submitBox).not.toBeNull();
+    expect(emailBox).not.toBeNull();
+    expect(submitBox!.width).toBeLessThan(submitBox!.height * 2);
+    expect(submitBox!.width).toBeLessThan(emailBox!.width);
+    expect(Math.abs(
+      submitBox!.x + submitBox!.width / 2 - (emailBox!.x + emailBox!.width / 2),
+    )).toBeLessThanOrEqual(1);
+  });
+
+  test('separates each form action area from its final input', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await installWritableVisualViewport(page, { width: 390, height: 844 });
+    const dialog = await openAuth(page);
+
+    const expectActionGap = async (field: Locator, action: Locator) => {
+      const [fieldBox, actionBox] = await Promise.all([
+        field.boundingBox(),
+        action.boundingBox(),
+      ]);
+      expect(fieldBox).not.toBeNull();
+      expect(actionBox).not.toBeNull();
+      expect(actionBox!.y - (fieldBox!.y + fieldBox!.height)).toBeGreaterThanOrEqual(48);
+    };
+
+    await expectActionGap(
+      dialog.getByRole('textbox', { name: 'Password', exact: true }),
+      dialog.getByRole('button', { name: 'Sign in', exact: true }),
+    );
+
+    await dialog.getByRole('button', { name: 'Register' }).click();
+    await expectActionGap(
+      dialog.getByRole('textbox', { name: 'Confirm password', exact: true }),
+      dialog.getByRole('button', { name: 'Register', exact: true }),
+    );
   });
 
   test('keeps the landscape header fixed while the single form surface scrolls', async ({ page }) => {

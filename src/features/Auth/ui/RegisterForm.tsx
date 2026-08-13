@@ -98,7 +98,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps): ReactElement {
           }}
         />
         {error && <Input.Error>{error}</Input.Error>}
-        <Group justify="flex-end" mt="md">
+        <Group justify="center" mt="calc(var(--mantine-spacing-xl) + 1px)">
           <Button type="submit" loading={isPending} className={classes.submit}>Register</Button>
         </Group>
       </Stack>
