@@ -241,6 +241,7 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-safe-area-right',
     '--wa-safe-area-bottom',
     '--wa-safe-area-left',
+    '--wa-radius-panel',
     '--wa-radius-sheet',
     '--wa-sheet-grabber-width',
     '--wa-sheet-grabber-height',
@@ -347,6 +348,10 @@ const requiredDrawerShellStyles = [
     /\.surface\[data-drawer-presentation='sideWorkspace'\]\s*\{[^}]*padding-inline:\s*0/s,
   ],
   [
+    'side-workspace radius only on the exposed inline-start edge',
+    /\.surface\[data-drawer-presentation='sideWorkspace'\]\s*\{[^}]*border-radius:\s*var\(--wa-radius-panel\)\s+0\s+0\s+var\(--wa-radius-panel\)\s*;/s,
+  ],
+  [
     'bottom-sheet content free of duplicated vertical physical safe areas',
     /\.surface\[data-drawer-presentation='bottomSheet'\]\s*\{[^}]*padding-block:\s*0/s,
   ],
@@ -361,6 +366,10 @@ const requiredDrawerShellStyles = [
   [
     'full-screen workspaces painting through the iOS bottom safe area while retaining keyboard clearance',
     /\.surface\[data-drawer-presentation='fullScreen'\]\s*\{[^}]*padding-block-end:\s*var\(--wa-keyboard-inset-bottom,\s*0px\)/s,
+  ],
+  [
+    'full-screen workspaces with square viewport edges',
+    /\.surface\[data-drawer-presentation='fullScreen'\]\s*\{[^}]*border-radius:\s*0\s*;/s,
   ],
 ];
 

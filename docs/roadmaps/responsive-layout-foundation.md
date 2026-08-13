@@ -1007,10 +1007,23 @@ Unrelated working-tree changes preserved: yes — concurrent PanelLayout.module.
 Next ready task: M06z
 ```
 
-- [ ] **M06z — Fix: reserve side-sheet corners for landscape workspaces**
+- [x] **M06z — Fix: reserve side-sheet corners for landscape workspaces**
   - Depends on: M06y.
   - Scope: Cart, Collections, Account, Earnings, and related route workspaces fill portrait mobile edge-to-edge with no side-sheet corner treatment. Landscape retains the leading-edge rounding that communicates the map-and-workspace split.
   - Invariant and verifier: Full-screen portrait surfaces have square viewport edges, while landscape side workspaces retain only their intended exposed-edge radius; presentation-policy and computed-style checks own the distinction.
+  - Completed 2026-08-13. The existing presentation policy already owned the correct distinction: compact-regular site workspaces resolve to `fullScreen`, while compact/constrained-short site workspaces resolve to `sideWorkspace`. The defect was confined to DrawerShell's shared surface radius leaking into `fullScreen`. The shell now explicitly squares all four `fullScreen` corners and explicitly applies `--wa-radius-panel` only to `sideWorkspace`'s two map-facing corners. The mobile layout fixture now renders both semantic presentations through the real SidePanel/DrawerShell path, and a computed-style browser contract proves the portrait and landscape corner values without screenshots. Same-change style-boundary requirements pin both role declarations and the panel-radius token. The browser test was RED with 12px portrait leading corners and is GREEN at 1/1; the existing policy suites remain GREEN at 103/103; all five project gates are GREEN at 126 files / 937 tests.
+
+```text
+Task completed: M06z — reserve side-sheet corners for landscape workspaces
+Invariant: Portrait full-screen workspaces meet all four viewport edges squarely, while landscape side workspaces retain radius only on the map-facing edge.
+Authority: App-shell policy owns fullScreen versus sideWorkspace selection; DrawerShell owns the presentation-specific rendered corner treatment.
+Changed files: src/shared/ui/DrawerShell/DrawerShell.module.css, src/test/mobileLayoutContract.tsx, tests/visual/mobile-layout-contract.spec.ts, scripts/check-style-boundaries.mjs, docs/roadmaps/responsive-layout-foundation.md
+Focused verification: RED on inherited 12px portrait leading corners; GREEN computed-style browser contract 1/1, policy suites 103/103, style boundaries, and git diff check.
+Project gates: client tsc green; server tsc green; lint green; style-boundaries green; client+server Vitest green (126 files / 937 tests).
+Removed concepts: The generic side-panel leading radius leaking into full-screen portrait workspaces, and sideWorkspace corner intent remaining implicit rather than presentation-owned and machine-enforced.
+Unrelated working-tree changes preserved: yes — none were present or modified.
+Next ready task: M07 — verify mobile experience and request Gate 2 approval.
+```
 
 - [ ] **M07 — Verify mobile experience and request Gate 2 approval**
   - Depends on: M06a, M06b, M06c, M06d, M06e, M06e-f, M06f, M06g, M06h, M06i, M06j, M06k, M06l, M06m, M06n, M06o, M06p, M06q, M06r, M06s, M06t, M06u, M06v, M06w, M06x, M06x-a, M06x-b, M06y, M06z, F12b.

@@ -39,6 +39,7 @@
   /* Account/workspace pages own their normal content inset; the shell does not
      add horizontal device-safe padding around that content. */
   padding-inline: 0;
+  border-radius: var(--wa-radius-panel) 0 0 var(--wa-radius-panel);
   overflow: hidden;
 }
 
@@ -46,6 +47,7 @@
   /* Portrait workspaces paint and scroll through the physical home-indicator
      strip. Interactive footer chrome owns its own indicator clearance below. */
   padding-block-end: var(--wa-keyboard-inset-bottom, 0px);
+  border-radius: 0;
 }
 
 .surface[data-drawer-presentation='bottomSheet'][data-drawer-snap='peek'] .dragHandle {

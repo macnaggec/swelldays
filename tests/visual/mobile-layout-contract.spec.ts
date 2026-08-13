@@ -434,6 +434,51 @@ test.describe('approved mobile spacing rhythm', () => {
     );
   });
 
+  test('squares portrait workspace edges and rounds only the exposed landscape edge', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/__mobile-layout-contract.html?displayMode=browser&presentation=fullScreen');
+
+    const portraitDrawer = page.getByRole('complementary', { name: 'Content drawer' });
+    await expect(portraitDrawer).toHaveAttribute('data-drawer-presentation', 'fullScreen');
+    const portraitRadii = await portraitDrawer.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        topLeft: style.borderTopLeftRadius,
+        topRight: style.borderTopRightRadius,
+        bottomRight: style.borderBottomRightRadius,
+        bottomLeft: style.borderBottomLeftRadius,
+      };
+    });
+    expect(portraitRadii).toEqual({
+      topLeft: '0px',
+      topRight: '0px',
+      bottomRight: '0px',
+      bottomLeft: '0px',
+    });
+
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.goto('/__mobile-layout-contract.html?displayMode=browser&presentation=sideWorkspace');
+
+    const landscapeDrawer = page.getByRole('complementary', { name: 'Content drawer' });
+    await expect(landscapeDrawer).toHaveAttribute('data-drawer-presentation', 'sideWorkspace');
+    const landscapeRadii = await landscapeDrawer.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        topLeft: style.borderTopLeftRadius,
+        topRight: style.borderTopRightRadius,
+        bottomRight: style.borderBottomRightRadius,
+        bottomLeft: style.borderBottomLeftRadius,
+      };
+    });
+    const panelRadiusPx = await readPxToken(page, '--wa-radius-panel');
+    expect(landscapeRadii).toEqual({
+      topLeft: `${panelRadiusPx}px`,
+      topRight: '0px',
+      bottomRight: '0px',
+      bottomLeft: `${panelRadiusPx}px`,
+    });
+  });
+
   test('keeps landscape Upload content symmetric and its action substrate compact above the bottom chrome', async ({ page }) => {
     await page.setViewportSize({ width: 844, height: 390 });
 

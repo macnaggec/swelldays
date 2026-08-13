@@ -22,7 +22,7 @@ import {
 import { SidePanel } from 'widgets/SidePanel/SidePanel';
 import { FilterPills } from 'widgets/SidePanel/FilterPills';
 import { ScopeSwitcher } from 'widgets/SidePanel/ScopeSwitcher';
-import type { SheetSnap } from 'shared/ui/DrawerShell';
+import type { DrawerShellPresentation, SheetSnap } from 'shared/ui/DrawerShell';
 import { theme, cssVariablesResolver } from 'app/lib/theme';
 import virtualGalleryStyles from 'shared/ui/VirtualGallery/VirtualGallery.module.css';
 import { BrowseSectionBar } from 'widgets/BrowseSectionBar';
@@ -33,6 +33,19 @@ import { AuthModalProvider, useAuthModal } from 'features/Auth';
 import spotSearchClasses from 'features/SpotSearch/SpotSearch.module.css';
 
 type ContractMode = 'sessions' | 'gallery';
+type ContractDrawerPresentation = Extract<
+  DrawerShellPresentation,
+  'bottomSheet' | 'sideOverlay' | 'sideWorkspace' | 'fullScreen'
+>;
+
+function resolveContractDrawerPresentation(
+  value: string | null,
+): ContractDrawerPresentation {
+  if (value === 'sideOverlay' || value === 'sideWorkspace' || value === 'fullScreen') {
+    return value;
+  }
+  return 'bottomSheet';
+}
 
 function ContractAuthSurface() {
   const { open } = useAuthModal();
@@ -126,11 +139,10 @@ function ContractNavigation({ mode, onModeChange }: {
 
 function MobileLayoutContract() {
   const params = new URLSearchParams(window.location.search);
-  const drawerPresentation = params.get('presentation') === 'sideOverlay'
-    ? 'sideOverlay'
-    : params.get('presentation') === 'persistent'
-      ? 'persistent'
-    : 'bottomSheet';
+  const requestedPresentation = params.get('presentation');
+  const drawerPresentation = requestedPresentation === 'persistent'
+    ? 'persistent'
+    : resolveContractDrawerPresentation(requestedPresentation);
   const panelExpanded = params.get('panelState') !== 'compact';
   const showsScopeHeader = params.get('header') === 'scope';
   const showsUploadContract = params.get('surface') === 'upload';
