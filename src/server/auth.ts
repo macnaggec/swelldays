@@ -1,6 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { prisma } from 'server/db';
+import { resolveAuthTrustedOrigins } from 'server/authOrigins';
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
@@ -17,7 +18,11 @@ export const auth = betterAuth({
   session: {
     expiresIn: 30 * 24 * 60 * 60, // 30 days
   },
-  trustedOrigins: [process.env.CLIENT_URL ?? 'http://localhost:3000'],
+  trustedOrigins: resolveAuthTrustedOrigins({
+    APP_URL: process.env.APP_URL,
+    CLIENT_URL: process.env.CLIENT_URL,
+    NODE_ENV: process.env.NODE_ENV,
+  }),
 });
 
 export type Auth = typeof auth;

@@ -5,6 +5,9 @@ import { useNavigate } from '@tanstack/react-router';
 import { useCallback } from 'react';
 import { useUser } from 'shared/hooks/useUser';
 import { useAuthModal } from 'features/Auth';
+import { notify } from 'shared/lib/notifications';
+
+const SIGN_OUT_ERROR_MESSAGE = "We couldn't sign you out. Please try again.";
 
 /**
  * UserControl — auth-aware top-right slot.
@@ -18,7 +21,20 @@ export function UserControl() {
   const { open: openAuthModal } = useAuthModal();
 
   const handleSignIn = useCallback(() => openAuthModal(), [openAuthModal]);
-  const handleSignOut = useCallback(() => void signOut(), []);
+  const handleSignOut = useCallback(async () => {
+    try {
+      const result = await signOut();
+
+      if (result.error) {
+        notify.error(SIGN_OUT_ERROR_MESSAGE, 'Sign Out Failed');
+        return;
+      }
+
+      await navigate({ to: '/' });
+    } catch {
+      notify.error(SIGN_OUT_ERROR_MESSAGE, 'Sign Out Failed');
+    }
+  }, [navigate]);
   const handleGoToCollection = useCallback(() => navigate({ to: '/me/collections' }), [navigate]);
   const handleGoToEarnings = useCallback(() => navigate({ to: '/me/earnings' }), [navigate]);
   const handleOpenAccount = useCallback(() => navigate({ to: '/me' }), [navigate]);
@@ -63,7 +79,7 @@ export function UserControl() {
         <Menu.Item onClick={handleGoToEarnings}>Earnings</Menu.Item>
         <Menu.Item onClick={handleOpenAccount}>Account</Menu.Item>
         <Menu.Divider />
-        <Menu.Item color="red" onClick={handleSignOut}>
+        <Menu.Item color="red" onClick={() => { void handleSignOut(); }}>
           Sign out
         </Menu.Item>
       </Menu.Dropdown>

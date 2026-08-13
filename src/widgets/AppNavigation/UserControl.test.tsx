@@ -1,12 +1,14 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { UserControl } from './UserControl';
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
+  notifyError: vi.fn(),
+  signOut: vi.fn(),
   user: {
     email: 'photographer@example.com',
     image: null,
@@ -61,10 +63,21 @@ vi.mock('features/Auth', () => ({
 }));
 
 vi.mock('shared/lib/auth', () => ({
-  signOut: vi.fn(),
+  signOut: mocks.signOut,
+}));
+
+vi.mock('shared/lib/notifications', () => ({
+  notify: {
+    error: mocks.notifyError,
+  },
 }));
 
 describe('UserControl', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.signOut.mockResolvedValue({ data: { success: true }, error: null });
+  });
+
   it('opens the collection workspace from the authenticated user menu', async () => {
     render(<UserControl />);
 
@@ -87,5 +100,35 @@ describe('UserControl', () => {
     await userEvent.click(screen.getByRole('menuitem', { name: 'Account' }));
 
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/me' });
+  });
+
+  it('returns to Browse after signing out successfully', async () => {
+    render(<UserControl />);
+
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+
+    await waitFor(() => {
+      expect(mocks.signOut).toHaveBeenCalledOnce();
+      expect(mocks.navigate).toHaveBeenCalledWith({ to: '/' });
+    });
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it('shows a retryable error instead of failing silently when sign-out is rejected', async () => {
+    mocks.signOut.mockResolvedValue({
+      data: null,
+      error: { message: 'Invalid origin', status: 403, statusText: 'Forbidden' },
+    });
+    render(<UserControl />);
+
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+
+    await waitFor(() => {
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "We couldn't sign you out. Please try again.",
+        'Sign Out Failed',
+      );
+    });
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 });
