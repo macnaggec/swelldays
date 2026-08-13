@@ -6,8 +6,11 @@ import { render } from 'test/setup/render';
 import { UserControl } from './UserControl';
 
 const mocks = vi.hoisted(() => ({
+  isAuthenticated: true,
+  isLoading: false,
   navigate: vi.fn(),
   notifyError: vi.fn(),
+  openAuthModal: vi.fn(),
   signOut: vi.fn(),
   user: {
     email: 'photographer@example.com',
@@ -53,13 +56,13 @@ vi.mock('@mantine/core', async (importOriginal) => {
 vi.mock('shared/hooks/useUser', () => ({
   useUser: () => ({
     user: mocks.user,
-    isAuthenticated: true,
-    isLoading: false,
+    isAuthenticated: mocks.isAuthenticated,
+    isLoading: mocks.isLoading,
   }),
 }));
 
 vi.mock('features/Auth', () => ({
-  useAuthModal: () => ({ open: vi.fn() }),
+  useAuthModal: () => ({ open: mocks.openAuthModal }),
 }));
 
 vi.mock('shared/lib/auth', () => ({
@@ -75,7 +78,18 @@ vi.mock('shared/lib/notifications', () => ({
 describe('UserControl', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.isAuthenticated = true;
+    mocks.isLoading = false;
     mocks.signOut.mockResolvedValue({ data: { success: true }, error: null });
+  });
+
+  it('opens sign in from the signed-out account rail action', async () => {
+    mocks.isAuthenticated = false;
+    render(<UserControl />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(mocks.openAuthModal).toHaveBeenCalledOnce();
   });
 
   it('opens the collection workspace from the authenticated user menu', async () => {

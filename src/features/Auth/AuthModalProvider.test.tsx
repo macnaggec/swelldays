@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { useAuthModal } from 'entities/Identity';
@@ -7,9 +7,19 @@ import { AuthModalProvider } from './AuthModalProvider';
 // AuthPage drags in the login/register forms and their data layer; the interrupt
 // dismissal behavior under test doesn't need them.
 vi.mock('./ui/AuthPage', () => ({
-  AuthPage: ({ onSuccess }: { onSuccess?: () => void }) => (
+  AuthPage: ({
+    mode,
+    onModeChange,
+    onSuccess,
+  }: {
+    mode: 'login' | 'register';
+    onModeChange: (mode: 'login' | 'register') => void;
+    onSuccess?: () => void;
+  }) => (
     <>
       <div>Auth form</div>
+      <div>Auth mode: {mode}</div>
+      <button type="button" onClick={() => onModeChange('register')}>show-registration</button>
       <button type="button" onClick={() => onSuccess?.()}>succeed-auth</button>
     </>
   ),
@@ -70,6 +80,34 @@ describe('AuthModalProvider — the interrupt owns Escape', () => {
     pressEscape();
 
     expect(surfaceBeneath).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('AuthModalProvider — one controlled auth workspace', () => {
+  it('starts with one sign-in heading, switches that heading, and resets on reopen', () => {
+    render(
+      <AuthModalProvider>
+        <Opener />
+      </AuthModalProvider>,
+    );
+
+    fireEvent.click(screen.getByText('open-auth'));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getAllByRole('heading')).toHaveLength(1);
+    expect(within(dialog).getByRole('heading', { name: 'Sign in to Swelldays' }))
+      .toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByText('show-registration'));
+    expect(within(dialog).getAllByRole('heading')).toHaveLength(1);
+    expect(within(dialog).getByRole('heading', { name: 'Create your Swelldays account' }))
+      .toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('close-auth'));
+    fireEvent.click(screen.getByText('open-auth'));
+    const reopenedDialog = screen.getByRole('dialog');
+    expect(within(reopenedDialog).getAllByRole('heading')).toHaveLength(1);
+    expect(within(reopenedDialog).getByRole('heading', { name: 'Sign in to Swelldays' }))
+      .toBeInTheDocument();
   });
 });
 

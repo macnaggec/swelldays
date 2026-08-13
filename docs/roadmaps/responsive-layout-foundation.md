@@ -989,10 +989,23 @@ Unrelated working-tree changes preserved: yes — none were present or modified.
 Next ready task: M06y
 ```
 
-- [ ] **M06y — Recompose sign-in as a mobile workspace with standard keyboard behavior**
+- [x] **M06y — Recompose sign-in as a mobile workspace with standard keyboard behavior**
   - Depends on: M06x-b.
   - Scope: Unify the sign-in form with the app's rounded controls and touch targets, add the missing round border to the account-rail sign-in action, use one non-overlapping header, and make portrait sign-in a full-screen mobile surface rather than a narrow desktop modal. In landscape, keep the form independently scrollable below an opaque/stable header. Opening the keyboard may bring the active field into view; scrolling form content does not dismiss it, while an intentional downward surface gesture or explicit keyboard action does.
   - Invariant and verifier: Every auth control remains visible, reachable, and visually consistent at supported phone sizes with either field focused and the keyboard open; semantic DOM, focus, scroll, computed-style, and keyboard-inset tests own mechanics, with appearance confirmed by the user checklist.
+  - Completed 2026-08-13. The auth interrupt now derives portrait, landscape, and dialog presentations from the shared viewport capability and visual-viewport authorities: portrait fills the keyboard-visible viewport, while landscape keeps one independently scrolling form below one opaque fixed header. Login/register mode is controlled by the provider, so the single semantic heading and continuation lifecycle reset together. Both forms share rounded 44px controls and accessible password toggles; the auth workspace keeps ordinary and Safari-autofilled fields on the dark Swelldays material, uses the single blue accent for a full-width primary action with dark readable text, and keeps the account-mode sentence directly beneath it. These color rules are scoped beneath the auth workspace, so the light admin login remains unchanged. The signed-out account-rail action now fills its existing slot with a round token border. The real-browser contract was RED on the old narrow modal, absent visual-viewport/scroll ownership, gray submit action, and missing registration `Sign in`; it is GREEN at 4/4 for portrait/landscape geometry, token-resolved color, touch sizing, fixed-header scrolling, keyboard viewport, and boundary-only dismissal. Focused behavior tests are green at 13/13, the raw viewport scan is clean, and all five project gates are green at 126 files / 937 tests. **Still needs, on-device, from the user:** on Safari, autofill both Sign in and Register and confirm every filled field remains dark with readable light text/caret and no pale-yellow paint; rotate to landscape with the keyboard open and confirm the focused field remains reachable below the stable header.
+
+```text
+Task completed: M06y — recompose sign-in as a mobile workspace with standard keyboard behavior
+Invariant: Every phone auth control stays reachable inside the keyboard-visible viewport, with one stable header, one form scroll owner, dark readable autofill, one blue full-width primary action, and an intentional boundary-only keyboard-dismiss gesture.
+Authority: AuthModalProvider owns interrupt mode and viewport presentation; AuthPage owns form scrolling and the keyboard-dismiss gesture; the shared viewport capability/metrics modules remain the sole viewport authorities.
+Changed files: playwright.layout.config.ts, scripts/check-style-boundaries.mjs, src/features/Auth/AuthModalProvider.tsx, src/features/Auth/AuthModalProvider.module.css, src/features/Auth/AuthModalProvider.test.tsx, src/features/Auth/ui/AuthPage.tsx, src/features/Auth/ui/AuthPage.module.css, src/features/Auth/ui/AuthForm.module.css, src/features/Auth/ui/LoginForm.tsx, src/features/Auth/ui/RegisterForm.tsx, src/test/mobileLayoutContract.tsx, src/widgets/AppNavigation/UserControl.tsx, src/widgets/AppNavigation/UserControl.module.css, src/widgets/AppNavigation/UserControl.test.tsx, tests/visual/auth-layout-contract.spec.ts, docs/roadmaps/responsive-layout-foundation.md
+Focused verification: Auth real-browser contract green 4/4; AuthModalProvider and UserControl focused tests green 13/13; raw Auth viewport scan clean.
+Project gates: client tsc green; server tsc green; lint green; style-boundaries green; client+server Vitest green (126 files / 937 tests).
+Removed concepts: Narrow desktop modal as the phone auth presentation, duplicate auth headings, component-local auth mode, right-floating gray primary action, split account prompt, and Safari's yellow autofill paint as an allowed auth material.
+Unrelated working-tree changes preserved: yes — concurrent PanelLayout.module.css and mobile-layout-contract.spec.ts edits were not modified or staged by this task.
+Next ready task: M06z
+```
 
 - [ ] **M06z — Fix: reserve side-sheet corners for landscape workspaces**
   - Depends on: M06y.

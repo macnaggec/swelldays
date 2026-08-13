@@ -6,6 +6,7 @@ import { useCallback } from 'react';
 import { useUser } from 'shared/hooks/useUser';
 import { useAuthModal } from 'features/Auth';
 import { notify } from 'shared/lib/notifications';
+import classes from './UserControl.module.css';
 
 const SIGN_OUT_ERROR_MESSAGE = "We couldn't sign you out. Please try again.";
 
@@ -49,7 +50,7 @@ export function UserControl() {
           size="lg"
           aria-label="Sign in"
           onClick={handleSignIn}
-          style={{ color: 'rgba(255,255,255,0.75)' }}
+          className={classes.signIn}
         >
           <IconLogin size={18} />
         </ActionIcon>

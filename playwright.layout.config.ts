@@ -5,7 +5,7 @@ const BASE_URL = `https://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: './tests/visual',
-  testMatch: /(?:mobile-layout|upload-time-range)-contract\.spec\.ts/,
+  testMatch: /(?:auth-layout|mobile-layout|upload-time-range)-contract\.spec\.ts/,
   fullyParallel: false,
   forbidOnly: true,
   retries: 0,

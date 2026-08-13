@@ -1,25 +1,73 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import { Modal } from '@mantine/core';
 import { AuthModalContext, type AuthModalOpenOptions } from 'entities/Identity';
-import { AuthPage } from './ui/AuthPage';
+import { useViewportCapabilities, type ViewportCapabilities } from 'shared/model/viewportCapabilities';
+import { useViewportMetrics } from 'shared/model/viewportMetrics';
+import { AuthPage, type AuthMode } from './ui/AuthPage';
+import classes from './AuthModalProvider.module.css';
 
-export function AuthModalProvider({ children }: { children: React.ReactNode }) {
+type AuthWorkspacePresentation = 'dialog' | 'portraitWorkspace' | 'landscapeWorkspace';
+
+interface AuthModalViewportStyle extends CSSProperties {
+  '--wa-auth-visual-viewport-width': string;
+  '--wa-auth-visual-viewport-height': string;
+  '--wa-auth-visual-viewport-left': string;
+  '--wa-auth-visual-viewport-top': string;
+}
+
+function resolveAuthWorkspacePresentation(
+  sizeBand: ViewportCapabilities['sizeBand'],
+  heightBand: ViewportCapabilities['heightBand'],
+): AuthWorkspacePresentation {
+  if (sizeBand === 'compact' && heightBand === 'regular') return 'portraitWorkspace';
+  if (sizeBand !== 'wide' && heightBand === 'short') return 'landscapeWorkspace';
+  return 'dialog';
+}
+
+export function AuthModalProvider({ children }: { children: ReactNode }): ReactElement {
   const [opened, setOpened] = useState(false);
+  const [mode, setMode] = useState<AuthMode>('login');
   const continuationRef = useRef<(() => void) | null>(null);
+  const { sizeBand, heightBand } = useViewportCapabilities();
+  const {
+    visualViewportWidthPx,
+    visualViewportHeightPx,
+    visualViewportOffsetLeftPx,
+    visualViewportOffsetTopPx,
+  } = useViewportMetrics();
+  const presentation = resolveAuthWorkspacePresentation(sizeBand, heightBand);
+  const viewportStyle: AuthModalViewportStyle = {
+    '--wa-auth-visual-viewport-width': `${visualViewportWidthPx}px`,
+    '--wa-auth-visual-viewport-height': `${visualViewportHeightPx}px`,
+    '--wa-auth-visual-viewport-left': `${visualViewportOffsetLeftPx}px`,
+    '--wa-auth-visual-viewport-top': `${visualViewportOffsetTopPx}px`,
+  };
 
   const open = useCallback((options?: AuthModalOpenOptions) => {
     continuationRef.current = options?.onAuthenticated ?? null;
+    setMode('login');
     setOpened(true);
   }, []);
 
   const close = useCallback(() => {
     continuationRef.current = null;
+    setMode('login');
     setOpened(false);
   }, []);
 
   const handleAuthenticated = useCallback(() => {
     const continuation = continuationRef.current;
     continuationRef.current = null;
+    setMode('login');
     setOpened(false);
     continuation?.();
   }, []);
@@ -55,10 +103,28 @@ export function AuthModalProvider({ children }: { children: React.ReactNode }) {
         onClose={close}
         centered
         size="sm"
-        title="Sign in to Swelldays"
+        fullScreen={presentation === 'portraitWorkspace'}
+        title={mode === 'login'
+          ? 'Sign in to Swelldays'
+          : 'Create your Swelldays account'}
         zIndex="var(--wa-z-modal-interrupt)"
+        data-auth-presentation={presentation}
+        style={viewportStyle}
+        classNames={{
+          root: classes.root,
+          inner: classes.inner,
+          content: classes.content,
+          header: classes.header,
+          body: classes.body,
+          close: classes.close,
+        }}
+        closeButtonProps={{ 'aria-label': 'Close' }}
       >
-        <AuthPage onSuccess={handleAuthenticated} />
+        <AuthPage
+          mode={mode}
+          onModeChange={setMode}
+          onSuccess={handleAuthenticated}
+        />
       </Modal>
     </AuthModalContext.Provider>
   );

@@ -209,6 +209,32 @@ const requiredModalRoleTokenByFile = new Map([
 ]);
 
 const requiredResponsiveTokensByFile = new Map([
+  ['src/features/Auth/AuthModalProvider.module.css', [
+    '--wa-shell-edge-clearance',
+    '--wa-safe-area-top',
+    '--wa-safe-area-right',
+    '--wa-safe-area-bottom',
+    '--wa-safe-area-left',
+    '--wa-surface-dialog-opaque',
+    '--wa-radius-dialog',
+    '--wa-control-size-compact',
+  ]],
+  ['src/features/Auth/ui/AuthForm.module.css', [
+    '--wa-control-height-default',
+    '--wa-radius-control-md',
+    '--wa-radius-pill',
+    '--wa-control-fill',
+    '--wa-control-border',
+    '--wa-surface-dialog-opaque',
+    '--wa-text-primary',
+    '--wa-text-muted',
+    '--wa-text-on-accent',
+    '--wa-accent-spot',
+  ]],
+  ['src/widgets/AppNavigation/UserControl.module.css', [
+    '--wa-control-border',
+    '--wa-radius-pill',
+  ]],
   ['src/shared/ui/DrawerShell/DrawerShell.module.css', [
     '--wa-safe-area-top',
     '--wa-safe-area-right',
@@ -534,6 +560,10 @@ const requiredPanelLayoutStyles = [
   // the old in-flow geometry without subjecting chrome paint to the clip.
   ['one chrome overlay seam beside the scroll owner', /\.scrollRegion\s*{[^}]*position:\s*relative[\s\S]*\.chromeViewport\s*{[^}]*position:\s*absolute/s],
   ['measured chrome space projected into scrolling content', /\.scroller\s*{[^}]*padding-block-start:\s*var\(--wa-panel-chrome-height,\s*0px\)/s],
+  [
+    'header-bearing panels clip returning chrome at the header edge',
+    /\.root:has\(>\s*\[data-panel-layout-header\]\)\s+\.chromeViewport\s*{[^}]*inset-block-start:\s*0[^}]*padding-block-start:\s*0/s,
+  ],
   ['content that flexes rather than claiming full height', /\.content\s*{[^}]*flex:\s*1\s+0\s+auto/s],
   [
     'primary and replacement chrome stacked in one constant-geometry grid cell',

@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { Group, MantineProvider } from '@mantine/core';
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router';
 import '@fontsource/geist-sans/400.css';
 import '@mantine/core/styles.css';
 import 'shared/ui/design-system/tokens.css';
@@ -22,8 +28,29 @@ import { BrowseSectionBar } from 'widgets/BrowseSectionBar';
 import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import uploadStyles from 'features/Upload/ui/UploadSidebar.module.css';
 import { TimeStep } from 'features/Upload/ui/steps/TimeStep';
+import { AuthModalProvider, useAuthModal } from 'features/Auth';
 
 type ContractMode = 'sessions' | 'gallery';
+
+function ContractAuthSurface() {
+  const { open } = useAuthModal();
+
+  return <button type="button" onClick={() => open()}>Open sign in</button>;
+}
+
+function AuthContract() {
+  return (
+    <AuthModalProvider>
+      <ContractAuthSurface />
+    </AuthModalProvider>
+  );
+}
+
+const authContractRoute = createRootRoute({ component: AuthContract });
+const authContractRouter = createRouter({
+  routeTree: authContractRoute,
+  history: createMemoryHistory({ initialEntries: ['/'] }),
+});
 
 function ContractUploadContent() {
   return (
@@ -92,9 +119,12 @@ function MobileLayoutContract() {
     : 'bottomSheet';
   const showsUploadContract = params.get('surface') === 'upload';
   const showsTimeStepContract = params.get('surface') === 'timeStep';
+  const showsAuthContract = params.get('surface') === 'auth';
   const { isStandalone } = useViewportCapabilities();
   const [snap, setSnap] = useState<SheetSnap>('half');
   const [mode, setMode] = useState<ContractMode>('sessions');
+
+  if (showsAuthContract) return <RouterProvider router={authContractRouter} />;
 
   return (
     <div data-app-display-mode={isStandalone ? 'standalone' : 'browser'} data-mobile-layout-contract>

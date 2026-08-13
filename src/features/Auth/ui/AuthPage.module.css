@@ -1,0 +1,40 @@
+.scrollSurface {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--mantine-spacing-lg);
+}
+
+.content {
+  width: 100%;
+  max-width: 420px;
+  margin-inline: auto;
+}
+
+.modePrompt {
+  justify-content: center;
+  gap: 4px;
+  margin-block-start: var(--mantine-spacing-xs);
+  text-align: center;
+}
+
+.modeQuestion {
+  color: var(--wa-text-muted);
+}
+
+.modeSwitch {
+  min-width: var(--wa-control-height-default);
+  min-height: var(--wa-control-height-default);
+  padding-inline: 4px;
+  border-radius: var(--wa-radius-pill);
+  color: var(--wa-accent-spot);
+}
+
+:global([data-auth-presentation='portraitWorkspace']) .scrollSurface {
+  padding-block-end: calc(var(--mantine-spacing-lg) + var(--wa-safe-area-bottom));
+  padding-inline-end: calc(var(--mantine-spacing-lg) + var(--wa-safe-area-right));
+  padding-inline-start: calc(var(--mantine-spacing-lg) + var(--wa-safe-area-left));
+}

@@ -1,12 +1,13 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactElement } from 'react';
 import { Button, Group, Input, PasswordInput, Stack, TextInput } from '@mantine/core';
 import { signUp } from 'shared/lib/auth';
+import classes from './AuthForm.module.css';
 
 interface RegisterFormProps {
   onSuccess?: () => void;
 }
 
-export function RegisterForm({ onSuccess }: RegisterFormProps) {
+export function RegisterForm({ onSuccess }: RegisterFormProps): ReactElement {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,13 +43,63 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
   return (
     <form onSubmit={handleSubmit}>
       <Stack>
-        <TextInput name="name" label="Name" placeholder="Your name" required minLength={2} />
-        <TextInput name="email" type="email" label="Email" placeholder="hello@swelldays.com" required />
-        <PasswordInput name="password" label="Password" placeholder="Your password" required minLength={6} />
-        <PasswordInput name="confirmPassword" label="Confirm password" placeholder="Confirm your password" required minLength={6} />
+        <TextInput
+          name="name"
+          label="Name"
+          placeholder="Your name"
+          required
+          minLength={2}
+          autoComplete="name"
+          classNames={{ input: classes.input }}
+        />
+        <TextInput
+          name="email"
+          type="email"
+          label="Email"
+          placeholder="hello@swelldays.com"
+          required
+          autoComplete="email"
+          classNames={{ input: classes.input }}
+        />
+        <PasswordInput
+          name="password"
+          label="Password"
+          placeholder="Your password"
+          required
+          minLength={6}
+          autoComplete="new-password"
+          rightSectionWidth="var(--wa-control-height-default)"
+          visibilityToggleButtonProps={{
+            'aria-label': 'Toggle password visibility',
+            tabIndex: 0,
+          }}
+          classNames={{
+            input: classes.input,
+            innerInput: classes.innerInput,
+            visibilityToggle: classes.visibilityToggle,
+          }}
+        />
+        <PasswordInput
+          name="confirmPassword"
+          label="Confirm password"
+          placeholder="Confirm your password"
+          required
+          minLength={6}
+          autoComplete="new-password"
+          rightSectionWidth="var(--wa-control-height-default)"
+          visibilityToggleButtonProps={{
+            'aria-label': 'Toggle password visibility',
+            tabIndex: 0,
+          }}
+          classNames={{
+            input: classes.input,
+            innerInput: classes.innerInput,
+            visibilityToggle: classes.visibilityToggle,
+          }}
+        />
         {error && <Input.Error>{error}</Input.Error>}
         <Group justify="flex-end" mt="md">
-          <Button type="submit" radius="xl" loading={isPending}>Register</Button>
+          <Button type="submit" loading={isPending} className={classes.submit}>Register</Button>
         </Group>
       </Stack>
     </form>
