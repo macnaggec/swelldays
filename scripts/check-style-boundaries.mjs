@@ -577,8 +577,8 @@ const requiredPanelLayoutStyles = [
     /\.root\[data-sheet-snap='half'\]\s+\.stickyChrome,\s*\.root\[data-sheet-snap='full'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*0\s+var\(--wa-panel-stack-gap\)/s,
   ],
   [
-    'scrolled half and full chrome restores 8px at the sheet top without changing the initial position',
-    /\.root\[data-sheet-snap='half'\]\s+\.stickyChrome\[data-scrolled-from-top\],\s*\.root\[data-sheet-snap='full'\]\s+\.stickyChrome\[data-scrolled-from-top\]\s*\{[^}]*padding-block-start:\s*var\(--wa-grabber-gap\)/s,
+    'scrolled half and full chrome paints 8px below the sheet top without resizing its layout box',
+    /\.root\[data-sheet-snap='half'\][^{]*\.stickyChrome\[data-scrolled-from-top\]:is\(:not\(\[data-hidden\]\),\s*:has\(\[data-panel-scroll-chrome-replacement\]\)\),\s*\.root\[data-sheet-snap='full'\][^{]*\.stickyChrome\[data-scrolled-from-top\]:is\(:not\(\[data-hidden\]\),\s*:has\(\[data-panel-scroll-chrome-replacement\]\)\)\s*\{[^}]*transform:\s*translateY\(var\(--wa-grabber-gap\)\)/s,
   ],
   [
     'compact Gallery delegates its first 12px content gap to the first date divider',

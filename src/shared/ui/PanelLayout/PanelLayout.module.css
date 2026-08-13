@@ -265,11 +265,16 @@
   padding-block: 0 var(--wa-panel-stack-gap);
 }
 
-.root[data-sheet-snap='half'] .stickyChrome[data-scrolled-from-top],
-.root[data-sheet-snap='full'] .stickyChrome[data-scrolled-from-top] {
+.root[data-sheet-snap='half']
+  .stickyChrome[data-scrolled-from-top]:is(:not([data-hidden]), :has([data-panel-scroll-chrome-replacement])),
+.root[data-sheet-snap='full']
+  .stickyChrome[data-scrolled-from-top]:is(:not([data-hidden]), :has([data-panel-scroll-chrome-replacement])) {
   /* Once content has left its initial position, the handle no longer precedes
-     returning sticky chrome, so the chrome owns an 8px sheet-top gap itself. */
-  padding-block-start: var(--wa-grabber-gap);
+     returning sticky chrome, so the chrome paints 8px below the sheet top.
+     Keep that distance out of the row's box geometry: when the list returns to
+     its initial position, the existing transform transition eases the final 8px
+     instead of an unanimated padding change resizing and jumping the whole row. */
+  transform: translateY(var(--wa-grabber-gap));
 }
 
 .root[data-sheet-snap='half'] .stickyChrome:has([data-panel-scroll-chrome-replacement]),

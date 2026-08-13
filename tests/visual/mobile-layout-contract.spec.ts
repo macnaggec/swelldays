@@ -262,6 +262,46 @@ test.describe('approved mobile spacing rhythm', () => {
     );
   });
 
+  test('eases Feed chrome through its final return without changing layout height', async ({ page }) => {
+    await openContract(page, 'browser');
+    await page.getByRole('button', { name: 'Full' }).click();
+
+    const stickyChrome = page.locator('[data-panel-scroll-chrome]');
+    const scrollOwner = page.locator('[data-panel-scroll-owner]');
+
+    await page.getByRole('button', { name: 'Scroll down' }).click();
+    await expect(stickyChrome).toHaveAttribute('data-hidden', 'true');
+    await page.getByRole('button', { name: 'Scroll up' }).click();
+    await expect(stickyChrome).not.toHaveAttribute('data-hidden');
+    await expect(stickyChrome).toHaveAttribute('data-scrolled-from-top', 'true');
+    await waitForStableBox(stickyChrome);
+
+    const returningHeight = await stickyChrome.evaluate((element) => {
+      if (!(element instanceof HTMLElement)) throw new Error('Panel chrome must be an HTML element.');
+      return element.offsetHeight;
+    });
+    await scrollOwner.evaluate((element) => {
+      element.scrollTop = 0;
+      element.dispatchEvent(new Event('scroll', { bubbles: true }));
+    });
+    await expect(stickyChrome).not.toHaveAttribute('data-scrolled-from-top');
+
+    const finalReturn = await stickyChrome.evaluate((element) => {
+      if (!(element instanceof HTMLElement)) throw new Error('Panel chrome must be an HTML element.');
+      return {
+        height: element.offsetHeight,
+        hasRunningTransformTransition: element.getAnimations().some((animation) => (
+          animation instanceof CSSTransition
+          && animation.transitionProperty === 'transform'
+          && animation.playState === 'running'
+        )),
+      };
+    });
+    expect(finalReturn.height, 'final return must not resize the chrome row').toBe(returningHeight);
+    expect(finalReturn.hasRunningTransformTransition, 'final 8px return must use the chrome motion')
+      .toBe(true);
+  });
+
   test('keeps browser and standalone navigation on their approved bottom offsets', async ({ page }) => {
     for (const [mode, expected] of [
       ['browser', EXPECTED_PX.browserBottomOffset],
