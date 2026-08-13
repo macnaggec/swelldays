@@ -464,8 +464,10 @@ describe('Panel upload entry', () => {
 
     expect(focusLifecycle).toEqual(['blur']);
 
-    visualViewport.height = 844;
-    visualViewport.dispatchEvent(new Event('resize'));
+    act(() => {
+      visualViewport.height = 844;
+      visualViewport.dispatchEvent(new Event('resize'));
+    });
 
     await waitFor(() => {
       expect(focusLifecycle).toEqual(['blur', 'navigate']);

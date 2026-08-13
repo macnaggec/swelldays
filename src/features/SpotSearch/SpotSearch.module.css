@@ -18,6 +18,10 @@
   cursor: default;
 }
 
+.dropdown {
+  overflow: hidden;
+}
+
 /* Matches the height of PanelRouteActionButton's action pill (both consume
    --wa-control-height-default) so the search row's two controls stay the
    same height at every band, including the coarse-pointer override. */

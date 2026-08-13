@@ -7,15 +7,21 @@ import {
   Loader,
   ScrollArea,
   useCombobox,
+  type ComboboxProps,
 } from '@mantine/core';
 import classes from './SpotSearch.module.css';
 import { IconSearch, IconMapPin } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { notifications } from '@mantine/notifications';
-import { useState, useCallback, useDeferredValue } from 'react';
+import { useState, useCallback, useDeferredValue, useMemo } from 'react';
 import { useSpots, Spot } from 'entities/Spot';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
+import { useViewportMetrics } from 'shared/model/viewportMetrics';
 import { SpotResultOption } from './ui/SpotResultOption';
+
+const RESULT_LIST_AVAILABLE_HEIGHT_PROPERTY = '--wa-spot-search-available-height';
+const RESULT_LIST_MAX_HEIGHT_PROPERTY = '--wa-spot-search-results-max-height';
+const RESULT_LIST_VIEWPORT_GAP_PX = 8;
 
 const resultListViewportProps: React.HTMLAttributes<HTMLDivElement> & {
   'data-scroll-direction-isolated': boolean;
@@ -44,11 +50,38 @@ export default function SpotSearch({
   autoFocus,
 }: SpotSearchProps) {
   const [search, setSearch] = useState('');
+  const { safeAreaTopPx, safeAreaBottomPx } = useViewportMetrics();
 
   const isFiltering = activeSpot != null;
   const inputValue = activeSpot ? activeSpot.name : search;
 
   const combobox = useCombobox();
+  const dropdownMiddlewares = useMemo<NonNullable<ComboboxProps['middlewares']>>(() => {
+    const viewportPadding = {
+      top: safeAreaTopPx + RESULT_LIST_VIEWPORT_GAP_PX,
+      right: RESULT_LIST_VIEWPORT_GAP_PX,
+      bottom: safeAreaBottomPx + RESULT_LIST_VIEWPORT_GAP_PX,
+      left: RESULT_LIST_VIEWPORT_GAP_PX,
+    };
+
+    return {
+      shift: { padding: viewportPadding },
+      flip: { padding: viewportPadding },
+      size: {
+        padding: viewportPadding,
+        apply: ({ availableHeight, elements }) => {
+          elements.floating.style.setProperty(
+            RESULT_LIST_AVAILABLE_HEIGHT_PROPERTY,
+            `${Math.max(0, availableHeight)}px`,
+          );
+          elements.floating.style.setProperty(
+            RESULT_LIST_MAX_HEIGHT_PROPERTY,
+            `min(22rem, max(0px, calc(${Math.max(0, availableHeight)}px - var(--combobox-padding, 0.25rem) - var(--combobox-padding, 0.25rem) - 2px)))`,
+          );
+        },
+      },
+    };
+  }, [safeAreaBottomPx, safeAreaTopPx]);
 
   // useDeferredValue defers the query key update so typing feels instant
   // while the fetch happens in the background — no manual debounce needed.
@@ -143,6 +176,8 @@ export default function SpotSearch({
       store={combobox}
       onOptionSubmit={handleSelect}
       withinPortal
+      floatingStrategy="fixed"
+      middlewares={dropdownMiddlewares}
     >
       <Combobox.Target>
         <Input
@@ -162,10 +197,12 @@ export default function SpotSearch({
         />
       </Combobox.Target>
 
-      <Combobox.Dropdown>
+      <Combobox.Dropdown className={classes.dropdown}>
         <Combobox.Options>
           <ScrollArea.Autosize
-            mah="min(50dvh, 22rem)"
+            style={{
+              maxHeight: `var(${RESULT_LIST_MAX_HEIGHT_PROPERTY}, 22rem)`,
+            }}
             type="scroll"
             scrollbarSize="var(--combobox-padding)"
             offsetScrollbars="y"
