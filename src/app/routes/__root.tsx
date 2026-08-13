@@ -1,6 +1,7 @@
 import { createRootRouteWithContext, Outlet, useMatches, useNavigate } from '@tanstack/react-router';
-import type { QueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { Button, Center, Stack, Text, Title } from '@mantine/core';
+import { useLayoutEffect, useRef } from 'react';
 import { AppShell } from 'app/AppShell';
 import { AuthModalProvider } from 'features/Auth';
 import { AddSpotProvider, useAddSpotStore } from 'features/AddSpot';
@@ -11,6 +12,7 @@ import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { BrowseSurfaceProvider } from 'shared/ui/DrawerShell';
+import { useUser } from 'shared/hooks/useUser';
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: RootLayout,
@@ -19,6 +21,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootLayout() {
+  useQueryCacheSessionSync();
   useCartSessionSync();
 
   const isAddSpotActive = useAddSpotStore((s) => s.isActive);
@@ -58,6 +61,25 @@ function RootLayout() {
       </AddSpotProvider>
     </AuthModalProvider>
   );
+}
+
+function useQueryCacheSessionSync() {
+  const queryClient = useQueryClient();
+  const { user, isLoading } = useUser();
+  const currentUserId = user?.id ?? null;
+  const previousUserIdRef = useRef<string | null | undefined>(undefined);
+
+  useLayoutEffect(() => {
+    if (isLoading) return;
+
+    const previousUserId = previousUserIdRef.current;
+    if (previousUserId !== undefined && previousUserId !== currentUserId) {
+      // Cached server projections belong to the identity that fetched them. A
+      // principal change invalidates that ownership boundary before child UI paints.
+      queryClient.clear();
+    }
+    previousUserIdRef.current = currentUserId;
+  }, [currentUserId, isLoading, queryClient]);
 }
 
 function RootError({ error }: { error: Error }) {
