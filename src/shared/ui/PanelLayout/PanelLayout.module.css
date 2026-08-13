@@ -107,6 +107,16 @@
   pointer-events: none;
 }
 
+/* A fixed panel header owns the paint above the scrolling body. Keep the
+   overlay's inline and bottom allowance, but make the header's lower edge the
+   upper clip boundary so returning search/filter chrome cannot emerge through
+   the header while it slides back into place. Headerless sheets retain the
+   full allowance needed by controls that overhang their own top edge. */
+.root:has(> [data-panel-layout-header]) .chromeViewport {
+  inset-block-start: 0;
+  padding-block-start: 0;
+}
+
 .stickyChrome {
   /* The viewport's negative inset and equal padding preserve this row's exact
      position while giving its effects paint-only room around every edge. */

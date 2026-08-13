@@ -302,6 +302,32 @@ test.describe('approved mobile spacing rhythm', () => {
       .toBe(true);
   });
 
+  test('clips returning panel chrome below a fixed panel header', async ({ page }) => {
+    await openContract(page, 'browser');
+    await page.getByRole('button', { name: 'Full' }).click();
+
+    const panelLayout = page.locator('[data-panel-layout]');
+    await panelLayout.evaluate((element) => {
+      const header = document.createElement('div');
+      header.dataset.panelLayoutHeader = '';
+      header.style.flex = '0 0 36px';
+      element.insertBefore(header, element.firstChild);
+    });
+
+    const header = panelLayout.locator(':scope > [data-panel-layout-header]');
+    const chromeViewport = panelLayout.locator('[data-panel-scroll-chrome]').locator('..');
+    const [headerBox, chromeViewportBox] = await Promise.all([
+      header.boundingBox(),
+      chromeViewport.boundingBox(),
+    ]);
+    expect(headerBox, 'fixed panel header must be measurable').not.toBeNull();
+    expect(chromeViewportBox, 'chrome clipping viewport must be measurable').not.toBeNull();
+    expect(
+      chromeViewportBox!.y,
+      'returning search and filters must stay clipped below the header',
+    ).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height - 0.5);
+  });
+
   test('keeps browser and standalone navigation on their approved bottom offsets', async ({ page }) => {
     for (const [mode, expected] of [
       ['browser', EXPECTED_PX.browserBottomOffset],
