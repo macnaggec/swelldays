@@ -300,13 +300,6 @@
   padding-block: 0;
 }
 
-.root[data-drawer-presentation='fullScreen']
-  .stickyChrome[data-scrolled-from-top]:has([data-panel-scroll-chrome-spacing='flush']) {
-  /* At the initial list position Collections stays flush to its header. Once
-     the list has moved, its returning selector owns the standard 8px gap. */
-  padding-block-start: var(--wa-grabber-gap);
-}
-
 .root[data-drawer-presentation='sideOverlay'] .stickyChrome {
   padding-block: var(--wa-panel-stack-gap);
 }

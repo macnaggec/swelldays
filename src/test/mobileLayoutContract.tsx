@@ -17,6 +17,7 @@ import {
 } from 'shared/ui/PanelRouteLayout';
 import {
   PanelLayoutFooter,
+  PanelLayoutStickyChrome,
   PanelLayoutStickyChromeReplacement,
 } from 'shared/ui/PanelLayout';
 import { SidePanel } from 'widgets/SidePanel/SidePanel';
@@ -148,6 +149,7 @@ function MobileLayoutContract() {
   const showsUploadContract = params.get('surface') === 'upload';
   const showsTimeStepContract = params.get('surface') === 'timeStep';
   const showsAuthContract = params.get('surface') === 'auth';
+  const showsCollectionsContract = params.get('surface') === 'collections';
   const { isStandalone } = useViewportCapabilities();
   const [snap, setSnap] = useState<SheetSnap>('half');
   const [mode, setMode] = useState<ContractMode>('sessions');
@@ -188,12 +190,15 @@ function MobileLayoutContract() {
         drawerPresentation={drawerPresentation}
         open
         expanded={panelExpanded}
+        onBack={showsCollectionsContract ? () => { } : undefined}
         sheetSnap={drawerPresentation === 'bottomSheet' ? snap : undefined}
         onSheetSnapChange={drawerPresentation === 'bottomSheet' ? setSnap : undefined}
-        header={showsScopeHeader ? (
-          <ScopeSwitcher scope={mode} onChange={setMode} />
-        ) : undefined}
-        subheader={(
+        header={showsCollectionsContract
+          ? <div>My Collections</div>
+          : showsScopeHeader
+            ? <ScopeSwitcher scope={mode} onChange={setMode} />
+            : undefined}
+        subheader={showsCollectionsContract ? undefined : (
           <PanelSearchToolbar
             expanded={snap !== 'peek'}
             primary={searchInput()}
@@ -213,12 +218,33 @@ function MobileLayoutContract() {
       >
         {showsUploadContract && <ContractUploadContent />}
         {showsTimeStepContract && <ContractTimeStep />}
+        {showsCollectionsContract && (
+          <PanelLayoutStickyChrome spacing="flush">
+            <button
+              type="button"
+              data-contract-collection-selector
+              style={{ display: 'block', width: 180, height: 36, margin: '0 auto' }}
+            >
+              All spots
+            </button>
+          </PanelLayoutStickyChrome>
+        )}
         {mode === 'gallery' && (
           <PanelLayoutStickyChromeReplacement>
             <button type="button" aria-label="Jump to date" style={{ height: 44 }}>12 August 2026</button>
           </PanelLayoutStickyChromeReplacement>
         )}
-        {mode === 'gallery' ? (
+        {showsCollectionsContract ? (
+          <div style={{ display: 'grid', gap: 12, padding: 12 }}>
+            {Array.from({ length: 8 }, (_, index) => (
+              <div
+                key={index}
+                data-contract-card
+                style={{ height: 260, background: 'rgba(255,255,255,.1)' }}
+              />
+            ))}
+          </div>
+        ) : mode === 'gallery' ? (
           <div className={virtualGalleryStyles.container} data-dense>
             <div data-index="0">
               <div className={virtualGalleryStyles.divider} data-contract-gallery-divider>
@@ -231,7 +257,9 @@ function MobileLayoutContract() {
         ) : (
           <div data-contract-card style={{ height: 260, margin: '0 12px 12px', background: 'rgba(255,255,255,.1)' }} />
         )}
-        <div data-contract-card style={{ height: 1000, margin: '0 12px', background: 'rgba(255,255,255,.05)' }} />
+        {!showsCollectionsContract && (
+          <div data-contract-card style={{ height: 1000, margin: '0 12px', background: 'rgba(255,255,255,.05)' }} />
+        )}
       </SidePanel>
     </div>
   );

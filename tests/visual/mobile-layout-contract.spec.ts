@@ -302,6 +302,59 @@ test.describe('approved mobile spacing rhythm', () => {
       .toBe(true);
   });
 
+  test('keeps the full-screen Collections selector at one top position when returning from below', async ({ page }) => {
+    await page.goto(
+      '/__mobile-layout-contract.html?displayMode=browser&presentation=fullScreen&surface=collections',
+    );
+    const stickyChrome = page.locator('[data-panel-scroll-chrome]');
+    const selector = page.locator('[data-contract-collection-selector]');
+    const scrollOwner = page.locator('[data-panel-scroll-owner]');
+    await expect(selector).toBeVisible();
+    await waitForStableBox(stickyChrome);
+
+    const readGeometry = async () => ({
+      chromeHeight: await stickyChrome.evaluate((element) => (
+        element instanceof HTMLElement ? element.offsetHeight : Number.NaN
+      )),
+      reservedHeight: await scrollOwner.evaluate((element) => (
+        Number.parseFloat(getComputedStyle(element).paddingTop)
+      )),
+      selectorTop: (await selector.boundingBox())?.y ?? Number.NaN,
+      firstCardTop: (await page.locator('[data-contract-card]').first().boundingBox())?.y
+        ?? Number.NaN,
+    });
+    const initial = await readGeometry();
+
+    await scrollOwner.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+      element.dispatchEvent(new Event('scroll', { bubbles: true }));
+    });
+    await expect(stickyChrome).toHaveAttribute('data-hidden', 'true');
+    await scrollOwner.evaluate((element) => {
+      element.scrollTop = 1;
+      element.dispatchEvent(new Event('scroll', { bubbles: true }));
+    });
+    await expect(stickyChrome).not.toHaveAttribute('data-hidden');
+    await expect(stickyChrome).toHaveAttribute('data-scrolled-from-top', 'true');
+    await waitForStableBox(stickyChrome);
+    const returned = await readGeometry();
+
+    expect(returned.chromeHeight, 'the selector row must not resize after returning upward')
+      .toBe(initial.chromeHeight);
+    expect(returned.reservedHeight, 'the first-card top reservation must remain stable')
+      .toBe(initial.reservedHeight);
+    expectPhysicalGap(
+      returned.selectorTop - initial.selectorTop,
+      0,
+      'returned Collections selector top movement',
+    );
+    expectPhysicalGap(
+      initial.firstCardTop - returned.firstCardTop,
+      1,
+      'first collection card response to the remaining 1px scroll offset',
+    );
+  });
+
   test('clips returning panel chrome below a fixed panel header', async ({ page }) => {
     await openContract(page, 'browser');
     await page.getByRole('button', { name: 'Full' }).click();

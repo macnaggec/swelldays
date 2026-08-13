@@ -22,6 +22,7 @@ const SCROLL_HEAD_RUNWAY_PROPERTY = '--wa-panel-collection-scroll-head-runway';
 
 interface PanelCollectionAnchor {
   node: Element;
+  contentTop: number;
   offsetFromScrollOwnerTop: number;
 }
 
@@ -153,9 +154,17 @@ export function PanelCollectionGrid({
     const anchor = cards.find(
       (card) => contentTop(card, scrollOwner) + (card as HTMLElement).offsetHeight > visibleTop,
     ) ?? cards[0];
-    anchorRef.current = anchor
-      ? { node: anchor, offsetFromScrollOwnerTop: contentTop(anchor, scrollOwner) - scrollOwner.scrollTop }
-      : null;
+    if (!anchor) {
+      anchorRef.current = null;
+      return;
+    }
+
+    const anchorContentTop = contentTop(anchor, scrollOwner);
+    anchorRef.current = {
+      node: anchor,
+      contentTop: anchorContentTop,
+      offsetFromScrollOwnerTop: anchorContentTop - scrollOwner.scrollTop,
+    };
   }, []);
 
   // The anchor must reflect wherever the photographer has actually scrolled to, which
@@ -229,6 +238,7 @@ function PanelCollectionAnchorCorrection({
 }: PanelCollectionAnchorCorrectionProps) {
   const pendingIsolationRef = useRef<PendingScrollIsolation | null>(null);
   const hasEstablishedArrangementRef = useRef(false);
+  const previousArrangementWidthRef = useRef<number | null>(null);
 
   useEffect(() => () => {
     const pending = pendingIsolationRef.current;
@@ -260,17 +270,41 @@ function PanelCollectionAnchorCorrection({
       return;
     }
 
+    const wasAnchorCaptureSuspended = anchorCaptureSuspendedRef.current;
     anchorCaptureSuspendedRef.current = false;
     if (!hasEstablishedArrangementRef.current) {
       hasEstablishedArrangementRef.current = true;
+      previousArrangementWidthRef.current = arrangementWidth;
       captureAnchor();
       return;
     }
 
+    const arrangementWidthChanged = previousArrangementWidthRef.current !== arrangementWidth;
+    previousArrangementWidthRef.current = arrangementWidth;
     const hasActiveRunway = grid.style.getPropertyValue(SCROLL_RUNWAY_PROPERTY) !== ''
       || grid.style.getPropertyValue(SCROLL_HEAD_RUNWAY_PROPERTY) !== '';
-    const needsIsolation = Boolean(anchor?.node.isConnected || hasActiveRunway);
+    const anchorLayoutChanged = Boolean(
+      anchor?.node.isConnected
+      && contentTop(anchor.node, scrollOwner) !== anchor.contentTop,
+    );
+    const needsIsolation = anchorLayoutChanged
+      || hasActiveRunway
+      || wasAnchorCaptureSuspended
+      || arrangementWidthChanged;
+    const needsScrollMutation = anchorLayoutChanged
+      || hasActiveRunway
+      || wasAnchorCaptureSuspended;
     let pendingIsolation: PendingScrollIsolation | null = null;
+
+    // A render can arrive after Mobile Safari momentum has already advanced the
+    // native scroll position. If the cards themselves did not move, replaying the
+    // previously captured absolute anchor would drag the list back toward that older
+    // position. Refresh the anchor from the browser's current position instead; only
+    // a real layout shift or an active correction runway may write scrollTop.
+    if (!needsIsolation) {
+      if (!previousIsolation) captureAnchor();
+      return;
+    }
 
     if (previousIsolation) {
       cancelAnimationFrame(previousIsolation.frame);
@@ -301,6 +335,10 @@ function PanelCollectionAnchorCorrection({
 
     grid.style.removeProperty(SCROLL_RUNWAY_PROPERTY);
     grid.style.removeProperty(SCROLL_HEAD_RUNWAY_PROPERTY);
+    if (!needsScrollMutation) {
+      if (pendingIsolation) settlePanelCollectionScrollCorrection(scrollOwner);
+      return;
+    }
     if (!anchor || !anchor.node.isConnected) {
       if (pendingIsolation) settlePanelCollectionScrollCorrection(scrollOwner);
       if (!pendingIsolation) captureAnchor();

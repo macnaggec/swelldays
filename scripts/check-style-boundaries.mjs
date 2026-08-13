@@ -629,10 +629,6 @@ const requiredPanelLayoutStyles = [
     /\.root\[data-drawer-presentation='fullScreen'\]\s+\.stickyChrome:has\(\[data-panel-scroll-chrome-spacing='flush'\]\)\s*\{[^}]*padding-block:\s*0/s,
   ],
   [
-    'scrolled full-screen flush chrome restores 8px below the header without changing its initial position',
-    /\.root\[data-drawer-presentation='fullScreen'\]\s+\.stickyChrome\[data-scrolled-from-top\]:has\(\[data-panel-scroll-chrome-spacing='flush'\]\)\s*\{[^}]*padding-block-start:\s*var\(--wa-grabber-gap\)/s,
-  ],
-  [
     'side-overlay sticky chrome uses the shared 12px stack gap',
     /\.root\[data-drawer-presentation='sideOverlay'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*var\(--wa-panel-stack-gap\)/s,
   ],
@@ -647,6 +643,13 @@ const requiredPanelLayoutStyles = [
   [
     'full-screen footer actions preserving the same 8px indicator clearance as Browse',
     /\.root\[data-drawer-presentation='fullScreen'\]\s+\.footer\s*\{[^}]*padding-block-end:\s*calc\(2\s*\*\s*var\(--wa-grabber-gap\)\s*\+\s*var\(--wa-sheet-grabber-height\)\)/s,
+  ],
+];
+
+const forbiddenPanelLayoutStyles = [
+  [
+    'scroll-state-dependent positioning for full-screen flush route chrome',
+    /\.root\[data-drawer-presentation='fullScreen'\]\s+\.stickyChrome\[data-scrolled-from-top\][^{]*:has\(\[data-panel-scroll-chrome-spacing='flush'\]\)\s*\{/s,
   ],
 ];
 
@@ -1410,6 +1413,16 @@ for (const [requirement, pattern] of requiredPanelLayoutStyles) {
     line: 1,
     rule: 'panel-layout-required-styles',
     message: `PanelLayout is missing ${requirement}.`,
+  });
+}
+
+for (const [requirement, pattern] of forbiddenPanelLayoutStyles) {
+  if (!pattern.test(panelLayoutStyles)) continue;
+  violations.push({
+    file: 'src/shared/ui/PanelLayout/PanelLayout.module.css',
+    line: 1,
+    rule: 'panel-layout-forbidden-styles',
+    message: `PanelLayout must not use ${requirement}.`,
   });
 }
 

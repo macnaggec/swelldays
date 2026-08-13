@@ -676,6 +676,40 @@ describe('PanelCollectionGrid scroll anchoring', () => {
     expect(trackedCard().getBoundingClientRect().top).toBe(offsetAtRest);
   });
 
+  it('does not replay a stale anchor when unchanged cards rerender during a momentum return to the top', () => {
+    const resizeObserver = stubResizeObserver();
+    stubGridLayout();
+    const cards = () => Array.from(
+      { length: 6 },
+      (_, index) => <div key={index}>{`card-${index}`}</div>,
+    );
+
+    const { container, rerender } = render(
+      <div data-panel-scroll-owner>
+        <PanelCollectionGrid>{cards()}</PanelCollectionGrid>
+      </div>,
+    );
+
+    const scrollOwner = container.querySelector('[data-panel-scroll-owner]') as HTMLElement;
+    resizeObserver.emit(300);
+    scrollOwner.scrollTop = 50;
+    act(() => {
+      scrollOwner.dispatchEvent(new Event('scroll'));
+    });
+
+    // WebKit can commit a render caused by an earlier scroll event after native
+    // momentum has already advanced the scroll position. The same keyed cards have
+    // not changed layout, so that delayed render must not restore the older anchor.
+    scrollOwner.scrollTop = 0;
+    rerender(
+      <div data-panel-scroll-owner>
+        <PanelCollectionGrid>{cards()}</PanelCollectionGrid>
+      </div>,
+    );
+
+    expect(scrollOwner.scrollTop).toBe(0);
+  });
+
   it('corrects scrollTop before any child layout effect can observe the stale position', () => {
     // Stands in for framer-motion's own layout-effect-based glide measurement
     // (FeedCardSlot's `layout="position"`): a plain child using the same React
