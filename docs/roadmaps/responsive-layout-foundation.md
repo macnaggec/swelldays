@@ -950,10 +950,23 @@ Unrelated working-tree changes preserved: yes — none were modified.
 Next ready task: M06x-a
 ```
 
-- [ ] **M06x-a — Fix: contain Browse's unfinished-upload indicator at Half and Full**
+- [x] **M06x-a — Fix: contain Browse's unfinished-upload indicator at Half and Full**
   - Depends on: M06x.
   - Scope: Reported from a real iPhone on 2026-08-13: Browse's pink unfinished-upload marker is clipped in half when the sheet is at Half and Full. The marker represents one existing domain fact — the authenticated photographer has an active `NEW_SESSION` upload workspace — and must remain projected by the Upload action without becoming a second upload-status authority. Its current paint box sits partly outside `PanelRouteActionButton` (`top`/`right: -3px`), exactly where the edge-to-edge pinned toolbar meets `PanelLayout`'s intentional scroll-owner clip. Keep the marker fully inside the Upload control's owned paint box at every Browse snap; do not weaken the panel scroll owner's clipping, move the action out of the pinned toolbar, add snap-specific offsets, or alter the Upload control's touch target or unfinished-workspace semantics.
   - Invariant and verifier: Whenever an active `NEW_SESSION` workspace exists, the pink marker is fully visible inside the Upload action at Peek, Half, and Full; without one, no marker renders. The existing semantic action/indicator test owns the domain projection, and non-visual computed-style plus bounding-box checks at Half and Full own containment. A short on-device checklist owns the final appearance; all five completion gates must pass.
+  - Completed 2026-08-13. Kept the existing active-workspace projection and moved only the 6×6px pink marker from a negative external offset to a 2px internal inset inside `PanelRouteActionButton`; the Upload control's size, padding, touch target, label, and pinned-toolbar placement are unchanged, and `PanelLayout` keeps its intentional overflow clipping. The mobile layout contract now mounts the real Upload action and verifies computed visibility plus all four marker edges against the action's real browser bounds at Peek, Half, and Full. The new check was RED against the previous offset because the marker crossed the button's top edge, then GREEN after the inset correction. The semantic component test is green (5/5), the real-browser mobile layout contract is green (11/11), and all five project gates are green at 125 files / 930 tests. **Still needs, on-device, from the user:** with an unfinished new upload present, open Browse at Peek, Half, and Full and confirm the pink marker reads cleanly inside the Upload control without crowding the label.
+
+```text
+Task completed: M06x-a — contain Browse's unfinished-upload indicator at Half and Full
+Invariant: An active NEW_SESSION workspace projects one fully visible pink marker inside Browse's Upload action at Peek, Half, and Full, without changing the action's touch target or creating another upload-status authority.
+Authority: The active upload-workspace query remains the sole authority for whether the marker exists; PanelRouteActionButton owns its paint containment.
+Changed files: src/shared/ui/PanelRouteLayout.module.css, src/test/mobileLayoutContract.tsx, tests/visual/mobile-layout-contract.spec.ts, docs/roadmaps/responsive-layout-foundation.md
+Focused verification: RED on the previous negative offset because the marker crossed the Upload action's top edge; GREEN for PanelRouteLayout 5/5 and the real-browser mobile layout contract 11/11, including Peek/Half/Full computed visibility and bounding-box containment.
+Project gates: client tsc green; server tsc green; lint green; style-boundaries green; client+server Vitest green (125 files / 930 tests).
+Removed concepts: The marker's negative external paint offset; no domain state, route behavior, clipping, or touch-target contract changed.
+Unrelated working-tree changes preserved: yes — none were present or modified.
+Next ready task: M06x-b
+```
 
 - [ ] **M06x-b — Fix: make signed-out direct Upload closable and full-snap-only**
   - Depends on: M06x-a.

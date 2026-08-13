@@ -80,6 +80,37 @@ function expectPhysicalGap(actual: number, expected: number, label: string): voi
     .toBeLessThanOrEqual(0.5);
 }
 
+async function expectContained(
+  outer: Locator,
+  inner: Locator,
+  label: string,
+): Promise<void> {
+  const [outerBox, innerBox, innerStyle] = await Promise.all([
+    outer.boundingBox(),
+    inner.boundingBox(),
+    inner.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        display: style.display,
+        visibility: style.visibility,
+        opacity: Number.parseFloat(style.opacity),
+      };
+    }),
+  ]);
+
+  expect(outerBox, `${label}: outer element must be measurable`).not.toBeNull();
+  expect(innerBox, `${label}: inner element must be measurable`).not.toBeNull();
+  expect(innerStyle.display, `${label}: indicator must be displayed`).not.toBe('none');
+  expect(innerStyle.visibility, `${label}: indicator must be visible`).not.toBe('hidden');
+  expect(innerStyle.opacity, `${label}: indicator must be painted`).toBeGreaterThan(0);
+  expect(innerBox!.x, `${label}: left edge`).toBeGreaterThanOrEqual(outerBox!.x - 0.5);
+  expect(innerBox!.y, `${label}: top edge`).toBeGreaterThanOrEqual(outerBox!.y - 0.5);
+  expect(innerBox!.x + innerBox!.width, `${label}: right edge`)
+    .toBeLessThanOrEqual(outerBox!.x + outerBox!.width + 0.5);
+  expect(innerBox!.y + innerBox!.height, `${label}: bottom edge`)
+    .toBeLessThanOrEqual(outerBox!.y + outerBox!.height + 0.5);
+}
+
 async function openContract(page: Page, mode: 'browser' | 'standalone'): Promise<void> {
   await page.goto(`/__mobile-layout-contract.html?displayMode=${mode}`);
   await expect(page.locator('[data-mobile-layout-contract]')).toBeAttached();
@@ -154,6 +185,21 @@ test.describe('approved mobile spacing rhythm', () => {
       await expectGrabberGap(handle, searchRow, EXPECTED_PX.sheetLeadingGap, `${snap} grabber to search`);
       await expectVerticalGap(searchRow, pills, EXPECTED_PX.stackGap, `${snap} search to pills`);
       await expectVerticalGap(pills, firstCard, EXPECTED_PX.stackGap, `${snap} pills to first card`);
+    }
+  });
+
+  test('keeps the unfinished-upload indicator inside the Upload action at every Browse snap', async ({ page }) => {
+    await openContract(page, 'browser');
+
+    for (const snap of ['Peek', 'Half', 'Full'] as const) {
+      await page.getByRole('button', { name: snap }).click();
+      const sheet = page.getByRole('complementary', { name: 'Content drawer' });
+      const uploadAction = sheet.getByRole('button', { name: 'Upload' });
+      const indicator = uploadAction.locator('[data-panel-route-action-indicator]');
+
+      await expect(sheet).toHaveAttribute('data-drawer-snap', snap.toLowerCase());
+      await waitForStableBox(sheet);
+      await expectContained(uploadAction, indicator, `${snap} Upload indicator`);
     }
   });
 

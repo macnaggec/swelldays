@@ -5,7 +5,10 @@ import '@fontsource/geist-sans/400.css';
 import '@mantine/core/styles.css';
 import 'shared/ui/design-system/tokens.css';
 import 'app/app.css';
-import { PanelSearchToolbar } from 'shared/ui/PanelRouteLayout';
+import {
+  PanelRouteActionButton,
+  PanelSearchToolbar,
+} from 'shared/ui/PanelRouteLayout';
 import {
   PanelLayoutFooter,
   PanelLayoutStickyChromeReplacement,
@@ -133,7 +136,11 @@ function MobileLayoutContract() {
           <PanelSearchToolbar
             expanded={snap !== 'peek'}
             primary={searchInput()}
-            action={<button type="button" style={{ height: 44 }}>Upload</button>}
+            action={(
+              <PanelRouteActionButton onClick={() => { }} showIndicator>
+                Upload
+              </PanelRouteActionButton>
+            )}
             trailing={snap !== 'peek' ? (
               <FilterPills active={null} onChange={() => { }} />
             ) : undefined}
