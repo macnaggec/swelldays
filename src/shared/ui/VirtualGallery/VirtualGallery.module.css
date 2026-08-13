@@ -50,6 +50,15 @@
   color: var(--mantine-color-dimmed);
 }
 
+/* In the compact Gallery, the first date label is the first visible grid
+   element. It owns the same 12px separation from filter pills that those pills
+   already use below search, while later date dividers retain centered labels. */
+.container[data-dense] [data-index='0'] .divider {
+  align-items: flex-start;
+  box-sizing: border-box;
+  padding-block-start: var(--wa-panel-stack-gap);
+}
+
 /* Media row — column count is driven by the panel width via --gallery-cols
    (set on the container), not viewport media queries, since the gallery lives
    in a resizable panel whose width is independent of the viewport. */

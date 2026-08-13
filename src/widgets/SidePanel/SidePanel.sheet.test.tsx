@@ -120,7 +120,7 @@ describe('SidePanel bottom sheet', () => {
     expect(screen.getByRole('button', { name: 'Expand panel' })).toBeInTheDocument();
   });
 
-  it('hides the pinned chrome on downward list scroll and reveals it on upward scroll at full', () => {
+  it('marks pinned chrome as displaced from the sheet top until the list returns to its initial position', () => {
     render(
       <SidePanel
         drawerPresentation="bottomSheet"
@@ -139,12 +139,18 @@ describe('SidePanel bottom sheet', () => {
     expect(scrollOwner).not.toBeNull();
     expect(stickyChrome).not.toBeNull();
     setScrollMetrics(scrollOwner!, 300, 900);
+    expect(stickyChrome).not.toHaveAttribute('data-scrolled-from-top');
 
     fireEvent.scroll(scrollOwner!, { target: { scrollTop: 24 } });
     expect(stickyChrome).toHaveAttribute('data-hidden', 'true');
+    expect(stickyChrome).toHaveAttribute('data-scrolled-from-top', 'true');
 
     fireEvent.scroll(scrollOwner!, { target: { scrollTop: 8 } });
     expect(stickyChrome).not.toHaveAttribute('data-hidden');
+    expect(stickyChrome).toHaveAttribute('data-scrolled-from-top', 'true');
+
+    fireEvent.scroll(scrollOwner!, { target: { scrollTop: 0 } });
+    expect(stickyChrome).not.toHaveAttribute('data-scrolled-from-top');
   });
 
   it('restores pinned chrome and the list top when the sheet lowers from full to half', () => {

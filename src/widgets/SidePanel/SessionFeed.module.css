@@ -11,6 +11,17 @@
   padding: var(--wa-panel-content-inset);
 }
 
+:global([data-panel-layout][data-sheet-snap='half']) .grid,
+:global([data-panel-layout][data-sheet-snap='full']) .grid {
+  /* The sticky row already owns the requested 12px after the filter pills. */
+  padding-block-start: 0;
+}
+
+:global([data-panel-layout][data-drawer-presentation='sideOverlay']) .grid {
+  /* Keep the same single 12px owner in the landscape side sheet. */
+  padding-block-start: 0;
+}
+
 .card {
   cursor: pointer;
 }

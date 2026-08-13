@@ -30,9 +30,9 @@ import { deriveDrawerSurfaceTransition, DRAWER_SHELL_TRANSITION } from './motion
 import { PanelSettledWidthContext } from './panelSettledWidth';
 import {
   nearestSheetSnap,
+  resolveBrowseSheetPeekHeightPx,
+  resolveHeaderSheetPeekHeightPx,
   resolveSheetSnapHeights,
-  SHEET_PEEK_HEIGHT_PX,
-  SHEET_PEEK_WITH_HEADER_HEIGHT_PX,
   type SheetSnap,
 } from './sheetSnapPolicy';
 import {
@@ -110,7 +110,7 @@ export function DrawerShell(props: DrawerShellProps) {
     ? `bottomSheet:${props.snap}`
     : `${props.presentation}:${props.state}:${panelOpen ? 'open' : 'closed'}`;
 
-  const { prefersReducedMotion } = useViewportCapabilities();
+  const { prefersReducedMotion, isStandalone } = useViewportCapabilities();
   const {
     layoutViewportWidthPx: viewportWidthPx,
     layoutViewportHeightPx: viewportHeightPx,
@@ -118,25 +118,24 @@ export function DrawerShell(props: DrawerShellProps) {
     safeAreaBottomPx,
   } = useViewportMetrics();
 
-  // A sheet's snap heights are content sized against the *reachable* screen — the strip
-  // behind the notch/status bar and the strip reserved for the home-swipe gesture are
-  // both off limits to them, the same way they always were before the app went
-  // edge-to-edge (env() reported 0 for both then, so this was a no-op). Converting a
-  // resolved height back into an on-screen `top`/`y` must then re-add the bottom strip's
-  // own height (sheetRestPx below), since `viewportHeightPx` itself now spans the whole
-  // physical screen, past that strip.
+  // A standalone sheet paints through iOS's home-swipe strip but places interactive
+  // content above it. A browser tab has no in-app home indicator, so its viewport edge
+  // is directly reachable and must not inherit the standalone strip's reserve.
+  const sheetBottomInsetPx = isStandalone ? safeAreaBottomPx : 0;
   const heights = useMemo(
     () => resolveSheetSnapHeights({
-      viewportHeightPx: viewportHeightPx - safeAreaTopPx - safeAreaBottomPx,
-      peekHeightPx: peekIncludesHeader ? SHEET_PEEK_WITH_HEADER_HEIGHT_PX : SHEET_PEEK_HEIGHT_PX,
+      viewportHeightPx: viewportHeightPx - safeAreaTopPx - sheetBottomInsetPx,
+      peekHeightPx: peekIncludesHeader
+        ? resolveHeaderSheetPeekHeightPx({ safeAreaBottomPx, isStandalone })
+        : resolveBrowseSheetPeekHeightPx({ safeAreaBottomPx, isStandalone }),
     }),
-    [viewportHeightPx, safeAreaTopPx, safeAreaBottomPx, peekIncludesHeader],
+    [viewportHeightPx, safeAreaTopPx, sheetBottomInsetPx, safeAreaBottomPx, isStandalone, peekIncludesHeader],
   );
   // Where the reachable screen's own bottom edge sits, measured from the true top of the
   // physical screen — every sheet `top`/`y` position below is `sheetRestPx - heights[...]`
   // rather than `viewportHeightPx - heights[...]`, so a snap's height never has to know
   // its own screen position, only how tall it is.
-  const sheetRestPx = viewportHeightPx - safeAreaBottomPx;
+  const sheetRestPx = viewportHeightPx - sheetBottomInsetPx;
   const targetSheetHeightPx = snap ? heights[snap] : null;
   const railGeometry = useNavigationRailGeometry();
   // The gap between the rail's own right edge and the surface's left edge matches
@@ -438,10 +437,13 @@ export function DrawerShell(props: DrawerShellProps) {
         data-drawer-presentation={props.presentation}
         data-drawer-state={props.presentation === 'bottomSheet' ? undefined : props.state}
         data-drawer-snap={props.presentation === 'bottomSheet' ? props.snap : undefined}
+        data-drawer-sheet-has-header={peekIncludesHeader ? true : undefined}
         data-drawer-modality={modality}
         initial={false}
+        // Snap travel stops above the home gesture, but the painted content continues
+        // through that bottom strip so imagery reaches the physical screen edge.
         style={props.presentation === 'bottomSheet'
-          ? { '--wa-sheet-visible-height': `${heights[props.snap]}px` } as CSSProperties
+          ? { '--wa-sheet-visible-height': `${heights[props.snap] + sheetBottomInsetPx}px` } as CSSProperties
           : undefined}
         animate={animate}
         transition={transition}

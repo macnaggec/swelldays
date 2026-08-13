@@ -123,8 +123,8 @@
   transform: translateX(-50%);
 }
 
-/* In the phone sheet, search/upload is one centered, card-width block at every
-   snap. PanelLayout owns the balanced peek clearance around this row. */
+/* In the phone sheet, search/upload fills the shared 12px content inset at
+   every snap. Its width therefore survives Peek and empty collection states. */
 :global([data-drawer-presentation='bottomSheet']) .toolbar {
   flex-direction: column;
   align-items: stretch;
@@ -134,11 +134,16 @@
   margin-block: 4px;
 }
 
+:global([data-panel-layout][data-sheet-snap='half']) .toolbar[data-expanded],
+:global([data-panel-layout][data-sheet-snap='full']) .toolbar[data-expanded] {
+  gap: var(--wa-panel-stack-gap);
+}
+
 :global([data-drawer-presentation='bottomSheet']) .toolbarMain {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   width: 100%;
-  max-width: var(--wa-gallery-tile-comfortable);
-  margin-inline: auto;
+  max-width: none;
+  margin-inline: 0;
 }
 
 /* 100vw + a matching negative margin (not width:100%/margin-left:0) bleeds this row to the
@@ -156,6 +161,10 @@
 :global([data-drawer-presentation='sideOverlay']) .toolbar {
   flex-direction: column;
   align-items: stretch;
+}
+
+:global([data-drawer-presentation='sideOverlay']) .toolbar[data-expanded] {
+  gap: var(--wa-panel-stack-gap);
 }
 
 :global([data-drawer-presentation='sideOverlay']) .toolbarMain {
@@ -179,6 +188,27 @@
   width: calc(100% + 2 * var(--wa-panel-content-inset));
   max-width: none;
   margin-left: calc(-1 * var(--wa-panel-content-inset));
+}
+
+/* Wide panels retain the requested one-card search width. Mobile sheets are
+   deliberately excluded because their toolbar is owned by the panel inset and
+   must not change when a collection grid is hidden or empty. */
+:global([data-panel-layout]:not([data-drawer-presentation='bottomSheet']):not([data-drawer-presentation='sideOverlay']):has([data-panel-collection-grid][data-columns='1'])) .toolbarMainExpanded {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: none;
+}
+
+:global([data-panel-layout]:not([data-drawer-presentation='bottomSheet']):not([data-drawer-presentation='sideOverlay']):has([data-panel-collection-grid][data-columns='2'])) .toolbarMainExpanded {
+  flex: 0 0 auto;
+  width: calc((100% - var(--wa-panel-grid-gap)) / 2);
+  max-width: none;
+}
+
+:global([data-panel-layout]:not([data-drawer-presentation='bottomSheet']):not([data-drawer-presentation='sideOverlay']):has([data-panel-collection-grid][data-columns='3'])) .toolbarMainExpanded {
+  flex: 0 0 auto;
+  width: calc((100% - 2 * var(--wa-panel-grid-gap)) / 3);
+  max-width: none;
 }
 
 /* The short-landscape Map plate shrink-wraps this row, so the inner controls

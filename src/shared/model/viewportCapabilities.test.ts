@@ -75,7 +75,7 @@ describe('viewport capabilities', () => {
     expect(getViewportCapabilitiesSnapshot().sizeBand).toBe(expectedBand);
   });
 
-  it('reports height, input, hover, and reduced-motion capabilities semantically', () => {
+  it('reports height, input, hover, reduced-motion, and standalone capabilities semantically', () => {
     // Wider than tall at this height (default jsdom width), so this also covers the
     // landscape case of the heightBand test below — kept as its own test since it
     // asserts every other capability field too, not just heightBand.
@@ -86,6 +86,7 @@ describe('viewport capabilities', () => {
       '(prefers-reduced-motion: reduce)',
       createMediaQuery('(prefers-reduced-motion: reduce)', true),
     );
+    mediaQueries.set('(display-mode: standalone)', createMediaQuery('(display-mode: standalone)', true));
 
     const capabilities = getViewportCapabilitiesSnapshot();
 
@@ -93,6 +94,7 @@ describe('viewport capabilities', () => {
     expect(capabilities.primaryPointer).toBe('coarse');
     expect(capabilities.supportsHover).toBe(true);
     expect(capabilities.prefersReducedMotion).toBe(true);
+    expect(capabilities.isStandalone).toBe(true);
   });
 
   it.each([
@@ -123,6 +125,7 @@ describe('viewport capabilities', () => {
     expect(indeterminateViewportCapabilities.sizeBand).toBe('compact');
     expect(indeterminateViewportCapabilities.supportsHover).toBe(false);
     expect(indeterminateViewportCapabilities.primaryPointer).toBe('coarse');
+    expect(indeterminateViewportCapabilities.isStandalone).toBe(false);
   });
 
   it('keeps snapshot identity across repeated reads when nothing changed', () => {
@@ -162,19 +165,24 @@ describe('viewport capabilities', () => {
   it('updates subscribers when viewport or media capabilities change', () => {
     Object.defineProperty(window, 'innerWidth', { value: 1200, configurable: true });
     const reducedMotion = createMediaQuery('(prefers-reduced-motion: reduce)', false);
+    const standalone = createMediaQuery('(display-mode: standalone)', false);
     mediaQueries.set('(prefers-reduced-motion: reduce)', reducedMotion);
+    mediaQueries.set('(display-mode: standalone)', standalone);
     const { result } = renderHook(() => useViewportCapabilities());
 
     expect(result.current.sizeBand).toBe('wide');
     expect(result.current.prefersReducedMotion).toBe(false);
+    expect(result.current.isStandalone).toBe(false);
 
     act(() => {
       Object.defineProperty(window, 'innerWidth', { value: 767, configurable: true });
       window.dispatchEvent(new Event('resize'));
       reducedMotion.setMatches(true);
+      standalone.setMatches(true);
     });
 
     expect(result.current.sizeBand).toBe('compact');
     expect(result.current.prefersReducedMotion).toBe(true);
+    expect(result.current.isStandalone).toBe(true);
   });
 });

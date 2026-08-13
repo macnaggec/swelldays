@@ -136,7 +136,7 @@ function CollectionsLayout() {
     <CollectionsContext.Provider value={contextValue}>
       {floatsOverMap
         ? <SidePanelHeaderTrailing>{toolbar}</SidePanelHeaderTrailing>
-        : <PanelLayoutStickyChrome>{toolbar}</PanelLayoutStickyChrome>}
+        : <PanelLayoutStickyChrome spacing="flush">{toolbar}</PanelLayoutStickyChrome>}
       <SectionBarPortal>
         <CollectionsSectionBar
           activeTab={activeTab}

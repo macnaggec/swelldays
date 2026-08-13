@@ -46,6 +46,7 @@ interface ScrollPosition {
 
 interface ScrollChromeState {
   hidden: boolean;
+  scrolledFromTop: boolean;
   sheetSnap: SheetSnap | undefined;
   open: boolean;
 }
@@ -136,20 +137,27 @@ export function SidePanel({
   const scrollPositionByTargetRef = useRef<WeakMap<HTMLElement, ScrollPosition>>(new WeakMap());
   const scrollChromeTrackerRef = useRef<ScrollChromeState>({
     hidden: false,
+    scrolledFromTop: false,
     sheetSnap,
     open,
   });
   const [scrollChromeState, setScrollChromeState] = useState<ScrollChromeState>({
     hidden: false,
+    scrolledFromTop: false,
     sheetSnap,
     open,
   });
   if (scrollChromeState.sheetSnap !== sheetSnap || scrollChromeState.open !== open) {
-    setScrollChromeState({ hidden: false, sheetSnap, open });
+    setScrollChromeState({ hidden: false, scrolledFromTop: false, sheetSnap, open });
   }
 
   useLayoutEffect(() => {
-    scrollChromeTrackerRef.current = { hidden: false, sheetSnap, open };
+    scrollChromeTrackerRef.current = {
+      hidden: false,
+      scrolledFromTop: false,
+      sheetSnap,
+      open,
+    };
   }, [open, sheetSnap]);
 
   // While pinned, the exposed `hidden` fact freezes regardless of scroll
@@ -176,10 +184,12 @@ export function SidePanel({
     const chromeTracker = scrollChromeTrackerRef.current;
     if (chromeTracker.sheetSnap !== sheetSnap || chromeTracker.open !== open) {
       chromeTracker.hidden = false;
+      chromeTracker.scrolledFromTop = false;
       chromeTracker.sheetSnap = sheetSnap;
       chromeTracker.open = open;
     }
     let nextHidden = chromeTracker.hidden;
+    let nextScrolledFromTop = chromeTracker.scrolledFromTop;
 
     // Nested interactive scrollers own their movement, and collection reflows are
     // internal layout corrections. Neither is a user gesture that should move chrome.
@@ -193,16 +203,20 @@ export function SidePanel({
     if (!hasMeaningfulVerticalScrollTravel(scrollTarget, pinnedChromeHeightPx)) {
       position.anchor = 0;
       nextHidden = false;
+      nextScrolledFromTop = false;
     } else if (currentScrollTop <= 0) {
       position.anchor = 0;
       nextHidden = false;
+      nextScrolledFromTop = false;
     } else if (nextHidden) {
+      nextScrolledFromTop = true;
       if (currentScrollTop > position.anchor) position.anchor = currentScrollTop;
       else if (position.anchor - currentScrollTop >= SCROLL_DIRECTION_THRESHOLD_PX) {
         position.anchor = currentScrollTop;
         nextHidden = false;
       }
     } else {
+      nextScrolledFromTop = true;
       if (currentScrollTop < position.anchor) position.anchor = currentScrollTop;
       else if (currentScrollTop - position.anchor >= SCROLL_DIRECTION_THRESHOLD_PX) {
         position.anchor = currentScrollTop;
@@ -211,12 +225,14 @@ export function SidePanel({
     }
 
     chromeTracker.hidden = nextHidden;
+    chromeTracker.scrolledFromTop = nextScrolledFromTop;
     setScrollChromeState((current) => {
       return current.hidden === nextHidden
+        && current.scrolledFromTop === nextScrolledFromTop
         && current.sheetSnap === sheetSnap
         && current.open === open
         ? current
-        : { hidden: nextHidden, sheetSnap, open };
+        : { hidden: nextHidden, scrolledFromTop: nextScrolledFromTop, sheetSnap, open };
     });
     scrollPositionByTargetRef.current.set(scrollTarget, position);
   }, [open, sheetSnap]);
@@ -285,6 +301,7 @@ export function SidePanel({
       <PanelScrollChromeStateProvider
         value={{
           hidden,
+          scrolledFromTop: scrollChromeState.scrolledFromTop,
           sheetSnap,
           drawerPresentation,
           pinChromeHidden: setChromePinned,

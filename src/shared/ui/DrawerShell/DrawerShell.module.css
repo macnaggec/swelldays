@@ -20,6 +20,10 @@
    part of that animation. */
 .surface[data-drawer-presentation='bottomSheet'] {
   width: 100%;
+  /* Snap geometry already excludes the top and bottom physical safe areas. Applying
+     the shared surface padding here counts them a second time: above the handle at
+     Half/Full, and between the absolutely positioned handle and content at Peek. */
+  padding-block: 0;
   border-radius: var(--wa-radius-sheet) var(--wa-radius-sheet) 0 0;
   overflow: hidden;
 }
@@ -38,6 +42,12 @@
   overflow: hidden;
 }
 
+.surface[data-drawer-presentation='fullScreen'] {
+  /* Portrait workspaces paint and scroll through the physical home-indicator
+     strip. Interactive footer chrome owns its own indicator clearance below. */
+  padding-block-end: var(--wa-keyboard-inset-bottom, 0px);
+}
+
 .surface[data-drawer-presentation='bottomSheet'][data-drawer-snap='peek'] .dragHandle {
   position: absolute;
   inset-block-start: 0;
@@ -45,11 +55,17 @@
   z-index: var(--wa-z-panel-chrome);
 }
 
+.surface[data-drawer-presentation='bottomSheet'][data-drawer-sheet-has-header] .dragHandle {
+  height: var(--wa-upload-sheet-drag-handle-height);
+}
+
 .dragHandle {
   flex-shrink: 0;
   height: var(--wa-sheet-drag-handle-height);
   box-sizing: border-box;
-  padding-top: 8px;
+  /* Browse owns 8px above + 5px grabber + 16px below. Header-bearing Upload
+     overrides the height to end 8px below the same grabber. */
+  padding-top: var(--wa-grabber-gap);
   display: flex;
   justify-content: center;
   cursor: grab;

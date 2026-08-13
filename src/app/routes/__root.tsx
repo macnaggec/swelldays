@@ -50,8 +50,9 @@ function RootLayout() {
             preferredExpanded={sheetPreferredExpanded}
             onPreferredExpandedChange={setSheetPreferredExpanded}
           >
-            <AppShell />
-            <Outlet />
+            <AppShell>
+              <Outlet />
+            </AppShell>
           </BrowseSurfaceProvider>
         </AppShellLayoutPolicyProvider>
       </AddSpotProvider>

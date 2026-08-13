@@ -3,6 +3,8 @@ import type { DrawerShellPresentation, SheetSnap } from 'shared/ui/DrawerShell';
 
 interface PanelScrollChromeState {
   hidden: boolean;
+  /** True after the panel's own scroll owner has left its initial top edge. */
+  scrolledFromTop?: boolean;
   drawerPresentation?: DrawerShellPresentation;
   sheetSnap?: SheetSnap;
   /**

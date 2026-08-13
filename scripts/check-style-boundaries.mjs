@@ -171,6 +171,11 @@ const requiredResponsiveLayoutTokens = [
   '--wa-control-width-section-navigation',
   '--wa-sheet-grabber-width',
   '--wa-sheet-grabber-height',
+  '--wa-grabber-gap',
+  '--wa-floating-chrome-bottom-offset',
+  '--wa-browse-sheet-leading-gap',
+  '--wa-upload-sheet-gap',
+  '--wa-panel-stack-gap',
   '--wa-motion-duration-control',
   '--wa-motion-duration-chrome',
   '--wa-motion-easing-standard',
@@ -182,6 +187,17 @@ const requiredResponsiveLayoutTokens = [
   '--wa-z-modal-content',
   '--wa-z-modal-interrupt',
   '--wa-radius-sheet',
+];
+
+const requiredFloatingChromeOffsetStyles = [
+  [
+    '8px browser-tab clearance on coarse-pointer devices',
+    /@media\s*\(pointer:\s*coarse\)\s*\{[\s\S]*?--wa-floating-chrome-bottom-offset:\s*var\(--wa-grabber-gap\)/s,
+  ],
+  [
+    'standalone mobile clearance around the physical iOS home indicator',
+    /@media\s*\(pointer:\s*coarse\)\s*\{[\s\S]*?\[data-app-display-mode='standalone'\]\s*\{[\s\S]*?--wa-floating-chrome-bottom-offset:\s*calc\(\s*2\s*\*\s*var\(--wa-grabber-gap\)\s*\+\s*var\(--wa-sheet-grabber-height\)\s*\)/s,
+  ],
 ];
 
 // Modal-tier z-index must come from a semantic role token, never a portal
@@ -201,6 +217,7 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-radius-sheet',
     '--wa-sheet-grabber-width',
     '--wa-sheet-grabber-height',
+    '--wa-grabber-gap',
   ]],
   ['src/shared/ui/BaseGallery/BaseGallery.module.css', [
     '--wa-motion-duration-chrome',
@@ -213,6 +230,7 @@ const requiredResponsiveTokensByFile = new Map([
   ['src/shared/ui/VirtualGallery/VirtualGallery.module.css', [
     '--wa-panel-grid-gap',
     '--wa-panel-section-chrome-height',
+    '--wa-panel-stack-gap',
     '--wa-motion-duration-chrome',
     '--wa-motion-easing-standard',
     '--wa-z-panel-chrome',
@@ -226,8 +244,11 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-safe-area-right',
   ]],
   ['src/widgets/BrowseSectionBar/BrowseSectionBar.module.css', [
-    '--wa-shell-edge-clearance',
-    '--wa-safe-area-bottom',
+    '--wa-floating-chrome-bottom-offset',
+    '--wa-z-floating-chrome',
+  ]],
+  ['src/features/Collections/ui/CollectionsSectionBar.module.css', [
+    '--wa-floating-chrome-bottom-offset',
     '--wa-z-floating-chrome',
   ]],
   // Followed the pill/item declarations here when BrowseSectionBar's visual
@@ -251,6 +272,10 @@ const requiredResponsiveTokensByFile = new Map([
   // PanelScrollChrome.module.css before that file was deleted, and the rule
   // must travel with the declarations, not die with the filename.
   ['src/shared/ui/PanelLayout/PanelLayout.module.css', [
+    '--wa-sheet-grabber-height',
+    '--wa-grabber-gap',
+    '--wa-browse-sheet-leading-gap',
+    '--wa-panel-stack-gap',
     '--wa-z-panel-chrome',
   ]],
   ['src/shared/ui/PanelRouteLayout.module.css', [
@@ -259,10 +284,14 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-shell-edge-clearance',
     '--wa-z-floating-chrome',
     '--wa-panel-content-inset',
+    '--wa-panel-grid-gap',
     '--wa-radius-panel',
+    '--wa-panel-stack-gap',
     '--wa-gallery-tile-comfortable',
   ]],
-  ['src/features/Upload/ui/UploadSidebar.module.css', ['--wa-control-height-default']],
+  ['src/features/Upload/ui/UploadSidebar.module.css', [
+    '--wa-control-height-default',
+  ]],
   ['src/widgets/SidePanel/FilterPills.module.css', [
     '--wa-control-height-default',
     '--wa-panel-content-inset',
@@ -289,9 +318,33 @@ const requiredDrawerShellStyles = [
     'side-workspace content free of horizontal physical safe areas',
     /\.surface\[data-drawer-presentation='sideWorkspace'\]\s*\{[^}]*padding-inline:\s*0/s,
   ],
+  [
+    'bottom-sheet content free of duplicated vertical physical safe areas',
+    /\.surface\[data-drawer-presentation='bottomSheet'\]\s*\{[^}]*padding-block:\s*0/s,
+  ],
+  [
+    'sheet handle band using the semantic 8px top clearance',
+    /\.dragHandle\s*\{[^}]*height:\s*var\(--wa-sheet-drag-handle-height\);[^}]*padding-top:\s*var\(--wa-grabber-gap\)/s,
+  ],
+  [
+    'header-bearing Upload handle using its independent 8px trailing gap',
+    /\[data-drawer-sheet-has-header\]\s+\.dragHandle\s*\{[^}]*height:\s*var\(--wa-upload-sheet-drag-handle-height\)/s,
+  ],
+  [
+    'full-screen workspaces painting through the iOS bottom safe area while retaining keyboard clearance',
+    /\.surface\[data-drawer-presentation='fullScreen'\]\s*\{[^}]*padding-block-end:\s*var\(--wa-keyboard-inset-bottom,\s*0px\)/s,
+  ],
 ];
 
 const requiredDrawerShellRuntime = [
+  [
+    'presentation-aware bottom inset included in the rendered sheet-content height',
+    /--wa-sheet-visible-height': `\$\{heights\[props\.snap\] \+ sheetBottomInsetPx\}px`/,
+  ],
+  [
+    'standalone-only bottom inset for sheet geometry',
+    /const sheetBottomInsetPx = isStandalone \? safeAreaBottomPx : 0/,
+  ],
   ['controlled sheet release without independent drag momentum', /dragMomentum=\{false\}/],
   [
     'measured drawer geometry publication',
@@ -305,12 +358,20 @@ const requiredDrawerShellRuntime = [
     'dragging flag cleared when the gesture ends or the sheet unmounts',
     /publishDrawerDragging\(false\)/,
   ],
+  [
+    'header-bearing sheet marker',
+    /data-drawer-sheet-has-header=\{peekIncludesHeader\s*\?\s*true\s*:\s*undefined\}/,
+  ],
 ];
 
 const requiredSidePanelStyles = [
   [
     'header horizontal edges aligned with the panel card inset',
     /\.panelTop\s*\{[^}]*padding-inline-start:\s*calc\(\s*var\(--wa-panel-content-inset\)\s*\+\s*var\(--wa-fullscreen-rail-inset,\s*0px\)\s*\)[^}]*padding-inline-end:\s*var\(--wa-panel-content-inset\)/s,
+  ],
+  [
+    'header row with no added vertical padding',
+    /\.panelTop\s*\{[^}]*padding-block:\s*0/s,
   ],
 ];
 
@@ -368,8 +429,12 @@ const requiredUploadSidebarStyles = [
     /:global\(\[data-drawer-presentation='sideOverlay'\]\)\s+\.sidebar\s*\{[^}]*--upload-gutter:\s*12px;[^}]*--upload-section-gap:\s*12px;[^}]*--upload-compact-inset:\s*4px;[^}]*--upload-block-padding-top:\s*8px;[^}]*--upload-block-padding-bottom:\s*8px;[^}]*--upload-label-gap:\s*8px;[^}]*--upload-nested-gap:\s*8px;[^}]*--upload-empty-padding:\s*12px;/s,
   ],
   [
-    'short-landscape fields free of a redundant inline-end safe gap',
-    /:global\(\[data-drawer-presentation='sideOverlay'\]\)\s+\.spotSection,\s*:global\(\[data-drawer-presentation='sideOverlay'\]\)\s+\.mediaSection,\s*:global\(\[data-drawer-presentation='sideOverlay'\]\)\s+\.sidebar\s+:global\(\[data-upload-block\]\)\s*\{[^}]*padding-inline-end:\s*0;/s,
+    'portrait Upload search using the shared 8px inset below its unpadded header',
+    /\.spotSection\s*\{[^}]*padding:\s*var\(--upload-compact-inset\)\s+var\(--upload-gutter\)/s,
+  ],
+  [
+    'Upload action bar narrowing portrait and short-landscape chrome without owning bottom placement',
+    /\[data-panel-layout\]\[data-sheet-snap\][^{]*\[data-panel-layout-footer\]:has\(\.publishFooter\),\s*:global\(\[data-panel-layout\]\[data-drawer-presentation='sideOverlay'\]\)[^{]*\[data-panel-layout-footer\]:has\(\.publishFooter\)\s*\{[^}]*width:\s*fit-content;[^}]*margin-bottom:\s*0;[^}]*padding:\s*8px;/s,
   ],
 ];
 
@@ -382,19 +447,46 @@ const requiredBrowseSectionBarRuntime = [
 
 const requiredBrowseSectionBarStyles = [
   [
+    'presentation-aware bottom clearance for the floating switcher',
+    /\.root\s*\{[^}]*bottom:\s*var\(--wa-floating-chrome-bottom-offset\)/s,
+  ],
+  [
     'centering within the measured map remainder',
     /\.root\[data-drawer-adjacent\]\s*\{[^}]*inset-inline-start:\s*calc\(\(100%\s*-\s*var\(--wa-browse-section-drawer-inset\)\)\s*\/\s*2\)/s,
   ],
   [
-    'drawer-adjacent bottom chrome using the larger safe-area or ordinary edge clearance',
-    /\.root\[data-drawer-adjacent\]\s*\{[^}]*bottom:\s*max\(var\(--wa-safe-area-bottom\),\s*var\(--wa-shell-edge-clearance\)\)/s,
+    'drawer-adjacent bottom chrome preserving the same presentation-aware clearance',
+    /\.root\[data-drawer-adjacent\]\s*\{[^}]*bottom:\s*var\(--wa-floating-chrome-bottom-offset\)/s,
+  ],
+];
+
+const requiredCollectionsSectionBarStyles = [
+  [
+    'floating collections navigation preserving the same presentation-aware clearance as Browse',
+    /\.floating\s*\{[^}]*bottom:\s*var\(--wa-floating-chrome-bottom-offset\)/s,
   ],
 ];
 
 const requiredCompactBrowseToolbarStyles = [
   [
-    'centered bounded bottom-sheet search controls',
-    /\[data-drawer-presentation='bottomSheet'\][^{]*\.toolbarMain\s*\{[^}]*max-width:\s*var\(--wa-gallery-tile-comfortable\)[^}]*margin-inline:\s*auto/s,
+    'bottom-sheet search row filling the shared panel inset without a card-width dependency',
+    /\[data-drawer-presentation='bottomSheet'\][^{]*\.toolbarMain\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*none;[^}]*margin-inline:\s*0/s,
+  ],
+  [
+    'bottom-sheet 12px gap between search and filter rows',
+    /\[data-panel-layout\]\[data-sheet-snap='half'\][^{]*\.toolbar\[data-expanded\],\s*:global\(\[data-panel-layout\]\[data-sheet-snap='full'\]\)\s+\.toolbar\[data-expanded\]\s*\{[^}]*gap:\s*var\(--wa-panel-stack-gap\)/s,
+  ],
+  [
+    'desktop one-column search group isolated from mobile presentations',
+    /data-panel-layout\]:not\(\[data-drawer-presentation='bottomSheet'\]\):not\(\[data-drawer-presentation='sideOverlay'\]\):has\(\[data-panel-collection-grid\]\[data-columns='1'\]\)[^{]*\.toolbarMainExpanded\s*\{[^}]*flex:\s*0\s+0\s+auto;[^}]*width:\s*100%;[^}]*max-width:\s*none/s,
+  ],
+  [
+    'desktop two-column search group isolated from mobile presentations',
+    /data-panel-layout\]:not\(\[data-drawer-presentation='bottomSheet'\]\):not\(\[data-drawer-presentation='sideOverlay'\]\):has\(\[data-panel-collection-grid\]\[data-columns='2'\]\)[^{]*\.toolbarMainExpanded\s*\{[^}]*flex:\s*0\s+0\s+auto;[^}]*width:\s*calc\(\(100%\s*-\s*var\(--wa-panel-grid-gap\)\)\s*\/\s*2\)/s,
+  ],
+  [
+    'desktop three-column search group isolated from mobile presentations',
+    /data-panel-layout\]:not\(\[data-drawer-presentation='bottomSheet'\]\):not\(\[data-drawer-presentation='sideOverlay'\]\):has\(\[data-panel-collection-grid\]\[data-columns='3'\]\)[^{]*\.toolbarMainExpanded\s*\{[^}]*flex:\s*0\s+0\s+auto;[^}]*width:\s*calc\(\(100%\s*-\s*2\s*\*\s*var\(--wa-panel-grid-gap\)\)\s*\/\s*3\)/s,
   ],
   [
     'even compact bottom-sheet toolbar breathing room',
@@ -403,6 +495,21 @@ const requiredCompactBrowseToolbarStyles = [
   [
     'short side-overlay toolbar stacking',
     /\[data-drawer-presentation='sideOverlay'\][^{]*\.toolbar\s*\{[^}]*flex-direction:\s*column[^}]*align-items:\s*stretch/s,
+  ],
+  [
+    'side-overlay 12px gap between search and filter rows',
+    /\[data-drawer-presentation='sideOverlay'\][^{]*\.toolbar\[data-expanded\]\s*\{[^}]*gap:\s*var\(--wa-panel-stack-gap\)/s,
+  ],
+];
+
+const requiredSessionFeedStyles = [
+  [
+    'bottom-sheet card grid yielding its top padding to the shared 12px chrome gap',
+    /\[data-panel-layout\]\[data-sheet-snap='half'\][^{]*\.grid,\s*:global\(\[data-panel-layout\]\[data-sheet-snap='full'\]\)\s+\.grid\s*\{[^}]*padding-block-start:\s*0/s,
+  ],
+  [
+    'side-overlay card grid yielding its top padding to the shared 12px chrome gap',
+    /\[data-panel-layout\]\[data-drawer-presentation='sideOverlay'\][^{]*\.grid\s*\{[^}]*padding-block-start:\s*0/s,
   ],
 ];
 
@@ -448,14 +555,10 @@ const requiredPanelLayoutStyles = [
     /\.scroller:has\(\.stickyChrome\s+\[data-panel-scroll-chrome-primary\]\)\s*\{[^}]*overflow-anchor:\s*none/s,
   ],
   [
-    // The top gap (24px: 11px handle clearance + 9px + 4px toolbar margin) and the
-    // bottom gap are deliberately NOT equal — the bottom is pinned to Upload's own
-    // minimal search-row clearance (4px padding + 4px toolbar margin = 8px) instead,
-    // per the user's own request to match that value. An earlier version of this rule
-    // required a symmetric 20px bottom padding; that invariant was superseded on
-    // purpose, not drifted into by accident — see SHEET_PEEK_HEIGHT_PX's own comment.
-    'peek search row bottom clearance matches Upload\'s own minimal search-row gap',
-    /\.root\[data-sheet-snap='peek'\]\s+\.stickyChrome\s*\{[^}]*padding-top:\s*9px;[^}]*padding-bottom:\s*4px/s,
+    // The compact toolbar contributes 4px margin-block. These asymmetric values
+    // complete 16px below the sheet grabber and 8px above the iOS indicator.
+    'peek search row uses 16px above and 8px below',
+    /\.root\[data-sheet-snap='peek'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*calc\(var\(--wa-browse-sheet-leading-gap\)\s*-\s*4px\)\s+calc\(var\(--wa-grabber-gap\)\s*-\s*4px\)/s,
   ],
   [
     // DrawerShell publishes the snap's reachable content height: safe-area strips are
@@ -464,9 +567,54 @@ const requiredPanelLayoutStyles = [
     'sheet content height subtracts only the drag handle from the reachable snap height',
     /\.root\[data-sheet-snap\]\s*\{[^}]*height:\s*calc\(\s*var\(--wa-sheet-visible-height\)\s*-\s*var\(--wa-sheet-drag-handle-height\)\s*\)/s,
   ],
+  [
+    'peek content begins at the grabber bottom and owns the remaining visible height',
+    /\.root\[data-sheet-snap='peek'\]\s*\{[^}]*height:\s*calc\([^}]*var\(--wa-sheet-visible-height\)[^}]*var\(--wa-grabber-gap\)[^}]*var\(--wa-sheet-grabber-height\)[^}]*\);[^}]*margin-top:\s*calc\(var\(--wa-grabber-gap\)\s*\+\s*var\(--wa-sheet-grabber-height\)\)/s,
+  ],
+  [
+    'half and full sticky chrome leave 12px after the filter row',
+    /\.root\[data-sheet-snap='half'\]\s+\.stickyChrome,\s*\.root\[data-sheet-snap='full'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*0\s+var\(--wa-panel-stack-gap\)/s,
+  ],
+  [
+    'scrolled half and full chrome restores 8px at the sheet top without changing the initial position',
+    /\.root\[data-sheet-snap='half'\]\s+\.stickyChrome\[data-scrolled-from-top\],\s*\.root\[data-sheet-snap='full'\]\s+\.stickyChrome\[data-scrolled-from-top\]\s*\{[^}]*padding-block-start:\s*var\(--wa-grabber-gap\)/s,
+  ],
+  [
+    'compact Gallery delegates its first 12px content gap to the first date divider',
+    /\.root\[data-sheet-snap='half'\]\s+\.stickyChrome:has\(\[data-panel-scroll-chrome-replacement\]\),\s*\.root\[data-sheet-snap='full'\]\s+\.stickyChrome:has\(\[data-panel-scroll-chrome-replacement\]\)\s*\{[^}]*padding-block-end:\s*0/s,
+  ],
+  [
+    'full-screen flush route chrome does not stack padding around its content',
+    /\.root\[data-drawer-presentation='fullScreen'\]\s+\.stickyChrome:has\(\[data-panel-scroll-chrome-spacing='flush'\]\)\s*\{[^}]*padding-block:\s*0/s,
+  ],
+  [
+    'scrolled full-screen flush chrome restores 8px below the header without changing its initial position',
+    /\.root\[data-drawer-presentation='fullScreen'\]\s+\.stickyChrome\[data-scrolled-from-top\]:has\(\[data-panel-scroll-chrome-spacing='flush'\]\)\s*\{[^}]*padding-block-start:\s*var\(--wa-grabber-gap\)/s,
+  ],
+  [
+    'side-overlay sticky chrome uses the shared 12px stack gap',
+    /\.root\[data-drawer-presentation='sideOverlay'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*var\(--wa-panel-stack-gap\)/s,
+  ],
+  [
+    'side-overlay footer meets the physical panel edge with its enclosing border compensated',
+    /\.root\[data-drawer-presentation='sideOverlay'\]\s+\.footer\s*\{[^}]*bottom:\s*-1px/s,
+  ],
+  [
+    'header-bearing Upload sheet subtracts its independent 8px handle band',
+    /\[data-drawer-sheet-has-header\][^{]*\.root\[data-sheet-snap\]\s*\{[^}]*var\(--wa-upload-sheet-drag-handle-height\)/s,
+  ],
+  [
+    'full-screen footer actions preserving the same 8px indicator clearance as Browse',
+    /\.root\[data-drawer-presentation='fullScreen'\]\s+\.footer\s*\{[^}]*padding-block-end:\s*calc\(2\s*\*\s*var\(--wa-grabber-gap\)\s*\+\s*var\(--wa-sheet-grabber-height\)\)/s,
+  ],
 ];
 
 const requiredMobileGalleryLargeTextStyles = [
+  [
+    'src/shared/ui/VirtualGallery/VirtualGallery.module.css',
+    'the first compact date divider owning the 12px gap below filter pills',
+    /\.container\[data-dense\]\s+\[data-index='0'\]\s+\.divider\s*\{[^}]*align-items:\s*flex-start;[^}]*box-sizing:\s*border-box;[^}]*padding-block-start:\s*var\(--wa-panel-stack-gap\)/s,
+  ],
   [
     'src/shared/ui/VirtualGallery/VirtualGallery.module.css',
     'semantic minimum height for gallery date dividers',
@@ -980,6 +1128,19 @@ const rules = [
 const files = listFiles(srcRoot).filter(isCodeOrCss);
 const violations = [];
 
+const webAppManifest = JSON.parse(
+  readFileSync(path.join(root, 'public/site.webmanifest'), 'utf8'),
+);
+for (const field of ['id', 'start_url', 'scope']) {
+  if (webAppManifest[field] === '/') continue;
+  violations.push({
+    file: 'public/site.webmanifest',
+    line: 1,
+    rule: 'home-screen-manifest-rooted',
+    message: `Web app manifest ${field} must be explicitly rooted at "/".`,
+  });
+}
+
 const designSystemTokens = readFileSync(
   path.join(root, 'src/shared/ui/design-system/tokens.css'),
   'utf8',
@@ -991,6 +1152,16 @@ for (const token of requiredResponsiveLayoutTokens) {
     line: 1,
     rule: 'required-responsive-layout-token',
     message: `Missing responsive layout token ${token}.`,
+  });
+}
+
+for (const [requirement, pattern] of requiredFloatingChromeOffsetStyles) {
+  if (pattern.test(designSystemTokens)) continue;
+  violations.push({
+    file: 'src/shared/ui/design-system/tokens.css',
+    line: 1,
+    rule: 'floating-chrome-offset-follows-display-mode',
+    message: `Floating chrome is missing ${requirement}.`,
   });
 }
 
@@ -1131,6 +1302,20 @@ for (const [requirement, pattern] of requiredBrowseSectionBarStyles) {
   });
 }
 
+const collectionsSectionBarStyles = readFileSync(
+  path.join(root, 'src/features/Collections/ui/CollectionsSectionBar.module.css'),
+  'utf8',
+);
+for (const [requirement, pattern] of requiredCollectionsSectionBarStyles) {
+  if (pattern.test(collectionsSectionBarStyles)) continue;
+  violations.push({
+    file: 'src/features/Collections/ui/CollectionsSectionBar.module.css',
+    line: 1,
+    rule: 'collections-section-bar-required-styles',
+    message: `Collections section navigation is missing ${requirement}.`,
+  });
+}
+
 const compactBrowseToolbarStyles = readFileSync(
   path.join(root, 'src/shared/ui/PanelRouteLayout.module.css'),
   'utf8',
@@ -1142,6 +1327,20 @@ for (const [requirement, pattern] of requiredCompactBrowseToolbarStyles) {
     line: 1,
     rule: 'compact-browse-toolbar-required-styles',
     message: `Compact browse toolbar is missing ${requirement}.`,
+  });
+}
+
+const sessionFeedStyles = readFileSync(
+  path.join(root, 'src/widgets/SidePanel/SessionFeed.module.css'),
+  'utf8',
+);
+for (const [requirement, pattern] of requiredSessionFeedStyles) {
+  if (pattern.test(sessionFeedStyles)) continue;
+  violations.push({
+    file: 'src/widgets/SidePanel/SessionFeed.module.css',
+    line: 1,
+    rule: 'session-feed-required-styles',
+    message: `Session feed is missing ${requirement}.`,
   });
 }
 

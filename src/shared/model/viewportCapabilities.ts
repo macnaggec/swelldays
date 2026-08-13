@@ -9,6 +9,7 @@ const capabilityQueries = [
   '(pointer: fine)',
   '(hover: hover)',
   '(prefers-reduced-motion: reduce)',
+  '(display-mode: standalone)',
 ] as const;
 
 export interface ViewportCapabilities {
@@ -17,6 +18,7 @@ export interface ViewportCapabilities {
   primaryPointer: 'coarse' | 'fine' | 'none';
   supportsHover: boolean;
   prefersReducedMotion: boolean;
+  isStandalone: boolean;
 }
 
 /**
@@ -31,6 +33,7 @@ export const indeterminateViewportCapabilities: ViewportCapabilities = {
   primaryPointer: 'coarse',
   supportsHover: false,
   prefersReducedMotion: false,
+  isStandalone: false,
 };
 
 let cachedSnapshot: ViewportCapabilities | undefined;
@@ -40,7 +43,8 @@ function snapshotsMatch(left: ViewportCapabilities, right: ViewportCapabilities)
     && left.heightBand === right.heightBand
     && left.primaryPointer === right.primaryPointer
     && left.supportsHover === right.supportsHover
-    && left.prefersReducedMotion === right.prefersReducedMotion;
+    && left.prefersReducedMotion === right.prefersReducedMotion
+    && left.isStandalone === right.isStandalone;
 }
 
 function subscribeViewportCapabilities(onStoreChange: () => void) {
@@ -76,6 +80,7 @@ export function getViewportCapabilitiesSnapshot(): ViewportCapabilities {
     primaryPointer: coarsePointer ? 'coarse' : finePointer ? 'fine' : 'none',
     supportsHover: window.matchMedia('(hover: hover)').matches,
     prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    isStandalone: window.matchMedia('(display-mode: standalone)').matches,
   };
 
   if (cachedSnapshot && snapshotsMatch(cachedSnapshot, nextSnapshot)) return cachedSnapshot;

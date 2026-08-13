@@ -201,6 +201,21 @@ describe('PanelLayoutStickyChrome', () => {
     expect(screen.queryByText('Search and filters')).toBeNull();
   });
 
+  it('publishes a flush spacing intent for full-screen route chrome', () => {
+    render(
+      <PanelLayout>
+        <PanelLayoutStickyChrome spacing="flush">
+          <div>Collection filters</div>
+        </PanelLayoutStickyChrome>
+      </PanelLayout>,
+    );
+
+    expect(screen.getByText('Collection filters').parentElement).toHaveAttribute(
+      'data-panel-scroll-chrome-spacing',
+      'flush',
+    );
+  });
+
   it('uses one sticky slot to alternate primary browse controls with the active date', () => {
     const layout = (hidden: boolean) => (
       <PanelScrollChromeStateProvider value={{ hidden, drawerPresentation: 'bottomSheet' }}>
@@ -283,6 +298,18 @@ describe('PanelLayout sheet-bound visible height and floating footer', () => {
     const sheetFooter = sheetContainer.querySelector('[data-panel-layout-footer]');
     expect(sheetFooter?.className.split(' ')).toContain(materialClasses.chrome);
 
+    const { container: sideOverlayContainer } = render(
+      <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation: 'sideOverlay' }}>
+        <PanelLayout>
+          <PanelLayoutFooter>
+            <button type="button">Cancel</button>
+          </PanelLayoutFooter>
+        </PanelLayout>
+      </PanelScrollChromeStateProvider>,
+    );
+    const sideOverlayFooter = sideOverlayContainer.querySelector('[data-panel-layout-footer]');
+    expect(sideOverlayFooter?.className.split(' ')).toContain(materialClasses.chrome);
+
     const { container: plainContainer } = render(
       <PanelLayout>
         <PanelLayoutFooter>
@@ -338,7 +365,7 @@ describe('PanelLayout sideWorkspace footer', () => {
     expect(root.style.getPropertyValue('--wa-panel-footer-height')).toBe('');
   });
 
-  it.each(['sideOverlay', 'persistent'] as const)(
+  it.each(['persistent'] as const)(
     'reserves no floating-footer clearance property for a plain %s drawer',
     (drawerPresentation) => {
       const { container } = render(

@@ -13,7 +13,12 @@ import {
 } from './index';
 import { DRAWER_SHELL_TRANSITION } from './motion';
 import { usePanelSettledWidth } from './panelSettledWidth';
-import { resolveSheetSnapHeights, SHEET_PEEK_HEIGHT_PX, SHEET_SNAPS } from './sheetSnapPolicy';
+import {
+  resolveBrowseSheetPeekHeightPx,
+  resolveSheetSnapHeights,
+  SHEET_PEEK_HEIGHT_PX,
+  SHEET_SNAPS,
+} from './sheetSnapPolicy';
 
 const animateMock = vi.hoisted(() => vi.fn());
 const nearestSheetSnapMock = vi.hoisted(() => vi.fn());
@@ -338,9 +343,28 @@ describe('DrawerShell bottom-sheet geometry', () => {
     // (via useViewportMetrics), independent of the synthetic 844px geometry mocked above.
     const realViewportHeights = resolveSheetSnapHeights({
       viewportHeightPx: window.innerHeight,
-      peekHeightPx: SHEET_PEEK_HEIGHT_PX,
+      peekHeightPx: resolveBrowseSheetPeekHeightPx({ safeAreaBottomPx: 0, isStandalone: false }),
     });
     expect(sheet.style.getPropertyValue('--wa-sheet-visible-height')).toBe(`${realViewportHeights[snap]}px`);
+  });
+
+  it('marks header-bearing Upload sheets so their 8px handle rhythm stays independent of Browse', () => {
+    render(
+      <DrawerShell
+        presentation="bottomSheet"
+        modality="nonmodal"
+        snap="full"
+        onSnapChange={() => {}}
+        peekIncludesHeader
+      >
+        Upload content
+      </DrawerShell>,
+    );
+
+    expect(screen.getByRole('complementary', { name: 'Content drawer' })).toHaveAttribute(
+      'data-drawer-sheet-has-header',
+      'true',
+    );
   });
 
   it('never sets a visible-height custom property on a non-bottomSheet presentation', () => {

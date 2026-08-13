@@ -12,32 +12,46 @@ const SHEET_HALF_HEIGHT_FRACTION = 0.34;
 const SHEET_FULL_TOP_INSET_PX = 24;
 
 /**
- * Resting height of the peek snap. Sized by its own content — the search row and upload
- * control beneath the drag handle — rather than by the viewport. 24px drag handle + 65px
- * .stickyChrome (its real rendered height): 9px+4px padding-block, 4px+4px margin-block
- * from PanelRouteLayout.module.css's compact-toolbar rule, and the 44px coarse-pointer
- * control height) = 89px. The 9px/4px padding-block split is deliberate, not a typo: the
- * drag handle's own 24px band already leaves 11px of clearance below its grabber pill
- * before the row starts, so 9px here keeps the *visible* gap above the row (11px handle
- * clearance + 9px + 4px = 24px). The gap below the row to the sheet's own bottom edge
- * (4px + 4px = 8px) is set independently, matching Upload's own sheet — the reference
- * minimum for this gap. Was 105px with a 9px/20px split (24px above, 24px below);
- * before that, 116px with a symmetric 20px/20px split, nearly 1.5x more clearance
- * above the row than below.
+ * Browse Peek's physical standalone height. On an iPhone it is the exact bottom-up
+ * sequence approved for this surface: 8px screen-edge gap + 5px iOS home indicator +
+ * 8px gap + 44px search row + 16px gap + 5px sheet grabber + 8px top-edge gap = 94px.
  */
-export const SHEET_PEEK_HEIGHT_PX = 89;
+export const SHEET_PEEK_HEIGHT_PX = 94;
+const STANDALONE_HOME_INDICATOR_RESERVE_PX = 13;
+
+interface SheetPeekHeightInput {
+  safeAreaBottomPx: number;
+  isStandalone: boolean;
+}
+
+export function resolveBrowseSheetPeekHeightPx({
+  safeAreaBottomPx,
+  isStandalone,
+}: SheetPeekHeightInput): number {
+  const physicalHeightPx = isStandalone
+    ? SHEET_PEEK_HEIGHT_PX
+    : SHEET_PEEK_HEIGHT_PX - STANDALONE_HOME_INDICATOR_RESERVE_PX;
+  return Math.max(0, physicalHeightPx - (isStandalone ? safeAreaBottomPx : 0));
+}
 
 /**
  * Peek height for a sheet whose header row (back chevron + title) stays visible at
- * Peek, unlike Browse's own sheet, which has no header row at all. 24px drag handle +
- * 44px header row (SidePanel's `.panelTop`, unconstrained by height and so sized by its
- * tallest child — the back button, `--wa-control-size-compact`, which is 44px under the
- * `(pointer: coarse)` media query that always matches on the phone this sheet renders
- * on) + 8+44+8px spot-search row (coarse-pointer control height) = 128px. Was 136px with
- * an explicit `min-height: 52px` (`--wa-panel-chrome-height`) on `.panelTop` that forced
- * the row 8px taller than its real content everywhere it renders, not just here.
+ * Peek, unlike Browse's own sheet, which has no header row at all. Its physical
+ * stack is 8px sheet edge + 5px grabber + 8px + 44px header + 8px + 44px search +
+ * 8px + 5px iOS indicator + 8px screen edge = 138px. The header contributes only
+ * its coarse-pointer back control height; it carries no vertical padding.
  */
-export const SHEET_PEEK_WITH_HEADER_HEIGHT_PX = 128;
+export const SHEET_PEEK_WITH_HEADER_HEIGHT_PX = 138;
+
+export function resolveHeaderSheetPeekHeightPx({
+  safeAreaBottomPx,
+  isStandalone,
+}: SheetPeekHeightInput): number {
+  const physicalHeightPx = isStandalone
+    ? SHEET_PEEK_WITH_HEADER_HEIGHT_PX
+    : SHEET_PEEK_WITH_HEADER_HEIGHT_PX - STANDALONE_HOME_INDICATOR_RESERVE_PX;
+  return Math.max(0, physicalHeightPx - (isStandalone ? safeAreaBottomPx : 0));
+}
 
 /** Sheet-top speed, px/s, above which a release reads as a flick rather than a placement. */
 export const SHEET_FLICK_VELOCITY_PX_PER_S = 400;

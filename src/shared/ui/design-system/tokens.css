@@ -32,7 +32,19 @@
   --wa-control-width-section-navigation: 64px;
   --wa-sheet-grabber-width: 36px;
   --wa-sheet-grabber-height: 5px;
-  --wa-sheet-drag-handle-height: 24px;
+  --wa-grabber-gap: 8px;
+  --wa-browse-sheet-leading-gap: 16px;
+  --wa-upload-sheet-gap: 8px;
+  --wa-panel-stack-gap: 12px;
+  /* Ordinary browser tabs end at their own viewport edge; installed mobile
+     apps override this below to clear the physical iOS home indicator. */
+  --wa-floating-chrome-bottom-offset: var(--wa-shell-edge-clearance);
+  --wa-sheet-drag-handle-height: calc(
+    var(--wa-grabber-gap) + var(--wa-sheet-grabber-height) + var(--wa-browse-sheet-leading-gap)
+  );
+  --wa-upload-sheet-drag-handle-height: calc(
+    var(--wa-grabber-gap) + var(--wa-sheet-grabber-height) + var(--wa-upload-sheet-gap)
+  );
 
   /* Motion */
   --wa-motion-duration-control: 150ms;
@@ -153,6 +165,16 @@
     --wa-control-size-compact: 44px;
     --wa-control-height-default: 44px;
     --wa-control-size-navigation-compact: 44px;
+    --wa-floating-chrome-bottom-offset: var(--wa-grabber-gap);
+  }
+}
+
+@media (pointer: coarse) {
+  [data-app-display-mode='standalone'] {
+    /* Physical bottom → 8px → 5px iOS indicator → 8px → switcher. */
+    --wa-floating-chrome-bottom-offset: calc(
+      2 * var(--wa-grabber-gap) + var(--wa-sheet-grabber-height)
+    );
   }
 }
 

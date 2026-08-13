@@ -203,16 +203,17 @@
   display: none;
 }
 
+.root[data-drawer-presentation='fullScreen'] .footer {
+  /* Keep footer actions 8px above the iOS indicator while the surrounding
+     full-screen surface itself paints through to the physical screen edge. */
+  padding-block-end: calc(2 * var(--wa-grabber-gap) + var(--wa-sheet-grabber-height));
+}
+
 .root[data-sheet-snap='peek'] .stickyChrome {
-  /* Asymmetric on purpose: DrawerShell's drag handle above already leaves 11px of
-     clearance below its own grabber pill before this row starts, so 9px here keeps
-     the visible gap above the row at 24px (11px handle clearance + 9px + 4px
-     toolbar margin-block). The 4px padding-bottom here plus the toolbar's own 4px
-     margin-block leaves an 8px gap below the row to the sheet's own bottom edge,
-     matching Upload's own sheet. See the peek-height constant in DrawerShell's
-     sheetSnapPolicy.ts. */
-  padding-top: 9px;
-  padding-bottom: 4px;
+  /* The compact toolbar contributes 4px margin on each side. Add 8px above it
+     for 16px after the sheet grabber, and 4px below it for the 8px clearance
+     before the iOS home indicator. */
+  padding-block: calc(var(--wa-browse-sheet-leading-gap) - 4px) calc(var(--wa-grabber-gap) - 4px);
 }
 
 .root[data-sheet-snap] {
@@ -223,10 +224,10 @@
      height to consume .surface's constant leftover space, pushing the floating
      footer below (below, at Peek/Half) the sheet's actual visible slice.
 
-     DrawerShell publishes the reachable snap height after removing the screen's safe
-     areas, so those strips are already outside this budget. Only the drag handle shares
-     the published height with PanelLayout; subtracting a safe-area inset again would
-     collapse Peek's 65px search-row region to 31px in an installed iPhone app. */
+     DrawerShell publishes the reachable snap height plus the bottom paint strip, so
+     imagery can continue behind the iOS home indicator while controls remain inset.
+     Only the drag handle shares that height with PanelLayout; subtracting a safe-area
+     inset here would collapse Peek's 65px search-row region in an installed iPhone app. */
   flex: 0 0 auto;
   height: calc(
     var(--wa-sheet-visible-height)
@@ -235,21 +236,89 @@
 }
 
 .root[data-sheet-snap='peek'] {
-  margin-top: var(--wa-sheet-drag-handle-height);
+  /* The Peek handle is absolute, so begin the content at the grabber's bottom
+     edge. The handle's remaining 12px is the drag target over the empty gap. */
+  height: calc(
+    var(--wa-sheet-visible-height)
+    - var(--wa-grabber-gap)
+    - var(--wa-sheet-grabber-height)
+  );
+  margin-top: calc(var(--wa-grabber-gap) + var(--wa-sheet-grabber-height));
 }
 
-.root[data-sheet-snap] .footer {
+.root[data-sheet-snap='half'] .stickyChrome,
+.root[data-sheet-snap='full'] .stickyChrome {
+  /* The flowing handle already owns the 12px before search. The sticky row
+     owns the 12px after the filter pills, immediately before the first card. */
+  padding-block: 0 var(--wa-panel-stack-gap);
+}
+
+.root[data-sheet-snap='half'] .stickyChrome[data-scrolled-from-top],
+.root[data-sheet-snap='full'] .stickyChrome[data-scrolled-from-top] {
+  /* Once content has left its initial position, the handle no longer precedes
+     returning sticky chrome, so the chrome owns an 8px sheet-top gap itself. */
+  padding-block-start: var(--wa-grabber-gap);
+}
+
+.root[data-sheet-snap='half'] .stickyChrome:has([data-panel-scroll-chrome-replacement]),
+.root[data-sheet-snap='full'] .stickyChrome:has([data-panel-scroll-chrome-replacement]) {
+  /* Compact Gallery's first date divider owns the 12px after filter pills. */
+  padding-block-end: 0;
+}
+
+.root[data-drawer-presentation='fullScreen']
+  .stickyChrome:has([data-panel-scroll-chrome-spacing='flush']) {
+  /* Collections lets the header and the ordinary 12px gallery inset own the
+     two edges instead of stacking another sticky-chrome inset around them. */
+  padding-block: 0;
+}
+
+.root[data-drawer-presentation='fullScreen']
+  .stickyChrome[data-scrolled-from-top]:has([data-panel-scroll-chrome-spacing='flush']) {
+  /* At the initial list position Collections stays flush to its header. Once
+     the list has moved, its returning selector owns the standard 8px gap. */
+  padding-block-start: var(--wa-grabber-gap);
+}
+
+.root[data-drawer-presentation='sideOverlay'] .stickyChrome {
+  padding-block: var(--wa-panel-stack-gap);
+}
+
+/* Upload's header is exactly its 44px control height: the handle provides the
+   8px above it, while the spot section provides the 8px below it. */
+:global([data-drawer-sheet-has-header]) .root[data-sheet-snap] {
+  height: calc(
+    var(--wa-sheet-visible-height)
+    - var(--wa-upload-sheet-drag-handle-height)
+  );
+}
+
+:global([data-drawer-sheet-has-header]) .root[data-sheet-snap='peek'] {
+  margin-top: var(--wa-upload-sheet-drag-handle-height);
+}
+
+.root[data-sheet-snap] .footer,
+.root[data-drawer-presentation='sideOverlay'] .footer {
   position: absolute;
   inset-inline: 0;
-  bottom: var(--wa-safe-area-bottom);
+  bottom: var(--wa-floating-chrome-bottom-offset);
   z-index: var(--wa-z-floating-chrome);
   border-radius: var(--wa-radius-chrome);
+}
+
+.root[data-drawer-presentation='sideOverlay'] .footer {
+  /* Landscape Upload's compact action substrate meets the side sheet's physical
+     bottom edge. The root ends inside DrawerShell's 1px material border, so -1px
+     aligns the visible substrate edge with that enclosing border rather than
+     leaving a strip beneath it. Portrait sheets keep the shared safe-area offset. */
+  bottom: -1px;
 }
 
 .root[data-sheet-snap='peek'] .footer {
   display: none;
 }
 
-.root[data-sheet-snap] .content {
+.root[data-sheet-snap] .content,
+.root[data-drawer-presentation='sideOverlay'] .content {
   padding-bottom: calc(var(--wa-panel-footer-height, 0px) + var(--wa-panel-content-inset));
 }

@@ -79,4 +79,46 @@ describe('AppShell navigation chrome', () => {
     expect(screen.queryByTestId('globe-scene')).not.toBeInTheDocument();
     expect(screen.queryByTestId('app-navigation')).not.toBeInTheDocument();
   });
+
+  it('publishes browser presentation on the application root', () => {
+    const { container } = renderAppShell();
+
+    expect(container.querySelector('[data-app-display-mode]'))
+      .toHaveAttribute('data-app-display-mode', 'browser');
+  });
+
+  it('publishes standalone presentation from the same viewport capability used by sheet geometry', () => {
+    vi.mocked(window.matchMedia).mockImplementation((query) => ({
+      matches: query === '(display-mode: standalone)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    const { container } = renderAppShell();
+
+    expect(container.querySelector('[data-app-display-mode]'))
+      .toHaveAttribute('data-app-display-mode', 'standalone');
+  });
+
+  it('keeps routed surfaces inside the display-mode root so they inherit its layout tokens', () => {
+    const { container } = render(
+      <AppShellLayoutPolicyProvider
+        routeIntent="browse"
+        browseExpanded={false}
+        galleryExpanded={false}
+      >
+        <AppShell>
+          <aside data-testid="routed-surface" />
+        </AppShell>
+      </AppShellLayoutPolicyProvider>,
+    );
+
+    expect(screen.getByTestId('routed-surface').closest('[data-app-display-mode]'))
+      .toBe(container.querySelector('[data-app-display-mode]'));
+  });
 });

@@ -43,12 +43,17 @@ export function PanelLayout({
   const [railTarget, setRailTarget] = useState<HTMLDivElement | null>(null);
   const [metadataTarget, setMetadataTarget] = useState<HTMLDivElement | null>(null);
   const [stickyChromeTarget, setStickyChromeTarget] = useState<HTMLDivElement | null>(null);
-  const { hidden, sheetSnap, drawerPresentation } = usePanelScrollChromeState();
-  // The footer floats above content — absolute-positioned chrome rather than a flex
-  // sibling reserving its own row — only while the panel is a bottom sheet. A
+  const {
+    hidden,
+    scrolledFromTop,
+    sheetSnap,
+    drawerPresentation,
+  } = usePanelScrollChromeState();
+  // Compact mobile surfaces float footer actions above their scrolling content:
+  // portrait uses a bottom sheet, while short landscape uses a side overlay. A
   // sideWorkspace already has a full-height panel where the ordinary footer row can
   // stay visible without covering the cards above it.
-  const floatsFooter = sheetSnap !== undefined;
+  const floatsFooter = sheetSnap !== undefined || drawerPresentation === 'sideOverlay';
 
   // Everything in the panel — search row, filter pills, cards — lays itself out once,
   // at the width the drawer is heading for, instead of being re-flowed on every frame
@@ -81,7 +86,7 @@ export function PanelLayout({
     const scrollOwner = scrollOwnerRef.current;
     if (!scrollOwner) return;
     scrollOwner.dataset.panelChromeHeight = String(hidden ? 0 : stickyChromeTarget?.offsetHeight ?? 0);
-  }, [hidden, stickyChromeTarget, contentWidth]);
+  }, [hidden, scrolledFromTop, stickyChromeTarget, contentWidth]);
 
   // The floating footer's own height, so the sheet-scoped `.content` can reserve exactly
   // that much bottom clearance and the footer never overlaps the last field it floats
@@ -157,6 +162,7 @@ export function PanelLayout({
                     className={styles.stickyChrome}
                     data-panel-scroll-chrome
                     data-hidden={hidden || undefined}
+                    data-scrolled-from-top={scrolledFromTop || undefined}
                   />
                   <div className={styles.content} data-panel-layout-content>
                     {children}
@@ -216,13 +222,20 @@ export function PanelLayoutMetadata({ children }: { children: ReactNode }) {
  * while content scrolls and hides on scroll down. Renders nothing when mounted
  * outside a PanelLayout.
  */
-export function PanelLayoutStickyChrome({ children }: { children: ReactNode }) {
+export function PanelLayoutStickyChrome({
+  children,
+  spacing,
+}: {
+  children: ReactNode;
+  spacing?: 'flush';
+}) {
   const stickyChromeTarget = useContext(PanelLayoutStickyChromeTargetContext);
   const { hidden } = usePanelScrollChromeState();
   return stickyChromeTarget
     ? createPortal(
       <div
         data-panel-scroll-chrome-primary
+        data-panel-scroll-chrome-spacing={spacing}
         aria-hidden={hidden || undefined}
         inert={hidden}
       >

@@ -28,12 +28,6 @@
   --upload-empty-padding: 12px;
 }
 
-:global([data-drawer-presentation='sideOverlay']) .spotSection,
-:global([data-drawer-presentation='sideOverlay']) .mediaSection,
-:global([data-drawer-presentation='sideOverlay']) .sidebar :global([data-upload-block]) {
-  padding-inline-end: 0;
-}
-
 .validationSection {
   min-width: 0;
 }
@@ -107,14 +101,15 @@
    reading as a second stacked sheet under Cancel/Publish. Narrowed to hug the button
    pair instead, scoped via :has() to this footer's own content so Cart's checkout
    footer, which shares the same chrome, is untouched. The existing rounded-all-corners
-   glass background is inherited unchanged — only the shape narrows. Padding and bottom
-   margin are tightened from the shared 12px/0 defaults to sit closer to the buttons and
-   lift slightly off the sheet's own bottom edge. */
-:global([data-panel-layout][data-sheet-snap]) [data-panel-layout-footer]:has(.publishFooter) {
+   glass background is inherited unchanged — only the shape narrows. PanelLayout owns
+   the presentation-aware bottom position; this consumer adds no competing offset. */
+:global([data-panel-layout][data-sheet-snap]) [data-panel-layout-footer]:has(.publishFooter),
+:global([data-panel-layout][data-drawer-presentation='sideOverlay'])
+  [data-panel-layout-footer]:has(.publishFooter) {
   width: fit-content;
   max-width: calc(100% - 2 * var(--wa-panel-content-inset));
   margin-inline: auto;
-  margin-bottom: 8px;
+  margin-bottom: 0;
   padding: 8px;
 }
 

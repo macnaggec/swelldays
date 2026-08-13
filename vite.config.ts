@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 import react from '@vitejs/plugin-react';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
@@ -11,6 +12,7 @@ const apiPort = Number(process.env.SERVER_PORT ?? 3001);
 export default defineConfig({
   envPrefix: 'VITE_',
   plugins: [
+    basicSsl(),
     tanstackRouter({
       routesDirectory: './src/app/routes',
       generatedRouteTree: './src/app/routeTree.gen.ts',
