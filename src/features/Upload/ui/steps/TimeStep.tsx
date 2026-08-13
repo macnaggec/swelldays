@@ -90,9 +90,10 @@ export function TimeStep({
             style={{
               lineHeight: '22px',
               color: isDragging ? 'var(--wa-text-status)' : 'var(--wa-text-upload-zone)',
-              fontSize: isDragging ? 'var(--wa-font-size-base)' : 'var(--wa-font-size-sm)',
-              fontWeight: isDragging ? 600 : 400,
-              transition: 'all 120ms ease',
+              fontSize: 'var(--wa-font-size-sm)',
+              fontWeight: 400,
+              transform: isDragging ? 'scale(1.1667)' : 'scale(1)',
+              transition: 'color 120ms ease, transform 120ms ease',
             }}
           >
             {minutesToTime(range[0])} – {minutesToTime(range[1])}
