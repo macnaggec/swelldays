@@ -595,6 +595,73 @@ describe('DrawerShell live drag geometry', () => {
     });
   });
 
+  it('does not start a drag when the sheet has only one available snap', async () => {
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    const queuedFrames: FrameRequestCallback[] = [];
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      queuedFrames.push(callback);
+      return queuedFrames.length;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    const onSnapChange = vi.fn();
+    nearestSheetSnapMock.mockClear();
+
+    render(
+      <>
+        <DrawerShell
+          presentation="bottomSheet"
+          modality="nonmodal"
+          snap="full"
+          onSnapChange={onSnapChange}
+          availableSnaps={['full']}
+        >
+          <DraftField />
+        </DrawerShell>
+        <GeometryProbe />
+      </>,
+    );
+
+    const sheet = screen.getByRole('complementary', { name: 'Content drawer' });
+    let rect = DOMRect.fromRect({ x: 0, y: 0, width: 390, height: 844 });
+    vi.spyOn(sheet, 'getBoundingClientRect').mockImplementation(() => rect);
+    act(() => queuedFrames.shift()?.(0));
+    expect(screen.getByTestId('drawer-geometry').textContent).toBe('0:0:390:844:390:844');
+
+    const input = screen.getByLabelText('Draft note');
+    input.focus();
+    const handle = sheet.querySelector('[data-drawer-sheet-handle]');
+    if (!handle) throw new Error('Expected the drag handle to remain rendered.');
+
+    act(() => {
+      fireEvent.pointerDown(handle, { pointerId: 31, isPrimary: true, clientX: 195, clientY: 500 });
+    });
+    rect = DOMRect.fromRect({ x: 0, y: 80, width: 390, height: 764 });
+    act(() => {
+      fireEvent.pointerMove(handle, { pointerId: 31, isPrimary: true, clientX: 195, clientY: 420 });
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    act(() => {
+      fireEvent.pointerUp(handle, { pointerId: 31, isPrimary: true, clientX: 195, clientY: 420 });
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(nearestSheetSnapMock).not.toHaveBeenCalled();
+    expect(onSnapChange).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(input);
+    expect(screen.getByTestId('drawer-geometry').textContent).toBe('0:0:390:844:390:844');
+  });
+
   it.each([
     { dragDistancePx: 8, expectedFocusWhileHeld: 'kept', expectedFocusAfterRelease: 'kept' },
     { dragDistancePx: 16, expectedFocusWhileHeld: 'kept', expectedFocusAfterRelease: 'dismissed' },

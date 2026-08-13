@@ -49,6 +49,9 @@ const mocks = vi.hoisted(() => ({
   heightBand: 'regular' as 'short' | 'regular',
   updateWorkspace: vi.fn(),
   notifyError: vi.fn(),
+  setPanelRouteBackAction: vi.fn<(
+    action: { onBack: () => void; disabled: boolean } | null,
+  ) => void>(),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -91,6 +94,10 @@ vi.mock('entities/Identity', () => ({
 
 vi.mock('entities/Spot', () => ({
   useSpotPreview: () => mocks.spotPreview,
+}));
+
+vi.mock('./_panel', () => ({
+  useSetPanelRouteBackAction: () => mocks.setPanelRouteBackAction,
 }));
 
 vi.mock('shared/lib/trpc', () => ({
@@ -150,17 +157,27 @@ vi.mock('features/Upload', () => ({
   ),
 }));
 
-function renderUploadPanel() {
+function UploadPanelHarness() {
   const Component = (Route as unknown as { component: ComponentType }).component;
-  return render(
+  return (
     <AppShellLayoutPolicyProvider
       routeIntent="mapInput"
       browseExpanded={false}
       galleryExpanded={false}
     >
       <Component />
-    </AppShellLayoutPolicyProvider>,
+    </AppShellLayoutPolicyProvider>
   );
+}
+
+function renderUploadPanel() {
+  return render(<UploadPanelHarness />);
+}
+
+function getRegisteredPanelBackAction() {
+  const action = mocks.setPanelRouteBackAction.mock.calls.find(([value]) => value)?.[0];
+  if (!action) throw new Error('Expected the Upload route to register a panel Back action.');
+  return action;
 }
 
 describe('UploadPanel workspace routing', () => {
@@ -301,13 +318,57 @@ describe('UploadPanel workspace routing', () => {
     });
   });
 
-  it('offers sign-in before attempting to load protected workspace state', () => {
+  it('offers sign-in before attempting to load protected workspace state, then restores the workspace after sign-in', () => {
     mocks.user.isAuthenticated = false;
     mocks.stateQuery.data = undefined;
-    renderUploadPanel();
+    const { rerender } = renderUploadPanel();
 
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(mocks.openAuthModal).toHaveBeenCalledOnce();
+
+    mocks.user.isAuthenticated = true;
+    mocks.stateQuery.data = workspaceState;
+    rerender(<UploadPanelHarness />);
+
+    expect(screen.queryByRole('button', { name: 'Sign in' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('workspace-id').textContent).toBe('workspace-active');
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(mocks.setPanelRouteBackAction).toHaveBeenLastCalledWith(null);
+  });
+
+  it('registers a signed-out close action that returns to the staged spot', () => {
+    mocks.user.isAuthenticated = false;
+    mocks.search.workspaceId = undefined;
+    mocks.search.spotId = 'spot-a';
+    mocks.stateQuery.data = undefined;
+
+    renderUploadPanel();
+
+    expect(mocks.setPanelRouteBackAction).toHaveBeenCalledWith({
+      onBack: expect.any(Function),
+      disabled: false,
+    });
+    const action = getRegisteredPanelBackAction();
+    action.onBack();
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: '/$spotId',
+      params: { spotId: 'spot-a' },
+    });
+  });
+
+  it('registers a signed-out close action that returns to Browse without a staged spot', () => {
+    mocks.user.isAuthenticated = false;
+    mocks.search.workspaceId = undefined;
+    mocks.search.spotId = undefined;
+    mocks.stateQuery.data = undefined;
+
+    renderUploadPanel();
+
+    const action = getRegisteredPanelBackAction();
+    action.onBack();
+
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/' });
   });
 
   it('keeps the keyboard closed when a new upload opens in the compact bottom sheet', () => {

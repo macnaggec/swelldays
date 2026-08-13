@@ -970,10 +970,23 @@ Unrelated working-tree changes preserved: yes — none were present or modified.
 Next ready task: M06x-b
 ```
 
-- [ ] **M06x-b — Fix: make signed-out direct Upload closable and full-snap-only**
+- [x] **M06x-b — Fix: make signed-out direct Upload closable and full-snap-only**
   - Depends on: M06x-a.
   - Scope: Reported from a real iPhone on 2026-08-13: visiting `/upload` directly while signed out renders the sign-in entry state with no Back/close chevron, while the sheet still exposes Upload's normal Peek position and can be pulled down to an unusable map-first state. Treat this as one signed-out Upload-entry lifecycle, not two cosmetic patches. The Upload route owns its close destination: use its existing close policy to return to the selected spot when one exists and otherwise to Browse, including for a direct signed-out entry. The panel composition — the existing owner that has both route and authentication state — must project only Full as the signed-out Upload sheet's available snap and normalize any previously rendered Upload snap to Full. `DrawerShell` must infer that a one-snap sheet is not draggable from the existing available-snaps contract; do not teach the generic shell about authentication, add a second snap state, or make the background map the navigation escape. After successful sign-in, the same mounted route transitions to the normal Upload workspace and restores its existing Peek/Full contract and step-aware Back behavior.
   - Invariant and verifier: A signed-out visitor who lands directly on `/upload` always has a working header chevron and cannot drag, settle, or transition to a lower/map-first sheet state; signing in restores the authenticated Upload sheet's existing Peek/Full behavior without remounting route state. The Upload route behavior test owns the close destination and signed-out-to-authenticated transition; the panel integration test owns the auth-derived snap set and Full normalization; the generic DrawerShell gesture test owns the one-snap/non-draggable rule. All five completion gates must pass.
+  - Completed 2026-08-13. The signed-out Upload entry now registers the route's existing close action, which returns to the staged spot when present and Browse otherwise. The compact panel projects only Full while signed out and normalizes a stale Peek before it reaches the sheet; authentication on the same mounted route restores the existing Peek/Full choices and Upload workspace. `DrawerShell` remains authentication-agnostic and now disables all pointer-drag mechanics whenever its existing available-snaps contract contains only one destination, while preserving the handle's layout box. Files changed: `_panel.upload.tsx`, `-_panel.upload.test.tsx`, `_panel.tsx`, `-_panel.test.tsx`, `DrawerShell.tsx`, `DrawerShell.test.tsx`, and this roadmap. Focused behavior verification is green at 112/112 tests, and all five project gates are green at 125 files / 934 tests. **Still needs, on-device, from the user:** open `/upload` while signed out, confirm the sheet stays at Full under a downward drag and the chevron returns to the selected spot (or Browse with no spot), then sign in and confirm Peek/Full and the normal step-aware Back behavior return without leaving Upload.
+
+```text
+Task completed: M06x-b — make signed-out direct Upload closable and full-snap-only
+Invariant: A signed-out direct Upload entry always exposes its route-owned close action and remains at the sole Full snap; authenticating in place restores the normal Upload workspace, Peek/Full choices, and step-aware Back behavior.
+Authority: UploadPanel owns the close destination, PanelFrame owns the authentication-derived Upload snap projection and normalization, and DrawerShell owns the generic one-snap/non-draggable interpretation.
+Changed files: src/app/routes/_panel.upload.tsx, src/app/routes/-_panel.upload.test.tsx, src/app/routes/_panel.tsx, src/app/routes/-_panel.test.tsx, src/shared/ui/DrawerShell/DrawerShell.tsx, src/shared/ui/DrawerShell/DrawerShell.test.tsx, docs/roadmaps/responsive-layout-foundation.md
+Focused verification: Upload route, panel composition, and DrawerShell gesture suites green (112/112); generic shell authentication scan clean.
+Project gates: client tsc green; server tsc green; lint green; style-boundaries green; client+server Vitest green (125 files / 934 tests).
+Removed concepts: A signed-out Upload sheet retaining Peek as a valid destination, and a one-snap generic sheet still starting a pointer-drag lifecycle.
+Unrelated working-tree changes preserved: yes — none were present or modified.
+Next ready task: M06y
+```
 
 - [ ] **M06y — Recompose sign-in as a mobile workspace with standard keyboard behavior**
   - Depends on: M06x-b.

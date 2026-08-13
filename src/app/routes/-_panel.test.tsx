@@ -9,7 +9,7 @@ import type { BrowseDateFilter } from 'shared/model/browseFilters';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { resolveAppRouteIntent, type DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
-import { BrowseSurfaceProvider } from 'shared/ui/DrawerShell';
+import { BrowseSurfaceProvider, type SheetSnap } from 'shared/ui/DrawerShell';
 import { Route, usePanelFeedLayoutReadyChange, useSetPanelRouteBackAction } from './_panel';
 
 // Mirrors the two-input derivation __root.tsx performs for the real app: PanelFrame
@@ -179,6 +179,7 @@ vi.mock('widgets/SidePanel', () => ({
     open,
     sheetSnap,
     onSheetSnapChange,
+    sheetAvailableSnaps,
     children,
   }: {
     expanded?: boolean;
@@ -191,39 +192,45 @@ vi.mock('widgets/SidePanel', () => ({
     subheader?: ReactNode;
     bottomBar?: ReactNode;
     open?: boolean;
-    sheetSnap?: 'peek' | 'half' | 'full';
-    onSheetSnapChange?: (snap: 'peek' | 'half' | 'full') => void;
+    sheetSnap?: SheetSnap;
+    onSheetSnapChange?: (snap: SheetSnap) => void;
+    sheetAvailableSnaps?: readonly SheetSnap[];
     children?: ReactNode;
-  }) => (
-    <>
-    <div
-      data-testid="side-panel"
-      role="complementary"
-      aria-label="Content drawer"
-      aria-hidden={open === false || undefined}
-      data-expanded={expanded ? 'true' : 'false'}
-      data-has-back={onBack ? 'true' : 'false'}
-      data-back-disabled={backDisabled ? 'true' : 'false'}
-      data-header-full-width={headerFullWidth ? 'true' : 'false'}
-      data-sheet-snap={sheetSnap ?? 'none'}
-    >
-      {onSheetSnapChange && (['peek', 'half', 'full'] as const).map((snap) => (
-        <button key={snap} onClick={() => onSheetSnapChange(snap)}>{`Land on ${snap}`}</button>
-      ))}
-      {onExpandToggle && (
-        <button
-          aria-label={expanded ? 'Collapse panel' : 'Expand panel'}
-          onClick={onExpandToggle}
-        />
-      )}
-      {onBack && <button onClick={onBack} disabled={backDisabled}>{backLabel ?? 'Back'}</button>}
-      {header}
-      {subheader}
-      {children}
-    </div>
-      {bottomBar}
-    </>
-  ),
+  }) => {
+    const availableSnaps: readonly SheetSnap[] = sheetAvailableSnaps ?? ['peek', 'half', 'full'];
+
+    return (
+      <>
+        <div
+          data-testid="side-panel"
+          role="complementary"
+          aria-label="Content drawer"
+          aria-hidden={open === false || undefined}
+          data-expanded={expanded ? 'true' : 'false'}
+          data-has-back={onBack ? 'true' : 'false'}
+          data-back-disabled={backDisabled ? 'true' : 'false'}
+          data-header-full-width={headerFullWidth ? 'true' : 'false'}
+          data-sheet-snap={sheetSnap ?? 'none'}
+          data-sheet-available-snaps={availableSnaps.join(',')}
+        >
+          {onSheetSnapChange && availableSnaps.map((snap) => (
+            <button key={snap} onClick={() => onSheetSnapChange(snap)}>{`Land on ${snap}`}</button>
+          ))}
+          {onExpandToggle && (
+            <button
+              aria-label={expanded ? 'Collapse panel' : 'Expand panel'}
+              onClick={onExpandToggle}
+            />
+          )}
+          {onBack && <button onClick={onBack} disabled={backDisabled}>{backLabel ?? 'Back'}</button>}
+          {header}
+          {subheader}
+          {children}
+        </div>
+        {bottomBar}
+      </>
+    );
+  },
   ScopeSwitcher: ({
     scope,
     onChange,
@@ -1368,6 +1375,28 @@ describe('Panel compact upload sheet', () => {
     // expand preference: that preference belongs to useBrowseSurface(), not Upload's
     // own local snap state. If the two were wired together, this would flip false.
     expect(usePanelExpansionStore.getState().browsingExpanded).toBe(true);
+  });
+
+  it('locks a signed-out upload sheet at full and restores authenticated snap choices in place', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Land on peek' }));
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'peek');
+
+    mocks.isAuthenticated = false;
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'full');
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-available-snaps', 'full');
+    expect(screen.queryByRole('button', { name: 'Land on peek' })).not.toBeInTheDocument();
+
+    mocks.isAuthenticated = true;
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-available-snaps', 'peek,full');
+    fireEvent.click(screen.getByRole('button', { name: 'Land on peek' }));
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-sheet-snap', 'peek');
   });
 });
 

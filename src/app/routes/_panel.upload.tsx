@@ -92,6 +92,12 @@ function UploadPanel() {
     }
   }, [navigate, stagedSpotId]);
 
+  useEffect(() => {
+    if (isUserLoading || isAuthenticated) return;
+    setPanelRouteBackAction({ onBack: handleClose, disabled: false });
+    return () => setPanelRouteBackAction(null);
+  }, [handleClose, isAuthenticated, isUserLoading, setPanelRouteBackAction]);
+
   const handleComplete = useCallback((_sessionId: string) => {
     if (stagedSpotId) {
       void navigate({ to: '/$spotId', params: { spotId: stagedSpotId } });

@@ -103,6 +103,7 @@ function PanelLayout() {
 }
 
 const UPLOAD_SHEET_SNAPS: readonly SheetSnap[] = ['peek', 'full'];
+const SIGNED_OUT_UPLOAD_SHEET_SNAPS: readonly SheetSnap[] = ['full'];
 
 function PanelFrame({ children }: { children: ReactNode }) {
   const userPreferredExpanded = usePanelExpansionStore((state) => state.browsingExpanded);
@@ -234,6 +235,19 @@ function PanelFrame({ children }: { children: ReactNode }) {
     && (appRouteIntent === 'browse' || appRouteIntent === 'galleryWorkspace');
   const isUploadSheet = layoutPolicy.drawer.presentation === 'bottomSheet'
     && appRouteIntent === 'mapInput';
+  const uploadSheetAvailableSnaps = isAuthenticated
+    ? UPLOAD_SHEET_SNAPS
+    : SIGNED_OUT_UPLOAD_SHEET_SNAPS;
+  const renderedUploadSheetSnap = uploadSheetAvailableSnaps.includes(uploadSheetSnap)
+    ? uploadSheetSnap
+    : 'full';
+
+  useLayoutEffect(() => {
+    if (!isUploadSheet || uploadSheetSnap === renderedUploadSheetSnap) return;
+    const frame = requestAnimationFrame(() => setUploadSheetSnap(renderedUploadSheetSnap));
+    return () => cancelAnimationFrame(frame);
+  }, [isUploadSheet, renderedUploadSheetSnap, uploadSheetSnap]);
+
   const isBrowseSectionRoute = Boolean(spotMatch || allGalleryMatch || isDefaultIndex);
   const isShortBrowseSideOverlay = layoutPolicy.drawer.presentation === 'sideOverlay'
     && isBrowseSectionRoute;
@@ -432,10 +446,10 @@ function PanelFrame({ children }: { children: ReactNode }) {
               drawerModality={layoutPolicy.drawer.modality === 'modal' ? 'modal' : 'nonmodal'}
               navigation={layoutPolicy.navigation}
               open={!showsStandaloneMapToolbar}
-              sheetSnap={isBrowseSheet ? sheetSnap : isUploadSheet ? uploadSheetSnap : undefined}
+              sheetSnap={isBrowseSheet ? sheetSnap : isUploadSheet ? renderedUploadSheetSnap : undefined}
               onSheetSnapChange={isBrowseSheet ? handleSheetSnapChange : isUploadSheet ? setUploadSheetSnap : undefined}
               sheetPeekIncludesHeader={isUploadSheet}
-              sheetAvailableSnaps={isUploadSheet ? UPLOAD_SHEET_SNAPS : undefined}
+              sheetAvailableSnaps={isUploadSheet ? uploadSheetAvailableSnaps : undefined}
               expanded={renderedExpanded}
               onExpandToggle={handlePanelExpandToggle}
               onBack={routeBackActionForPanel?.onBack ?? defaultBackAction}

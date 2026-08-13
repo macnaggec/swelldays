@@ -103,6 +103,8 @@ export function DrawerShell(props: DrawerShellProps) {
   const onSnapChange = props.presentation === 'bottomSheet' ? props.onSnapChange : undefined;
   const peekIncludesHeader = props.presentation === 'bottomSheet' ? props.peekIncludesHeader : undefined;
   const availableSnaps = props.presentation === 'bottomSheet' ? props.availableSnaps : undefined;
+  const isSheetDraggable = props.presentation === 'bottomSheet'
+    && (availableSnaps === undefined || availableSnaps.length > 1);
   const panelOpen = props.presentation === 'bottomSheet' ? true : (props.open ?? true);
   const positionKey: DrawerShellState | SheetSnap =
     props.presentation === 'bottomSheet' ? props.snap : props.state;
@@ -447,14 +449,14 @@ export function DrawerShell(props: DrawerShellProps) {
           : undefined}
         animate={animate}
         transition={transition}
-        drag={props.presentation === 'bottomSheet' ? 'y' : false}
-        dragControls={props.presentation === 'bottomSheet' ? dragControls : undefined}
-        dragListener={props.presentation === 'bottomSheet' ? !contentScrolledFromTop : undefined}
-        dragConstraints={props.presentation === 'bottomSheet' ? dragConstraints : undefined}
-        dragElastic={props.presentation === 'bottomSheet' ? SHEET_DRAG_ELASTIC : undefined}
+        drag={isSheetDraggable ? 'y' : false}
+        dragControls={isSheetDraggable ? dragControls : undefined}
+        dragListener={isSheetDraggable ? !contentScrolledFromTop : undefined}
+        dragConstraints={isSheetDraggable ? dragConstraints : undefined}
+        dragElastic={isSheetDraggable ? SHEET_DRAG_ELASTIC : undefined}
         dragMomentum={false}
-        onDrag={props.presentation === 'bottomSheet' ? handleSheetDrag : undefined}
-        onDragEnd={props.presentation === 'bottomSheet' ? handleSheetDragEnd : undefined}
+        onDrag={isSheetDraggable ? handleSheetDrag : undefined}
+        onDragEnd={isSheetDraggable ? handleSheetDragEnd : undefined}
         onAnimationComplete={() => {
           const bounds = surfaceRef.current?.getBoundingClientRect();
           if (bounds) publishDrawerGeometry(bounds);
@@ -466,7 +468,7 @@ export function DrawerShell(props: DrawerShellProps) {
           <div
             className={styles.dragHandle}
             data-drawer-sheet-handle
-            onPointerDown={(event) => dragControls.start(event)}
+            onPointerDown={isSheetDraggable ? (event) => dragControls.start(event) : undefined}
           />
         )}
         {/*
