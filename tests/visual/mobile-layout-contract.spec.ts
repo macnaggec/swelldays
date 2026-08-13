@@ -328,6 +328,36 @@ test.describe('approved mobile spacing rhythm', () => {
     ).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height - 0.5);
   });
 
+  test('keeps 8px above and below the Feed/Gallery switcher in compact and expanded panels', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    for (const panelState of ['compact', 'expanded'] as const) {
+      await page.goto(
+        `/__mobile-layout-contract.html?displayMode=browser&presentation=persistent&header=scope&panelState=${panelState}`,
+      );
+
+      const header = page.locator('[data-panel-layout-header]');
+      const switcher = page.getByRole('group', { name: 'Content scope' });
+      await waitForStableBox(header);
+      const [headerBox, switcherBox] = await Promise.all([
+        header.boundingBox(),
+        switcher.boundingBox(),
+      ]);
+      expect(headerBox, `${panelState} header must be measurable`).not.toBeNull();
+      expect(switcherBox, `${panelState} switcher must be measurable`).not.toBeNull();
+      expectPhysicalGap(
+        switcherBox!.y - headerBox!.y,
+        EXPECTED_PX.grabberGap,
+        `${panelState} switcher top gap`,
+      );
+      expectPhysicalGap(
+        headerBox!.y + headerBox!.height - (switcherBox!.y + switcherBox!.height),
+        EXPECTED_PX.grabberGap,
+        `${panelState} switcher bottom gap`,
+      );
+    }
+  });
+
   test('keeps browser and standalone navigation on their approved bottom offsets', async ({ page }) => {
     for (const [mode, expected] of [
       ['browser', EXPECTED_PX.browserBottomOffset],

@@ -21,6 +21,7 @@ import {
 } from 'shared/ui/PanelLayout';
 import { SidePanel } from 'widgets/SidePanel/SidePanel';
 import { FilterPills } from 'widgets/SidePanel/FilterPills';
+import { ScopeSwitcher } from 'widgets/SidePanel/ScopeSwitcher';
 import type { SheetSnap } from 'shared/ui/DrawerShell';
 import { theme, cssVariablesResolver } from 'app/lib/theme';
 import virtualGalleryStyles from 'shared/ui/VirtualGallery/VirtualGallery.module.css';
@@ -127,7 +128,11 @@ function MobileLayoutContract() {
   const params = new URLSearchParams(window.location.search);
   const drawerPresentation = params.get('presentation') === 'sideOverlay'
     ? 'sideOverlay'
+    : params.get('presentation') === 'persistent'
+      ? 'persistent'
     : 'bottomSheet';
+  const panelExpanded = params.get('panelState') !== 'compact';
+  const showsScopeHeader = params.get('header') === 'scope';
   const showsUploadContract = params.get('surface') === 'upload';
   const showsTimeStepContract = params.get('surface') === 'timeStep';
   const showsAuthContract = params.get('surface') === 'auth';
@@ -170,9 +175,12 @@ function MobileLayoutContract() {
       <SidePanel
         drawerPresentation={drawerPresentation}
         open
-        expanded
+        expanded={panelExpanded}
         sheetSnap={drawerPresentation === 'bottomSheet' ? snap : undefined}
         onSheetSnapChange={drawerPresentation === 'bottomSheet' ? setSnap : undefined}
+        header={showsScopeHeader ? (
+          <ScopeSwitcher scope={mode} onChange={setMode} />
+        ) : undefined}
         subheader={(
           <PanelSearchToolbar
             expanded={snap !== 'peek'}
