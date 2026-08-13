@@ -172,7 +172,7 @@ describe('PanelLayoutRail', () => {
 });
 
 describe('PanelLayoutStickyChrome', () => {
-  it('pins content published deep inside children directly in the scroll owner', () => {
+  it('pins content published deep inside children in the overlay beside the scroll owner', () => {
     render(
       <PanelLayout>
         <div>
@@ -186,9 +186,18 @@ describe('PanelLayoutStickyChrome', () => {
       </PanelLayout>,
     );
 
-    const chrome = screen.getByText('Search and filters').closest('[data-panel-scroll-chrome]');
+    const chrome = screen.getByText('Search and filters').closest<HTMLElement>(
+      '[data-panel-scroll-chrome]',
+    );
+    const scrollOwner = screen.getByText('Scrolled content').closest<HTMLElement>(
+      '[data-panel-scroll-owner]',
+    );
     expect(chrome).not.toBeNull();
-    expect(chrome?.parentElement?.hasAttribute('data-panel-scroll-owner')).toBe(true);
+    expect(scrollOwner).not.toBeNull();
+    if (!chrome || !scrollOwner) throw new Error('Panel chrome and scroll owner must render.');
+    expect(chrome?.closest('[data-panel-scroll-owner]')).toBeNull();
+    expect(chrome.closest<HTMLElement>('[data-panel-layout-scroll-region]'))
+      .toContainElement(scrollOwner);
   });
 
   it('renders nothing when mounted outside a PanelLayout', () => {

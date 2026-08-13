@@ -14,16 +14,22 @@
   display: flex;
 }
 
-.scroller {
+.scrollRegion {
+  position: relative;
   flex: 1 1 auto;
   min-width: 0;
-  /* Stacks the pinned chrome row and the content as flex items so the content
-     fills whatever height the row leaves. It used to be an ordinary block whose
-     content declared `min-height: 100%`, which measures the scroller's full
-     height and ignores the row sitting above it — so every panel carrying a
-     chrome row overflowed by exactly that row's height and scrolled a little
-     even when its cards fit. With one card that leftover scroll was the whole
-     range, and using it hid the search row. */
+  min-height: 0;
+}
+
+.scroller {
+  height: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  /* The pinned row is a sibling overlay so this owner's required overflow clip
+     cannot cut off its paint. PanelLayout measures that row and publishes the
+     identical initial space here; the space scrolls away with content just as the
+     old in-flow sticky row did, without changing card order or approved gaps. */
+  padding-block-start: var(--wa-panel-chrome-height, 0px);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -48,12 +54,12 @@
   overflow-y: hidden;
 }
 
-/* Hiding search/filter chrome changes the first row's height (to an active-date
+/* Hiding search/filter chrome changes the visible overlay (to an active-date
    replacement in Gallery, and to zero in Feed). Without this opt-out, browser
-   scroll anchoring compensates by changing scrollTop; the direction detector
-   then reads that layout correction as an opposite gesture and swaps the chrome
-   back. Scope the opt-out to panels that actually publish hideable chrome. */
-.scroller:has(.stickyChrome [data-panel-scroll-chrome-primary]) {
+   scroll anchoring can compensate around the measured top space; the direction
+   detector then reads that correction as an opposite gesture and swaps the chrome
+   back. Scope the opt-out to regions that publish hideable chrome. */
+.scrollRegion:has(.stickyChrome [data-panel-scroll-chrome-primary]) .scroller {
   overflow-anchor: none;
 }
 
@@ -83,26 +89,32 @@
 }
 
 .content {
-  /* Fills the height the chrome row leaves and grows past it when the cards are
-     taller — the flex equivalent of the `min-height: 100%` this replaces, minus
-     that declaration's blindness to the row above it. */
+  /* Fills the height left after the measured chrome space and grows past it when
+     the cards are taller. */
   flex: 1 0 auto;
   display: flex;
   flex-direction: column;
 }
 
+.chromeViewport {
+  position: absolute;
+  inset-block-start: calc(-1 * var(--wa-panel-chrome-paint-allowance));
+  inset-inline: calc(-1 * var(--wa-panel-chrome-paint-allowance));
+  box-sizing: border-box;
+  padding: var(--wa-panel-chrome-paint-allowance);
+  overflow: hidden;
+  z-index: var(--wa-z-panel-chrome);
+  pointer-events: none;
+}
+
 .stickyChrome {
-  position: sticky;
-  top: 0;
-  flex-shrink: 0;
-  /* Mounted bare in the scroll owner so its stickiness works, so it cannot inherit the
-     destination width from a wrapper and takes it directly. Set by PanelLayout only
-     while the panel is closing; otherwise this simply fills the panel as before. */
+  /* The viewport's negative inset and equal padding preserve this row's exact
+     position while giving its effects paint-only room around every edge. */
   width: var(--wa-panel-content-width, 100%);
   box-sizing: border-box;
   padding: 8px var(--wa-panel-content-inset);
   overflow: visible;
-  z-index: var(--wa-z-panel-chrome);
+  pointer-events: auto;
   /* The primary (search/filter) and replacement (active date) rows stack in the
      same grid cell instead of one replacing the other in flow. Whichever is
      taller sizes the row regardless of which is currently shown, so switching
@@ -152,7 +164,7 @@
    height stays constant rather than collapsing, so the card grid below never
    jumps). */
 .stickyChrome[data-hidden]:not(:has([data-panel-scroll-chrome-replacement])) {
-  transform: translateY(-100%);
+  transform: translateY(calc(-100% - var(--wa-panel-chrome-paint-allowance)));
   pointer-events: none;
 }
 

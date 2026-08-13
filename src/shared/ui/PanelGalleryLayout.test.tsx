@@ -42,7 +42,7 @@ describe('PanelGalleryLayout', () => {
     expect(galleryCards.closest('[data-panel-scroll-owner]')).not.toBeNull();
   });
 
-  it('renders route-owned panel chrome inside the panel scroll owner', () => {
+  it('renders route-owned panel chrome in the overlay beside the gallery scroll owner', () => {
     renderInPanelLayout(
       <>
         <PanelLayoutStickyChrome>
@@ -54,8 +54,18 @@ describe('PanelGalleryLayout', () => {
       </>,
     );
 
-    expect(screen.getByText('Collection tabs').closest('[data-panel-scroll-chrome]')).not.toBeNull();
-    expect(screen.getByText('Collection tabs').closest('[data-panel-scroll-owner]')).not.toBeNull();
+    const chrome = screen.getByText('Collection tabs').closest<HTMLElement>(
+      '[data-panel-scroll-chrome]',
+    );
+    const scrollOwner = screen.getByText('Gallery cards').closest<HTMLElement>(
+      '[data-panel-scroll-owner]',
+    );
+    expect(chrome).not.toBeNull();
+    expect(scrollOwner).not.toBeNull();
+    if (!chrome || !scrollOwner) throw new Error('Panel chrome and scroll owner must render.');
+    expect(chrome.closest('[data-panel-scroll-owner]')).toBeNull();
+    expect(chrome.closest<HTMLElement>('[data-panel-layout-scroll-region]'))
+      .toContainElement(scrollOwner);
   });
 
   it('keeps meta content outside the panel scroll owner while gallery children stay inside it', () => {

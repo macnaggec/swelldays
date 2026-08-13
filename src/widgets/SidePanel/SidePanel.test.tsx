@@ -168,7 +168,7 @@ describe('SidePanel', () => {
     expect(screen.queryByRole('button', { name: 'All spots' })).not.toBeInTheDocument();
   });
 
-  it('gives browse content one declared scroll owner with sticky chrome inside it', () => {
+  it('gives browse content one declared scroll owner with pinned chrome outside its clip', () => {
     render(
       <SidePanel
         subheader={<div>Search and filters</div>}
@@ -184,7 +184,10 @@ describe('SidePanel', () => {
     );
 
     expect(scrollOwners).toHaveLength(1);
-    expect(scrollOwners[0]).toContainElement(chrome);
+    if (!chrome || !scrollOwners[0]) throw new Error('Panel chrome and scroll owner must render.');
+    expect(scrollOwners[0]).not.toContainElement(chrome);
+    expect(chrome.closest<HTMLElement>('[data-panel-layout-scroll-region]'))
+      .toContainElement(scrollOwners[0]);
     setScrollMetrics(scrollOwners[0]!, 300, 900);
 
     fireEvent.scroll(scrollOwners[0]!, { target: { scrollTop: 80 } });
@@ -434,7 +437,7 @@ describe('SidePanel', () => {
     }
   });
 
-  it('keeps one chrome mount in the scroll owner when content declares its own overflow context', () => {
+  it('keeps one chrome overlay beside the scroll owner when content declares its own overflow context', () => {
     render(
       <SidePanel subheader={<div>Search and filters</div>}>
         <div data-testid="feed" style={{ overflowX: 'hidden' }}>
@@ -449,8 +452,13 @@ describe('SidePanel', () => {
     const feed = screen.getByTestId('feed');
 
     expect(chromeElements).toHaveLength(1);
-    expect(scrollOwner).toContainElement(chromeElements[0]!);
-    expect(feed).not.toContainElement(chromeElements[0]!);
+    if (!chromeElements[0] || !scrollOwner) {
+      throw new Error('Panel chrome and scroll owner must render.');
+    }
+    expect(scrollOwner).not.toContainElement(chromeElements[0]);
+    expect(chromeElements[0].closest<HTMLElement>('[data-panel-layout-scroll-region]'))
+      .toContainElement(scrollOwner);
+    expect(feed).not.toContainElement(chromeElements[0]);
   });
 
   it('keeps sticky search chrome transparent above scrolled content', () => {

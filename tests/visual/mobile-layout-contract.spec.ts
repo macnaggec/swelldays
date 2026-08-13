@@ -80,7 +80,7 @@ function expectPhysicalGap(actual: number, expected: number, label: string): voi
     .toBeLessThanOrEqual(0.5);
 }
 
-async function expectContained(
+async function expectCornerOverhangVisible(
   outer: Locator,
   inner: Locator,
   label: string,
@@ -94,6 +94,8 @@ async function expectContained(
         display: style.display,
         visibility: style.visibility,
         opacity: Number.parseFloat(style.opacity),
+        top: Number.parseFloat(style.top),
+        right: Number.parseFloat(style.right),
       };
     }),
   ]);
@@ -103,12 +105,19 @@ async function expectContained(
   expect(innerStyle.display, `${label}: indicator must be displayed`).not.toBe('none');
   expect(innerStyle.visibility, `${label}: indicator must be visible`).not.toBe('hidden');
   expect(innerStyle.opacity, `${label}: indicator must be painted`).toBeGreaterThan(0);
-  expect(innerBox!.x, `${label}: left edge`).toBeGreaterThanOrEqual(outerBox!.x - 0.5);
-  expect(innerBox!.y, `${label}: top edge`).toBeGreaterThanOrEqual(outerBox!.y - 0.5);
-  expect(innerBox!.x + innerBox!.width, `${label}: right edge`)
-    .toBeLessThanOrEqual(outerBox!.x + outerBox!.width + 0.5);
-  expect(innerBox!.y + innerBox!.height, `${label}: bottom edge`)
-    .toBeLessThanOrEqual(outerBox!.y + outerBox!.height + 0.5);
+  expect(innerStyle.top, `${label}: original top offset`).toBe(-3);
+  expect(innerStyle.right, `${label}: original right offset`).toBe(-3);
+  expect(innerBox!.y, `${label}: top edge must overhang the button border`).toBeLessThan(outerBox!.y);
+  expect(innerBox!.x + innerBox!.width, `${label}: original right overhang`)
+    .toBeGreaterThan(outerBox!.x + outerBox!.width);
+
+  const overhangingPixelIsPainted = await inner.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const hits = document.elementsFromPoint(box.x + box.width / 2 - 1, box.y + 1);
+    return hits.some((hit) => hit === element || element.contains(hit));
+  });
+  expect(overhangingPixelIsPainted, `${label}: overhanging pixel must escape ancestor clipping`)
+    .toBe(true);
 }
 
 async function openContract(page: Page, mode: 'browser' | 'standalone'): Promise<void> {
@@ -188,7 +197,7 @@ test.describe('approved mobile spacing rhythm', () => {
     }
   });
 
-  test('keeps the unfinished-upload indicator inside the Upload action at every Browse snap', async ({ page }) => {
+  test('keeps the unfinished-upload indicator on its original visible corner overhang at every Browse snap', async ({ page }) => {
     await openContract(page, 'browser');
 
     for (const snap of ['Peek', 'Half', 'Full'] as const) {
@@ -199,7 +208,7 @@ test.describe('approved mobile spacing rhythm', () => {
 
       await expect(sheet).toHaveAttribute('data-drawer-snap', snap.toLowerCase());
       await waitForStableBox(sheet);
-      await expectContained(uploadAction, indicator, `${snap} Upload indicator`);
+      await expectCornerOverhangVisible(uploadAction, indicator, `${snap} Upload indicator`);
     }
   });
 

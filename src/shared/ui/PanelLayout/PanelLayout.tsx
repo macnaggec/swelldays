@@ -73,19 +73,29 @@ export function PanelLayout({
     );
   };
 
-  // Published on the scroll owner itself so content inside it (e.g. PanelCollectionGrid)
-  // can tell how much of the owner's own top edge this pinned row currently covers,
-  // without reaching for the row's mount point directly — that stays this file's alone
-  // (see the panel-sticky-chrome-has-one-mount style-boundary rule). Kept in a layout
-  // effect, not read at render, so it reflects the row's real measured height; redone on
-  // a width change too, since that is exactly what can make the row wrap onto another
-  // line and grow.
+  // Published on the scroll owner itself for two consumers. CSS uses the row's full
+  // rendered height as the content's initial top space; PanelCollectionGrid reads the
+  // data attribute to avoid anchoring a card behind visible chrome. The row itself lives
+  // in a sibling overlay so the scroll owner's necessary overflow clip cannot cut off
+  // focus rings, shadows, or corner badges. ResizeObserver keeps both projections tied
+  // to the DOM-owned rendered height without exposing another layout interface.
   const scrollOwnerRef = useRef<HTMLDivElement | null>(null);
   const scrollOwnerMergedRef = useMergedRef(registerSheetScrollOwner, scrollOwnerRef);
   useLayoutEffect(() => {
     const scrollOwner = scrollOwnerRef.current;
-    if (!scrollOwner) return;
-    scrollOwner.dataset.panelChromeHeight = String(hidden ? 0 : stickyChromeTarget?.offsetHeight ?? 0);
+    const stickyChrome = stickyChromeTarget;
+    if (!scrollOwner || !stickyChrome) return;
+
+    const publishChromeHeight = () => {
+      const height = stickyChrome.offsetHeight;
+      scrollOwner.style.setProperty('--wa-panel-chrome-height', `${height}px`);
+      scrollOwner.dataset.panelChromeHeight = String(hidden ? 0 : height);
+    };
+    publishChromeHeight();
+
+    const observer = new ResizeObserver(publishChromeHeight);
+    observer.observe(stickyChrome, { box: 'border-box' });
+    return () => observer.disconnect();
   }, [hidden, scrolledFromTop, stickyChromeTarget, contentWidth]);
 
   // The floating footer's own height, so the sheet-scoped `.content` can reserve exactly
@@ -142,30 +152,28 @@ export function PanelLayout({
               <div ref={setMetadataTarget} className={styles.metadata} data-panel-layout-metadata />
 
               <div className={styles.body} data-panel-layout-body>
-                <div
-                  className={styles.scroller}
-                  data-panel-layout-scroller
-                  data-panel-scroll-owner
-                  data-content-scroll={contentScrollable ? undefined : 'locked'}
-                  ref={scrollOwnerMergedRef}
-                  onScrollCapture={handleScrollCapture}
-                >
-                  {/*
-                    * Rendered as a direct child of the scroll owner on purpose: a
-                    * `position: sticky` child is constrained to its parent's box, so
-                    * wrapping it in an element only as tall as the chrome itself
-                    * leaves zero travel to stick within and the row scrolls away
-                    * with the content instead of pinning.
-                    */}
+                <div className={styles.scrollRegion} data-panel-layout-scroll-region>
                   <div
-                    ref={setStickyChromeTarget}
-                    className={styles.stickyChrome}
-                    data-panel-scroll-chrome
-                    data-hidden={hidden || undefined}
-                    data-scrolled-from-top={scrolledFromTop || undefined}
-                  />
-                  <div className={styles.content} data-panel-layout-content>
-                    {children}
+                    className={styles.scroller}
+                    data-panel-layout-scroller
+                    data-panel-scroll-owner
+                    data-content-scroll={contentScrollable ? undefined : 'locked'}
+                    ref={scrollOwnerMergedRef}
+                    onScrollCapture={handleScrollCapture}
+                  >
+                    <div className={styles.content} data-panel-layout-content>
+                      {children}
+                    </div>
+                  </div>
+
+                  <div className={styles.chromeViewport}>
+                    <div
+                      ref={setStickyChromeTarget}
+                      className={styles.stickyChrome}
+                      data-panel-scroll-chrome
+                      data-hidden={hidden || undefined}
+                      data-scrolled-from-top={scrolledFromTop || undefined}
+                    />
                   </div>
                 </div>
 
@@ -218,9 +226,9 @@ export function PanelLayoutMetadata({ children }: { children: ReactNode }) {
 
 /**
  * The panel's pinned search/filter row: content portaled here mounts in the one
- * sticky row PanelLayout renders directly inside the scroll owner, so it pins
- * while content scrolls and hides on scroll down. Renders nothing when mounted
- * outside a PanelLayout.
+ * overlay row PanelLayout renders beside the clipped scroll owner, so it pins
+ * while content scrolls, can paint corner effects without clipping, and hides on
+ * scroll down. Renders nothing when mounted outside a PanelLayout.
  */
 export function PanelLayoutStickyChrome({
   children,

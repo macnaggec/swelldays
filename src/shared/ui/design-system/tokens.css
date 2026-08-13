@@ -19,6 +19,10 @@
   --wa-panel-content-inset: 12px;
   --wa-panel-grid-gap: 12px;
   --wa-panel-section-chrome-height: 32px;
+  /* Paint-only room around pinned panel chrome for focus rings, shadows, and
+     corner badges. PanelLayout offsets this allowance back out, so it never
+     changes the chrome or content geometry. */
+  --wa-panel-chrome-paint-allowance: 12px;
   /* Comfortable gallery card edge; mirrors GALLERY_DENSITY.comfortable.targetTilePx
      (src/shared/lib/galleryColumns.ts) so the search toolbar caps to one card. */
   --wa-gallery-tile-comfortable: 340px;

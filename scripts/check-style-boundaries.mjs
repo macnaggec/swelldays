@@ -276,6 +276,7 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-grabber-gap',
     '--wa-browse-sheet-leading-gap',
     '--wa-panel-stack-gap',
+    '--wa-panel-chrome-paint-allowance',
     '--wa-z-panel-chrome',
   ]],
   ['src/shared/ui/PanelRouteLayout.module.css', [
@@ -528,11 +529,11 @@ const requiredPanelLayoutStyles = [
   ['one vertical scroll owner', /overflow-y:\s*auto/],
   ['scroll overscroll containment', /overscroll-behavior:\s*contain/],
   ['panel container-query context', /container-type:\s*inline-size/],
-  // The scroll owner stacks the chrome row and the content as flex items, and
-  // the content flexes into what the row leaves. A `min-height: 100%` content
-  // box measures the scroller and ignores the row above it, so the panel
-  // overflows by the row's height and scrolls when its cards already fit.
-  ['chrome-aware scroll stacking', /\.scroller\s*{[^}]*flex-direction:\s*column/s],
+  // The pinned row is an overlay sibling of the clipped scroll owner. Its
+  // measured height is projected as the owner's initial top space, preserving
+  // the old in-flow geometry without subjecting chrome paint to the clip.
+  ['one chrome overlay seam beside the scroll owner', /\.scrollRegion\s*{[^}]*position:\s*relative[\s\S]*\.chromeViewport\s*{[^}]*position:\s*absolute/s],
+  ['measured chrome space projected into scrolling content', /\.scroller\s*{[^}]*padding-block-start:\s*var\(--wa-panel-chrome-height,\s*0px\)/s],
   ['content that flexes rather than claiming full height', /\.content\s*{[^}]*flex:\s*1\s+0\s+auto/s],
   [
     'primary and replacement chrome stacked in one constant-geometry grid cell',
@@ -544,7 +545,7 @@ const requiredPanelLayoutStyles = [
   ],
   [
     'a replacement-less row slides itself (not just its content) through its own top edge',
-    /\.stickyChrome\[data-hidden\]:not\(:has\(\[data-panel-scroll-chrome-replacement\]\)\)\s*\{[^}]*transform:\s*translateY\(-100%\)/s,
+    /\.stickyChrome\[data-hidden\]:not\(:has\(\[data-panel-scroll-chrome-replacement\]\)\)\s*\{[^}]*transform:\s*translateY\(calc\(-100%\s*-\s*var\(--wa-panel-chrome-paint-allowance\)\)\)/s,
   ],
   [
     'reduced motion swaps chrome instantly instead of animating',
@@ -552,7 +553,7 @@ const requiredPanelLayoutStyles = [
   ],
   [
     'hideable chrome cannot feed layout shifts back into scroll direction',
-    /\.scroller:has\(\.stickyChrome\s+\[data-panel-scroll-chrome-primary\]\)\s*\{[^}]*overflow-anchor:\s*none/s,
+    /\.scrollRegion:has\(\.stickyChrome\s+\[data-panel-scroll-chrome-primary\]\)\s+\.scroller\s*\{[^}]*overflow-anchor:\s*none/s,
   ],
   [
     // The compact toolbar contributes 4px margin-block. These asymmetric values
