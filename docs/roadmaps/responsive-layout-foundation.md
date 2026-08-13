@@ -1025,11 +1025,24 @@ Unrelated working-tree changes preserved: yes — none were present or modified.
 Next ready task: M07 — verify mobile experience and request Gate 2 approval.
 ```
 
-- [ ] **M07 — Verify mobile experience and request Gate 2 approval**
+- [x] **M07 — Verify mobile experience and request Gate 2 approval**
   - Depends on: M06a, M06b, M06c, M06d, M06e, M06e-f, M06f, M06g, M06h, M06i, M06j, M06k, M06l, M06m, M06n, M06o, M06p, M06q, M06r, M06s, M06t, M06u, M06v, M06w, M06x, M06x-a, M06x-b, M06y, M06z, F12b.
   - Scope: Verify every Phase M capability cell (`compact × {short, regular}` and `constrained × short`) across portrait, landscape, keyboard open, coarse/fine pointer, reduced motion, safe areas, long content, loading, empty, error, overlay, dialog, lightbox, and map-occlusion states. Verify live crossings among mobile cells and compact/constrained-short↔wide under the F12d continuity contract. Reuse F12b's state and viewport inventory, but replace screenshot comparison for all future-band verification with semantic DOM, computed-style, geometry, accessibility, focus, scroll, and interaction assertions. The completed F12h screenshots remain historical wide-band artifacts; current sessions do not use screenshot or pixel comparison as a gate. Any appearance-only judgment becomes a short user checklist.
   - Invariant and verifier: Phase M is one coherent mobile product experience rather than shrunken desktop, and wide-band behavior/geometry has not regressed. The non-visual responsive matrix, user checklist where necessary, and complete project gate set own verification.
   - Stop: Present the evidence and the two still-open constrained-regular decisions from F12l (tablet-portrait presentation and tablet feed density). Wait for explicit Gate 2 approval and those decisions before implementing constrained-regular presentation.
+  - Completed 2026-08-13. The non-screenshot layout contract passed 23/23 checks across portrait and landscape surfaces, browser and standalone safe-area geometry, Peek/Half/Full sheet states, keyboard-constrained portrait and landscape auth, reduced-motion interaction feedback, pinned-chrome return motion, workspace corners, Upload geometry, and compact/expanded wide reference geometry. The complete client/server suite re-verified the pure presentation-policy matrix and live band-transition continuity together with every focused Phase M behavior suite. All five project gates are green: client TypeScript, server TypeScript, ESLint, style-boundary enforcement, and 126 Vitest files / 938 tests. The user reported no major mobile UI issues and explicitly approved Gate 2 on 2026-08-13, closing the appearance-only checklist. The two F12l constrained-regular product decisions remain open and block T00/T01 implementation: tablet portrait must choose side overlay versus bottom sheet, and tablet Feed must choose one column versus measured multi-column density.
+
+```text
+Task completed: M07 — verify mobile experience and request Gate 2 approval
+Invariant: Phase M presents one coherent mobile experience across compact-regular portrait, compact-short landscape, and constrained-short landscape cells, while wide policy, geometry, and continuity remain intact.
+Authority: The semantic app-shell policy owns capability-cell presentation; DrawerShell and PanelLayout own rendered geometry and scroll/chrome mechanics; the non-visual layout contract and focused behavior suites own verification.
+Changed files: docs/roadmaps/responsive-layout-foundation.md
+Focused verification: npm run test:layout green (23/23); policy and live band-transition suites green inside the complete client/server run; user appearance checklist accepted with no major mobile UI issues.
+Project gates: client tsc green; server tsc green; lint green; style-boundaries green; client+server Vitest green (126 files / 938 tests).
+Removed concepts: Gate 2 as an outstanding approval; no production concept or mechanism changed.
+Unrelated working-tree changes preserved: yes — none were present or modified.
+Next ready task: constrained-regular product decisions from F12l; T00 remains blocked until tablet portrait presentation and tablet Feed density are approved.
+```
 
 ### Phase T — constrained-regular/tablet experience
 
