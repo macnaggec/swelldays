@@ -352,6 +352,17 @@ function VirtualGalleryInner<T extends { id: string }>(
     const scrollTop = scrollElement?.scrollTop ?? 0;
     const coveredTop = Number(scrollElement?.dataset.panelChromeHeight ?? '0');
     let anchorIndex = firstVisibleRowIndex(virtualRows, scrollTop, coveredTop);
+    // The canvas sits this far below the scroll owner's own top edge right now —
+    // at rest that gap is exactly the pinned chrome's reserved height. Reused
+    // below for both the recolumn correction and the anchor capture so a row's
+    // viewport-relative position is computed the same way in both places; a
+    // capture that ignored this gap would read the anchor as chrome-heights
+    // closer to the top than the correction later assumes, and the correction
+    // would "fix" that phantom gap by introducing a real one.
+    const canvasViewportOffset = virtualCanvasRef.current && scrollElement
+      ? virtualCanvasRef.current.getBoundingClientRect().top
+        - scrollElement.getBoundingClientRect().top
+      : -scrollTop;
 
     if (previous) {
       const matchesAnchor = (row: GalleryRow<T> | undefined): boolean => {
@@ -401,10 +412,6 @@ function VirtualGalleryInner<T extends { id: string }>(
       if (previous && scrollElement) {
         const anchorOffset = virtualizer.getOffsetForIndex(anchorIndex, 'start')?.[0];
         if (anchorOffset !== undefined) {
-          const canvasViewportOffset = virtualCanvasRef.current
-            ? virtualCanvasRef.current.getBoundingClientRect().top
-              - scrollElement.getBoundingClientRect().top
-            : -scrollElement.scrollTop;
           const currentAnchorViewportOffset = canvasViewportOffset + anchorOffset;
           isolateLayoutCorrection();
           virtualizer.scrollToOffset(
@@ -419,25 +426,33 @@ function VirtualGalleryInner<T extends { id: string }>(
     }
 
     committedLayoutRef.current = { columns, dense };
-    const topRow = rows[anchorIndex];
-    const currentAnchorRow = virtualRows.find((row) => row.index === anchorIndex);
-    const currentViewportOffset = currentAnchorRow
-      ? currentAnchorRow.start - scrollTop
-      : undefined;
-    const viewportOffset = previous?.viewportOffset ?? currentViewportOffset ?? coveredTop;
-    previousAnchorRef.current = topRow
-      ? topRow.type === 'divider'
-        ? { type: 'divider', key: topRow.key, index: anchorIndex, viewportOffset }
-        : {
-          type: 'media',
-          itemId: previous?.type === 'media'
-            && topRow.items.some((item) => item.id === previous.itemId)
-            ? previous.itemId
-            : topRow.items[0]!.id,
-          index: anchorIndex,
-          viewportOffset,
-        }
-      : null;
+    // The very first capture (no previous anchor to preserve) needs a real
+    // canvasViewportOffset to be worth locking in — otherwise it captures a
+    // viewport offset that's short by the reserved chrome height, and every
+    // later recolumn's correction trusts that wrong baseline as the anchor's
+    // true rest position instead of retrying once real geometry exists.
+    const hasRealGeometry = Boolean(virtualCanvasRef.current && scrollElement);
+    if (previous || hasRealGeometry) {
+      const topRow = rows[anchorIndex];
+      const currentAnchorRow = virtualRows.find((row) => row.index === anchorIndex);
+      const currentViewportOffset = currentAnchorRow
+        ? canvasViewportOffset + currentAnchorRow.start
+        : undefined;
+      const viewportOffset = previous?.viewportOffset ?? currentViewportOffset ?? coveredTop;
+      previousAnchorRef.current = topRow
+        ? topRow.type === 'divider'
+          ? { type: 'divider', key: topRow.key, index: anchorIndex, viewportOffset }
+          : {
+            type: 'media',
+            itemId: previous?.type === 'media'
+              && topRow.items.some((item) => item.id === previous.itemId)
+              ? previous.itemId
+              : topRow.items[0]!.id,
+            index: anchorIndex,
+            viewportOffset,
+          }
+        : null;
+    }
   }, [rows, columns, dense, layoutChanged, scrollElement, virtualizer, isolateLayoutCorrection]);
 
   // Scroll tracking — feeds onFirstVisibleIndexChange for external sidebars

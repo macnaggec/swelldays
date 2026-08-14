@@ -271,6 +271,53 @@ describe('VirtualGallery recolumn anchor preservation', () => {
 
     expect(getOffsetForIndexMock).toHaveBeenCalledWith(1, 'start');
   });
+
+  it('does not introduce a chrome-height-sized shift when a recolumn happens with reserved chrome space present (e.g. the date rail appearing)', () => {
+    virtualItemsMock.mockReturnValue([{ key: 'v', index: 0, start: 0, size: 220 }]);
+    getOffsetForIndexMock.mockReturnValue([0, 'start']);
+
+    // At rest, unscrolled, the canvas sits exactly the reserved chrome height
+    // below the scroll owner's own top — what the real padding-driven layout
+    // produces. Active from the very first render.
+    const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: Element) {
+        if (this.hasAttribute('data-panel-scroll-owner')) return { top: 0 } as DOMRect;
+        if (this.hasAttribute('data-virtual-gallery-canvas')) return { top: 52 } as DOMRect;
+        return { top: 0 } as DOMRect;
+      });
+
+    try {
+      // Rows start empty — the gallery's data query hasn't resolved yet, but
+      // the scroll owner (and its reserved chrome space) already has. This
+      // is the same shape a fresh mount has in the real app: chrome renders
+      // first, media rows populate a beat later.
+      const { rerender } = render(
+        <div data-panel-scroll-owner data-panel-chrome-height="52">
+          <VirtualGallery rows={[]} columns={3} renderCard={() => null} />
+        </div>,
+      );
+
+      const rows = [mediaRow('a'), mediaRow('b'), mediaRow('c')];
+      rerender(
+        <div data-panel-scroll-owner data-panel-chrome-height="52">
+          <VirtualGallery rows={rows} columns={3} renderCard={() => null} />
+        </div>,
+      );
+
+      // The date rail resolving its own width claims space from the grid,
+      // changing its column count — this is Gallery's first-ever recolumn,
+      // with nothing the photographer has actually scrolled to yet.
+      rerender(
+        <div data-panel-scroll-owner data-panel-chrome-height="52">
+          <VirtualGallery rows={rows} columns={2} renderCard={() => null} />
+        </div>,
+      );
+
+      expect(scrollToOffsetMock).toHaveBeenCalledWith(0, { align: 'start' });
+    } finally {
+      rectSpy.mockRestore();
+    }
+  });
 });
 
 describe('VirtualGallery imperative scrollToIndex isolates the resulting scroll', () => {
