@@ -61,4 +61,32 @@ describe('VirtualGallery scroll-owner continuity', () => {
     expect(container.querySelectorAll('[data-panel-scroll-owner]')).toHaveLength(1);
     expect(container.querySelector('[data-panel-scroll-owner]')).toBe(ownerBeforeSwitch);
   });
+
+  it('starts at the top on mount instead of inheriting the shared scroll owner\'s position from whatever section was showing before (Feed/Gallery section switch)', () => {
+    const rows = [mediaRow('a')];
+    const { container, rerender } = render(
+      <PanelLayout>
+        <VirtualGallery rows={rows} renderCard={() => null} />
+      </PanelLayout>,
+    );
+
+    const owner = container.querySelector<HTMLElement>('[data-panel-scroll-owner]');
+    if (!owner) throw new Error('Panel scroll owner must render.');
+
+    // Feed leaves the shared owner scrolled part-way down, then the user
+    // switches back to Gallery — VirtualGallery unmounts and remounts, but
+    // the owner itself is the same persistent node (see the test above), so
+    // its scrollTop survives the switch unless something resets it.
+    rerender(<PanelLayout>{'Feed content'}</PanelLayout>);
+    owner.scrollTop = 200;
+    expect(owner.scrollTop).toBe(200);
+
+    rerender(
+      <PanelLayout>
+        <VirtualGallery rows={rows} renderCard={() => null} />
+      </PanelLayout>,
+    );
+
+    expect(owner.scrollTop).toBe(0);
+  });
 });

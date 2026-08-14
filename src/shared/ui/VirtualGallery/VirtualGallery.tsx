@@ -142,6 +142,13 @@ function VirtualGalleryInner<T extends { id: string }>(
     rootRef.current = node;
     setScrollElement(node ? resolveGalleryScrollOwner(node) : null);
   }, []);
+  // The scroll owner is PanelLayout's, shared across whichever section is
+  // currently mounted (Feed, Gallery, ...) — it survives a section switch even
+  // though this gallery itself is freshly mounted, so without this it silently
+  // starts wherever the previous section left it scrolled.
+  useLayoutEffect(() => {
+    if (scrollElement) scrollElement.scrollTop = 0;
+  }, [scrollElement]);
   const measuredRowHeightsRef = useRef<Map<number, number>>(new Map());
   const measurementEpochRef = useRef(0);
   const layoutAnchorIndexRef = useRef(0);

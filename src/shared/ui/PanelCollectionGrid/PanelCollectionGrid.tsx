@@ -275,6 +275,11 @@ function PanelCollectionAnchorCorrection({
     if (!hasEstablishedArrangementRef.current) {
       hasEstablishedArrangementRef.current = true;
       previousArrangementWidthRef.current = arrangementWidth;
+      // scrollOwner is PanelLayout's, shared across whichever section is
+      // currently mounted (Feed, Gallery, ...) — it survives a section switch
+      // even though this grid itself is freshly mounted, so without this it
+      // silently starts wherever the previous section left it scrolled.
+      scrollOwner.scrollTop = 0;
       captureAnchor();
       return;
     }

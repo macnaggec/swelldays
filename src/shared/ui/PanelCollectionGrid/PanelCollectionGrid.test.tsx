@@ -371,6 +371,36 @@ describe('PanelCollectionGrid scroll anchoring', () => {
     expect(trackedCard().getBoundingClientRect().top).toBe(offsetBeforeClose);
   });
 
+  it('starts at the top on mount instead of inheriting the shared scroll owner\'s position from whatever section was showing before (Feed/Gallery section switch)', () => {
+    const resizeObserver = stubResizeObserver();
+    stubGridLayout();
+
+    const { container, rerender } = render(
+      <div data-panel-scroll-owner>
+        <PanelCollectionGrid>{SIX_CARDS}</PanelCollectionGrid>
+      </div>,
+    );
+    const scrollOwner = container.querySelector('[data-panel-scroll-owner]') as HTMLElement;
+    resizeObserver.emit(300);
+
+    // Gallery unmounts this grid (a real section switch), leaves the shared
+    // owner scrolled part-way down, then the user switches back to Feed — the
+    // owner itself is the same persistent node, so its scrollTop survives the
+    // switch unless something resets it.
+    rerender(<div data-panel-scroll-owner>{'Gallery content'}</div>);
+    scrollOwner.scrollTop = 150;
+    expect(scrollOwner.scrollTop).toBe(150);
+
+    rerender(
+      <div data-panel-scroll-owner>
+        <PanelCollectionGrid>{SIX_CARDS}</PanelCollectionGrid>
+      </div>,
+    );
+    resizeObserver.emit(300);
+
+    expect(scrollOwner.scrollTop).toBe(0);
+  });
+
   it('captures user scroll while an open presentation temporarily has zero destination width', () => {
     const resizeObserver = stubResizeObserver();
     stubGridLayout();
