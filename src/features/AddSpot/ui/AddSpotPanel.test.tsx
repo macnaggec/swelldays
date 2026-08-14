@@ -104,6 +104,7 @@ describe('AddSpotPanel', () => {
   it.each([
     ['compact', 'short'],
     ['constrained', 'short'],
+    ['constrained', 'regular'],
   ] as const)('renders a side overlay at %s/%s', (sizeBand, heightBand) => {
     mocks.sizeBand = sizeBand;
     mocks.heightBand = heightBand;

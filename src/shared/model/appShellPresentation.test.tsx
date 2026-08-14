@@ -8,7 +8,6 @@ import {
   isCellActive,
   resolveShellLayoutPolicy,
   useAppShellLayoutPolicy,
-  type ActivationCell,
 } from './appShellPresentation';
 
 type MutableMediaQuery = MediaQueryList & {
@@ -124,9 +123,11 @@ describe('the mobile browse section shell cells', () => {
     ['compact', 'short', 'mapInput', 'sideOverlay'],
     ['compact', 'regular', 'mapInput', 'bottomSheet'],
     ['constrained', 'short', 'mapInput', 'sideOverlay'],
+    ['constrained', 'regular', 'mapInput', 'sideOverlay'],
     ['compact', 'short', 'immersiveMapInput', 'sideOverlay'],
     ['compact', 'regular', 'immersiveMapInput', 'bottomSheet'],
     ['constrained', 'short', 'immersiveMapInput', 'sideOverlay'],
+    ['constrained', 'regular', 'immersiveMapInput', 'sideOverlay'],
   ] as const)('activates the %s/%s %s cell as a %s drawer over the interactive map', (
     sizeBand,
     heightBand,
@@ -163,23 +164,6 @@ describe('the mobile browse section shell cells', () => {
     expect(resolved.drawer.modality).toBe('nonmodal');
     expect(resolved.map.interaction).toBe('decorative');
     expect(resolved.map.navigationControl).toBe('hidden');
-  });
-
-  it('leaves every other compact and constrained cell falling back to the complete wide lifecycle', () => {
-    const stillInactiveCells: readonly ActivationCell[] = [
-      { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'mapInput' },
-      { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'immersiveMapInput' },
-    ];
-
-    for (const cell of stillInactiveCells) {
-      expect(isCellActive(cell)).toBe(false);
-      expect(resolveShellLayoutPolicy({ ...cell, preferences })).toEqual(deriveAppShellLayoutPolicy({
-        ...cell,
-        sizeBand: 'wide',
-        heightBand: 'regular',
-        preferences,
-      }));
-    }
   });
 
   it('activates the constrained/regular browse cell as a nonmodal side overlay coexisting with the interactive map', () => {
