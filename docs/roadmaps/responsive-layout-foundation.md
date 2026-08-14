@@ -1102,10 +1102,23 @@ Unrelated working-tree changes preserved: yes — none were present or modified;
 Next ready task: T03 — implement constrained route-workspace modality.
 ```
 
-- [ ] **T03 — Implement constrained route-workspace modality**
+- [x] **T03 — Implement constrained route-workspace modality**
   - Depends on: T00, F09, F10.
   - Scope: Present session detail, cart, account, collections, and earnings as constrained-regular modal/inert side workspaces with route-owned back behavior, focus trap, Escape handling, and focus restoration. Activate the `constrained × regular × routeWorkspace` cell only after its complete modality, map, and chrome lifecycle is ready.
   - Invariant and verifier: Background interaction and accessibility semantics match the rendered modality; focus/back integration tests own verification.
+  - Completed 2026-08-14. Investigation (a temporary `ACTIVE_CELLS` edit plus a full client+server Vitest run, reverted before implementation) found the same shape of gap T01 and T02 found: `deriveAppShellLayoutPolicy` already computed the fully correct policy for both `constrained × regular × routeWorkspace` (`sideOverlay`, `modal`, map `background`) and `constrained × regular × siteWorkspace` (`sideOverlay`, `nonmodal`, map `decorative`) — only `ACTIVE_CELLS` gated them behind `WIDE_FALLBACK`. Unlike T01/T02, no downstream consumer needed a fix: the dry run surfaced exactly one failing test (a now-stale "still inactive" assertion) and nothing else, because the entire modality mechanism — `DrawerShell`'s focus trap, `aria-modal`, Escape handling, and focus restoration, plus `GlobeMapComponent`'s map-`inert` wiring — reads only the resolved `modality`/`map.interaction` props, never a band, and is already exercised by the identical prop values at the already-shipped `constrained × short` sibling cells. `appShellPresentation.ts` gained the two `ACTIVE_CELLS` entries; `appShellPresentation.test.tsx` lost the stale inactive-cell assertion and gained one extended activation row (siteWorkspace) and one new standalone test (routeWorkspace), confirmed RED before the `ACTIVE_CELLS` edit and GREEN after. All five project gates are green: client tsc, server tsc, ESLint, style-boundaries, and 126 Vitest files / 957 tests.
+
+```text
+Task completed: T03 — implement constrained route-workspace modality
+Invariant: Session detail (routeWorkspace) and cart/account/collections/earnings (siteWorkspace) render as real constrained×regular (tablet) side-overlay workspaces — modal with focus trap/Escape/back/restoration for session detail, nonmodal with an inert map for the other four — instead of falling back to the full desktop persistent-panel policy.
+Authority: appShellPresentation's ACTIVE_CELLS/isCellActive remains the sole activation authority (unchanged ownership, data extended only); appShellLayoutPolicy's deriveAppShellLayoutPolicy remains the sole owner of the modal/nonmodal, sideOverlay, and map-interaction values it already computed correctly for these cells; DrawerShell remains the sole owner of the modality mechanism (focus trap, Escape, aria-modal, focus restoration), unchanged by this task.
+Changed files: src/shared/model/appShellPresentation.tsx, src/shared/model/appShellPresentation.test.tsx, docs/roadmaps/responsive-layout-foundation.md
+Focused verification: appShellPresentation.test.tsx confirmed RED before the ACTIVE_CELLS edit (2 new/extended assertions failed, nothing else) and GREEN after (66/66). A pre-implementation dry run of the full client+server suite with the two cells activated showed only that one pre-existing test needed updating — no DrawerShell, SidePanel, _panel, or feature-level code needed any change, since the modality/focus-trap/Escape/back/map-inert mechanism is already prop-driven (not band-driven) and already exercised identically by the already-shipped constrained×short sibling cells.
+Project gates: client tsc green; server tsc green; lint green; style-boundaries green; client+server Vitest green (126 files / 957 tests).
+Removed concepts: none — this task extends the existing ACTIVE_CELLS data list; no authority, constant, or formula was superseded.
+Unrelated working-tree changes preserved: yes — none were present at session start or modified; git diff --stat touched only the 2 files above plus this roadmap document.
+Next ready task: T04 — implement constrained map-input workflows.
+```
 
 - [ ] **T04 — Implement constrained map-input workflows**
   - Depends on: T00, F09, F10.

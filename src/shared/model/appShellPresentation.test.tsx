@@ -147,6 +147,7 @@ describe('the mobile browse section shell cells', () => {
     ['compact', 'short', 'sideWorkspace'],
     ['compact', 'regular', 'fullScreen'],
     ['constrained', 'short', 'sideWorkspace'],
+    ['constrained', 'regular', 'sideOverlay'],
   ] as const)('activates the %s/%s siteWorkspace cell as a %s drawer over the decorative map', (
     sizeBand,
     heightBand,
@@ -168,7 +169,6 @@ describe('the mobile browse section shell cells', () => {
     const stillInactiveCells: readonly ActivationCell[] = [
       { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'mapInput' },
       { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'immersiveMapInput' },
-      { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'siteWorkspace' },
     ];
 
     for (const cell of stillInactiveCells) {
@@ -230,6 +230,18 @@ describe('the mobile browse section shell cells', () => {
     const resolved = resolveShellLayoutPolicy({ ...cell, preferences });
 
     expect(isCellActive(cell)).toBe(true);
+    expect(resolved.drawer.presentation).toBe('sideOverlay');
+    expect(resolved.drawer.modality).toBe('modal');
+    expect(resolved.map.interaction).toBe('background');
+  });
+
+  it('activates the constrained/regular routeWorkspace cell as a modal side overlay over the backgrounded map', () => {
+    const cell = { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'routeWorkspace' } as const;
+    const resolved = resolveShellLayoutPolicy({ ...cell, preferences });
+
+    expect(isCellActive(cell)).toBe(true);
+    expect(resolved).toEqual(deriveAppShellLayoutPolicy({ ...cell, preferences }));
+    expect(resolved.navigation).toBe('compactBar');
     expect(resolved.drawer.presentation).toBe('sideOverlay');
     expect(resolved.drawer.modality).toBe('modal');
     expect(resolved.map.interaction).toBe('background');
