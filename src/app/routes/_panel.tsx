@@ -249,13 +249,13 @@ function PanelFrame({ children }: { children: ReactNode }) {
   }, [isUploadSheet, renderedUploadSheetSnap, uploadSheetSnap]);
 
   const isBrowseSectionRoute = Boolean(spotMatch || allGalleryMatch || isDefaultIndex);
-  const isShortBrowseSideOverlay = layoutPolicy.drawer.presentation === 'sideOverlay'
+  const isBrowseMapExclusive = layoutPolicy.drawer.mapExclusive
     && isBrowseSectionRoute;
-  const showsStandaloneMapToolbar = isShortBrowseSideOverlay && browseSurfaceMode === 'map';
-  const usesFloatingBrowseSections = isBrowseSheet || isShortBrowseSideOverlay;
+  const showsStandaloneMapToolbar = isBrowseMapExclusive && browseSurfaceMode === 'map';
+  const usesFloatingBrowseSections = isBrowseSheet || isBrowseMapExclusive;
   const renderedExpanded = isBrowseSheet
     ? sheetSnap !== 'peek'
-    : isShortBrowseSideOverlay
+    : isBrowseMapExclusive
       ? browseSurfaceMode === 'results'
       : isExpanded;
 
@@ -469,7 +469,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
                         ? 'gallery'
                         : 'sessions'
                   }
-                  avoidDrawer={isShortBrowseSideOverlay && browseSurfaceMode !== 'map'}
+                  avoidDrawer={isBrowseMapExclusive && browseSurfaceMode !== 'map'}
                   onMap={showBrowseMap}
                   onSectionChange={handleBrowseSectionChange}
                 />

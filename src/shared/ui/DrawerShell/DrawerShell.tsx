@@ -16,7 +16,11 @@ import { useNavigationRailGeometry } from 'shared/model/navigationRailGeometry';
 import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import { useViewportMetrics } from 'shared/model/viewportMetrics';
 import { dismissActiveTextEntry } from 'shared/lib/dismissActiveTextEntry';
-import { PANEL_WIDTH_VW, resolvePanelWidthPx } from 'shared/model/panelExpansionStore';
+import {
+  PANEL_COMPACT_MIN_WIDTH_PX,
+  PANEL_WIDTH_VW,
+  resolvePanelWidthPx,
+} from 'shared/model/panelExpansionStore';
 import { materialClasses } from 'shared/ui/design-system';
 import {
   publishDrawerDragging,
@@ -87,8 +91,23 @@ export type DrawerShellProps = DrawerShellPanelProps | DrawerShellSheetProps;
 // only softens the stop at either end rather than allowing real overshoot.
 const SHEET_DRAG_ELASTIC = 0.08;
 const SHEET_KEYBOARD_DISMISS_DRAG_THRESHOLD_PX = 12;
-const SHORT_SIDE_OVERLAY_WIDTH_VW = 45;
+const SIDE_OVERLAY_WIDTH_VW = 45;
 const FULL_SCREEN_WIDTH_VW = 100;
+
+/**
+ * The side overlay's own width. Unfloored at short height (the
+ * landscape-phone/small-tablet side sheet — unchanged, already-approved
+ * geometry, out of scope for this task). At regular height (the tablet
+ * side overlay) it reuses the compact persistent panel's own 360px floor
+ * (PANEL_COMPACT_MIN_WIDTH_PX): this drawer renders the identical
+ * PanelSearchToolbar/FilterPills chrome the persistent panel already
+ * guarantees fits at that width, so the floor is the same guarantee, not a
+ * second unrelated minimum for the same content.
+ */
+function resolveSideOverlayWidthPx(viewportWidthPx: number, heightBand: 'short' | 'regular'): number {
+  const vwWidthPx = viewportWidthPx * (SIDE_OVERLAY_WIDTH_VW / 100);
+  return heightBand === 'regular' ? Math.max(vwWidthPx, PANEL_COMPACT_MIN_WIDTH_PX) : vwWidthPx;
+}
 
 /**
  * Band-transition continuity contract (F12d): the drawer surface and its children keep
@@ -112,7 +131,7 @@ export function DrawerShell(props: DrawerShellProps) {
     ? `bottomSheet:${props.snap}`
     : `${props.presentation}:${props.state}:${panelOpen ? 'open' : 'closed'}`;
 
-  const { prefersReducedMotion, isStandalone } = useViewportCapabilities();
+  const { prefersReducedMotion, isStandalone, heightBand } = useViewportCapabilities();
   const {
     layoutViewportWidthPx: viewportWidthPx,
     layoutViewportHeightPx: viewportHeightPx,
@@ -152,9 +171,9 @@ export function DrawerShell(props: DrawerShellProps) {
     ? sideWorkspaceWidthPx
     : props.presentation === 'persistent'
       ? resolvePanelWidthPx(props.state, viewportWidthPx)
-      : viewportWidthPx * (
-        (props.presentation === 'fullScreen' ? FULL_SCREEN_WIDTH_VW : SHORT_SIDE_OVERLAY_WIDTH_VW) / 100
-      );
+      : props.presentation === 'sideOverlay'
+        ? resolveSideOverlayWidthPx(viewportWidthPx, heightBand)
+        : viewportWidthPx * (FULL_SCREEN_WIDTH_VW / 100);
   const dragControls = useDragControls();
   const dragConstraints = useMemo(
     () => ({ top: sheetRestPx - heights.full, bottom: sheetRestPx - heights.peek }),
@@ -399,8 +418,11 @@ export function DrawerShell(props: DrawerShellProps) {
     : props.presentation === 'sideOverlay'
       // Its own width never moves (M06h): opening/closing translates the unchanged box
       // on/off screen instead of scaling it down, which used to visibly squeeze whatever
-      // it was showing.
-      ? { x: panelOpen ? '0%' : '100%', y: 0, width: `${SHORT_SIDE_OVERLAY_WIDTH_VW}vw` }
+      // it was showing. Rendered at the exact pixel value targetWidthPx already computed
+      // and published above, not a second, independently-derived vw expression — that
+      // second expression is exactly what would silently disagree once the regular-height
+      // floor exists.
+      ? { x: panelOpen ? '0%' : '100%', y: 0, width: `${targetWidthPx}px` }
       : {
         x: '0%',
         y: 0,

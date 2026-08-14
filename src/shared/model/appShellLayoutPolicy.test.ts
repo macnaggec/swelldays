@@ -120,6 +120,9 @@ describe('deriveAppShellLayoutPolicy — constrained', () => {
     expect(policy.drawer.control).toBe(expectedControl);
     expect(policy.drawer.modality).toBe(expectedModality);
     expect(policy.drawer.canWaitForContent).toBe(false);
+    // Regular height: the side overlay coexists with the map, it never
+    // forces the map/results toggle the short-height side sheet uses.
+    expect(policy.drawer.mapExclusive).toBe(false);
     expect(policy.map.interaction).toBe(expectedMapInteraction);
     expect(policy.chrome.panelControls).toBe(expectedPanelControls);
   });
@@ -263,6 +266,9 @@ describe('deriveAppShellLayoutPolicy — height band', () => {
 
     expect(policy.drawer.presentation).toBe('sideOverlay');
     expect(policy.drawer.state).toBe(expectedState);
+    // Short height: this is the landscape-phone side sheet that must toggle
+    // between the map and results.
+    expect(policy.drawer.mapExclusive).toBe(true);
   });
 
   it.each([
@@ -277,6 +283,7 @@ describe('deriveAppShellLayoutPolicy — height band', () => {
     });
 
     expect(policy.drawer.presentation).toBe('sideOverlay');
+    expect(policy.drawer.mapExclusive).toBe(true);
   });
 
   it('keeps the bottom sheet at regular height (boundary guard)', () => {
@@ -288,6 +295,7 @@ describe('deriveAppShellLayoutPolicy — height band', () => {
     });
 
     expect(policy.drawer.presentation).toBe('bottomSheet');
+    expect(policy.drawer.mapExclusive).toBe(false);
   });
 
   it('never breaks the constrained side band at short height', () => {
@@ -299,6 +307,7 @@ describe('deriveAppShellLayoutPolicy — height band', () => {
     });
 
     expect(policy.drawer.presentation).toBe('sideOverlay');
+    expect(policy.drawer.mapExclusive).toBe(true);
   });
 
   it.each(['constrained', 'compact'] as const)(
@@ -312,6 +321,7 @@ describe('deriveAppShellLayoutPolicy — height band', () => {
       });
 
       expect(policy.drawer.presentation).toBe('sideWorkspace');
+      expect(policy.drawer.mapExclusive).toBe(false);
     },
   );
 
@@ -324,6 +334,7 @@ describe('deriveAppShellLayoutPolicy — height band', () => {
     });
 
     expect(policy.drawer.presentation).toBe('persistent');
+    expect(policy.drawer.mapExclusive).toBe(false);
   });
 
   it.each([
@@ -354,6 +365,7 @@ describe('deriveAppShellLayoutPolicy — height band', () => {
     });
 
     expect(policy.drawer.presentation).toBe('persistent');
+    expect(policy.drawer.mapExclusive).toBe(false);
   });
 });
 

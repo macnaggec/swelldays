@@ -127,7 +127,7 @@ export function GlobeScene() {
   const rawCameraInsetsPx = deriveMapCameraInsets({
     drawerBounds: cameraDrawerBounds,
     drawerPresentation: layoutPolicy.drawer.presentation,
-    drawerChromeOnly: layoutPolicy.drawer.presentation === 'sideOverlay'
+    drawerChromeOnly: layoutPolicy.drawer.mapExclusive
       && browseSurfaceMode === 'map'
       && (routeIntent === 'browse' || routeIntent === 'galleryWorkspace'),
     viewportWidthPx,

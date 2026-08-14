@@ -428,12 +428,24 @@ describe('GlobeScene map interaction policy', () => {
   });
 
   it('keeps expanded browsing interactive and compacts it when camera exploration starts', () => {
+    // Exercises the wide persistent panel's own auto-compact behavior, so the
+    // viewport is pinned wide rather than left at jsdom's default — which now
+    // resolves to the active constrained/regular side-overlay browse policy (T01)
+    // and would never satisfy canCompactPersistentDrawer's presentation check.
+    const originalInnerWidth = window.innerWidth;
+    const originalInnerHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerWidth', { value: 1440, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 900, configurable: true });
     mocks.browsingExpanded = true;
+
     renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'interactive');
     fireEvent.click(screen.getByRole('button', { name: 'Explore map' }));
     expect(mocks.setBrowsingPanelExpanded).toHaveBeenCalledWith(false);
+
+    Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
   });
 
   it('passes background policy to the map for a route-required workspace', () => {

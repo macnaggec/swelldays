@@ -1068,7 +1068,7 @@ describe('DrawerShell sideOverlay geometry', () => {
       return match ? Number(match[1]) : 0;
     };
 
-    await vi.waitFor(() => expect(surface.style.width).toBe('45vw'));
+    await vi.waitFor(() => expect(surface.style.width).toBe('460.8px'));
     expect(translateXPercent()).toBe(0);
 
     rerender(
@@ -1081,7 +1081,7 @@ describe('DrawerShell sideOverlay geometry', () => {
     // width toward 0, visibly squeezing its content, instead of moving the unchanged
     // box off-screen.
     await vi.waitFor(() => expect(translateXPercent()).toBe(100));
-    expect(surface.style.width).toBe('45vw');
+    expect(surface.style.width).toBe('460.8px');
 
     unmount();
   });
@@ -1104,6 +1104,86 @@ describe('DrawerShell sideOverlay geometry', () => {
     expect(screen.getByTestId('settled-destination-width').textContent).toBe(openWidth);
 
     unmount();
+  });
+});
+
+describe('DrawerShell sideOverlay width limits', () => {
+  const originalInnerWidth = window.innerWidth;
+  const originalInnerHeight = window.innerHeight;
+
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+    vi.unstubAllGlobals();
+  });
+
+  it('holds the regular-height overlay at its 360px floor on a 768px-wide portrait tablet', async () => {
+    Object.defineProperty(window, 'innerWidth', { value: 768, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 1024, configurable: true });
+
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+
+    render(
+      <DrawerShell presentation="sideOverlay" state="compact" modality="nonmodal" open>
+        Panel content
+      </DrawerShell>,
+    );
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    // 768 * 0.45 = 345.6px, below the 360px floor — the surface must render at the
+    // floor, not the raw fraction.
+    await vi.waitFor(() => expect(surface.style.width).toBe('360px'));
+  });
+
+  it('does not floor the regular-height overlay at a 1199px-wide constrained viewport', async () => {
+    Object.defineProperty(window, 'innerWidth', { value: 1199, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 900, configurable: true });
+
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+
+    render(
+      <DrawerShell presentation="sideOverlay" state="compact" modality="nonmodal" open>
+        Panel content
+      </DrawerShell>,
+    );
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    // 1199 * 0.45 = 539.55px (539.5500000000001px in floating point) — above the
+    // floor, unaffected by it.
+    await vi.waitFor(() => expect(surface.style.width).toBe('539.5500000000001px'));
+  });
+
+  it('leaves the short-height overlay unfloored at the same narrow width', async () => {
+    Object.defineProperty(window, 'innerWidth', { value: 768, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 390, configurable: true });
+
+    class ResizeObserverHarness implements ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverHarness);
+
+    render(
+      <DrawerShell presentation="sideOverlay" state="compact" modality="nonmodal" open>
+        Panel content
+      </DrawerShell>,
+    );
+
+    const surface = screen.getByRole('complementary', { name: 'Content drawer' });
+    // 768 * 0.45 = 345.6px — the already-approved landscape-phone/small-tablet side
+    // sheet geometry, byte-for-byte unchanged by the regular-height floor above.
+    await vi.waitFor(() => expect(surface.style.width).toBe('345.6px'));
   });
 });
 

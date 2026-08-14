@@ -581,4 +581,75 @@ test.describe('approved mobile spacing rhythm', () => {
       );
     }
   });
+
+  test('floors the tablet side overlay at 360px and keeps it inside the viewport at 768x1024', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto('/__mobile-layout-contract.html?displayMode=browser&presentation=sideOverlay');
+
+    const drawer = page.getByRole('complementary', { name: 'Content drawer' });
+    await expect(drawer).toHaveAttribute('data-drawer-presentation', 'sideOverlay');
+    await waitForStableBox(drawer);
+
+    const drawerBox = await drawer.boundingBox();
+    expect(drawerBox, 'drawer must be measurable').not.toBeNull();
+    expectPhysicalGap(drawerBox!.width, 360, '768px constrained/regular drawer width (floored)');
+    expect(
+      drawerBox!.x + drawerBox!.width,
+      'drawer right edge must not overflow the viewport',
+    ).toBeLessThanOrEqual(page.viewportSize()!.width + 0.5);
+  });
+
+  test('leaves the tablet side overlay unfloored and inside the viewport at 1199x900', async ({ page }) => {
+    await page.setViewportSize({ width: 1199, height: 900 });
+    await page.goto('/__mobile-layout-contract.html?displayMode=browser&presentation=sideOverlay');
+
+    const drawer = page.getByRole('complementary', { name: 'Content drawer' });
+    await expect(drawer).toHaveAttribute('data-drawer-presentation', 'sideOverlay');
+    await waitForStableBox(drawer);
+
+    const drawerBox = await drawer.boundingBox();
+    expect(drawerBox, 'drawer must be measurable').not.toBeNull();
+    expectPhysicalGap(drawerBox!.width, 1199 * 0.45, '1199px constrained/regular drawer width (unfloored)');
+    expect(
+      drawerBox!.x + drawerBox!.width,
+      'drawer right edge must not overflow the viewport',
+    ).toBeLessThanOrEqual(page.viewportSize()!.width + 0.5);
+  });
+
+  test('keeps the search, Upload, and filter-pills chrome inside the tablet side overlay bounds', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto('/__mobile-layout-contract.html?displayMode=browser&presentation=sideOverlay');
+
+    const drawer = page.getByRole('complementary', { name: 'Content drawer' });
+    await expect(drawer).toHaveAttribute('data-drawer-presentation', 'sideOverlay');
+    await waitForStableBox(drawer);
+
+    const searchRow = drawer.locator('[data-panel-toolbar-primary]');
+    const uploadAction = drawer.getByRole('button', { name: 'Upload' });
+    const pills = drawer.locator('[data-panel-toolbar-trailing]');
+
+    const [drawerBox, searchBox, uploadBox, pillsBox] = await Promise.all([
+      drawer.boundingBox(),
+      searchRow.boundingBox(),
+      uploadAction.boundingBox(),
+      pills.boundingBox(),
+    ]);
+    expect(drawerBox, 'drawer must be measurable').not.toBeNull();
+
+    for (const [label, box] of [
+      ['search row', searchBox],
+      ['Upload action', uploadBox],
+      ['filter pills', pillsBox],
+    ] as const) {
+      expect(box, `${label} must be measurable`).not.toBeNull();
+      expect(
+        box!.x,
+        `${label} left edge must not extend past the drawer's own left edge`,
+      ).toBeGreaterThanOrEqual(drawerBox!.x - 0.5);
+      expect(
+        box!.x + box!.width,
+        `${label} right edge must not overflow the viewport`,
+      ).toBeLessThanOrEqual(page.viewportSize()!.width + 0.5);
+    }
+  });
 });

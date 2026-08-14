@@ -166,7 +166,6 @@ describe('the mobile browse section shell cells', () => {
 
   it('leaves every other compact and constrained cell falling back to the complete wide lifecycle', () => {
     const stillInactiveCells: readonly ActivationCell[] = [
-      { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'browse' },
       { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'mapInput' },
       { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'immersiveMapInput' },
       { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'siteWorkspace' },
@@ -183,21 +182,18 @@ describe('the mobile browse section shell cells', () => {
     }
   });
 
-  it('keeps the constrained regular browse target policy inactive until its whole lifecycle is ready', () => {
+  it('activates the constrained/regular browse cell as a nonmodal side overlay coexisting with the interactive map', () => {
     const cell = {
       sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'browse',
     } as const;
-    const targetPolicy = deriveAppShellLayoutPolicy({ ...cell, preferences });
     const resolved = resolveShellLayoutPolicy({ ...cell, preferences });
-    const wideFallback = deriveAppShellLayoutPolicy({
-      ...cell, sizeBand: 'wide', heightBand: 'regular', preferences,
-    });
 
-    expect(targetPolicy.navigation).toBe('compactBar');
-    expect(isCellActive(cell)).toBe(false);
-    expect(resolved).toEqual(wideFallback);
-    expect(resolved.navigation).toBe('leftStrip');
-    expect(resolved.drawer.presentation).toBe('persistent');
+    expect(isCellActive(cell)).toBe(true);
+    expect(resolved).toEqual(deriveAppShellLayoutPolicy({ ...cell, preferences }));
+    expect(resolved.navigation).toBe('compactBar');
+    expect(resolved.drawer.presentation).toBe('sideOverlay');
+    expect(resolved.drawer.mapExclusive).toBe(false);
+    expect(resolved.map.interaction).toBe('interactive');
   });
 
   it.each([

@@ -22,6 +22,14 @@ export interface AppShellLayoutPolicy {
     modality: 'nonmodal' | 'modal' | 'none';
     contentDensity: 'compact' | 'comfortable' | 'none';
     canWaitForContent: boolean;
+    /**
+     * True when this drawer's presentation and the map cannot both be fully
+     * usable at once, so the UI must let the user switch between them (the
+     * landscape-phone/short side sheet). False for every other presentation,
+     * including the regular-height side overlay, where the map stays
+     * interactive underneath the drawer at all times.
+     */
+    mapExclusive: boolean;
   };
   map: {
     interaction: 'interactive' | 'background' | 'decorative' | 'hidden';
@@ -41,6 +49,7 @@ const hiddenLayoutPolicy: AppShellLayoutPolicy = {
     modality: 'none',
     contentDensity: 'none',
     canWaitForContent: false,
+    mapExclusive: false,
   },
   map: {
     interaction: 'hidden',
@@ -103,6 +112,7 @@ export function deriveAppShellLayoutPolicy(
     heightBand === 'short' && sizeBand !== 'wide' && routeIntent === 'siteWorkspace'
       ? 'sideWorkspace'
       : bottomSheetHeightAdjustedPresentation;
+  const mapExclusive = heightAdjustedPresentation === 'sideOverlay' && heightBand === 'short';
   const drawerControl = routeIntent === 'browse'
     || routeIntent === 'galleryWorkspace'
     ? 'expandCollapse'
@@ -147,6 +157,7 @@ export function deriveAppShellLayoutPolicy(
         ? 'compact'
         : 'comfortable',
       canWaitForContent: routeIntent === 'browse' && sizeBand === 'wide',
+      mapExclusive,
     },
     map: {
       interaction: mapInteraction,
