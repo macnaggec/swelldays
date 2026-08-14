@@ -114,7 +114,7 @@ describe('the mobile browse section shell cells', () => {
     const resolved = resolveShellLayoutPolicy({ ...cell, preferences });
 
     expect(isCellActive(cell)).toBe(true);
-    expect(resolved.navigation).toBe('compactBar');
+    expect(resolved.navigation).toBe('compactRail');
     expect(resolved.drawer.presentation).toBe('sideOverlay');
     expect(resolved.drawer.modality).toBe('nonmodal');
     expect(resolved.map.interaction).toBe('interactive');
@@ -181,6 +181,23 @@ describe('the mobile browse section shell cells', () => {
         preferences,
       }));
     }
+  });
+
+  it('keeps the constrained regular browse target policy inactive until its whole lifecycle is ready', () => {
+    const cell = {
+      sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'browse',
+    } as const;
+    const targetPolicy = deriveAppShellLayoutPolicy({ ...cell, preferences });
+    const resolved = resolveShellLayoutPolicy({ ...cell, preferences });
+    const wideFallback = deriveAppShellLayoutPolicy({
+      ...cell, sizeBand: 'wide', heightBand: 'regular', preferences,
+    });
+
+    expect(targetPolicy.navigation).toBe('compactBar');
+    expect(isCellActive(cell)).toBe(false);
+    expect(resolved).toEqual(wideFallback);
+    expect(resolved.navigation).toBe('leftStrip');
+    expect(resolved.drawer.presentation).toBe('persistent');
   });
 
   it.each([

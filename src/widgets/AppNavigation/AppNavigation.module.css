@@ -10,7 +10,7 @@
   transform: translateY(var(--wa-browse-navigation-translate-y));
 }
 
-.root[data-navigation-presentation='compactBar'][data-drawer-presentation='sideOverlay'] {
+.root[data-navigation-presentation='compactRail'][data-drawer-presentation='sideOverlay'] {
   top: max(var(--wa-safe-area-top), var(--wa-shell-edge-clearance));
   left: max(var(--wa-safe-area-left), var(--wa-shell-edge-clearance));
 }
@@ -19,7 +19,7 @@
   top: calc(var(--wa-safe-area-top) + var(--wa-shell-edge-clearance));
   left: auto;
   right: calc(var(--wa-safe-area-right) + var(--wa-shell-edge-clearance));
-  /* Matches leftStrip/compactBar's own (inherited) z-index — floating nav chrome
+  /* Matches the other visible navigation presentations' inherited z-index — floating nav chrome
      belongs above the drawer it floats over at every presentation. This used to
      sit below the drawer (--wa-z-controls), invisible only through the panel's own
      translucent glass tint; harmless while topBar only ever paired with browse's
@@ -52,13 +52,13 @@
   transition: none;
 }
 
-/* The rail hovers over the decorative map strip beside a sideWorkspace drawer
+/* The compactRail hovers over the decorative map strip beside a sideWorkspace drawer
    (constrained × short: Account/Earnings/Collections/Cart). Its measured root
    uses a slightly larger balanced gap while transparent padding keeps the
    visible stack at the same notch-safe coordinate. DrawerShell includes that
    padding in the rail width, so the matching measured gap remains between the
    stack and workspace. */
-.root[data-navigation-presentation='compactBar'][data-drawer-presentation='sideWorkspace'] {
+.root[data-navigation-presentation='compactRail'][data-drawer-presentation='sideWorkspace'] {
   --wa-browse-navigation-translate-y: -50%;
 
   left: calc(var(--wa-shell-edge-clearance) + 4px);
@@ -76,6 +76,10 @@
   padding: 8px;
   border-radius: var(--wa-radius-chrome);
   align-items: center;
+}
+
+.root[data-navigation-presentation='compactBar'] .stack {
+  flex-direction: row;
 }
 
 .button {

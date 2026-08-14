@@ -14,7 +14,7 @@ export interface AppShellLayoutPolicyInput {
 }
 
 export interface AppShellLayoutPolicy {
-  navigation: 'leftStrip' | 'compactBar' | 'topBar' | 'hidden';
+  navigation: 'leftStrip' | 'compactRail' | 'compactBar' | 'topBar' | 'hidden';
   drawer: {
     presentation: 'persistent' | 'sideOverlay' | 'sideWorkspace' | 'bottomSheet' | 'fullScreen' | 'hidden';
     state: 'compact' | 'expanded' | 'collapsed' | 'full' | 'hidden';
@@ -122,22 +122,22 @@ export function deriveAppShellLayoutPolicy(
     : 'hidden';
 
   return {
-    // The account/cart rail stays exactly as it always has at wide (leftStrip)
-    // and landscape mobile (compactBar) — every intent, unconditionally. Only
-    // portrait mobile (topBar) is a main-screen utility there: it shows for
-    // browse and its gallery workspace and hides for every other intent —
-    // routeWorkspace, siteWorkspace, mapInput, and immersiveMapInput alike.
-    // Each of those already has its own way back to the main screen (a back
-    // control), where the rail reappears.
+    // The account/cart controls use the wide left strip, the vertical rail on
+    // short non-wide surfaces, and the constrained horizontal bar at regular
+    // height. Portrait compact navigation is a main-screen utility: it shows
+    // for browse and gallery workspace, while every other intent already has
+    // its own route or workflow control back to the main screen.
     navigation: isImmersiveMapInput
       ? 'hidden'
       : sizeBand === 'wide'
         ? 'leftStrip'
-        : heightBand === 'short' || sizeBand === 'constrained'
-          ? 'compactBar'
-          : routeIntent === 'browse' || routeIntent === 'galleryWorkspace'
-            ? 'topBar'
-            : 'hidden',
+        : heightBand === 'short'
+          ? 'compactRail'
+          : sizeBand === 'constrained'
+            ? 'compactBar'
+            : routeIntent === 'browse' || routeIntent === 'galleryWorkspace'
+              ? 'topBar'
+              : 'hidden',
     drawer: {
       presentation: heightAdjustedPresentation,
       state: drawerState,

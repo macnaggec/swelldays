@@ -49,7 +49,7 @@ describe('CollectionsSectionBar', () => {
     expect(nav.style.getPropertyValue('--wa-collections-switcher-center-x')).toBe('187.5px');
   });
 
-  it('docks into the account/cart rail instead of floating independently, only at landscape mobile (compactBar)', () => {
+  it('docks into the account/cart rail instead of floating independently, only at landscape mobile (compactRail)', () => {
     setViewport(667, 375);
     act(() => publishDrawerGeometry(new DOMRect(60, 0, 300, 375)));
 

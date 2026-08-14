@@ -64,7 +64,7 @@ describe('SidePanel', () => {
     });
 
     render(
-      <SidePanel drawerPresentation="fullScreen" navigation="compactBar" onBack={vi.fn()} header={<div>Title</div>}>
+      <SidePanel drawerPresentation="fullScreen" navigation="compactRail" onBack={vi.fn()} header={<div>Title</div>}>
         <div>Panel body</div>
       </SidePanel>,
     );
@@ -74,7 +74,7 @@ describe('SidePanel', () => {
   });
 
   it.each([
-    ['sideWorkspace presentation, where the surface already starts past the rail', 'sideWorkspace', 'compactBar'],
+    ['sideWorkspace presentation, where the surface already starts past the rail', 'sideWorkspace', 'compactRail'],
     ['leftStrip navigation, which floats over no fullScreen corner', 'fullScreen', 'leftStrip'],
     ['no navigation supplied', 'fullScreen', undefined],
   ] as const)('does not reserve header space for %s', (_label, drawerPresentation, navigation) => {

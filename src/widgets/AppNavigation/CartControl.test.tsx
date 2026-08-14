@@ -6,6 +6,7 @@ import { CartControl } from './CartControl';
 const mocks = vi.hoisted(() => ({
   count: 0,
   isAuthenticated: true,
+  pathname: '/',
 }));
 
 vi.mock('entities/Commerce', () => ({
@@ -20,7 +21,7 @@ vi.mock('shared/hooks/useUser', () => ({
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
   useRouterState: (options: { select: (s: unknown) => unknown }) =>
-    options.select({ location: { pathname: '/' }, matches: [] }),
+    options.select({ location: { pathname: mocks.pathname }, matches: [] }),
 }));
 
 describe('CartControl', () => {
@@ -42,5 +43,19 @@ describe('CartControl', () => {
     const button = screen.getByRole('button', { name: /cart,/i });
     expect(button).toBeInTheDocument();
     expect(button.style.opacity).toBe('0.4');
+  });
+
+  it.each([
+    ['/cart', 'true'],
+    ['/spots/example', 'false'],
+  ] as const)('exposes whether the cart destination is current at %s', (pathname, expectedPressed) => {
+    mocks.pathname = pathname;
+
+    render(<CartControl />);
+
+    expect(screen.getByRole('button', { name: /cart,/i })).toHaveAttribute(
+      'aria-pressed',
+      expectedPressed,
+    );
   });
 });

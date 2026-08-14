@@ -441,11 +441,19 @@ const requiredCompactBrowseNavigationStyles = [
   ],
   [
     'side-overlay navigation using the larger safe-area or ordinary edge clearance',
-    /\.root\[data-navigation-presentation='compactBar'\]\[data-drawer-presentation='sideOverlay'\]\s*\{[^}]*top:\s*max\(var\(--wa-safe-area-top\),\s*var\(--wa-shell-edge-clearance\)\)[^}]*left:\s*max\(var\(--wa-safe-area-left\),\s*var\(--wa-shell-edge-clearance\)\)/s,
+    /\.root\[data-navigation-presentation='compactRail'\]\[data-drawer-presentation='sideOverlay'\]\s*\{[^}]*top:\s*max\(var\(--wa-safe-area-top\),\s*var\(--wa-shell-edge-clearance\)\)[^}]*left:\s*max\(var\(--wa-safe-area-left\),\s*var\(--wa-shell-edge-clearance\)\)/s,
   ],
   [
     'side-workspace navigation balancing the sheet gap without moving visible chrome toward the notch',
-    /\.root\[data-navigation-presentation='compactBar'\]\[data-drawer-presentation='sideWorkspace'\]\s*\{[^}]*left:\s*calc\(var\(--wa-shell-edge-clearance\)\s*\+\s*4px\)[^}]*padding-inline-start:\s*max\(\s*0px,\s*calc\(var\(--wa-safe-area-left\)\s*-\s*\(var\(--wa-shell-edge-clearance\)\s*\+\s*4px\)\)\s*\)/s,
+    /\.root\[data-navigation-presentation='compactRail'\]\[data-drawer-presentation='sideWorkspace'\]\s*\{[^}]*left:\s*calc\(var\(--wa-shell-edge-clearance\)\s*\+\s*4px\)[^}]*padding-inline-start:\s*max\(\s*0px,\s*calc\(var\(--wa-safe-area-left\)\s*-\s*\(var\(--wa-shell-edge-clearance\)\s*\+\s*4px\)\)\s*\)/s,
+  ],
+  [
+    'constrained horizontal navigation preserving Account-before-Cart DOM order',
+    /\.root\[data-navigation-presentation='compactBar'\]\s+\.stack\s*\{[^}]*flex-direction:\s*row/s,
+  ],
+  [
+    'shared navigation controls using the navigation-size token for both pointer-target dimensions',
+    /\.button\s*\{[^}]*width:\s*var\(--wa-control-size-navigation\)[^}]*height:\s*var\(--wa-control-size-navigation\)/s,
   ],
 ];
 

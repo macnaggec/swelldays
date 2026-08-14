@@ -219,6 +219,34 @@ describe('deriveAppShellLayoutPolicy — compact', () => {
 });
 
 describe('deriveAppShellLayoutPolicy — height band', () => {
+  it.each(['compact', 'constrained'] as const)(
+    'uses the vertical compact rail for %s/short non-immersive navigation',
+    (sizeBand) => {
+      const policy = deriveAppShellLayoutPolicy({
+        routeIntent: 'browse',
+        sizeBand,
+        heightBand: 'short',
+        preferences: compactPreferences,
+      });
+
+      expect(policy.navigation).toBe('compactRail');
+    },
+  );
+
+  it.each(['compact', 'constrained'] as const)(
+    'keeps immersive map input navigation hidden at %s/short height',
+    (sizeBand) => {
+      const policy = deriveAppShellLayoutPolicy({
+        routeIntent: 'immersiveMapInput',
+        sizeBand,
+        heightBand: 'short',
+        preferences: compactPreferences,
+      });
+
+      expect(policy.navigation).toBe('hidden');
+    },
+  );
+
   it.each([
     [false, 'collapsed'],
     [true, 'full'],

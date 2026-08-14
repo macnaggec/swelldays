@@ -45,12 +45,12 @@ const items = (activeTab: CollectionTab, onTabChange: (tab: CollectionTab) => vo
  * Feed/Gallery bar, which floats separately from them at every band. Its
  * caller chooses which of AppNavigation's two mount points to portal this
  * into (AppNavigationFloating vs AppNavigationSupplement) using the same
- * `navigation !== 'compactBar'` split this component uses for its own
+ * `navigation !== 'compactRail'` split this component uses for its own
  * presentation below — kept as one canonical field read twice, not two
  * independent formulas, since importing widgets/AppNavigation directly here
  * would invert the feature→widget dependency direction.
  *
- * At every band except landscape mobile (`compactBar`), it floats as its own
+ * At every band except landscape mobile (`compactRail`), it floats as its own
  * pill centered on the drawer's own measured horizontal midpoint — at wide
  * (`leftStrip`) that midpoint is the persistent panel's own center, same as
  * today; at portrait mobile (`topBar`), the drawer is `fullScreen`, so its
@@ -58,7 +58,7 @@ const items = (activeTab: CollectionTab, onTabChange: (tab: CollectionTab) => vo
  * the screen's bottom center exactly like the main screen's own switcher.
  * Labels hide on scroll in both cases, matching that same reference bar.
  *
- * Landscape mobile (`compactBar`) is the one exception, and the only band
+ * Landscape mobile (`compactRail`) is the one exception, and the only band
  * where the combined account/cart/switcher rail is the approved design: there
  * the drawer sits beside a narrow decorative map strip rather than filling
  * the screen, and the switcher docks directly below the account/cart buttons
@@ -66,7 +66,7 @@ const items = (activeTab: CollectionTab, onTabChange: (tab: CollectionTab) => vo
  * math, labels always on since it isn't part of the panel's own scroll chrome.
  */
 export function CollectionsSectionBar({ activeTab, onTabChange }: CollectionsSectionBarProps) {
-  const usesFloatingPill = useAppShellLayoutPolicy().navigation !== 'compactBar';
+  const usesFloatingPill = useAppShellLayoutPolicy().navigation !== 'compactRail';
   const geometry = useDrawerGeometry();
   const style: CollectionsSectionBarStyle | undefined = usesFloatingPill && geometry
     ? { '--wa-collections-switcher-center-x': `${geometry.left + geometry.width / 2}px` }

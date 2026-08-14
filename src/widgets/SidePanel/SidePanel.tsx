@@ -73,7 +73,7 @@ interface SidePanelProps {
   /**
    * The shell's navigation presentation, used only to detect when the floating
    * compact rail hovers over this panel's own top-left corner (fullScreen +
-   * compactBar) so the back/expand button can clear it. Omit outside that
+   * compactRail) so the back/expand button can clear it. Omit outside that
    * combination; the panel behaves exactly as before.
    */
   navigation?: AppShellLayoutPolicy['navigation'];
@@ -247,7 +247,7 @@ export function SidePanel({
   // spans the whole viewport, unlike sideWorkspace, which already starts past the
   // rail's measured edge. Without this, the back button renders directly under
   // the rail's own box and is neither visible nor clickable.
-  const reservesRailInset = navigation === 'compactBar' && drawerPresentation === 'fullScreen';
+  const reservesRailInset = navigation === 'compactRail' && drawerPresentation === 'fullScreen';
   const railGeometry = useNavigationRailGeometry();
   const panelTopStyle: PanelTopStyle | undefined = reservesRailInset && railGeometry
     ? { '--wa-fullscreen-rail-inset': `${railGeometry.right}px` }

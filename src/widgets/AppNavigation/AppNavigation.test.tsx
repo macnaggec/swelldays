@@ -1,4 +1,5 @@
 import { act, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import type { BrowseSheetNavigationPlacement } from 'shared/ui/DrawerShell';
@@ -30,11 +31,11 @@ vi.mock('entities/Commerce', () => ({
 }));
 
 vi.mock('./CartControl', () => ({
-  CartControl: () => <div data-testid="cart-control" />,
+  CartControl: () => <button type="button" data-testid="cart-control">Cart</button>,
 }));
 
 vi.mock('./UserControl', () => ({
-  UserControl: () => <div data-testid="user-control" />,
+  UserControl: () => <button type="button" data-testid="user-control">Account</button>,
 }));
 
 describe('AppNavigation', () => {
@@ -47,7 +48,7 @@ describe('AppNavigation', () => {
     expect(screen.getByTestId('cart-control')).toBeInTheDocument();
   });
 
-  it.each(['leftStrip', 'topBar', 'compactBar'] as const)(
+  it.each(['leftStrip', 'topBar', 'compactRail', 'compactBar'] as const)(
     'reaches the account and cart destinations from a single set of controls in the %s presentation',
     (presentation) => {
       mocks.isAuthenticated = true;
@@ -60,6 +61,17 @@ describe('AppNavigation', () => {
     },
   );
 
+  it('keeps Account before Cart in the constrained horizontal bar keyboard order', async () => {
+    const user = userEvent.setup();
+
+    render(<AppNavigation presentation="compactBar" drawerPresentation="sideOverlay" />);
+
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Account' })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Cart' })).toHaveFocus();
+  });
+
   it('renders neither control when the presentation is hidden', () => {
     mocks.isAuthenticated = true;
     mocks.count = 1;
@@ -71,7 +83,7 @@ describe('AppNavigation', () => {
   });
 
   it('marks the rail with the live drawer presentation, so CSS can center it over a sideWorkspace map strip instead of pinning it to the top corner', () => {
-    render(<AppNavigation presentation="compactBar" drawerPresentation="sideWorkspace" />);
+    render(<AppNavigation presentation="compactRail" drawerPresentation="sideWorkspace" />);
 
     const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]');
     expect(root).toHaveAttribute('data-drawer-presentation', 'sideWorkspace');

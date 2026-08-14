@@ -41,6 +41,7 @@ export const CartControl = memo(function CartControl() {
       variant="transparent"
       size="lg"
       aria-label={`Cart, ${count} item${count !== 1 ? 's' : ''}`}
+      aria-pressed={isCartRoute}
       onClick={handleClick}
       style={{
         color: 'var(--wa-status-success)',

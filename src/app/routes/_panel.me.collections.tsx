@@ -49,7 +49,7 @@ function CollectionsLayout() {
   // Same split CollectionsSectionBar uses for its own presentation: landscape
   // mobile docks the switcher into the account/cart rail; every other band
   // floats it as its own independent pill instead.
-  const SectionBarPortal = layoutPolicy.navigation === 'compactBar'
+  const SectionBarPortal = layoutPolicy.navigation === 'compactRail'
     ? AppNavigationSupplement
     : AppNavigationFloating;
   const { activeTab: rawActiveTab, handleTabChange } = useTabNavigation(TAB_ROUTES);
