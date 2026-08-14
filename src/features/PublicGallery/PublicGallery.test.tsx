@@ -210,21 +210,45 @@ describe('PublicGallery', () => {
   });
 
   it.each([
-    ['bottomSheet' as const],
-    ['sideOverlay' as const],
-  ])('stays compact — 3 columns, dense cards — on mobile even at half/full snap ("expanded"), at %s', (drawerPresentation) => {
+    ['bottomSheet' as const, undefined],
+    ['sideOverlay' as const, true],
+  ] as const)('stays compact — 3 columns, dense cards — on mobile even at half/full snap ("expanded"), at %s', (drawerPresentation, mapExclusive) => {
     // 375px: a comfortable-density tile (340px target) would round this down to
     // 1 column if mobile ever reached that density — the bug this test guards.
     galleryState.measuredWidth = 375;
 
     render(
-      <PanelScrollChromeStateProvider value={{ hidden: true, drawerPresentation }}>
+      <PanelScrollChromeStateProvider value={{ hidden: true, drawerPresentation, mapExclusive }}>
         <PublicGallery expanded spotId="spot-1" />
       </PanelScrollChromeStateProvider>,
     );
 
     expect(galleryState.columns).toBe(3);
     expect(galleryState.dense).toBe(true);
+    expect(screen.queryByTestId('gallery-date-sidebar')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [360, false, 3, true],
+    [540, false, 4, true],
+    [360, true, 2, false],
+    [540, true, 2, false],
+  ])('bounds the tablet side overlay gallery to [2,4] columns at %ipx (expanded=%s)', (
+    measuredWidth,
+    expanded,
+    expectedColumns,
+    expectedDense,
+  ) => {
+    galleryState.measuredWidth = measuredWidth;
+
+    render(
+      <PanelScrollChromeStateProvider value={{ hidden: true, drawerPresentation: 'sideOverlay', mapExclusive: false }}>
+        <PublicGallery expanded={expanded} spotId="spot-1" />
+      </PanelScrollChromeStateProvider>,
+    );
+
+    expect(galleryState.columns).toBe(expectedColumns);
+    expect(galleryState.dense).toBe(expectedDense);
     expect(screen.queryByTestId('gallery-date-sidebar')).not.toBeInTheDocument();
   });
 
@@ -312,7 +336,7 @@ describe('PublicGallery', () => {
     render(
       <MantineProvider env="test">
         <PanelScrollChromeStateProvider
-          value={{ hidden: true, drawerPresentation: 'sideOverlay' }}
+          value={{ hidden: true, drawerPresentation: 'sideOverlay', mapExclusive: true }}
         >
           <PanelLayout>
             <PublicGallery expanded spotId="spot-1" />

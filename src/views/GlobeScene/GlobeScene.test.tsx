@@ -459,12 +459,24 @@ describe('GlobeScene map interaction policy', () => {
   });
 
   it('keeps expanded gallery interactive and compacts its preference when camera exploration starts', () => {
+    // Exercises the wide persistent panel's own auto-compact behavior, so the
+    // viewport is pinned wide rather than left at jsdom's default — which now
+    // resolves to the active constrained/regular side-overlay gallery policy (T02)
+    // and would never satisfy canCompactPersistentDrawer's presentation check.
+    const originalInnerWidth = window.innerWidth;
+    const originalInnerHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerWidth', { value: 1440, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 900, configurable: true });
     mocks.matches = [{ routeId: '/_panel/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } }];
+
     renderGlobeScene();
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-interaction-policy', 'interactive');
     fireEvent.click(screen.getByRole('button', { name: 'Explore map' }));
     expect(mocks.setGalleryPanelExpanded).toHaveBeenCalledWith(false);
+
+    Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
   });
 
   it('does not change the portrait browse preference when exploration starts beside the short side panel', () => {

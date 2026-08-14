@@ -443,6 +443,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
           {layoutPolicy.drawer.presentation !== 'hidden' && appRouteIntent !== 'immersiveMapInput' && (
             <SidePanel
               drawerPresentation={layoutPolicy.drawer.presentation}
+              mapExclusive={layoutPolicy.drawer.mapExclusive}
               drawerModality={layoutPolicy.drawer.modality === 'modal' ? 'modal' : 'nonmodal'}
               navigation={layoutPolicy.navigation}
               open={!showsStandaloneMapToolbar}

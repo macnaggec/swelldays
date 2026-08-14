@@ -30,6 +30,9 @@ import { GalleryEmptyState } from './ui/GalleryEmptyState';
 /** Neutral placeholder count for the loading skeleton, rendered before the gallery is mounted and measured. */
 const LOADING_SKELETON_COLUMNS = 3;
 
+const TABLET_SIDE_OVERLAY_MIN_COLUMNS = 2;
+const TABLET_SIDE_OVERLAY_MAX_COLUMNS = 4;
+
 export interface PublicGalleryProps {
   expanded: boolean;
   /** Omit to browse published media across all spots instead of a single spot. */
@@ -74,12 +77,15 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
     hasShare: !!onShare,
   });
 
-  const { drawerPresentation } = usePanelScrollChromeState();
-  // The mobile drawer presentations never show the wide rail regardless of
-  // measured width — a docked sidebar doesn't fit their touch-first, narrow
-  // form factor even on the rare occasion the drawer itself measures wide.
-  const isMobileDrawerPresentation = drawerPresentation === 'bottomSheet'
-    || drawerPresentation === 'sideOverlay';
+  const { drawerPresentation, mapExclusive } = usePanelScrollChromeState();
+  // mapExclusive distinguishes the short-height mobile/landscape side sheet (no wider
+  // layout to grow into — forced compact grid, no rail) from the constrained-regular
+  // tablet overlay, which shares this same 'sideOverlay' presentation but has real
+  // measurable width (T02): that one measures its own column count and density like
+  // the wide panel does, just bounded to the overlay's own narrower share of the screen.
+  const isMobileSideOverlay = drawerPresentation === 'sideOverlay' && mapExclusive === true;
+  const isTabletSideOverlay = drawerPresentation === 'sideOverlay' && mapExclusive === false;
+  const isMobileDrawerPresentation = drawerPresentation === 'bottomSheet' || isMobileSideOverlay;
 
   // Opening arranges the roomy destination grid immediately so the drawer reveals
   // it. Closing keeps that grid intact while it travels, then compacts once after
@@ -99,11 +105,17 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   // never reaches the gallery's own density decision.
   const isCompactGalleryLayout = isMobileDrawerPresentation || !layoutExpanded;
   const density: GalleryDensity = isCompactGalleryLayout ? 'compact' : 'comfortable';
-  // 3 is a guaranteed floor here, not just today's typical result: mobile has no
-  // wider layout to grow into the way a desktop window does, so without this the
-  // narrowest phones would round down to 2. Desktop's own compact panel already
-  // measures wide enough to clear 3 on its own (M06s), so this is a no-op there.
-  const columns = galleryColumns(layoutWidth, density, undefined, density === 'compact' ? 3 : undefined);
+  // 3 is a guaranteed floor here, not just today's typical result: mobile has no wider
+  // layout to grow into the way a desktop window does, so without this the narrowest
+  // phones would round down to 2. Desktop's own compact panel already measures wide
+  // enough to clear 3 on its own (M06s), so this is a no-op there. The tablet side
+  // overlay gets its own [2,4] bound instead (T02): it shares its width with the map
+  // beside it, a different constraint than either the mobile floor or wide desktop.
+  const maxColumnsOverride = isTabletSideOverlay ? TABLET_SIDE_OVERLAY_MAX_COLUMNS : undefined;
+  const minColumnsOverride = isTabletSideOverlay
+    ? TABLET_SIDE_OVERLAY_MIN_COLUMNS
+    : density === 'compact' ? 3 : undefined;
+  const columns = galleryColumns(layoutWidth, density, maxColumnsOverride, minColumnsOverride);
 
   // The moving drawer edge clips the fixed layout. Transforming the virtual canvas
   // would also scale its off-screen spacer and produce blank bands.

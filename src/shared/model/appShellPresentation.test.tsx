@@ -196,6 +196,20 @@ describe('the mobile browse section shell cells', () => {
     expect(resolved.map.interaction).toBe('interactive');
   });
 
+  it('activates the constrained/regular galleryWorkspace cell as a nonmodal side overlay coexisting with the interactive map', () => {
+    const cell = {
+      sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'galleryWorkspace',
+    } as const;
+    const resolved = resolveShellLayoutPolicy({ ...cell, preferences });
+
+    expect(isCellActive(cell)).toBe(true);
+    expect(resolved).toEqual(deriveAppShellLayoutPolicy({ ...cell, preferences }));
+    expect(resolved.navigation).toBe('compactBar');
+    expect(resolved.drawer.presentation).toBe('sideOverlay');
+    expect(resolved.drawer.mapExclusive).toBe(false);
+    expect(resolved.map.interaction).toBe('interactive');
+  });
+
   it.each([
     'short',
     'regular',

@@ -8,6 +8,14 @@ interface PanelScrollChromeState {
   drawerPresentation?: DrawerShellPresentation;
   sheetSnap?: SheetSnap;
   /**
+   * True when this drawer's `sideOverlay` presentation is the short-height mobile/
+   * landscape side sheet with no wider layout to grow into; false when it is the
+   * constrained-regular tablet overlay, which shares the same presentation value but
+   * has real measurable width. Mirrors AppShellLayoutPolicy['drawer']['mapExclusive'].
+   * Omitted outside 'sideOverlay' presentations, where it is meaningless.
+   */
+  mapExclusive?: boolean;
+  /**
    * Freezes `hidden` at its current value regardless of scroll direction —
    * for a consumer (e.g. an open date-jump menu) whose own trigger must not
    * be swapped out from under it while the user scrolls the gallery beneath.

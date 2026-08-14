@@ -34,6 +34,7 @@ const ACTIVE_CELLS: readonly ActivationCell[] = [
   { sizeBand: 'constrained', heightBand: 'short', routeIntent: 'galleryWorkspace' },
   { sizeBand: 'constrained', heightBand: 'short', routeIntent: 'routeWorkspace' },
   { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'browse' },
+  { sizeBand: 'constrained', heightBand: 'regular', routeIntent: 'galleryWorkspace' },
   { sizeBand: 'wide', heightBand: 'regular', routeIntent: 'browse' },
   { sizeBand: 'wide', heightBand: 'regular', routeIntent: 'galleryWorkspace' },
   { sizeBand: 'wide', heightBand: 'regular', routeIntent: 'routeWorkspace' },

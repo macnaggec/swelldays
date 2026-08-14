@@ -652,4 +652,35 @@ test.describe('approved mobile spacing rhythm', () => {
       ).toBeLessThanOrEqual(page.viewportSize()!.width + 0.5);
     }
   });
+
+  test('keeps the tablet side overlay gallery date-jump chrome inside the drawer bounds', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto('/__mobile-layout-contract.html?displayMode=browser&presentation=sideOverlay');
+    await page.getByRole('button', { name: 'Gallery state' }).click();
+    // The date-jump control shares the pinned chrome slot with the search row (M03-h):
+    // it replaces the search row only once scrolled, exactly like every other sticky
+    // chrome replacement in this contract (see "gives returning Feed search and Gallery
+    // date chrome an 8px top gap" above) — scroll down to reach it before measuring it.
+    await page.getByRole('button', { name: 'Scroll down' }).click();
+
+    const drawer = page.getByRole('complementary', { name: 'Content drawer' });
+    await expect(drawer).toHaveAttribute('data-drawer-presentation', 'sideOverlay');
+    await waitForStableBox(drawer);
+
+    const dateJump = page.getByRole('button', { name: 'Jump to date' });
+    const [drawerBox, dateJumpBox] = await Promise.all([
+      drawer.boundingBox(),
+      dateJump.boundingBox(),
+    ]);
+    expect(drawerBox, 'drawer must be measurable').not.toBeNull();
+    expect(dateJumpBox, 'date-jump control must be measurable').not.toBeNull();
+    expect(
+      dateJumpBox!.x,
+      'date-jump control left edge must not extend past the drawer\'s own left edge',
+    ).toBeGreaterThanOrEqual(drawerBox!.x - 0.5);
+    expect(
+      dateJumpBox!.x + dateJumpBox!.width,
+      'date-jump control right edge must not overflow the drawer',
+    ).toBeLessThanOrEqual(drawerBox!.x + drawerBox!.width + 0.5);
+  });
 });

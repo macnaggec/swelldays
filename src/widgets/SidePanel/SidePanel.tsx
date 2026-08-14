@@ -67,6 +67,8 @@ export function SidePanelHeaderTrailing({ children }: { children: ReactNode }) {
 
 interface SidePanelProps {
   drawerPresentation?: DrawerShellPresentation;
+  /** Passed straight through to PanelScrollChromeState — see that interface's doc comment. */
+  mapExclusive?: boolean;
   drawerModality?: DrawerShellModality;
   /** Keeps a side overlay mounted while removing it from view and interaction. */
   open?: boolean;
@@ -114,6 +116,7 @@ interface SidePanelProps {
 
 export function SidePanel({
   drawerPresentation = 'persistent',
+  mapExclusive,
   drawerModality = 'nonmodal',
   open = true,
   navigation,
@@ -304,6 +307,7 @@ export function SidePanel({
           scrolledFromTop: scrollChromeState.scrolledFromTop,
           sheetSnap,
           drawerPresentation,
+          mapExclusive,
           pinChromeHidden: setChromePinned,
         }}
       >
