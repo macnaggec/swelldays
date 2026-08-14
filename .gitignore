@@ -157,8 +157,8 @@ dist
 # Codex CLI configuration
 .codex/
 
-# Transient implementation contract written by /dispatch-task
-.scratch/CONTRACT.md
+# Agent scratch workspace (issue tracker, /dispatch-task contract, etc.)
+.scratch/
 
 # Visual-regression capture run (roadmap F12h). Baselines under
 # tests/visual/__screenshots__/ are committed on purpose; everything below is
