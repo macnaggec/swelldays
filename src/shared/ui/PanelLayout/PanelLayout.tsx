@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useLayoutEffect,
   useRef,
@@ -24,6 +25,9 @@ const PanelLayoutFooterTargetContext = createContext<HTMLElement | null>(null);
 const PanelLayoutRailTargetContext = createContext<HTMLElement | null>(null);
 const PanelLayoutMetadataTargetContext = createContext<HTMLElement | null>(null);
 const PanelLayoutStickyChromeTargetContext = createContext<HTMLElement | null>(null);
+// Lets the row's own portaled content force an immediate remeasure the moment it
+// renders — see the effect below for why ResizeObserver alone isn't enough.
+const PanelLayoutStickyChromeRemeasureContext = createContext<(() => void) | null>(null);
 
 interface PanelLayoutProps {
   header?: ReactNode;
@@ -81,22 +85,30 @@ export function PanelLayout({
   // to the DOM-owned rendered height without exposing another layout interface.
   const scrollOwnerRef = useRef<HTMLDivElement | null>(null);
   const scrollOwnerMergedRef = useMergedRef(registerSheetScrollOwner, scrollOwnerRef);
-  useLayoutEffect(() => {
+  // A stable function instead of an effect-local closure so the row's own portaled
+  // content (PanelLayoutStickyChrome) can also call it directly, synchronously, the
+  // instant its own children change height — ResizeObserver alone only reports a
+  // change one frame after it already painted, which is late enough to show a card
+  // behind the row for that frame whenever the row's content changes after mount
+  // (new filter pills, search results settling in) rather than at mount itself.
+  const publishChromeHeight = useCallback(() => {
     const scrollOwner = scrollOwnerRef.current;
     const stickyChrome = stickyChromeTarget;
     if (!scrollOwner || !stickyChrome) return;
 
-    const publishChromeHeight = () => {
-      const height = stickyChrome.offsetHeight;
-      scrollOwner.style.setProperty('--wa-panel-chrome-height', `${height}px`);
-      scrollOwner.dataset.panelChromeHeight = String(hidden ? 0 : height);
-    };
+    const height = stickyChrome.offsetHeight;
+    scrollOwner.style.setProperty('--wa-panel-chrome-height', `${height}px`);
+    scrollOwner.dataset.panelChromeHeight = String(hidden ? 0 : height);
+  }, [stickyChromeTarget, hidden]);
+
+  useLayoutEffect(() => {
+    if (!scrollOwnerRef.current || !stickyChromeTarget) return;
     publishChromeHeight();
 
     const observer = new ResizeObserver(publishChromeHeight);
-    observer.observe(stickyChrome, { box: 'border-box' });
+    observer.observe(stickyChromeTarget, { box: 'border-box' });
     return () => observer.disconnect();
-  }, [hidden, scrolledFromTop, stickyChromeTarget, contentWidth]);
+  }, [publishChromeHeight, scrolledFromTop, stickyChromeTarget, contentWidth]);
 
   // The floating footer's own height, so the sheet-scoped `.content` can reserve exactly
   // that much bottom clearance and the footer never overlaps the last field it floats
@@ -140,6 +152,7 @@ export function PanelLayout({
       <PanelLayoutRailTargetContext.Provider value={railTarget}>
         <PanelLayoutMetadataTargetContext.Provider value={metadataTarget}>
           <PanelLayoutStickyChromeTargetContext.Provider value={stickyChromeTarget}>
+            <PanelLayoutStickyChromeRemeasureContext.Provider value={publishChromeHeight}>
             <div
               className={styles.root}
               data-panel-layout
@@ -190,6 +203,7 @@ export function PanelLayout({
                 data-panel-layout-footer
               />
             </div>
+            </PanelLayoutStickyChromeRemeasureContext.Provider>
           </PanelLayoutStickyChromeTargetContext.Provider>
         </PanelLayoutMetadataTargetContext.Provider>
       </PanelLayoutRailTargetContext.Provider>
@@ -238,7 +252,14 @@ export function PanelLayoutStickyChrome({
   spacing?: 'flush';
 }) {
   const stickyChromeTarget = useContext(PanelLayoutStickyChromeTargetContext);
+  const remeasure = useContext(PanelLayoutStickyChromeRemeasureContext);
   const { hidden } = usePanelScrollChromeState();
+  // Runs after every render of this row's own content — catches height changes
+  // (search results settling in, filter pills appearing) the instant they commit,
+  // rather than waiting on ResizeObserver's own next-frame notification.
+  useLayoutEffect(() => {
+    remeasure?.();
+  });
   return stickyChromeTarget
     ? createPortal(
       <div
@@ -260,7 +281,11 @@ export function PanelLayoutStickyChrome({
  */
 export function PanelLayoutStickyChromeReplacement({ children }: { children: ReactNode }) {
   const stickyChromeTarget = useContext(PanelLayoutStickyChromeTargetContext);
+  const remeasure = useContext(PanelLayoutStickyChromeRemeasureContext);
   const { hidden } = usePanelScrollChromeState();
+  useLayoutEffect(() => {
+    remeasure?.();
+  });
   return stickyChromeTarget
     ? createPortal(
       <div

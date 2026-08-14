@@ -280,6 +280,39 @@ describe('PanelLayoutStickyChrome', () => {
 
     expect(rowsPresent().every(Boolean)).toBe(true);
   });
+
+  it('reserves the scroll owner\'s top space for the chrome row\'s current real height the moment its content changes, without needing a resize observer callback', () => {
+    const layout = (tall: boolean) => (
+      <PanelLayout>
+        <PanelLayoutStickyChrome>
+          <div>Search</div>
+          {tall && <div>Filter pills</div>}
+        </PanelLayoutStickyChrome>
+        <div>Scrolled content</div>
+      </PanelLayout>
+    );
+
+    const { container, rerender } = render(layout(false));
+    const chrome = screen.getByText('Search').closest<HTMLElement>('[data-panel-scroll-chrome]');
+    const scrollOwner = container.querySelector<HTMLElement>('[data-panel-scroll-owner]');
+    if (!chrome || !scrollOwner) throw new Error('Panel chrome and scroll owner must render.');
+
+    let mockedHeight = 40;
+    Object.defineProperty(chrome, 'offsetHeight', {
+      configurable: true,
+      get: () => mockedHeight,
+    });
+
+    rerender(layout(false));
+    expect(scrollOwner.style.getPropertyValue('--wa-panel-chrome-height')).toBe('40px');
+
+    // The row grows (e.g. filter pills settling in) with no scroll and no
+    // resize-observer callback fired — only the row's own content changed.
+    mockedHeight = 80;
+    rerender(layout(true));
+
+    expect(scrollOwner.style.getPropertyValue('--wa-panel-chrome-height')).toBe('80px');
+  });
 });
 
 describe('PanelLayout sheet-bound visible height and floating footer', () => {
