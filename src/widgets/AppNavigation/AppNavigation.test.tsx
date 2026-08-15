@@ -34,40 +34,40 @@ vi.mock('./CartControl', () => ({
   CartControl: () => <button type="button" data-testid="cart-control">Cart</button>,
 }));
 
-vi.mock('./UserControl', () => ({
-  UserControl: () => <button type="button" data-testid="user-control">Account</button>,
+vi.mock('./MenuControl', () => ({
+  MenuControl: () => <button type="button" data-testid="menu-control">Menu</button>,
 }));
 
 describe('AppNavigation', () => {
-  it('always reserves the cart button slot, regardless of cart count — CartControl itself decides whether to show content', () => {
+  it('omits the cart button entirely when the cart is empty, so the stack shrinks around it', () => {
     mocks.isAuthenticated = false;
     mocks.count = 0;
 
     render(<AppNavigation presentation="leftStrip" drawerPresentation="persistent" />);
 
-    expect(screen.getByTestId('cart-control')).toBeInTheDocument();
+    expect(screen.queryByTestId('cart-control')).not.toBeInTheDocument();
   });
 
   it.each(['leftStrip', 'topBar', 'compactRail', 'compactBar'] as const)(
-    'reaches the account and cart destinations from a single set of controls in the %s presentation',
+    'reaches the menu and cart destinations from a single set of controls in the %s presentation',
     (presentation) => {
       mocks.isAuthenticated = true;
       mocks.count = 1;
 
       render(<AppNavigation presentation={presentation} drawerPresentation="persistent" />);
 
-      expect(screen.getByTestId('user-control')).toBeInTheDocument();
+      expect(screen.getByTestId('menu-control')).toBeInTheDocument();
       expect(screen.getAllByTestId('cart-control')).toHaveLength(1);
     },
   );
 
-  it('keeps Account before Cart in the constrained horizontal bar keyboard order', async () => {
+  it('keeps Menu before Cart in the constrained horizontal bar keyboard order', async () => {
     const user = userEvent.setup();
 
     render(<AppNavigation presentation="compactBar" drawerPresentation="sideOverlay" />);
 
     await user.tab();
-    expect(screen.getByRole('button', { name: 'Account' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Menu' })).toHaveFocus();
     await user.tab();
     expect(screen.getByRole('button', { name: 'Cart' })).toHaveFocus();
   });
@@ -78,14 +78,14 @@ describe('AppNavigation', () => {
 
     render(<AppNavigation presentation="hidden" drawerPresentation="hidden" />);
 
-    expect(screen.queryByTestId('user-control')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('menu-control')).not.toBeInTheDocument();
     expect(screen.queryByTestId('cart-control')).not.toBeInTheDocument();
   });
 
   it('marks the rail with the live drawer presentation, so CSS can center it over a sideWorkspace map strip instead of pinning it to the top corner', () => {
     render(<AppNavigation presentation="compactRail" drawerPresentation="sideWorkspace" />);
 
-    const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]');
+    const root = screen.getByTestId('menu-control').closest('[data-navigation-presentation]');
     expect(root).toHaveAttribute('data-drawer-presentation', 'sideWorkspace');
   });
 });
@@ -107,7 +107,7 @@ describe('BrowseSheetNavigation placement', () => {
   it('exposes no inert or aria-hidden attribute when the placement is visible', () => {
     renderWithPlacement({ topPx: 200, opacity: 1, hidden: false, live: false });
 
-    const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]');
+    const root = screen.getByTestId('menu-control').closest('[data-navigation-presentation]');
     expect(root).not.toHaveAttribute('inert');
     expect(root).not.toHaveAttribute('aria-hidden');
   });
@@ -115,7 +115,7 @@ describe('BrowseSheetNavigation placement', () => {
   it('marks the plate inert and aria-hidden once the placement reports hidden', () => {
     renderWithPlacement({ topPx: 0, opacity: 0, hidden: true, live: false });
 
-    const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]');
+    const root = screen.getByTestId('menu-control').closest('[data-navigation-presentation]');
     expect(root).toHaveAttribute('inert');
     expect(root).toHaveAttribute('aria-hidden', 'true');
   });
@@ -123,14 +123,14 @@ describe('BrowseSheetNavigation placement', () => {
   it('marks the plate as live-tracking while the sheet is being dragged', () => {
     renderWithPlacement({ topPx: 200, opacity: 1, hidden: false, live: true });
 
-    const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]');
+    const root = screen.getByTestId('menu-control').closest('[data-navigation-presentation]');
     expect(root).toHaveAttribute('data-navigation-tracking');
   });
 
   it('omits the live-tracking attribute when the placement is at rest', () => {
     renderWithPlacement({ topPx: 200, opacity: 1, hidden: false, live: false });
 
-    const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]');
+    const root = screen.getByTestId('menu-control').closest('[data-navigation-presentation]');
     expect(root).not.toHaveAttribute('data-navigation-tracking');
   });
 });
@@ -159,7 +159,7 @@ describe('NavigationSurface rail geometry', () => {
 
     render(<AppNavigation presentation="leftStrip" drawerPresentation="persistent" />);
 
-    const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]') as HTMLElement;
+    const root = screen.getByTestId('menu-control').closest('[data-navigation-presentation]') as HTMLElement;
     vi.spyOn(root, 'getBoundingClientRect').mockReturnValue(
       DOMRect.fromRect({ x: 0, y: 0, width: 60, height: 900 }),
     );
@@ -183,7 +183,7 @@ describe('AppNavigationSupplement', () => {
     expect(screen.queryByRole('button', { name: 'Uploads' })).not.toBeInTheDocument();
   });
 
-  it('portals content into the rail below the account/cart buttons when rendered as a sibling, matching the real composition root', () => {
+  it('portals content into the rail below the menu/cart buttons when rendered as a sibling, matching the real composition root', () => {
     // AppShell and the routed Outlet are mounted as siblings of each other at
     // the composition root (__root.tsx), never nested — this reproduces that
     // shape rather than nesting AppNavigationSupplement inside AppNavigation's
@@ -199,11 +199,11 @@ describe('AppNavigationSupplement', () => {
     );
 
     const button = screen.getByRole('button', { name: 'Uploads' });
-    const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]') as HTMLElement;
+    const root = screen.getByTestId('menu-control').closest('[data-navigation-presentation]') as HTMLElement;
     expect(root).toContainElement(button);
 
     // DOCUMENT_POSITION_FOLLOWING: the portaled button comes after the cart
-    // control in tree order, i.e. it renders below the account/cart buttons
+    // control in tree order, i.e. it renders below the menu/cart buttons
     // rather than above or interleaved between them.
     const cartControl = screen.getByTestId('cart-control');
     expect(cartControl.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING)
@@ -237,7 +237,7 @@ describe('AppNavigationFloating', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Uploads' })).toBeInTheDocument();
-    expect(screen.queryByTestId('user-control')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('menu-control')).not.toBeInTheDocument();
     expect(screen.queryByTestId('cart-control')).not.toBeInTheDocument();
   });
 
@@ -252,7 +252,7 @@ describe('AppNavigationFloating', () => {
     );
 
     const button = screen.getByRole('button', { name: 'Uploads' });
-    const root = screen.getByTestId('user-control').closest('[data-navigation-presentation]');
+    const root = screen.getByTestId('menu-control').closest('[data-navigation-presentation]');
     expect(root).not.toContainElement(button);
   });
 });

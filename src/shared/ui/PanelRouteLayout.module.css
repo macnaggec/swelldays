@@ -278,14 +278,34 @@
 
 .floatingControls {
   position: fixed;
-  top: 14px;
+  /* Matches AppNavigation's own .root top offset exactly (same formula as this
+     file's own .floatingSearchToolbar above) — this row sits right beside the
+     menu/cart buttons at compactBar width, and a mismatched offset here read as
+     the two rows not lining up even once their heights matched. */
+  top: calc(var(--wa-safe-area-top) + var(--wa-shell-edge-clearance));
   z-index: var(--wa-z-controls);
   display: flex;
   gap: 6px;
   align-items: center;
   visibility: hidden;
+  overflow-x: auto;
+  overflow-anchor: none;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.floatingControls::-webkit-scrollbar {
+  display: none;
 }
 
 .floatingControls[data-positioned] {
   visibility: visible;
+}
+
+/* This row is the bounded scroll owner (max-width set in FloatingPanelControls from
+   measured nav-rail/drawer geometry). Its child must hold its full natural width
+   instead of the default flex-shrink:1, so overflow scrolls here instead of the pills
+   squeezing narrower and wrapping onto a second line. */
+.floatingControls > * {
+  flex-shrink: 0;
 }

@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useCartStore } from 'entities/Commerce';
 import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
 import {
   publishNavigationFloatingTarget,
@@ -18,7 +19,6 @@ import {
   useNavigationSupplementTarget,
 } from 'shared/model/navigationSupplementTarget';
 import styles from './AppNavigation.module.css';
-import { materialClasses } from 'shared/ui/design-system';
 import {
   useBrowseSheetNavigationPlacement,
   useBrowseSurface,
@@ -26,7 +26,7 @@ import {
   type SheetSnap,
 } from 'shared/ui/DrawerShell';
 import { CartControl } from './CartControl';
-import { UserControl } from './UserControl';
+import { MenuControl } from './MenuControl';
 
 export interface AppNavigationProps {
   presentation: AppShellLayoutPolicy['navigation'];
@@ -58,6 +58,8 @@ function NavigationSurface({
       '--wa-browse-sheet-top': `${placement.topPx}px`,
       '--wa-browse-navigation-opacity': `${placement.opacity}`,
     };
+
+  const cartItemCount = useCartStore((state) => state.items.length);
 
   const rootRef = useRef<HTMLDivElement>(null);
   // A ref callback, not useState: AppNavigation and routed content mount as
@@ -106,16 +108,19 @@ function NavigationSurface({
       inert={hidden}
       aria-hidden={hidden || undefined}
     >
-      <div className={`${styles.stack} ${materialClasses.chrome}`}>
+      <div className={styles.stack}>
         <div className={styles.button}>
-          <UserControl />
+          <MenuControl />
         </div>
-        {/* Reserved even when the cart is empty (CartControl renders nothing then) so
-            adding the first item doesn't shift the account button or anything docked
-            beneath this bar. */}
-        <div className={styles.button}>
-          <CartControl />
-        </div>
+        {/* Mounted only once the cart has items, so an empty cart doesn't reserve a
+            slot — the stack's own measured box (see the ResizeObserver above)
+            shrinks with it, and anything sized against that measurement, like the
+            floating filter pills over the map, reclaims the freed width. */}
+        {cartItemCount > 0 && (
+          <div className={styles.button}>
+            <CartControl />
+          </div>
+        )}
         <div ref={setSupplementTarget} className={styles.supplement} />
       </div>
     </div>
@@ -142,8 +147,8 @@ function FloatingTargetAnchor(): ReactElement {
 }
 
 /**
- * A mount point inside AppNavigation's own account/cart stack, below the two
- * reserved buttons — for route-owned navigation content that belongs in real
+ * A mount point inside AppNavigation's own menu/cart stack, below its
+ * buttons — for route-owned navigation content that belongs in real
  * DOM flow there (e.g. a switcher docked below the icons on a landscape
  * phone). Renders nothing when mounted outside AppNavigation.
  */
@@ -153,7 +158,7 @@ export function AppNavigationSupplement({ children }: { children: ReactNode }): 
 }
 
 /**
- * A mount point beside AppNavigation's own account/cart stack, not inside it
+ * A mount point beside AppNavigation's own menu/cart stack, not inside it
  * — for content that positions itself with `position: fixed` against the
  * real viewport (e.g. a switcher pill centered over the drawer). Renders
  * nothing when mounted outside AppNavigation.

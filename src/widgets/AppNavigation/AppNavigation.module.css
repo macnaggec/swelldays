@@ -73,8 +73,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 8px;
-  border-radius: var(--wa-radius-chrome);
   align-items: center;
 }
 
@@ -91,15 +89,28 @@
   border-radius: var(--wa-radius-control-md);
   cursor: pointer;
   user-select: none;
+  /* Own frosted-glass fill per button — same tokens FilterPills reads (with the
+     same fallback chain) — since removing the stack's shared chrome panel above
+     left each icon with no fill of its own, and a plain outlined icon reads as
+     invisible over the map/gallery background it floats on. */
+  background: var(--wa-panel-control-background, var(--wa-control-fill));
+  backdrop-filter: var(--wa-panel-control-backdrop, var(--wa-glass-blur-sm));
+  -webkit-backdrop-filter: var(--wa-panel-control-backdrop, var(--wa-glass-blur-sm));
 }
 
-.root[data-navigation-presentation='topBar'] .button {
+/* compactBar sits its row directly beside FilterPills (same --wa-control-size-navigation-compact
+   breakpoints as the pills' own --wa-control-height-default — see tokens.css), so it gets the
+   same shrink-and-recenter treatment as topBar below: the visible button matches the pills'
+   height exactly, while an invisible ::before keeps the full-size tap target underneath. */
+.root[data-navigation-presentation='topBar'] .button,
+.root[data-navigation-presentation='compactBar'] .button {
   position: relative;
   width: var(--wa-control-size-navigation-compact);
   height: var(--wa-control-size-navigation-compact);
 }
 
-.root[data-navigation-presentation='topBar'] .button::before {
+.root[data-navigation-presentation='topBar'] .button::before,
+.root[data-navigation-presentation='compactBar'] .button::before {
   content: '';
   position: absolute;
   top: 50%;
