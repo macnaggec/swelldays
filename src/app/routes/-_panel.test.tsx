@@ -67,6 +67,10 @@ const mocks = vi.hoisted(() => ({
     search?: unknown;
   }>,
   params: {} as { spotId?: string },
+  // Consumed only by the Collections desktop header switcher's useTabNavigation
+  // call; no test in this file exercises a collections route match, so a fixed
+  // value is enough to keep PanelFrame from crashing on an un-mocked hook.
+  collectionsActiveTab: 'uploads',
   sizeBand: 'wide' as 'compact' | 'constrained' | 'wide',
   heightBand: 'regular' as 'short' | 'regular',
   renderRealFeedSearch: false,
@@ -118,6 +122,7 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mocks.navigate,
   useParams: () => mocks.params,
   useRouter: () => ({ history: { back: mocks.historyBack, canGoBack: () => mocks.canGoBack } }),
+  useRouterState: () => mocks.collectionsActiveTab,
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -313,6 +318,25 @@ vi.mock('widgets/SidePanel', () => ({
           Open session-1
         </button>
       )}
+    </div>
+  ),
+  CollectionsScopeSwitcher: ({
+    scope,
+    onChange,
+  }: {
+    scope: 'uploads' | 'purchases' | 'favorites';
+    onChange: (scope: 'uploads' | 'purchases' | 'favorites') => void;
+  }) => (
+    <div role="group" aria-label="Collections sections">
+      {(['uploads', 'purchases', 'favorites'] as const).map((key) => (
+        <button
+          key={key}
+          aria-pressed={scope === key}
+          onClick={scope === key ? undefined : () => onChange(key)}
+        >
+          {key}
+        </button>
+      ))}
     </div>
   ),
 }));
@@ -579,6 +603,7 @@ describe('Panel upload entry', () => {
   });
 
   it('floats the filter pills over the map when the all-spots gallery is compact', () => {
+    mocks.isAuthenticated = true;
     usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: false });
     mocks.matches = [{
       routeId: '/_panel/gallery',
@@ -1089,32 +1114,19 @@ describe('Panel favorites filter', () => {
     mocks.activeWorkspace = null;
   });
 
-  it('prompts for authentication without activating the filter when signed out', () => {
+  it('hides the favorites filter pill when signed out', () => {
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
-    const favorites = screen.getByRole('button', { name: 'Favorites' });
-    fireEvent.click(favorites);
-
-    expect(mocks.openAuth).toHaveBeenCalledTimes(1);
-    expect(favorites).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByRole('button', { name: 'Favorites' })).not.toBeInTheDocument();
   });
 
-  it('applies the filter the visitor asked for once they sign in', () => {
+  it('shows the favorites filter pill once signed in', () => {
+    mocks.isAuthenticated = true;
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
-    const favorites = screen.getByRole('button', { name: 'Favorites' });
-    fireEvent.click(favorites);
-
-    const { onAuthenticated } = mocks.openAuth.mock.calls[0]?.[0] as { onAuthenticated: () => void };
-    expect(favorites).toHaveAttribute('aria-pressed', 'false');
-
-    act(() => {
-      onAuthenticated();
-    });
-
-    expect(screen.getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Favorites' })).toBeInTheDocument();
   });
 
   it('keeps the favorite-spots filter available and active after switching to gallery', () => {

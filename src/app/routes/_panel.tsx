@@ -15,9 +15,11 @@ import { useCartStore } from 'entities/Commerce';
 import { CartDrawerHeader } from 'features/Cart';
 import { useUploadStore } from 'features/Upload';
 import { useAddSpotStore } from 'features/AddSpot';
-import { ScopeSwitcher } from 'widgets/SidePanel';
+import { ScopeSwitcher, CollectionsScopeSwitcher } from 'widgets/SidePanel';
 import { FeedSearch } from 'widgets/FeedDrawer';
 import { FilterPills } from 'widgets/SidePanel';
+import { COLLECTION_TAB_ROUTES, isCollectionTab } from 'features/Collections';
+import { useTabNavigation } from 'shared/hooks';
 import {
   FloatingPanelSearchToolbar,
   FloatingPanelControls,
@@ -133,6 +135,8 @@ function PanelFrame({ children }: { children: ReactNode }) {
     isAddSpotActive ? 'immersiveMapInput' : undefined,
   );
   const layoutPolicy = useAppShellLayoutPolicy();
+  const { activeTab: rawCollectionsTab, handleTabChange: handleCollectionsTabChange } =
+    useTabNavigation(COLLECTION_TAB_ROUTES);
 
   const cartMatch = matches.find((match) => match.routeId === '/_panel/cart');
   const spotMatch = matches.find((match) => match.routeId === '/_panel/$spotId');
@@ -140,19 +144,15 @@ function PanelFrame({ children }: { children: ReactNode }) {
   const spotGalleryMatch = matches.find((match) => match.routeId === '/_panel/$spotId/gallery');
   const allGalleryMatch = matches.find((match) => match.routeId === '/_panel/gallery');
   const galleryMatch = spotGalleryMatch ?? allGalleryMatch;
+  const collectionsMatch = matches.find((match) => match.routeId === '/_panel/me/collections');
   const sessionDetailMatch = matches.find((match) => match.routeId === '/_panel/$spotId/session/$sessionId');
   const cameFromCollections = (sessionDetailMatch?.search as { from?: string } | undefined)?.from === 'collections';
   const isDefaultIndex = matches.some((match) => match.routeId === '/_panel/');
   const showsBrowseResults = isDefaultIndex || Boolean(spotMatch && !sessionDetailMatch) || Boolean(allGalleryMatch);
 
   const handleFavoritesChange = useCallback((value: boolean) => {
-    const submit = () => setFavoriteSpotsOnly(value);
-    if (!isAuthenticated) {
-      openAuthModal({ onAuthenticated: submit });
-      return;
-    }
-    submit();
-  }, [isAuthenticated, openAuthModal, setFavoriteSpotsOnly]);
+    setFavoriteSpotsOnly(value);
+  }, [setFavoriteSpotsOnly]);
 
   const cartFrom = cartMatch
     ? (cartMatch.search as { from?: string }).from
@@ -342,6 +342,21 @@ function PanelFrame({ children }: { children: ReactNode }) {
       return <Title order={1} size="h6">{activeWorkspace?.kind === 'SESSION_EDIT' ? 'Edit session' : 'Upload'}</Title>;
     }
 
+    // Desktop has room to dock the Uploads/Purchases/Favorites switcher directly in the
+    // header, so it replaces the plain "My Collections" title there instead of floating
+    // over the page (CollectionsSectionBar keeps that floating treatment everywhere else).
+    if (collectionsMatch && layoutPolicy.navigation === 'leftStrip') {
+      const collectionsTab = rawCollectionsTab && isCollectionTab(rawCollectionsTab)
+        ? rawCollectionsTab
+        : 'uploads';
+      return (
+        <CollectionsScopeSwitcher
+          scope={collectionsTab}
+          onChange={handleCollectionsTabChange}
+        />
+      );
+    }
+
     for (const match of [...matches].reverse()) {
       const panelHeader = (match.staticData as { panelHeader?: string }).panelHeader;
       if (panelHeader) return <Title order={1} size="h4">{panelHeader}</Title>;
@@ -397,7 +412,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
               active={filters.date}
               onChange={setDateFilter}
               favoritesOnly={filters.favoriteSpotsOnly}
-              onFavoritesChange={showsBrowseResults ? handleFavoritesChange : undefined}
+              onFavoritesChange={showsBrowseResults && isAuthenticated ? handleFavoritesChange : undefined}
               horizontalScroll={usesFloatingBrowseSections}
             />
           </>
@@ -431,7 +446,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
                 active={filters.date}
                 onChange={setDateFilter}
                 favoritesOnly={filters.favoriteSpotsOnly}
-                onFavoritesChange={showsBrowseResults ? handleFavoritesChange : undefined}
+                onFavoritesChange={showsBrowseResults && isAuthenticated ? handleFavoritesChange : undefined}
               />
             </FloatingPanelControls>
           )}
