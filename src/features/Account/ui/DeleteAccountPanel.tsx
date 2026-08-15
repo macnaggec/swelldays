@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button, Checkbox, Group, Modal, Stack, Text } from '@mantine/core';
 import { IconAlertTriangle, IconClockHour4 } from '@tabler/icons-react';
 import { formatPrice } from 'shared/lib/currency';
+import materials from 'shared/ui/design-system/materials.module.css';
 import classes from './DeleteAccountPanel.module.css';
 
 export interface DeleteAccountPanelProps {
@@ -69,7 +70,7 @@ export function DeleteAccountPanel({
   );
 
   return (
-    <section className={classes.root} aria-label="Delete account">
+    <section className={`${materials.panel} ${classes.root}`} aria-label="Delete account">
       <div>
         <Text component="h2" className={classes.title}>
           Delete account

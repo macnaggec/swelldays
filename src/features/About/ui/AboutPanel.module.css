@@ -1,0 +1,64 @@
+.root {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 8px 8px 24px;
+}
+
+.intro {
+  max-width: 62ch;
+  color: var(--wa-text-muted);
+  font-size: var(--wa-font-size-base);
+  line-height: 1.55;
+}
+
+.divider {
+  height: 1px;
+  background: var(--wa-control-fill-muted);
+}
+
+.cardStack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  padding: 20px;
+  border-radius: var(--wa-radius-panel);
+}
+
+.cardIcon {
+  color: var(--wa-text-primary);
+  background: var(--wa-control-fill);
+  border: 1px solid var(--wa-control-border);
+}
+
+.cardTitle {
+  margin: 0;
+  color: var(--wa-text-strong);
+  font-size: var(--wa-font-size-lg);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.cardBody {
+  margin-top: 8px;
+  max-width: 56ch;
+  color: var(--wa-text-muted);
+  font-size: var(--wa-font-size-base);
+  line-height: 1.55;
+}
+
+.feedbackLink {
+  color: var(--wa-accent-spot);
+}

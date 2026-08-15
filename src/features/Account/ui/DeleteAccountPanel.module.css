@@ -1,19 +1,10 @@
-/* The dialog surface, not the lighter panel glass: this card must stay legible
-   whatever the globe is doing behind it, and a destructive zone should read as
-   more grounded than ambient chrome. The corner wash echoes the Ledger balance
-   card's gradient in danger red rather than green: same language, opposite intent. */
 .root {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 18px;
-  overflow: hidden;
   padding: 24px;
   border-radius: var(--wa-radius-panel);
-  background:
-    radial-gradient(circle at 92% 5%, rgba(255, 77, 109, 0.16), transparent 38%),
-    var(--wa-surface-dialog);
 }
 
 .title {
