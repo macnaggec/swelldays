@@ -18,7 +18,6 @@ import { useViewportMetrics } from 'shared/model/viewportMetrics';
 import { dismissActiveTextEntry } from 'shared/lib/dismissActiveTextEntry';
 import {
   PANEL_COMPACT_MIN_WIDTH_PX,
-  PANEL_WIDTH_VW,
   resolvePanelWidthPx,
 } from 'shared/model/panelExpansionStore';
 import { materialClasses } from 'shared/ui/design-system';
@@ -332,10 +331,6 @@ export function DrawerShell(props: DrawerShellProps) {
   // later from onAnimationStart: for that one frame consumers would otherwise see the
   // destination scale while still trusting a measurement taken at the old width, and
   // size themselves from the two mixed together.
-  const restingKey = resting.key;
-  const previousPanelVw = restingKey === 'expanded' || restingKey === 'compact'
-    ? PANEL_WIDTH_VW[restingKey]
-    : null;
   const destinationWidth = props.presentation === 'bottomSheet'
     ? resting.width
     // The side overlay's own width never changes between open and closed — only its
@@ -345,9 +340,15 @@ export function DrawerShell(props: DrawerShellProps) {
       ? targetWidthPx
       : props.presentation === 'fullScreen' || props.presentation === 'sideWorkspace'
         ? panelOpen ? targetWidthPx : 0
-        : resting.width > 0 && previousPanelVw !== null
-          ? resting.width * (PANEL_WIDTH_VW[props.state] / previousPanelVw)
-          : 0;
+        // Persistent's own targetWidthPx already resolves compact's floor
+        // (resolvePanelWidthPx) — reused directly rather than tripling the last
+        // resting width by the states' vw ratio, which assumed compact is always
+        // exactly a third of expanded. Below a 1440px viewport that assumption
+        // breaks (compact holds its 360px floor instead of shrinking with it), so
+        // the tripled guess overshot the real destination for the whole toggle and
+        // content only corrected once the animation finished and a fresh
+        // measurement landed.
+        : targetWidthPx;
 
   const settledWidth = useMemo(
     () => ({
