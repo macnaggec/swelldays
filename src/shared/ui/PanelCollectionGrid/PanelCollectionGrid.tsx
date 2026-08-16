@@ -24,6 +24,7 @@ interface PanelCollectionAnchor {
   node: Element;
   contentTop: number;
   offsetFromScrollOwnerTop: number;
+  chromeHeightAtCapture: number;
 }
 
 interface PendingScrollIsolation {
@@ -55,27 +56,23 @@ function contentTop(element: Element, scrollOwner: HTMLElement): number {
   return top;
 }
 
+/**
+ * How much of the scroll owner's own top edge is currently reserved for PanelLayout's
+ * pinned search/filter row — 0 if there is none. Read here only to tell apart *why* an
+ * anchor's contentTop shrank: this row relocating or disappearing entirely between the
+ * anchor's capture and a later recheck is not a change to the anchor's own layout, and
+ * should not be propped back up as a permanent, visibly empty head runway the way a
+ * genuine recolumn shift is (see the correction effect below).
+ */
+function visibleChromeHeight(scrollOwner: HTMLElement): number {
+  return Number(scrollOwner.dataset.panelChromeHeight ?? '0');
+}
+
 function layoutContentBottom(scrollOwner: HTMLElement): number {
   return Array.from(scrollOwner.children).reduce((bottom, child) => {
     const element = child as HTMLElement;
     return Math.max(bottom, contentTop(element, scrollOwner) + element.offsetHeight);
   }, scrollOwner.clientHeight);
-}
-
-/**
- * How much of the scroll owner's own top edge PanelLayout's pinned search/filter row
- * currently covers — 0 if there is none, or if it is hidden (slid away on scroll-down).
- * PanelLayout publishes this itself, as `data-panel-chrome-height` on the scroll owner:
- * that row sits in normal flow ahead of the grid (so it does not shift any card's own
- * layout position), then pins visually over whatever content scrolls beneath it. A card
- * whose content position crosses the scroll owner's raw `scrollTop` can still be
- * entirely covered by this row — visible to the DOM, not to the photographer — so
- * picking an anchor by raw `scrollTop` alone could anchor a card they cannot actually
- * see, and the card they *can* see would then land wherever this row's own height
- * happens to put it, one drawer generation to the next.
- */
-function visibleChromeHeight(scrollOwner: HTMLElement): number {
-  return Number(scrollOwner.dataset.panelChromeHeight ?? '0');
 }
 
 /**
@@ -148,11 +145,16 @@ export function PanelCollectionGrid({
     const grid = gridNodeRef.current;
     const scrollOwner = grid?.closest<HTMLElement>('[data-panel-scroll-owner]');
     if (!grid || !scrollOwner) return;
-    const chromeHeight = visibleChromeHeight(scrollOwner);
-    const visibleTop = scrollOwner.scrollTop + chromeHeight;
+    // No separate pinned-row-height term here: PanelLayout's pinned search/filter row
+    // reserves its space as real padding-block-start on scrollOwner (published as
+    // data-panel-chrome-height so CSS and this measurement can never disagree), and a
+    // normal-flow card's own contentTop is spec'd relative to scrollOwner's padding
+    // edge — so that reserved height is already inside every card's contentTop, for
+    // free. Adding it again here double-counted it, always picking a card one pinned-
+    // row-height too early as the anchor.
     const cards = Array.from(grid.children);
     const anchor = cards.find(
-      (card) => contentTop(card, scrollOwner) + (card as HTMLElement).offsetHeight > visibleTop,
+      (card) => contentTop(card, scrollOwner) + (card as HTMLElement).offsetHeight > scrollOwner.scrollTop,
     ) ?? cards[0];
     if (!anchor) {
       anchorRef.current = null;
@@ -164,6 +166,7 @@ export function PanelCollectionGrid({
       node: anchor,
       contentTop: anchorContentTop,
       offsetFromScrollOwnerTop: anchorContentTop - scrollOwner.scrollTop,
+      chromeHeightAtCapture: visibleChromeHeight(scrollOwner),
     };
   }, []);
 
@@ -350,12 +353,17 @@ function PanelCollectionAnchorCorrection({
       return;
     }
 
+    // How much the pinned row above the anchor has shrunk since capture (0 if it grew,
+    // held steady, or was never there) — forgiven below so that shrink alone can never
+    // read as the anchor's own content having moved. A genuine recolumn or other real
+    // layout shift still shows up in `contentTop` untouched and is still compensated.
+    const chromeDrop = Math.max(0, anchor.chromeHeightAtCapture - visibleChromeHeight(scrollOwner));
     let desiredScrollTop = contentTop(anchor.node, scrollOwner)
-      - anchor.offsetFromScrollOwnerTop;
+      - anchor.offsetFromScrollOwnerTop + chromeDrop;
     if (desiredScrollTop < 0) {
       grid.style.setProperty(SCROLL_HEAD_RUNWAY_PROPERTY, `${-desiredScrollTop}px`);
       desiredScrollTop = contentTop(anchor.node, scrollOwner)
-        - anchor.offsetFromScrollOwnerTop;
+        - anchor.offsetFromScrollOwnerTop + chromeDrop;
     }
 
     const gridBottom = contentTop(grid, scrollOwner) + grid.offsetHeight;

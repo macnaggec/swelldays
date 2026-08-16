@@ -178,6 +178,19 @@ describe('PanelCollectionGrid scroll anchoring', () => {
     const rowHeight = (element: Element) => Number(
       element.closest<HTMLElement>('[data-row-height]')?.dataset.rowHeight ?? ROW_HEIGHT,
     );
+    // Real CSS, not a simplification: .scroller (the scroll owner) carries
+    // `padding-block-start: var(--wa-panel-chrome-height)`, and PanelLayout publishes
+    // that same value as `data-panel-chrome-height` on the very same element. A normal-
+    // flow descendant's offsetTop is spec'd relative to its offsetParent's PADDING edge,
+    // so that padding is not a separate, parallel fact from a card's own offsetTop — it
+    // is already baked into it, for every card, before either headRunway or the row math
+    // below. The production code's own chromeHeight term (visibleChromeHeight, read
+    // separately in captureAnchor) is for how much of a card is COVERED by the pinned
+    // row's fixed overlay, a distinct fact from where the card actually sits in the
+    // scrollable content — conflating the two is exactly the bug this stub now exposes.
+    const chromeHeight = (element: Element) => Number(
+      element.closest<HTMLElement>('[data-panel-scroll-owner]')?.dataset.panelChromeHeight ?? '0',
+    );
 
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
       if (this.hasAttribute('data-panel-scroll-owner')) {
@@ -201,7 +214,7 @@ describe('PanelCollectionGrid scroll anchoring', () => {
       const height = rowHeight(this);
       return DOMRect.fromRect({
         x: 0,
-        y: gridTopOffset + headRunway + (row * height) - scrollOwner.scrollTop,
+        y: chromeHeight(this) + gridTopOffset + headRunway + (row * height) - scrollOwner.scrollTop,
         width: 400 / columns,
         height,
       });
@@ -239,10 +252,14 @@ describe('PanelCollectionGrid scroll anchoring', () => {
         const grid = this.closest('[data-panel-collection-grid]');
         if (!grid) return 0;
         if (this === grid) {
-          return Number.parseFloat(
+          return chromeHeight(this) + (Number.parseFloat(
             this.style.getPropertyValue('--wa-panel-collection-scroll-head-runway'),
-          ) || 0;
+          ) || 0);
         }
+        // No chromeHeight term here: this offsetTop is relative to the grid root (this
+        // element's offsetParent, below), not scrollOwner directly — contentTop()'s own
+        // walk picks up scrollOwner's padding at the grid root's hop, one line up. Adding
+        // it again at every card would double it a second time, same bug as production's.
         const columns = Number(grid.getAttribute('data-columns') ?? '1');
         const index = Array.from(grid.children).indexOf(this);
         if (index === -1) return 0;
@@ -659,13 +676,15 @@ describe('PanelCollectionGrid scroll anchoring', () => {
 
     const scrollOwner = container.querySelector('[data-panel-scroll-owner]') as HTMLElement;
     const grid = container.querySelector('[data-panel-collection-grid]') as HTMLElement;
-    // At scrollTop 50, with a 100px row and a 150px pinned row, cards 0 ([0,100)) and 1
-    // ([100,200)) are both still entirely covered by the pinned row — the photographer's
-    // first actually-visible card is card 2 ([200,300)).
+    // The pinned row's 150px is real padding-block-start on scrollOwner, so it is
+    // already inside every card's own contentTop (content-space [150,250) for card 0,
+    // [250,350) for card 1, [350,450) for card 2). At scrollTop 400, cards 0 and 1
+    // ([150,250) and [250,350)) are both entirely scrolled past the visible top —
+    // the photographer's first actually-visible card is card 2 ([350,450)).
     const trackedCard = () => grid.children[2] as HTMLElement;
 
     resizeObserver.emit(300);
-    scrollOwner.scrollTop = 50;
+    scrollOwner.scrollTop = 400;
     act(() => {
       scrollOwner.dispatchEvent(new Event('scroll'));
     });
@@ -674,6 +693,71 @@ describe('PanelCollectionGrid scroll anchoring', () => {
     resizeObserver.emit(1020);
 
     expect(trackedCard().getBoundingClientRect().top).toBe(offsetBeforeRecolumn);
+  });
+
+  it('does not introduce a head runway when the pinned row settles to a shorter height after the anchor was captured', () => {
+    const resizeObserver = stubResizeObserver();
+    stubGridLayout();
+
+    const atChromeHeight = (chromeHeightPx: number) => (
+      <div data-panel-scroll-owner data-panel-chrome-height={chromeHeightPx}>
+        <PanelCollectionGrid>{SIX_CARDS}</PanelCollectionGrid>
+      </div>
+    );
+
+    const { container, rerender } = render(atChromeHeight(120));
+    const scrollOwner = container.querySelector('[data-panel-scroll-owner]') as HTMLElement;
+    const grid = container.querySelector('[data-panel-collection-grid]') as HTMLElement;
+
+    resizeObserver.emit(300);
+    scrollOwner.scrollTop = 400;
+    act(() => {
+      scrollOwner.dispatchEvent(new Event('scroll'));
+    });
+
+    // The pinned row settles to its real, shorter height (e.g. a transient one-render
+    // expanded-style toolbar correcting itself back to a single search line) — nothing
+    // about the grid's own columns or width changes from this alone.
+    rerender(atChromeHeight(68));
+
+    // A later, genuinely unrelated layout event — a recolumn — is the next thing that
+    // actually re-checks the anchor against current geometry.
+    resizeObserver.emit(1020);
+
+    expect(grid.style.getPropertyValue('--wa-panel-collection-scroll-head-runway')).toBe('');
+  });
+
+  it('does not introduce a head runway when the pinned row disappears before the photographer has scrolled', () => {
+    // Reproduces the My Collections defect (2026-08-16): the pinned row is present
+    // at mount, then relocates away entirely (e.g. into the panel header on a wider
+    // band) before the photographer has scrolled at all. The card that was captured
+    // as the anchor genuinely does sit higher once that row is gone, but the scroll
+    // owner is still at its own top edge — there is no scrolled-away position to
+    // protect, so no head runway should appear. The sibling test above covers the
+    // same row-shrink shape after a real scroll to a nonzero position.
+    const resizeObserver = stubResizeObserver();
+    stubGridLayout();
+
+    const atChromeHeight = (chromeHeightPx: number) => (
+      <div data-panel-scroll-owner data-panel-chrome-height={chromeHeightPx}>
+        <PanelCollectionGrid>{SIX_CARDS}</PanelCollectionGrid>
+      </div>
+    );
+
+    const { container, rerender } = render(atChromeHeight(52));
+    const grid = container.querySelector('[data-panel-collection-grid]') as HTMLElement;
+
+    resizeObserver.emit(300);
+
+    // The pinned row relocates away entirely — nothing about the grid's own columns
+    // or width changes from this alone.
+    rerender(atChromeHeight(0));
+
+    // A later, genuinely unrelated layout event — a recolumn — is the next thing that
+    // actually re-checks the anchor against current geometry.
+    resizeObserver.emit(1020);
+
+    expect(grid.style.getPropertyValue('--wa-panel-collection-scroll-head-runway')).toBe('');
   });
 
   it('does not move an already-visible card when new cards are appended below it', () => {
