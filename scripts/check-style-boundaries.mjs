@@ -459,8 +459,8 @@ const requiredCompactBrowseNavigationStyles = [
 
 const requiredCollectionsToolbarStyles = [
   [
-    'compact width in the landscape workspace header',
-    /\.spotSelectHeader\s*\{[^}]*max-width:\s*min\(140px,\s*100%\)/s,
+    'content-fit width capped in the landscape workspace header',
+    /\.spotSelectHeader\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*min\(140px,\s*100%\)/s,
   ],
   [
     'equal vertical breathing room in the landscape workspace header',

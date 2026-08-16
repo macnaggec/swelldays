@@ -7,8 +7,19 @@
 }
 
 .spotSelectHeader {
+  width: fit-content;
   max-width: min(140px, 100%);
   margin-block: 4px;
+}
+
+/* Desktop's header-trailing slot sizes this control to match the switcher's own
+   height exactly (both resolve --wa-control-height-default), so it skips the
+   landscape workspace header's own margin-block — that margin exists there to
+   center a shorter control against a taller back button, which doesn't apply
+   here and would otherwise inflate this control's row past the switcher's
+   height, centering the switcher inside slack it doesn't need. */
+.spotSelectHeaderDesktop {
+  max-width: min(140px, 100%);
 }
 
 .spotSelect :global(.mantine-Input-input) {
@@ -16,7 +27,6 @@
   height: var(--wa-control-height-default);
   border-radius: 20px;
   color: var(--wa-text-status);
-  font-size: var(--wa-font-size-input);
 }
 
 .spotSelect :global(.mantine-Input-input::placeholder) {
