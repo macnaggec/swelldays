@@ -1,7 +1,10 @@
-import type { ReactNode } from 'react';
-import { useDrawerAdjacentInlineEndInset, useDrawerMoving } from 'shared/ui/DrawerShell';
+import type { CSSProperties, ReactNode } from 'react';
+import { useDrawerAdjacentInlineEndInset, useDrawerGeometry, useDrawerMoving } from 'shared/ui/DrawerShell';
+import { useNavigationRailGeometry } from 'shared/model/navigationRailGeometry';
 import { materialClasses } from 'shared/ui/design-system';
 import styles from './PanelRouteLayout.module.css';
+
+const FLOATING_CONTROLS_EDGE_GAP_PX = 8;
 
 interface PanelRouteLayoutProps {
   header?: ReactNode;
@@ -122,7 +125,9 @@ export function PanelRouteActionButton({
 }
 
 export function FloatingPanelControls({ children }: { children: ReactNode }) {
-  const inlineEndInset = useDrawerAdjacentInlineEndInset(8);
+  const inlineEndInset = useDrawerAdjacentInlineEndInset(FLOATING_CONTROLS_EDGE_GAP_PX);
+  const drawerGeometry = useDrawerGeometry();
+  const navRailGeometry = useNavigationRailGeometry();
   const drawerMoving = useDrawerMoving();
 
   // These sit beside the panel rather than in it, so there is no honest place for them
@@ -131,12 +136,25 @@ export function FloatingPanelControls({ children }: { children: ReactNode }) {
   // it was. They wait until it has arrived, then appear.
   if (drawerMoving) return null;
 
+  // Bounded by the same two chrome pieces it floats between — the nav rail/menu bar on
+  // one side, the drawer on the other — measured the same way the drawer's own inset is
+  // (drawer-shell-owns-adjacent-control-placement forbids a viewport-fraction formula
+  // here). A narrower band (tablet) that can't fit every pill scrolls within this bound
+  // instead of wrapping or running under either chrome piece — see .floatingControls.
+  const maxWidthPx = drawerGeometry && navRailGeometry
+    ? Math.max(0, drawerGeometry.left - navRailGeometry.right - 2 * FLOATING_CONTROLS_EDGE_GAP_PX)
+    : undefined;
+
+  const style: CSSProperties | undefined = inlineEndInset === null && maxWidthPx === undefined
+    ? undefined
+    : { insetInlineEnd: inlineEndInset ?? undefined, maxWidth: maxWidthPx };
+
   return (
     <div
       className={styles.floatingControls}
       data-floating-panel-controls
       data-positioned={inlineEndInset !== null || undefined}
-      style={inlineEndInset === null ? undefined : { insetInlineEnd: inlineEndInset }}
+      style={style}
     >
       {children}
     </div>

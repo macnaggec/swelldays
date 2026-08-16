@@ -1,0 +1,82 @@
+.trigger {
+  color: var(--wa-text-primary);
+  border: 1px solid var(--wa-control-indicator);
+  border-radius: var(--wa-radius-control-md);
+  transition: transform var(--wa-motion-duration-control) var(--wa-motion-easing-standard);
+}
+
+.trigger[data-opened] {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trigger {
+    transition: none;
+  }
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 10px;
+}
+
+.identityText {
+  flex: 1;
+  min-width: 0;
+}
+
+.identityName {
+  color: var(--wa-text-strong);
+  font-size: var(--wa-font-size-base);
+  font-weight: 650;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identityEmail {
+  margin-top: 2px;
+  color: var(--wa-text-muted);
+  font-size: var(--wa-font-size-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Same danger-tinted pill language as DeleteAccountPanel's destructive action,
+   sized to match the avatar circle beside it and shaped to match the menu
+   trigger's outline for a consistent border language across the two controls. */
+.signOut {
+  flex-shrink: 0;
+  color: var(--wa-status-danger);
+  background: rgba(255, 77, 109, 0.14);
+  border: 1px solid rgba(255, 77, 109, 0.34);
+  border-radius: var(--wa-radius-control-md);
+  transition:
+    background var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    border-color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    transform var(--wa-motion-duration-control) var(--wa-motion-easing-standard);
+}
+
+.signOut:hover {
+  color: var(--wa-status-danger);
+  background: rgba(255, 77, 109, 0.22);
+  border-color: rgba(255, 77, 109, 0.5);
+}
+
+.signOut:active {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signOut {
+    transition: none;
+  }
+
+  .signOut:active {
+    transform: none;
+  }
+}

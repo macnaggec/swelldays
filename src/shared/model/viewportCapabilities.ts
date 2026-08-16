@@ -64,19 +64,26 @@ export function getViewportCapabilitiesSnapshot(): ViewportCapabilities {
   const viewportHeightPx = window.innerHeight;
   const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
   const finePointer = window.matchMedia('(pointer: fine)').matches;
+  // 'short' means landscape-constrained — genuinely not enough vertical room for a
+  // bottom sheet — not merely a small screen. An upright phone that happens to be
+  // short (e.g. a compact device's own portrait height) keeps 'regular': it is
+  // narrower, not shorter-for-its-width, and a bottom sheet still fits it fine.
+  const isRegularHeight = viewportHeightPx >= REGULAR_MIN_HEIGHT_PX || viewportWidthPx <= viewportHeightPx;
   const nextSnapshot: ViewportCapabilities = {
+    // The constrained-regular tablet cell (Phase T) is retired in favor of reusing
+    // desktop's own `wide` presentation at that width — product decision, 2026-08-15,
+    // superseding T00–T04 (see docs/roadmaps/responsive-layout-foundation.md, Phase T).
+    // Gated on regular height alone: the constrained-*short* cell (landscape phones,
+    // Phase M, already approved and shipped) is a different, untouched piece of work
+    // that happens to share this width range — narrowing here, not widening Phase T's
+    // retirement into Phase M's, keeps that cell's own tested camera/map behavior
+    // exactly as it was.
     sizeBand: viewportWidthPx >= WIDE_MIN_WIDTH_PX
       ? 'wide'
       : viewportWidthPx >= CONSTRAINED_MIN_WIDTH_PX
-        ? 'constrained'
+        ? (isRegularHeight ? 'wide' : 'constrained')
         : 'compact',
-    // 'short' means landscape-constrained — genuinely not enough vertical room for a
-    // bottom sheet — not merely a small screen. An upright phone that happens to be
-    // short (e.g. a compact device's own portrait height) keeps 'regular': it is
-    // narrower, not shorter-for-its-width, and a bottom sheet still fits it fine.
-    heightBand: viewportHeightPx >= REGULAR_MIN_HEIGHT_PX || viewportWidthPx <= viewportHeightPx
-      ? 'regular'
-      : 'short',
+    heightBand: isRegularHeight ? 'regular' : 'short',
     primaryPointer: coarsePointer ? 'coarse' : finePointer ? 'fine' : 'none',
     supportsHover: window.matchMedia('(hover: hover)').matches,
     prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,

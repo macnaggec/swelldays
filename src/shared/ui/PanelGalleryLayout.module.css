@@ -14,3 +14,13 @@
 .galleryInset {
   padding: var(--wa-panel-content-inset);
 }
+
+/* Desktop's own persistent panel, and landscape phone/tablet's sideWorkspace
+   panel (Uploads/Purchases/Favorites under My Collections, Account, Earnings,
+   Cart), both keep this content flush against their header row (no top
+   inset); every other presentation (portrait mobile, tablet portrait) keeps
+   the ordinary inset on all four sides. */
+:global([data-panel-layout][data-drawer-presentation='persistent']) .galleryInset,
+:global([data-panel-layout][data-drawer-presentation='sideWorkspace']) .galleryInset {
+  padding-block-start: 0;
+}

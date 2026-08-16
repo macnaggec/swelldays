@@ -127,9 +127,18 @@ export function deriveAppShellLayoutPolicy(
     : routeIntent === 'routeWorkspace'
       ? 'background'
       : 'interactive';
-  const panelControls = routeIntent === 'browse' || routeIntent === 'galleryWorkspace'
-    ? sizeBand === 'wide' ? 'adjacent' : 'insideDrawer'
-    : 'hidden';
+  // Floating controls assume the drawer sits persistently beside an always-interactive
+  // map — true for wide, and for constrained-regular (T01, 2026-08-14: fixed drawer width
+  // across states, coexisting map). Compact's drawer genuinely narrows when collapsed, and
+  // the short-height side sheet is a map/results *toggle* rather than a coexisting pair, so
+  // both keep their controls inside the drawer instead. Constrained-regular reversed to
+  // float on 2026-08-15 after user review; see the T01 roadmap task for the superseded
+  // in-drawer-only note.
+  const panelControls = routeIntent !== 'browse' && routeIntent !== 'galleryWorkspace'
+    ? 'hidden'
+    : sizeBand !== 'compact' && !mapExclusive
+      ? 'adjacent'
+      : 'insideDrawer';
 
   return {
     // The account/cart controls use the wide left strip, the vertical rail on

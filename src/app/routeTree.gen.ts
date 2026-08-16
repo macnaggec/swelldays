@@ -17,6 +17,7 @@ import { Route as PanelUploadRouteImport } from './routes/_panel.upload'
 import { Route as PanelMeRouteImport } from './routes/_panel.me'
 import { Route as PanelGalleryRouteImport } from './routes/_panel.gallery'
 import { Route as PanelCartRouteImport } from './routes/_panel.cart'
+import { Route as PanelAboutRouteImport } from './routes/_panel.about'
 import { Route as PanelSpotIdRouteImport } from './routes/_panel.$spotId'
 import { Route as PageOrderSuccessRouteImport } from './routes/_page.order-success'
 import { Route as PageAdminRouteImport } from './routes/_page.admin'
@@ -66,6 +67,11 @@ const PanelGalleryRoute = PanelGalleryRouteImport.update({
 const PanelCartRoute = PanelCartRouteImport.update({
   id: '/cart',
   path: '/cart',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelAboutRoute = PanelAboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => PanelRoute,
 } as any)
 const PanelSpotIdRoute = PanelSpotIdRouteImport.update({
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof PageAdminRoute
   '/order-success': typeof PageOrderSuccessRoute
   '/$spotId': typeof PanelSpotIdRouteWithChildren
+  '/about': typeof PanelAboutRoute
   '/cart': typeof PanelCartRoute
   '/gallery': typeof PanelGalleryRoute
   '/me': typeof PanelMeRouteWithChildren
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/admin': typeof PageAdminRoute
   '/order-success': typeof PageOrderSuccessRoute
+  '/about': typeof PanelAboutRoute
   '/cart': typeof PanelCartRoute
   '/gallery': typeof PanelGalleryRoute
   '/upload': typeof PanelUploadRoute
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/_page/admin': typeof PageAdminRoute
   '/_page/order-success': typeof PageOrderSuccessRoute
   '/_panel/$spotId': typeof PanelSpotIdRouteWithChildren
+  '/_panel/about': typeof PanelAboutRoute
   '/_panel/cart': typeof PanelCartRoute
   '/_panel/gallery': typeof PanelGalleryRoute
   '/_panel/me': typeof PanelMeRouteWithChildren
@@ -200,6 +209,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/order-success'
     | '/$spotId'
+    | '/about'
     | '/cart'
     | '/gallery'
     | '/me'
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin'
     | '/order-success'
+    | '/about'
     | '/cart'
     | '/gallery'
     | '/upload'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/_page/admin'
     | '/_page/order-success'
     | '/_panel/$spotId'
+    | '/_panel/about'
     | '/_panel/cart'
     | '/_panel/gallery'
     | '/_panel/me'
@@ -316,6 +328,13 @@ declare module '@tanstack/react-router' {
       path: '/cart'
       fullPath: '/cart'
       preLoaderRoute: typeof PanelCartRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/_panel/about': {
+      id: '/_panel/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof PanelAboutRouteImport
       parentRoute: typeof PanelRoute
     }
     '/_panel/$spotId': {
@@ -465,6 +484,7 @@ const PanelMeRouteWithChildren =
 
 interface PanelRouteChildren {
   PanelSpotIdRoute: typeof PanelSpotIdRouteWithChildren
+  PanelAboutRoute: typeof PanelAboutRoute
   PanelCartRoute: typeof PanelCartRoute
   PanelGalleryRoute: typeof PanelGalleryRoute
   PanelMeRoute: typeof PanelMeRouteWithChildren
@@ -474,6 +494,7 @@ interface PanelRouteChildren {
 
 const PanelRouteChildren: PanelRouteChildren = {
   PanelSpotIdRoute: PanelSpotIdRouteWithChildren,
+  PanelAboutRoute: PanelAboutRoute,
   PanelCartRoute: PanelCartRoute,
   PanelGalleryRoute: PanelGalleryRoute,
   PanelMeRoute: PanelMeRouteWithChildren,

@@ -92,6 +92,10 @@ const SHEET_DRAG_ELASTIC = 0.08;
 const SHEET_KEYBOARD_DISMISS_DRAG_THRESHOLD_PX = 12;
 const SIDE_OVERLAY_WIDTH_VW = 45;
 const FULL_SCREEN_WIDTH_VW = 100;
+// mapbox-gl's own default LogoControl is 88px wide (mapbox-gl.css:
+// `.mapboxgl-ctrl-logo`, viewBox '0 0 88 23', margin-left -4px) — a few px past
+// the rail's own footprint so the wordmark isn't clipped flush.
+const SIDE_WORKSPACE_MAP_STRIP_MIN_WIDTH_PX = 96;
 
 /**
  * The side overlay's own width. Unfloored at short height (the
@@ -126,9 +130,6 @@ export function DrawerShell(props: DrawerShellProps) {
   const panelOpen = props.presentation === 'bottomSheet' ? true : (props.open ?? true);
   const positionKey: DrawerShellState | SheetSnap =
     props.presentation === 'bottomSheet' ? props.snap : props.state;
-  const transitionKey = props.presentation === 'bottomSheet'
-    ? `bottomSheet:${props.snap}`
-    : `${props.presentation}:${props.state}:${panelOpen ? 'open' : 'closed'}`;
 
   const { prefersReducedMotion, isStandalone, heightBand } = useViewportCapabilities();
   const {
@@ -161,11 +162,16 @@ export function DrawerShell(props: DrawerShellProps) {
   // The gap between the rail's own right edge and the surface's left edge matches
   // the rail's own gap from the viewport's left edge (railGeometry.left) — the same
   // measured offset used twice, rather than a second mirrored clearance constant, so
-  // the two margins are equal by construction instead of by coincidence.
-  const sideWorkspaceWidthPx = Math.max(
-    0,
-    viewportWidthPx - (railGeometry ? railGeometry.right + railGeometry.left : 0),
+  // the two margins are equal by construction instead of by coincidence. Floored at
+  // SIDE_WORKSPACE_MAP_STRIP_MIN_WIDTH_PX: the rail alone (44px button + 12px gap on
+  // each side) leaves only ~68px of decorative map visible, narrower than mapbox-gl's
+  // own 88px-wide logo control (mapbox-gl.css: `.mapboxgl-ctrl-logo`), which the
+  // surface's own edge would otherwise paint over.
+  const mapStripWidthPx = Math.max(
+    railGeometry ? railGeometry.right + railGeometry.left : 0,
+    SIDE_WORKSPACE_MAP_STRIP_MIN_WIDTH_PX,
   );
+  const sideWorkspaceWidthPx = Math.max(0, viewportWidthPx - mapStripWidthPx);
   const targetWidthPx = props.presentation === 'sideWorkspace'
     ? sideWorkspaceWidthPx
     : props.presentation === 'persistent'
@@ -173,6 +179,16 @@ export function DrawerShell(props: DrawerShellProps) {
       : props.presentation === 'sideOverlay'
         ? resolveSideOverlayWidthPx(viewportWidthPx, heightBand)
         : viewportWidthPx * (FULL_SCREEN_WIDTH_VW / 100);
+  // Keyed on the resolved target width, not the state name: a presentation whose
+  // width is the same in every state (the tablet side overlay, T01) must not be
+  // treated as moving when only the state name changes — framer-motion's
+  // declarative `animate` prop does not reliably fire onAnimationComplete for a
+  // target equal to the current value, so a state-named key left `transitioning`
+  // (and useDrawerMoving's published flag) stuck true forever with nothing to
+  // ever clear it.
+  const transitionKey = props.presentation === 'bottomSheet'
+    ? `bottomSheet:${props.snap}`
+    : `${props.presentation}:${targetWidthPx}:${panelOpen ? 'open' : 'closed'}`;
   const dragControls = useDragControls();
   const dragConstraints = useMemo(
     () => ({ top: sheetRestPx - heights.full, bottom: sheetRestPx - heights.peek }),

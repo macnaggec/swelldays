@@ -413,7 +413,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
               onChange={setDateFilter}
               favoritesOnly={filters.favoriteSpotsOnly}
               onFavoritesChange={showsBrowseResults && isAuthenticated ? handleFavoritesChange : undefined}
-              horizontalScroll={usesFloatingBrowseSections}
+              horizontalScroll
             />
           </>
         ) : undefined}
@@ -440,7 +440,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
       <PanelFeedLayoutReadyContext.Provider value={handleFeedLayoutReadyChange}>
         <PanelExpandedContext.Provider value={renderedExpanded}>
           {/* Compact-mode filter pills — float on the map beside the panel */}
-          {layoutPolicy.chrome.panelControls === 'adjacent' && (spotMatch || isDefaultIndex || allGalleryMatch) && !isExpanded && (
+          {layoutPolicy.chrome.panelControls === 'adjacent' && (spotMatch || isDefaultIndex || allGalleryMatch) && !renderedExpanded && (
             <FloatingPanelControls>
               <FilterPills
                 active={filters.date}

@@ -82,7 +82,7 @@ describe('AppNavigation', () => {
     expect(screen.queryByTestId('cart-control')).not.toBeInTheDocument();
   });
 
-  it('marks the rail with the live drawer presentation, so CSS can center it over a sideWorkspace map strip instead of pinning it to the top corner', () => {
+  it('marks the rail with the live drawer presentation, so presentation-specific CSS rules can key off it', () => {
     render(<AppNavigation presentation="compactRail" drawerPresentation="sideWorkspace" />);
 
     const root = screen.getByTestId('menu-control').closest('[data-navigation-presentation]');

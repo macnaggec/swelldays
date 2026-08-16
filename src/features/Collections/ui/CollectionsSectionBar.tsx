@@ -42,18 +42,21 @@ const items = (activeTab: CollectionTab, onTabChange: (tab: CollectionTab) => vo
 /**
  * The Uploads/Purchases/Favorites switcher is its own independent bar, never
  * merged with the account/cart icons — matching the main screen's own Map/
- * Feed/Gallery bar, which floats separately from them at every band. Its
- * caller chooses which of AppNavigation's two mount points to portal this
+ * Feed/Gallery bar, which floats separately from them at every band this
+ * component still covers. Its caller (CollectionsLayout) doesn't mount this
+ * at all on desktop (`leftStrip`) — there, _panel.tsx renders the same tabs
+ * directly in the panel header instead, replacing the plain "My Collections"
+ * title, so there's no floating pill to portal there. For every other band,
+ * the caller chooses which of AppNavigation's two mount points to portal this
  * into (AppNavigationFloating vs AppNavigationSupplement) using the same
  * `navigation !== 'compactRail'` split this component uses for its own
  * presentation below — kept as one canonical field read twice, not two
  * independent formulas, since importing widgets/AppNavigation directly here
  * would invert the feature→widget dependency direction.
  *
- * At every band except landscape mobile (`compactRail`), it floats as its own
- * pill centered on the drawer's own measured horizontal midpoint — at wide
- * (`leftStrip`) that midpoint is the persistent panel's own center, same as
- * today; at portrait mobile (`topBar`), the drawer is `fullScreen`, so its
+ * At every band this component covers except landscape mobile (`compactRail`),
+ * it floats as its own pill centered on the drawer's own measured horizontal
+ * midpoint — at portrait mobile (`topBar`), the drawer is `fullScreen`, so its
  * measured midpoint is simply the viewport's own center, landing the pill at
  * the screen's bottom center exactly like the main screen's own switcher.
  * Labels hide on scroll in both cases, matching that same reference bar.

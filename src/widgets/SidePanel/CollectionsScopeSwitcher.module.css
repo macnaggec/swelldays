@@ -1,0 +1,40 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  height: var(--wa-control-height-default);
+  box-sizing: border-box;
+  padding: 3px;
+  border-radius: 20px;
+  background: var(--wa-control-fill-muted);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.segment {
+  height: 100%;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 14px;
+  border-radius: 16px;
+  font-size: var(--wa-font-size-sm);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.6);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    color var(--wa-motion-duration-control) var(--wa-motion-easing-standard);
+  white-space: nowrap;
+}
+
+.segment:not(.segmentActive):hover {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.segmentActive {
+  background: var(--wa-control-fill-active);
+  color: var(--wa-text-media-overlay);
+  cursor: default;
+}

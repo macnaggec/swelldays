@@ -232,9 +232,9 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-text-on-accent',
     '--wa-accent-spot',
   ]],
-  ['src/widgets/AppNavigation/UserControl.module.css', [
-    '--wa-control-border',
-    '--wa-radius-pill',
+  ['src/widgets/AppNavigation/MenuControl.module.css', [
+    '--wa-control-indicator',
+    '--wa-radius-control-md',
   ]],
   ['src/shared/ui/DrawerShell/DrawerShell.module.css', [
     '--wa-safe-area-top',
@@ -416,6 +416,10 @@ const requiredCompactBrowseNavigationRuntime = [
   ['composition-owned browse surface input', /\buseBrowseSurface\b/],
   ['DrawerShell-owned live sheet placement projection', /\buseBrowseSheetNavigationPlacement\b/],
   ['full-sheet interaction removal', /\binert=\{hidden\}/],
+  [
+    'switcher decoupled from the account/cart corner for the sideWorkspace map strip',
+    /\bdecoupleSwitcher\s*=\s*presentation\s*===\s*'compactRail'\s*&&\s*drawerPresentation\s*===\s*'sideWorkspace'/,
+  ],
 ];
 
 const requiredCompactBrowseNavigationStyles = [
@@ -444,10 +448,6 @@ const requiredCompactBrowseNavigationStyles = [
     /\.root\[data-navigation-presentation='compactRail'\]\[data-drawer-presentation='sideOverlay'\]\s*\{[^}]*top:\s*max\(var\(--wa-safe-area-top\),\s*var\(--wa-shell-edge-clearance\)\)[^}]*left:\s*max\(var\(--wa-safe-area-left\),\s*var\(--wa-shell-edge-clearance\)\)/s,
   ],
   [
-    'side-workspace navigation balancing the sheet gap without moving visible chrome toward the notch',
-    /\.root\[data-navigation-presentation='compactRail'\]\[data-drawer-presentation='sideWorkspace'\]\s*\{[^}]*left:\s*calc\(var\(--wa-shell-edge-clearance\)\s*\+\s*4px\)[^}]*padding-inline-start:\s*max\(\s*0px,\s*calc\(var\(--wa-safe-area-left\)\s*-\s*\(var\(--wa-shell-edge-clearance\)\s*\+\s*4px\)\)\s*\)/s,
-  ],
-  [
     'constrained horizontal navigation preserving Account-before-Cart DOM order',
     /\.root\[data-navigation-presentation='compactBar'\]\s+\.stack\s*\{[^}]*flex-direction:\s*row/s,
   ],
@@ -455,12 +455,23 @@ const requiredCompactBrowseNavigationStyles = [
     'shared navigation controls using the navigation-size token for both pointer-target dimensions',
     /\.button\s*\{[^}]*width:\s*var\(--wa-control-size-navigation\)[^}]*height:\s*var\(--wa-control-size-navigation\)/s,
   ],
+  [
+    'switcher anchor centered independently of the account/cart corner, with the same left-edge clearance',
+    /\.switcherAnchor\s*\{[^}]*top:\s*50%[^}]*left:\s*calc\(var\(--wa-safe-area-left\)\s*\+\s*var\(--wa-shell-edge-clearance\)\)[^}]*transform:\s*translateY\(-50%\)/s,
+  ],
+];
+
+const forbiddenCompactBrowseNavigationStyles = [
+  [
+    'a side-workspace override that pulls the rail away from the shared top-left corner clearance every other presentation uses',
+    /\.root\[data-navigation-presentation='compactRail'\]\[data-drawer-presentation='sideWorkspace'\]\s*\{[^}]*top:/s,
+  ],
 ];
 
 const requiredCollectionsToolbarStyles = [
   [
     'content-fit width capped in the landscape workspace header',
-    /\.spotSelectHeader\s*\{[^}]*width:\s*fit-content;[^}]*max-width:\s*min\(140px,\s*100%\)/s,
+    /\.spotSelectHeader\s*\{[^}]*min-width:\s*min-content;[^}]*max-width:\s*140px/s,
   ],
   [
     'equal vertical breathing room in the landscape workspace header',
@@ -596,12 +607,20 @@ const requiredPanelLayoutStyles = [
     /\.stickyChrome\[data-hidden\]:not\(:has\(\[data-panel-scroll-chrome-replacement\]\)\)\s*\{[^}]*transform:\s*translateY\(calc\(-100%\s*-\s*var\(--wa-panel-chrome-paint-allowance\)\)\)/s,
   ],
   [
+    // Reaching the top is what orders the row back, so a list standing at the top
+    // under a still-travelling row is a contradiction. The slide is a fixed
+    // duration and the scroll-back that triggers it can be shorter, so the
+    // transition has to end on arrival rather than run on past it.
+    'a row that stops sliding the moment its list reaches the top',
+    /\.stickyChrome:not\(\[data-hidden\]\):not\(\[data-scrolled-from-top\]\)\s*\{[^}]*transition:\s*translate\s/s,
+  ],
+  [
     'reduced motion swaps chrome instantly instead of animating',
     /prefers-reduced-motion:\s*reduce\)\s*\{[^{}]*\.stickyChrome,[\s\S]*?\.stickyChrome\s+\[data-panel-scroll-chrome-primary\][\s\S]*?transition:\s*none/s,
   ],
   [
     'hideable chrome cannot feed layout shifts back into scroll direction',
-    /\.scrollRegion:has\(\.stickyChrome\s+\[data-panel-scroll-chrome-primary\]\)\s+\.scroller\s*\{[^}]*overflow-anchor:\s*none/s,
+    /^\.scroller\s*\{[^}]*overflow-anchor:\s*none/ms,
   ],
   [
     // The compact toolbar contributes 4px margin-block. These asymmetric values
@@ -625,8 +644,10 @@ const requiredPanelLayoutStyles = [
     /\.root\[data-sheet-snap='half'\]\s+\.stickyChrome,\s*\.root\[data-sheet-snap='full'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*0\s+var\(--wa-panel-stack-gap\)/s,
   ],
   [
+    // On `translate`, so it composes with the hide/reveal slide on `transform`
+    // instead of one rule replacing the other and jerking the row mid-motion.
     'scrolled half and full chrome paints 8px below the sheet top without resizing its layout box',
-    /\.root\[data-sheet-snap='half'\][^{]*\.stickyChrome\[data-scrolled-from-top\]:is\(:not\(\[data-hidden\]\),\s*:has\(\[data-panel-scroll-chrome-replacement\]\)\),\s*\.root\[data-sheet-snap='full'\][^{]*\.stickyChrome\[data-scrolled-from-top\]:is\(:not\(\[data-hidden\]\),\s*:has\(\[data-panel-scroll-chrome-replacement\]\)\)\s*\{[^}]*transform:\s*translateY\(var\(--wa-grabber-gap\)\)/s,
+    /\.root\[data-sheet-snap='half'\]\s+\.stickyChrome\[data-scrolled-from-top\],\s*\.root\[data-sheet-snap='full'\]\s+\.stickyChrome\[data-scrolled-from-top\]\s*\{[^}]*translate:\s*0\s+var\(--wa-grabber-gap\)/s,
   ],
   [
     'compact Gallery delegates its first 12px content gap to the first date divider',
@@ -658,6 +679,14 @@ const forbiddenPanelLayoutStyles = [
   [
     'scroll-state-dependent positioning for full-screen flush route chrome',
     /\.root\[data-drawer-presentation='fullScreen'\]\s+\.stickyChrome\[data-scrolled-from-top\][^{]*:has\(\[data-panel-scroll-chrome-spacing='flush'\]\)\s*\{/s,
+  ],
+  [
+    // The hide/reveal slide owns `transform` alone. Putting a second offset back
+    // on it means the more specific rule replaces the slide outright rather than
+    // adding to it, which is exactly the mid-motion 8px jump this separation
+    // removed. Any further row offset belongs on `translate`.
+    'a second row offset sharing the hide slide’s own transform property',
+    /\.stickyChrome\[data-scrolled-from-top\][^{]*\{[^}]*transform:/s,
   ],
 ];
 
@@ -1295,6 +1324,16 @@ for (const [requirement, pattern] of requiredCompactBrowseNavigationStyles) {
     line: 1,
     rule: 'compact-browse-navigation-required-styles',
     message: `Compact browse navigation is missing ${requirement}.`,
+  });
+}
+
+for (const [requirement, pattern] of forbiddenCompactBrowseNavigationStyles) {
+  if (!pattern.test(compactBrowseNavigationStyles)) continue;
+  violations.push({
+    file: 'src/widgets/AppNavigation/AppNavigation.module.css',
+    line: 1,
+    rule: 'compact-browse-navigation-forbidden-styles',
+    message: `Compact browse navigation must not use ${requirement}.`,
   });
 }
 

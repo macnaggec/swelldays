@@ -91,8 +91,8 @@ describe('deriveAppShellLayoutPolicy — wide', () => {
 
 describe('deriveAppShellLayoutPolicy — constrained', () => {
   it.each([
-    ['browse', 'compact', 'expandCollapse', 'nonmodal', 'interactive', 'insideDrawer'],
-    ['galleryWorkspace', 'compact', 'expandCollapse', 'nonmodal', 'interactive', 'insideDrawer'],
+    ['browse', 'compact', 'expandCollapse', 'nonmodal', 'interactive', 'adjacent'],
+    ['galleryWorkspace', 'compact', 'expandCollapse', 'nonmodal', 'interactive', 'adjacent'],
     ['routeWorkspace', 'expanded', 'routeBack', 'modal', 'background', 'hidden'],
     ['mapInput', 'compact', 'workflowBack', 'nonmodal', 'interactive', 'hidden'],
     ['immersiveMapInput', 'compact', 'workflowBack', 'nonmodal', 'interactive', 'hidden'],

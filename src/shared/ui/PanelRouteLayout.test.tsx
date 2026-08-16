@@ -1,6 +1,7 @@
 import { act, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
+import { publishNavigationRailGeometry } from 'shared/model/navigationRailGeometry';
 import { publishDrawerGeometry } from './DrawerShell/geometry';
 import {
   FloatingPanelControls,
@@ -12,7 +13,10 @@ import {
 
 describe('PanelRouteLayout', () => {
   afterEach(() => {
-    act(() => publishDrawerGeometry(null));
+    act(() => {
+      publishDrawerGeometry(null);
+      publishNavigationRailGeometry(null);
+    });
   });
 
   it('separates route header chrome from route content', () => {
@@ -109,5 +113,27 @@ describe('PanelRouteLayout', () => {
     publishDrawerWidth(456);
 
     expect(controls?.style.insetInlineEnd).toBe('464px');
+  });
+
+  it('bounds floating controls between the measured nav rail and the drawer edge, for a narrow band to scroll within instead of wrapping', () => {
+    const drawerWidth = 320;
+    act(() => {
+      publishNavigationRailGeometry(new DOMRect(12, 0, 96, 44));
+      publishDrawerGeometry(new DOMRect(window.innerWidth - drawerWidth, 0, drawerWidth, 768));
+    });
+
+    render(
+      <FloatingPanelControls>
+        <span>Compact filters</span>
+      </FloatingPanelControls>,
+    );
+
+    const controls = screen.getByText('Compact filters').closest<HTMLElement>(
+      '[data-floating-panel-controls]',
+    );
+
+    // maxWidth = drawer.left - navRail.right - 2 * 8px gap
+    const expectedMaxWidth = (window.innerWidth - drawerWidth) - 108 - 16;
+    expect(controls?.style.maxWidth).toBe(`${expectedMaxWidth}px`);
   });
 });

@@ -9,28 +9,33 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 const clientPort = Number(process.env.CLIENT_PORT ?? 3000);
 const apiPort = Number(process.env.SERVER_PORT ?? 3001);
 
-export default defineConfig({
-  envPrefix: 'VITE_',
-  plugins: [
-    basicSsl(),
-    tanstackRouter({
-      routesDirectory: './src/app/routes',
-      generatedRouteTree: './src/app/routeTree.gen.ts',
-    }),
-    react(),
-    tsconfigPaths(),
-  ],
-  server: {
-    port: clientPort,
-    allowedHosts: true,
-    proxy: {
-      '/api': {
-        target: `http://localhost:${apiPort}`,
-        changeOrigin: true,
+export default defineConfig(() => {
+  const argv = process.argv.slice(2).join(' ');
+  const httpsRequested = argv.includes('--https') || process.env.DEV_HTTPS === 'true' || process.env.HTTPS === 'true';
+
+  return {
+    envPrefix: 'VITE_',
+    plugins: [
+      ...(httpsRequested ? [basicSsl()] : []),
+      tanstackRouter({
+        routesDirectory: './src/app/routes',
+        generatedRouteTree: './src/app/routeTree.gen.ts',
+      }),
+      react(),
+      tsconfigPaths(),
+    ],
+    server: {
+      port: clientPort,
+      allowedHosts: true as const,
+      proxy: {
+        '/api': {
+          target: `http://localhost:${apiPort}`,
+          changeOrigin: true,
+        },
       },
     },
-  },
-  build: {
-    outDir: 'dist/client',
-  },
+    build: {
+      outDir: 'dist/client',
+    },
+  };
 });

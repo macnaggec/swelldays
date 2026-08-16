@@ -64,15 +64,27 @@ describe('viewport capabilities', () => {
     Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
   });
 
+  // Phase T (constrained × regular — tablet-portrait) is retired, 2026-08-15: that width
+  // now reuses desktop's own `wide` presentation instead of a dedicated one. `constrained`
+  // only still surfaces at *short* height (landscape phones, Phase M, untouched) — see the
+  // dedicated case below.
   it.each([
     [767, 'compact'],
-    [768, 'constrained'],
-    [1199, 'constrained'],
+    [768, 'wide'],
+    [1199, 'wide'],
     [1200, 'wide'],
-  ] as const)('classifies a %ipx viewport as %s', (width, expectedBand) => {
+  ] as const)('classifies a %ipx viewport (regular height) as %s', (width, expectedBand) => {
     Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
 
     expect(getViewportCapabilitiesSnapshot().sizeBand).toBe(expectedBand);
+  });
+
+  it('keeps a constrained-width landscape phone on the `constrained` band — Phase M is untouched by Phase T\'s retirement', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 900, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 500, configurable: true });
+
+    expect(getViewportCapabilitiesSnapshot().sizeBand).toBe('constrained');
+    expect(getViewportCapabilitiesSnapshot().heightBand).toBe('short');
   });
 
   it('reports height, input, hover, reduced-motion, and standalone capabilities semantically', () => {
@@ -155,11 +167,14 @@ describe('viewport capabilities', () => {
     const firstCapabilities = getViewportCapabilitiesSnapshot();
     expect(firstCapabilities.sizeBand).toBe('wide');
 
-    Object.defineProperty(window, 'innerWidth', { value: 900, configurable: true });
+    // 900px alone no longer crosses a threshold at regular height — the constrained-regular
+    // cell it used to land on now resolves 'wide' too (Phase T retired, 2026-08-15). Drop
+    // below 768 instead, into the band that still exists at every height.
+    Object.defineProperty(window, 'innerWidth', { value: 700, configurable: true });
 
     const secondCapabilities = getViewportCapabilitiesSnapshot();
     expect(secondCapabilities).not.toBe(firstCapabilities);
-    expect(secondCapabilities.sizeBand).toBe('constrained');
+    expect(secondCapabilities.sizeBand).toBe('compact');
   });
 
   it('updates subscribers when viewport or media capabilities change', () => {

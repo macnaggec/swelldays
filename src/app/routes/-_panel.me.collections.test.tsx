@@ -122,7 +122,12 @@ function renderCollections() {
 describe('CollectionsLayout', () => {
   beforeEach(() => {
     mocks.activeTab = 'uploads';
-    mocks.sizeBand = 'wide';
+    // Neither desktop (leftStrip) nor the landscape-phone side workspace: the
+    // sticky-toolbar/floating-switcher path most of these tests exercise.
+    // Desktop's own header-trailing/no-floating-switcher behavior is covered
+    // separately below, since a bare-PanelLayout render has no real SidePanel
+    // or AppNavigation for that placement to portal into.
+    mocks.sizeBand = 'compact';
     mocks.heightBand = 'regular';
     mocks.sessions = INITIAL_SESSIONS;
     mocks.favorites = INITIAL_FAVORITES;
@@ -169,6 +174,23 @@ describe('CollectionsLayout', () => {
     // SidePanel's own boundary (SidePanel.test.tsx), which is what actually owns that
     // portal target; this bare-PanelLayout render has no real SidePanel to deliver into.
     expect(screen.queryByTestId('collections-toolbar')).not.toBeInTheDocument();
+  });
+
+  it('stops rendering the spot filter in the sticky toolbar on desktop, where it docks into the header instead', () => {
+    mocks.sizeBand = 'wide';
+    renderCollections();
+
+    // Same header-trailing hand-off as the side-overlay case above, just for the
+    // desktop band — _panel.tsx renders the Uploads/Purchases/Favorites switcher
+    // directly in that same header row in the real app.
+    expect(screen.queryByTestId('collections-toolbar')).not.toBeInTheDocument();
+  });
+
+  it('does not mount the floating tab switcher on desktop, since the header carries it instead', () => {
+    mocks.sizeBand = 'wide';
+    renderCollections();
+
+    expect(screen.queryByRole('navigation', { name: 'Collections sections' })).not.toBeInTheDocument();
   });
 
   it('clears the spot filter when the active tab changes, so a stale spot ID cannot carry into another collection', async () => {

@@ -96,34 +96,47 @@ function NavigationSurface({
     };
   }, []);
 
+  // Landscape phone/tablet's sideWorkspace pairing floats the account/cart
+  // corner and the Uploads/Purchases/Favorites switcher independently (see
+  // .switcherAnchor) — every other presentation still docks the switcher
+  // directly below the account/cart buttons in one measured box.
+  const decoupleSwitcher = presentation === 'compactRail' && drawerPresentation === 'sideWorkspace';
+
   return (
-    <div
-      ref={rootRef}
-      className={styles.root}
-      data-navigation-presentation={presentation}
-      data-drawer-presentation={drawerPresentation}
-      data-sheet-snap={sheetSnap}
-      data-navigation-tracking={placement?.live || undefined}
-      style={style}
-      inert={hidden}
-      aria-hidden={hidden || undefined}
-    >
-      <div className={styles.stack}>
-        <div className={styles.button}>
-          <MenuControl />
-        </div>
-        {/* Mounted only once the cart has items, so an empty cart doesn't reserve a
-            slot — the stack's own measured box (see the ResizeObserver above)
-            shrinks with it, and anything sized against that measurement, like the
-            floating filter pills over the map, reclaims the freed width. */}
-        {cartItemCount > 0 && (
+    <>
+      <div
+        ref={rootRef}
+        className={styles.root}
+        data-navigation-presentation={presentation}
+        data-drawer-presentation={drawerPresentation}
+        data-sheet-snap={sheetSnap}
+        data-navigation-tracking={placement?.live || undefined}
+        style={style}
+        inert={hidden}
+        aria-hidden={hidden || undefined}
+      >
+        <div className={styles.stack}>
           <div className={styles.button}>
-            <CartControl />
+            <MenuControl />
           </div>
-        )}
-        <div ref={setSupplementTarget} className={styles.supplement} />
+          {/* Mounted only once the cart has items, so an empty cart doesn't reserve a
+              slot — the stack's own measured box (see the ResizeObserver above)
+              shrinks with it, and anything sized against that measurement, like the
+              floating filter pills over the map, reclaims the freed width. */}
+          {cartItemCount > 0 && (
+            <div className={styles.button}>
+              <CartControl />
+            </div>
+          )}
+          {!decoupleSwitcher && <div ref={setSupplementTarget} className={styles.supplement} />}
+        </div>
       </div>
-    </div>
+      {decoupleSwitcher && (
+        <div className={styles.switcherAnchor} inert={hidden} aria-hidden={hidden || undefined}>
+          <div ref={setSupplementTarget} className={styles.supplement} />
+        </div>
+      )}
+    </>
   );
 }
 

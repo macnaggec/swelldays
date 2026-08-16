@@ -7,6 +7,7 @@ import type { NavigationRailGeometry } from 'shared/model/navigationRailGeometry
 import {
   DrawerShell,
   useDrawerGeometry,
+  useDrawerMoving,
   useDrawerTargetGeometry,
   useRegisterSheetScrollOwner,
   useSheetContentScrollable,
@@ -79,6 +80,11 @@ function SettledWidthProbe() {
       {settled ? settled.destinationWidth : 'none'}
     </output>
   );
+}
+
+function DrawerMovingProbe() {
+  const moving = useDrawerMoving();
+  return <output data-testid="drawer-moving">{moving ? 'moving' : 'settled'}</output>;
 }
 
 describe('DrawerShell geometry projection', () => {
@@ -1086,6 +1092,43 @@ describe('DrawerShell sideOverlay geometry', () => {
     unmount();
   });
 
+  it('clears the moving flag after a state change whose regular-height width target does not actually move', async () => {
+    const originalInnerWidth = window.innerWidth;
+    const originalInnerHeight = window.innerHeight;
+    // Regular-height constrained band: resolveSideOverlayWidthPx ignores state
+    // entirely here, so compact -> expanded is a real prop/state change with an
+    // identical animate target — the case FloatingPanelControls' useDrawerMoving
+    // must not stay stuck true for.
+    Object.defineProperty(window, 'innerWidth', { value: 900, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
+
+    const { rerender, unmount } = render(
+      <>
+        <DrawerMovingProbe />
+        <DrawerShell presentation="sideOverlay" state="compact" modality="nonmodal" open>
+          Panel content
+        </DrawerShell>
+      </>,
+    );
+
+    await vi.waitFor(() => expect(screen.getByTestId('drawer-moving')).toHaveTextContent('settled'));
+
+    rerender(
+      <>
+        <DrawerMovingProbe />
+        <DrawerShell presentation="sideOverlay" state="expanded" modality="nonmodal" open>
+          Panel content
+        </DrawerShell>
+      </>,
+    );
+
+    await vi.waitFor(() => expect(screen.getByTestId('drawer-moving')).toHaveTextContent('settled'));
+
+    unmount();
+    Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+  });
+
   it('never shrinks the destination width panel content lays out for while a side overlay closes', () => {
     const renderPanel = (open: boolean) => (
       <DrawerShell presentation="sideOverlay" state="compact" modality="nonmodal" open={open}>
@@ -1208,8 +1251,10 @@ describe('DrawerShell sideWorkspace geometry', () => {
     // surfaceLeft) equals the rail's own gap from the viewport edge
     // (railLeft) — not just that the surface starts flush at railRight, which
     // a left: 0 fixture could never distinguish from a real symmetric gap.
-    const railLeft = 12;
-    const railRight = 60;
+    // Comfortably past SIDE_WORKSPACE_MAP_STRIP_MIN_WIDTH_PX (96) so this
+    // exercises the measured-geometry path, not the map-strip floor below.
+    const railLeft = 20;
+    const railRight = 120;
     useNavigationRailGeometryMock.mockReturnValue({
       left: railLeft, top: 0, right: railRight, bottom: height, width: railRight - railLeft, height,
     });
@@ -1254,7 +1299,36 @@ describe('DrawerShell sideWorkspace geometry', () => {
     );
   });
 
-  it('falls back to the full viewport width when the rail has not published its geometry yet', () => {
+  it('floors the decorative map strip at 96px so the account/cart rail alone never crowds out mapbox-gl\'s 88px logo control', () => {
+    const width = 900;
+    const height = 500;
+    Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: height, configurable: true });
+    // The rail's own real footprint (12px clearance + 44px button + 12px clearance)
+    // — narrower than the 96px floor, so the floor must win over the measurement.
+    const railLeft = 12;
+    const railRight = 56;
+    useNavigationRailGeometryMock.mockReturnValue({
+      left: railLeft, top: 0, right: railRight, bottom: height, width: railRight - railLeft, height,
+    });
+
+    render(
+      <>
+        <DrawerShell presentation="sideWorkspace" state="expanded" modality="nonmodal" open>
+          Workspace content
+        </DrawerShell>
+        <TargetGeometryProbe />
+      </>,
+    );
+
+    const surfaceLeft = 96;
+    const expectedWidth = width - surfaceLeft;
+    expect(screen.getByTestId('drawer-target-geometry').textContent).toBe(
+      `${surfaceLeft}:0:${width}:${height}:${expectedWidth}:${height}`,
+    );
+  });
+
+  it('still floors the decorative map strip at 96px when the rail has not published its geometry yet', () => {
     useNavigationRailGeometryMock.mockReturnValue(null);
 
     render(
@@ -1268,8 +1342,10 @@ describe('DrawerShell sideWorkspace geometry', () => {
 
     const viewportWidthPx = window.innerWidth;
     const viewportHeightPx = window.innerHeight;
+    const surfaceLeft = 96;
+    const expectedWidth = viewportWidthPx - surfaceLeft;
     expect(screen.getByTestId('drawer-target-geometry').textContent).toBe(
-      `0:0:${viewportWidthPx}:${viewportHeightPx}:${viewportWidthPx}:${viewportHeightPx}`,
+      `${surfaceLeft}:0:${viewportWidthPx}:${viewportHeightPx}:${expectedWidth}:${viewportHeightPx}`,
     );
   });
 });

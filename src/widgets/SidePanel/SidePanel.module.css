@@ -5,6 +5,15 @@
   align-items: center;
   column-gap: 8px;
   box-sizing: border-box;
+  /* A floor, not a fixed height: a tab with no header-trailing control (Purchases,
+     next to Uploads/Favorites which do show one) would otherwise size this row off
+     whatever's left, shorter than the other tabs. Content taller than this floor
+     (Cart's own header, a session's formatted date range) still grows the row
+     normally instead of being clipped, unlike a hard height would. The +8px is
+     deliberate slack (4px top and bottom once centered): the switcher's own
+     height already equals --wa-control-height-default, so without it there is
+     no room left for centering to create any breathing room around it. */
+  min-height: calc(var(--wa-control-height-default) + 8px);
   padding-block: 0;
   /* Cleared to the floating compact rail's own measured edge in fullScreen
      presentations where the rail hovers over this same top-left corner

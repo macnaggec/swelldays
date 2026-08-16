@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { resolveAuthTrustedOrigins } from 'server/authOrigins';
 
 describe('resolveAuthTrustedOrigins', () => {
+  it('allows both local http and https origins outside production', () => {
+    const origins = resolveAuthTrustedOrigins({
+      APP_URL: 'http://localhost:3000',
+      NODE_ENV: 'test',
+    });
+
+    expect(origins).toContain('http://localhost:3000');
+    expect(origins).toContain('https://localhost:3000');
+    expect(origins).toContain('http://127.0.0.1:3000');
+    expect(origins).toContain('https://127.0.0.1:3000');
+  });
+
   it('allows private-LAN browser origins outside production', () => {
     const origins = resolveAuthTrustedOrigins({
       APP_URL: 'http://localhost:3000',

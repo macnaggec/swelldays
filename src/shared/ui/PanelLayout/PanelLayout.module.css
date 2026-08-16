@@ -58,8 +58,14 @@
    replacement in Gallery, and to zero in Feed). Without this opt-out, browser
    scroll anchoring can compensate around the measured top space; the direction
    detector then reads that correction as an opposite gesture and swaps the chrome
-   back. Scope the opt-out to regions that publish hideable chrome. */
-.scrollRegion:has(.stickyChrome [data-panel-scroll-chrome-primary]) .scroller {
+   back. Unconditional rather than scoped to `:has(.stickyChrome
+   [data-panel-scroll-chrome-primary])`: that relational selector depends on the
+   sticky row's own content already being portaled in and on `:has()` support,
+   either of which leaves a window (or, on some mobile browsers, a permanent gap)
+   where this opt-out silently doesn't apply. Every panel scroller manages its own
+   position deliberately (chrome hide/reveal, sheet snapping); native scroll
+   anchoring never has useful work to do here regardless of route. */
+.scroller {
   overflow-anchor: none;
 }
 
@@ -131,7 +137,13 @@
      between them never moves the card grid below. */
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Two separate motions on two separate properties, deliberately: `transform`
+     is the hide/reveal slide, `translate` is the sheet's 8px offset below. They
+     used to share `transform`, where the more specific rule simply won and the
+     row jumped by the other one's distance part-way through its own slide. */
+  transition:
+    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    translate 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .stickyChrome [data-panel-scroll-chrome-primary],
@@ -178,8 +190,25 @@
   pointer-events: none;
 }
 
+/* The list standing at the top while the row is still on its way is a
+   contradiction: arriving at the top is itself what orders the row back. The
+   slide runs for a fixed 0.28s, so any scroll-back that covers the last
+   stretch faster than that used to leave a motionless list under a row cut in
+   half by .chromeViewport's top edge, for the remainder of the 0.28s — up to
+   ~210ms of it in the captured trace. Dropping transform from the transition
+   here ends the slide the moment the list lands rather than letting it run on:
+   the row is in place exactly when the list is, at any scroll speed.
+
+   Only transform is dropped. The sheet's own 8px offset below travels on the
+   separate `translate` property and keeps easing, which is why the two live on
+   different properties at all. */
+.stickyChrome:not([data-hidden]):not([data-scrolled-from-top]) {
+  transition: translate 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stickyChrome,
+  .stickyChrome:not([data-hidden]):not([data-scrolled-from-top]),
   .stickyChrome [data-panel-scroll-chrome-primary],
   .stickyChrome [data-panel-scroll-chrome-replacement] {
     transition: none;
@@ -280,16 +309,23 @@
   padding-block: 0 var(--wa-panel-stack-gap);
 }
 
-.root[data-sheet-snap='half']
-  .stickyChrome[data-scrolled-from-top]:is(:not([data-hidden]), :has([data-panel-scroll-chrome-replacement])),
-.root[data-sheet-snap='full']
-  .stickyChrome[data-scrolled-from-top]:is(:not([data-hidden]), :has([data-panel-scroll-chrome-replacement])) {
+.root[data-sheet-snap='half'] .stickyChrome[data-scrolled-from-top],
+.root[data-sheet-snap='full'] .stickyChrome[data-scrolled-from-top] {
   /* Once content has left its initial position, the handle no longer precedes
      returning sticky chrome, so the chrome paints 8px below the sheet top.
      Keep that distance out of the row's box geometry: when the list returns to
-     its initial position, the existing transform transition eases the final 8px
-     instead of an unanimated padding change resizing and jumping the whole row. */
-  transform: translateY(var(--wa-grabber-gap));
+     its initial position, this eases the final 8px instead of an unanimated
+     padding change resizing and jumping the whole row.
+
+     On `translate`, not `transform`, and keyed on scroll position alone. It
+     used to be a `transform` that had to exclude a hidden replacement-less row
+     (`:is(:not([data-hidden]), :has(...replacement))`), because that row's own
+     -100% hide slide lives on `transform` too and whichever rule was more
+     specific simply replaced the other — the row jumping 8px part-way through
+     its own hide or reveal. Separate properties compose instead of competing,
+     so the two motions can now both be true at once and the guard is gone with
+     the conflict. */
+  translate: 0 var(--wa-grabber-gap);
 }
 
 .root[data-sheet-snap='half'] .stickyChrome:has([data-panel-scroll-chrome-replacement]),

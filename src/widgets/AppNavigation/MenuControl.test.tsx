@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
-import { UserControl } from './UserControl';
+import { MenuControl } from './MenuControl';
 
 const mocks = vi.hoisted(() => ({
   isAuthenticated: true,
@@ -75,7 +75,7 @@ vi.mock('shared/lib/notifications', () => ({
   },
 }));
 
-describe('UserControl', () => {
+describe('MenuControl', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.isAuthenticated = true;
@@ -83,43 +83,52 @@ describe('UserControl', () => {
     mocks.signOut.mockResolvedValue({ data: { success: true }, error: null });
   });
 
-  it('opens sign in from the signed-out account rail action', async () => {
+  it('opens sign in from the signed-out menu', async () => {
     mocks.isAuthenticated = false;
-    render(<UserControl />);
+    render(<MenuControl />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Sign in' }));
 
     expect(mocks.openAuthModal).toHaveBeenCalledOnce();
   });
 
-  it('opens the collection workspace from the authenticated user menu', async () => {
-    render(<UserControl />);
+  it('opens the collection workspace from the authenticated menu', async () => {
+    render(<MenuControl />);
 
     await userEvent.click(screen.getByRole('menuitem', { name: 'My Collections' }));
 
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/me/collections' });
   });
 
-  it('opens the earnings panel from the authenticated user menu', async () => {
-    render(<UserControl />);
+  it('opens the earnings panel from the authenticated menu', async () => {
+    render(<MenuControl />);
 
     await userEvent.click(screen.getByRole('menuitem', { name: 'Earnings' }));
 
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/me/earnings' });
   });
 
-  it('opens the account page inside the user workspace', async () => {
-    render(<UserControl />);
+  it('opens the account page from the authenticated menu', async () => {
+    render(<MenuControl />);
 
     await userEvent.click(screen.getByRole('menuitem', { name: 'Account' }));
 
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/me' });
   });
 
-  it('returns to Browse after signing out successfully', async () => {
-    render(<UserControl />);
+  it('opens the About page regardless of sign-in state', async () => {
+    mocks.isAuthenticated = false;
+    render(<MenuControl />);
 
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'About' }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/about' });
+  });
+
+  it('returns to Browse after signing out successfully', async () => {
+    render(<MenuControl />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
 
     await waitFor(() => {
       expect(mocks.signOut).toHaveBeenCalledOnce();
@@ -133,9 +142,9 @@ describe('UserControl', () => {
       data: null,
       error: { message: 'Invalid origin', status: 403, statusText: 'Forbidden' },
     });
-    render(<UserControl />);
+    render(<MenuControl />);
 
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
 
     await waitFor(() => {
       expect(mocks.notifyError).toHaveBeenCalledWith(

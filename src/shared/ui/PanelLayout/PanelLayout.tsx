@@ -260,6 +260,21 @@ export function PanelLayoutStickyChrome({
   useLayoutEffect(() => {
     remeasure?.();
   });
+  // The opposite case: this route's own content going away entirely (e.g.
+  // navigating to a route that publishes nothing into the row at all), so the
+  // row's now-empty height is republished immediately rather than left at this
+  // route's last measurement until an unrelated scroll event happens to trigger
+  // the next remeasure. Deliberately its own effect with an empty dependency
+  // array — a cleanup on the effect above would also re-fire on every render
+  // this component stays mounted (every scroll-driven `hidden` toggle included),
+  // not just on the unmount it's meant for. The ref keeps the unmount call
+  // reading the latest `remeasure`, since an empty-deps effect's own closure is
+  // fixed to the function that existed at mount.
+  const remeasureRef = useRef(remeasure);
+  useLayoutEffect(() => {
+    remeasureRef.current = remeasure;
+  });
+  useLayoutEffect(() => () => remeasureRef.current?.(), []);
   return stickyChromeTarget
     ? createPortal(
       <div
@@ -283,9 +298,16 @@ export function PanelLayoutStickyChromeReplacement({ children }: { children: Rea
   const stickyChromeTarget = useContext(PanelLayoutStickyChromeTargetContext);
   const remeasure = useContext(PanelLayoutStickyChromeRemeasureContext);
   const { hidden } = usePanelScrollChromeState();
+  // See PanelLayoutStickyChrome's identical pair of effects for why the unmount
+  // case needs to be its own empty-deps effect rather than a cleanup on this one.
   useLayoutEffect(() => {
     remeasure?.();
   });
+  const remeasureRef = useRef(remeasure);
+  useLayoutEffect(() => {
+    remeasureRef.current = remeasure;
+  });
+  useLayoutEffect(() => () => remeasureRef.current?.(), []);
   return stickyChromeTarget
     ? createPortal(
       <div

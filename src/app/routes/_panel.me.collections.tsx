@@ -6,16 +6,16 @@ import { useTRPC } from 'shared/lib/trpc';
 import type { SurfSessionItem } from 'entities/SurfSession';
 import type { PublicMedia } from 'shared/types/media';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
-import { CollectionsSectionBar, CollectionsToolbar, isCollectionTab, type CollectionTab } from 'features/Collections';
+import {
+  COLLECTION_TAB_ROUTES,
+  CollectionsSectionBar,
+  CollectionsToolbar,
+  isCollectionTab,
+  type CollectionTab,
+} from 'features/Collections';
 import { SidePanelHeaderTrailing } from 'widgets/SidePanel';
 import { AppNavigationFloating, AppNavigationSupplement } from 'widgets/AppNavigation';
 import { PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
-
-const TAB_ROUTES: Record<CollectionTab, string> = {
-  uploads: '/me/collections',
-  purchases: '/me/collections/purchases',
-  favorites: '/me/collections/favorites',
-};
 
 type CollectionsContextValue = {
   sessions: SurfSessionItem[];
@@ -46,13 +46,18 @@ function CollectionsLayout() {
   const trpc = useTRPC();
   const layoutPolicy = useAppShellLayoutPolicy();
   const floatsOverMap = layoutPolicy.drawer.presentation === 'sideWorkspace';
+  const isDesktop = layoutPolicy.navigation === 'leftStrip';
+  // Desktop docks the spot filter into the header's trailing slot too, next to the
+  // switcher _panel.tsx now renders there in place of the plain "My Collections" title.
+  const usesHeaderTrailingToolbar = floatsOverMap || isDesktop;
   // Same split CollectionsSectionBar uses for its own presentation: landscape
   // mobile docks the switcher into the account/cart rail; every other band
-  // floats it as its own independent pill instead.
+  // floats it as its own independent pill instead. Desktop doesn't mount this
+  // at all — _panel.tsx renders the switcher directly in the header there.
   const SectionBarPortal = layoutPolicy.navigation === 'compactRail'
     ? AppNavigationSupplement
     : AppNavigationFloating;
-  const { activeTab: rawActiveTab, handleTabChange } = useTabNavigation(TAB_ROUTES);
+  const { activeTab: rawActiveTab, handleTabChange } = useTabNavigation(COLLECTION_TAB_ROUTES);
   const activeTab: CollectionTab = rawActiveTab && isCollectionTab(rawActiveTab) ? rawActiveTab : 'uploads';
   const { data: sessions = [], isLoading: isLoadingUploads } = useQuery({
     ...trpc.sessions.mine.queryOptions(),
@@ -128,21 +133,23 @@ function CollectionsLayout() {
       spotOptions={spotOptions}
       spotFilter={validSpotFilter}
       onSpotFilterChange={setSpotFilter}
-      centered={!floatsOverMap}
+      centered={!usesHeaderTrailingToolbar}
     />
   );
 
   return (
     <CollectionsContext.Provider value={contextValue}>
-      {floatsOverMap
+      {usesHeaderTrailingToolbar
         ? <SidePanelHeaderTrailing>{toolbar}</SidePanelHeaderTrailing>
         : <PanelLayoutStickyChrome spacing="flush">{toolbar}</PanelLayoutStickyChrome>}
-      <SectionBarPortal>
-        <CollectionsSectionBar
-          activeTab={activeTab}
-          onTabChange={handleCollectionTabChange}
-        />
-      </SectionBarPortal>
+      {!isDesktop && (
+        <SectionBarPortal>
+          <CollectionsSectionBar
+            activeTab={activeTab}
+            onTabChange={handleCollectionTabChange}
+          />
+        </SectionBarPortal>
+      )}
       <Outlet />
     </CollectionsContext.Provider>
   );

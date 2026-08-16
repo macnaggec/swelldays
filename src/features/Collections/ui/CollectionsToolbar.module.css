@@ -7,8 +7,8 @@
 }
 
 .spotSelectHeader {
-  width: fit-content;
-  max-width: min(140px, 100%);
+  min-width: min-content;
+  max-width: 140px;
   margin-block: 4px;
 }
 

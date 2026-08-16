@@ -1539,3 +1539,63 @@ describe('Panel short-height browse section shell', () => {
     expect(screen.getByRole('button', { name: 'Gallery' })).toHaveAttribute('aria-current', 'page');
   });
 });
+
+describe('Panel constrained-regular floating filter controls', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.isAuthenticated = true;
+    mocks.matches = [{ routeId: '/_panel/', staticData: {} }];
+    mocks.params = {};
+    mocks.sizeBand = 'constrained';
+    mocks.heightBand = 'regular';
+    usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: true });
+  });
+
+  afterEach(() => {
+    mocks.sizeBand = 'wide';
+    mocks.heightBand = 'regular';
+  });
+
+  it('restores the floating filter pills after visiting the cart workspace and back', () => {
+    let runNextFrame: FrameRequestCallback | undefined;
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      runNextFrame = callback;
+      return 1;
+    }));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    // Starting state on browse: panel compact, pills floating over the map, none inside the panel.
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-expanded', 'false');
+    expect(document.querySelector('[data-floating-panel-controls] [aria-label="Browse filters"]')).not.toBeNull();
+    expect(screen.getByTestId('side-panel').querySelector('[aria-label="Browse filters"]')).toBeNull();
+
+    mocks.matches = [{ routeId: '/_panel/cart', staticData: { appRouteIntent: 'siteWorkspace' }, search: {} }];
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+    act(() => runNextFrame?.(0));
+
+    // Cart forces the panel open; it carries no filter pills at all.
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-expanded', 'true');
+    expect(document.querySelector('[aria-label="Browse filters"]')).toBeNull();
+
+    mocks.matches = [{ routeId: '/_panel/', staticData: {} }];
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    // Immediately on return, before the deferred expand/collapse correction runs: exactly one
+    // of {floating, in-panel} pills renders — never both, never neither — because both read the
+    // same renderedExpanded value in the same render.
+    const floatingRightAfterReturn = document.querySelector('[data-floating-panel-controls] [aria-label="Browse filters"]');
+    const inPanelRightAfterReturn = screen.getByTestId('side-panel').querySelector('[aria-label="Browse filters"]');
+    expect(Boolean(floatingRightAfterReturn) !== Boolean(inPanelRightAfterReturn)).toBe(true);
+
+    act(() => runNextFrame?.(0));
+
+    // Settled state matches a fresh load of browse: compact, pills floating, none inside the panel.
+    expect(screen.getByTestId('side-panel')).toHaveAttribute('data-expanded', 'false');
+    expect(document.querySelector('[data-floating-panel-controls] [aria-label="Browse filters"]')).not.toBeNull();
+    expect(screen.getByTestId('side-panel').querySelector('[aria-label="Browse filters"]')).toBeNull();
+    vi.unstubAllGlobals();
+  });
+});
