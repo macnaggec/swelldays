@@ -51,15 +51,15 @@ describe('resolveSheetSnapHeights', () => {
     expect(resolveBrowseSheetPeekHeightPx({ safeAreaBottomPx: 34, isStandalone: false })).toBe(81);
   });
 
-  it('keeps the complete 8px Upload stack 138px tall in standalone after the bottom safe area is repainted', () => {
-    expect(resolveHeaderSheetPeekHeightPx({ safeAreaBottomPx: 0, isStandalone: true })).toBe(138);
-    expect(resolveHeaderSheetPeekHeightPx({ safeAreaBottomPx: 21, isStandalone: true })).toBe(117);
-    expect(resolveHeaderSheetPeekHeightPx({ safeAreaBottomPx: 34, isStandalone: true })).toBe(104);
+  it('keeps the complete 8px Upload stack 146px tall in standalone after the bottom safe area is repainted', () => {
+    expect(resolveHeaderSheetPeekHeightPx({ safeAreaBottomPx: 0, isStandalone: true })).toBe(146);
+    expect(resolveHeaderSheetPeekHeightPx({ safeAreaBottomPx: 21, isStandalone: true })).toBe(125);
+    expect(resolveHeaderSheetPeekHeightPx({ safeAreaBottomPx: 34, isStandalone: true })).toBe(112);
   });
 
   it('removes the standalone home-indicator reserve from Upload Peek in a browser tab', () => {
-    expect(resolveHeaderSheetPeekHeightPx({ safeAreaBottomPx: 0, isStandalone: false })).toBe(125);
-    expect(resolveHeaderSheetPeekHeightPx({ safeAreaBottomPx: 34, isStandalone: false })).toBe(125);
+    expect(resolveHeaderSheetPeekHeightPx({ safeAreaBottomPx: 0, isStandalone: false })).toBe(133);
+    expect(resolveHeaderSheetPeekHeightPx({ safeAreaBottomPx: 34, isStandalone: false })).toBe(133);
   });
 
   it('clamps monotonically when the viewport is shorter than the peek height', () => {

@@ -37,11 +37,13 @@ export function resolveBrowseSheetPeekHeightPx({
 /**
  * Peek height for a sheet whose header row (back chevron + title) stays visible at
  * Peek, unlike Browse's own sheet, which has no header row at all. Its physical
- * stack is 8px sheet edge + 5px grabber + 8px + 44px header + 8px + 44px search +
- * 8px + 5px iOS indicator + 8px screen edge = 138px. The header contributes only
- * its coarse-pointer back control height; it carries no vertical padding.
+ * stack is 8px sheet edge + 5px grabber + 8px + 52px header + 8px + 44px search +
+ * 8px + 5px iOS indicator + 8px screen edge = 146px. The header's own row
+ * (SidePanel's panelTop) is its coarse-pointer back control height plus the 8px
+ * of centering slack that row's min-height always adds around that control —
+ * not the bare control height alone.
  */
-export const SHEET_PEEK_WITH_HEADER_HEIGHT_PX = 138;
+export const SHEET_PEEK_WITH_HEADER_HEIGHT_PX = 146;
 
 export function resolveHeaderSheetPeekHeightPx({
   safeAreaBottomPx,

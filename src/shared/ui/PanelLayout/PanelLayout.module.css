@@ -226,9 +226,14 @@
 }
 
 .root[data-drawer-presentation='fullScreen'] .footer {
-  /* Keep footer actions 8px above the iOS indicator while the surrounding
-     full-screen surface itself paints through to the physical screen edge. */
-  padding-block-end: calc(2 * var(--wa-grabber-gap) + var(--wa-sheet-grabber-height));
+  /* The surrounding full-screen surface paints through to the physical screen
+     edge with no safe-area reserve of its own, so this footer's own bottom
+     padding is what clears the iOS indicator. Reuses the same
+     --wa-floating-chrome-bottom-offset every other floating footer (sheet,
+     side overlay, section bars) already clears it by, instead of a separate
+     hardcoded distance that stayed the standalone-app amount even in an
+     ordinary browser tab. */
+  padding-block-end: var(--wa-floating-chrome-bottom-offset);
 }
 
 .root[data-sheet-snap='peek'] .stickyChrome {
@@ -304,8 +309,9 @@
   padding-block: var(--wa-panel-stack-gap);
 }
 
-/* Upload's header is exactly its 44px control height: the handle provides the
-   8px above it, while the spot section provides the 8px below it. */
+/* Upload's header is its 44px control height plus panelTop's own 8px of
+   centering slack (52px total): the handle provides the 8px above it, while
+   the spot section provides the 8px below it. */
 :global([data-drawer-sheet-has-header]) .root[data-sheet-snap] {
   height: calc(
     var(--wa-sheet-visible-height)

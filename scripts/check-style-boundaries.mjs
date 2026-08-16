@@ -649,8 +649,8 @@ const requiredPanelLayoutStyles = [
     /\[data-drawer-sheet-has-header\][^{]*\.root\[data-sheet-snap\]\s*\{[^}]*var\(--wa-upload-sheet-drag-handle-height\)/s,
   ],
   [
-    'full-screen footer actions preserving the same 8px indicator clearance as Browse',
-    /\.root\[data-drawer-presentation='fullScreen'\]\s+\.footer\s*\{[^}]*padding-block-end:\s*calc\(2\s*\*\s*var\(--wa-grabber-gap\)\s*\+\s*var\(--wa-sheet-grabber-height\)\)/s,
+    'full-screen footer actions clearing the bottom by the same offset every other floating footer uses',
+    /\.root\[data-drawer-presentation='fullScreen'\]\s+\.footer\s*\{[^}]*padding-block-end:\s*var\(--wa-floating-chrome-bottom-offset\)/s,
   ],
 ];
 
