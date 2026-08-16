@@ -491,6 +491,8 @@ function VirtualGalleryInner<T extends { id: string }>(
       ref={containerRef}
       className={styles.container}
       data-dense={dense || undefined}
+      data-panel-collection-grid
+      data-columns={columns}
       tabIndex={-1}
       style={{ '--gallery-cols': columns } as React.CSSProperties}
     >

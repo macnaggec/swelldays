@@ -64,6 +64,47 @@
   gap: var(--wa-panel-grid-gap);
 }
 
+/* Persistent's own row keeps search + upload + pills on one line and never
+   wraps a second row beneath it — the pills scroll horizontally past Upload
+   instead, matching the phone sheet and side overlay's own treatment
+   (FilterPills' `horizontalScroll` prop). Supersedes the 2026-07-24 pinned
+   "never scroll, wrap instead" requirement above (issue 01 / D00's own scope
+   note) by direct user instruction, 2026-08-15; D00's roadmap text still
+   describes the superseded behavior. */
+:global([data-drawer-presentation='persistent']) .toolbar[data-expanded] {
+  flex-wrap: nowrap;
+}
+
+:global([data-drawer-presentation='persistent']) .toolbarTrailing {
+  /* Shares the row with .toolbarMain via flex, unlike the phone sheet/side
+     overlay's own column-direction toolbar, where .toolbarTrailing owns its
+     row outright and a static `width: 100% + Npx` formula can bleed it past
+     both edges. Here that width has no single sibling-free "100%" to bleed
+     from, so this takes exactly the space flex leaves after .toolbarMain
+     instead, and reaches the true right edge with a negative margin — pulling
+     the box's own boundary outward without telling flex it needs more room. */
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-right: calc(-1 * var(--wa-panel-content-inset));
+  /* No added padding or margin here (revised 2026-08-15, twice same day — first
+     a wide gap, then a narrower one, both extra space on top of what the row
+     already had). .toolbarMainExpanded is capped to one card's own width —
+     the live column count published as data-columns below, same gap token
+     (--wa-panel-grid-gap) as the card grid's own column gap — so this line,
+     drawn at .toolbarTrailing's own left edge with no space added, lands
+     exactly on the boundary the second card column starts at, matching the
+     search field's own border color, the row's established glass-border
+     accent. FilterPills' own horizontal-scroll padding (--wa-panel-content-inset)
+     supplies its own clearance from the line on one side and the true right
+     edge on the other, once scrolled home. Only true at 1-2 columns, where
+     the pills stay left-aligned right at this line by design (FilterPills'
+     own [data-horizontal-scroll] root, "flush with the content grid below",
+     user-confirmed 2026-08-07); the data-columns='3'+ overrides further down
+     drop the line and push the pills to the row's true right edge instead,
+     once there would otherwise be a gap between the two. */
+  border-left: 1px solid var(--wa-glass-border-media-overlay);
+}
+
 .toolbarMain {
   display: flex;
   align-items: center;
@@ -209,6 +250,53 @@
   flex: 0 0 auto;
   width: calc((100% - 2 * var(--wa-panel-grid-gap)) / 3);
   max-width: none;
+}
+
+/* The Gallery grid's own comfortable density reaches these counts (collection
+   grids never go past 3); same one-card-width formula, one more gap/divisor
+   per column. */
+:global([data-panel-layout]:not([data-drawer-presentation='bottomSheet']):not([data-drawer-presentation='sideOverlay']):has([data-panel-collection-grid][data-columns='4'])) .toolbarMainExpanded {
+  flex: 0 0 auto;
+  width: calc((100% - 3 * var(--wa-panel-grid-gap)) / 4);
+  max-width: none;
+}
+
+:global([data-panel-layout]:not([data-drawer-presentation='bottomSheet']):not([data-drawer-presentation='sideOverlay']):has([data-panel-collection-grid][data-columns='5'])) .toolbarMainExpanded {
+  flex: 0 0 auto;
+  width: calc((100% - 4 * var(--wa-panel-grid-gap)) / 5);
+  max-width: none;
+}
+
+:global([data-panel-layout]:not([data-drawer-presentation='bottomSheet']):not([data-drawer-presentation='sideOverlay']):has([data-panel-collection-grid][data-columns='6'])) .toolbarMainExpanded {
+  flex: 0 0 auto;
+  width: calc((100% - 5 * var(--wa-panel-grid-gap)) / 6);
+  max-width: none;
+}
+
+/* From 3 columns on, the search+upload block no longer reaches anywhere near
+   the row's trailing edge, so the divider drawn at its own right edge (below)
+   would float disconnected from the pills instead of meeting them — drop it. */
+:global([data-panel-layout]:has([data-panel-collection-grid][data-columns='3'])) .toolbarTrailing,
+:global([data-panel-layout]:has([data-panel-collection-grid][data-columns='4'])) .toolbarTrailing,
+:global([data-panel-layout]:has([data-panel-collection-grid][data-columns='5'])) .toolbarTrailing,
+:global([data-panel-layout]:has([data-panel-collection-grid][data-columns='6'])) .toolbarTrailing {
+  border-left: none;
+}
+
+/* .toolbarTrailing itself already bleeds to the row's true right edge, but
+   the pills inside it (FilterPills' own [data-horizontal-scroll] root) are
+   left-aligned by design at 1-2 columns — user-confirmed 2026-08-07 in
+   FilterPills.module.css, "flush with the content grid below" i.e. flush
+   with the divider above. That divider is gone at 3+ columns (rule above),
+   so left-aligned pills would instead sit stranded right after Upload with a
+   wide empty gap before the row's true edge. Push them to that edge here
+   instead, scoped to 3+ columns only so 1-2 columns keep the confirmed
+   flush-left placement untouched. */
+:global([data-panel-layout]:has([data-panel-collection-grid][data-columns='3'])) .toolbarTrailing :global([data-horizontal-scroll]),
+:global([data-panel-layout]:has([data-panel-collection-grid][data-columns='4'])) .toolbarTrailing :global([data-horizontal-scroll]),
+:global([data-panel-layout]:has([data-panel-collection-grid][data-columns='5'])) .toolbarTrailing :global([data-horizontal-scroll]),
+:global([data-panel-layout]:has([data-panel-collection-grid][data-columns='6'])) .toolbarTrailing :global([data-horizontal-scroll]) {
+  justify-content: flex-end;
 }
 
 /* The short-landscape Map plate shrink-wraps this row, so the inner controls
