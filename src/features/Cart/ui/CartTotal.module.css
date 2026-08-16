@@ -6,3 +6,10 @@
   letter-spacing: -0.02em;
   line-height: 1;
 }
+
+.label {
+  color: var(--wa-text-muted);
+  font-size: var(--wa-font-size-sm);
+  font-weight: 400;
+  letter-spacing: normal;
+}

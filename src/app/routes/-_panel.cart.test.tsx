@@ -39,8 +39,12 @@ vi.mock('entities/Commerce', () => ({
 vi.mock('features/Cart', () => ({
   CartCard: ({ item }: { item: { label: string } }) => <article>{item.label}</article>,
   CartLightbox: () => null,
-  CartTotal: ({ totalCents }: { totalCents: number }) => <span>{`$${totalCents / 100}`}</span>,
-  CheckoutButton: () => <button type="button">Checkout</button>,
+  CartCheckoutFooter: ({ totalCents }: { totalCents: number }) => (
+    <div>
+      <span>{`$${totalCents / 100}`}</span>
+      <button type="button">Checkout</button>
+    </div>
+  ),
 }));
 
 // Cart is a siteWorkspace route (M06c); PanelCollectionGrid (inside BaseGallery) now

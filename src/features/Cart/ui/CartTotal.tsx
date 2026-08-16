@@ -7,5 +7,10 @@ export interface CartTotalProps {
 }
 
 export function CartTotal({ totalCents }: CartTotalProps) {
-  return <Text className={styles.amount}>{formatPrice(totalCents)}</Text>;
+  return (
+    <Text className={styles.amount}>
+      <span className={styles.label}>Total: </span>
+      {formatPrice(totalCents)}
+    </Text>
+  );
 }

@@ -3,9 +3,8 @@
    treatment as Upload's own ready-to-publish button — this is the one confirm action on
    the page, so it should read as clearly clickable, not a flat outline. */
 .button {
-  min-width: 140px;
-  height: var(--wa-control-height-default);
-  padding: 0 16px;
+  height: calc(var(--wa-control-height-default) + 6px);
+  padding: 0 12px;
   border: 1px solid color-mix(in srgb, var(--wa-status-success) 75%, var(--wa-glass-border-media-overlay));
   border-radius: var(--wa-radius-pill);
   background: color-mix(in srgb, var(--wa-status-success) 46%, var(--wa-panel-control-background));
