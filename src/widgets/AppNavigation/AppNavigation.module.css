@@ -98,19 +98,22 @@
   -webkit-backdrop-filter: var(--wa-panel-control-backdrop, var(--wa-glass-blur-sm));
 }
 
-/* compactBar sits its row directly beside FilterPills (same --wa-control-size-navigation-compact
-   breakpoints as the pills' own --wa-control-height-default — see tokens.css), so it gets the
-   same shrink-and-recenter treatment as topBar below: the visible button matches the pills'
-   height exactly, while an invisible ::before keeps the full-size tap target underneath. */
+/* compactBar and leftStrip both sit their row directly beside FilterPills (same
+   --wa-control-size-navigation-compact breakpoints as the pills' own
+   --wa-control-height-default — see tokens.css), so they get the same shrink-and-recenter
+   treatment as topBar below: the visible button matches the pills' height exactly, while an
+   invisible ::before keeps the full-size tap target underneath. */
 .root[data-navigation-presentation='topBar'] .button,
-.root[data-navigation-presentation='compactBar'] .button {
+.root[data-navigation-presentation='compactBar'] .button,
+.root[data-navigation-presentation='leftStrip'] .button {
   position: relative;
   width: var(--wa-control-size-navigation-compact);
   height: var(--wa-control-size-navigation-compact);
 }
 
 .root[data-navigation-presentation='topBar'] .button::before,
-.root[data-navigation-presentation='compactBar'] .button::before {
+.root[data-navigation-presentation='compactBar'] .button::before,
+.root[data-navigation-presentation='leftStrip'] .button::before {
   content: '';
   position: absolute;
   top: 50%;
