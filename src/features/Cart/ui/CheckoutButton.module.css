@@ -8,8 +8,6 @@
   border: 1px solid color-mix(in srgb, var(--wa-status-success) 75%, var(--wa-glass-border-media-overlay));
   border-radius: var(--wa-radius-pill);
   background: color-mix(in srgb, var(--wa-status-success) 46%, var(--wa-panel-control-background));
-  backdrop-filter: var(--wa-glass-blur-sm);
-  -webkit-backdrop-filter: var(--wa-glass-blur-sm);
   color: var(--wa-text-primary-action);
   font-size: var(--wa-font-size-xs);
   font-weight: 400;
