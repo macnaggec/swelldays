@@ -757,6 +757,44 @@ describe('PanelCollectionGrid scroll anchoring', () => {
     expect(grid.style.getPropertyValue('--wa-panel-collection-scroll-head-runway')).toBe('');
   });
 
+  it('does not scroll into the newly revealed space when the pinned row settles to a taller height after the anchor was captured', () => {
+    // Mirrors the shrink test above, reversed: a live presentation swap (e.g. a
+    // portrait-to-landscape rotation) can make the pinned search/filter row taller,
+    // not just shorter. Forgiving shrink alone left growth uncompensated, so the
+    // correction read the anchor's own contentTop growing by the same amount the row
+    // did as the anchor having moved, and scrolled down to match — eating exactly the
+    // newly grown padding and leaving the photographer with the *old*, shorter gap
+    // instead of the new one, with no recolumn or genuine content change involved.
+    const resizeObserver = stubResizeObserver();
+    stubGridLayout();
+
+    const atChromeHeight = (chromeHeightPx: number) => (
+      <div data-panel-scroll-owner data-panel-chrome-height={chromeHeightPx}>
+        <PanelCollectionGrid>{SIX_CARDS}</PanelCollectionGrid>
+      </div>
+    );
+
+    const { container, rerender } = render(atChromeHeight(68));
+    const scrollOwner = container.querySelector('[data-panel-scroll-owner]') as HTMLElement;
+
+    // Establishes the arrangement at rest, at the top: 300 and 310 both floor to a
+    // single column at the panelCard density (340px target), so the second emit below
+    // re-checks the anchor without also triggering a genuine recolumn — isolating the
+    // row's own growth as the only thing that changed.
+    resizeObserver.emit(300);
+
+    // The pinned row settles to its real, taller height (e.g. the search row's own
+    // padding under the landscape side-panel presentation) — nothing about the grid's
+    // own columns or width changes from this alone.
+    rerender(atChromeHeight(120));
+
+    // A later, still same-column layout recheck is the next thing that actually
+    // re-checks the anchor against current geometry.
+    resizeObserver.emit(310);
+
+    expect(scrollOwner.scrollTop).toBe(0);
+  });
+
   it('does not introduce a head runway when the pinned row disappears before the photographer has scrolled', () => {
     // Reproduces the My Collections defect (2026-08-16): the pinned row is present
     // at mount, then relocates away entirely (e.g. into the panel header on a wider

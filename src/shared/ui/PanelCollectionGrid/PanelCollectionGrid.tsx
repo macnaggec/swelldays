@@ -369,17 +369,21 @@ function PanelCollectionAnchorCorrection({
       return;
     }
 
-    // How much the pinned row above the anchor has shrunk since capture (0 if it grew,
-    // held steady, or was never there) — forgiven below so that shrink alone can never
-    // read as the anchor's own content having moved. A genuine recolumn or other real
-    // layout shift still shows up in `contentTop` untouched and is still compensated.
-    const chromeDrop = Math.max(0, anchor.chromeHeightAtCapture - visibleChromeHeight(scrollOwner));
+    // How much the pinned row above the anchor has changed since capture — positive
+    // when it shrank, negative when it grew — forgiven either way below so that the
+    // row's own resize alone can never read as the anchor's own content having moved.
+    // A genuine recolumn or other real layout shift still shows up in `contentTop`
+    // untouched and is still compensated. Unclamped, unlike a shrink-only reading:
+    // clamping the grown case to zero left it uncompensated, so a live presentation
+    // swap that makes the row taller (e.g. a portrait/landscape rotation) scrolled
+    // down by exactly the growth, eating the newly revealed space above the anchor.
+    const chromeDelta = anchor.chromeHeightAtCapture - visibleChromeHeight(scrollOwner);
     let desiredScrollTop = contentTop(anchor.node, scrollOwner)
-      - anchor.offsetFromScrollOwnerTop + chromeDrop;
+      - anchor.offsetFromScrollOwnerTop + chromeDelta;
     if (desiredScrollTop < 0) {
       grid.style.setProperty(SCROLL_HEAD_RUNWAY_PROPERTY, `${-desiredScrollTop}px`);
       desiredScrollTop = contentTop(anchor.node, scrollOwner)
-        - anchor.offsetFromScrollOwnerTop + chromeDrop;
+        - anchor.offsetFromScrollOwnerTop + chromeDelta;
     }
 
     const gridBottom = contentTop(grid, scrollOwner) + grid.offsetHeight;
