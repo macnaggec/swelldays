@@ -48,6 +48,7 @@ function CartPanelRoute() {
         <BaseGallery<CartItem>
           items={items}
           renderCard={renderCartCard}
+          preservesScrollOnReflow={false}
           emptyState={
             <Text c="dimmed" size="sm" ta="center" mt="xl">
               Your cart is empty

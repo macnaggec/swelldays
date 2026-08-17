@@ -95,11 +95,24 @@ interface PanelCollectionGridProps extends HTMLAttributes<HTMLDivElement> {
    * placeholder fills the same visual block at any column count.
    */
   preview?: boolean;
+  /**
+   * Keep the card at the scroll owner's visible top pixel-exact across a recolumn.
+   * Feed needs this: its cards glide between slots via framer-motion, and a desynced
+   * scroll position turns that glide into a visible jump. A list that never animates
+   * a card's position — Cart, always short and swapped for a whole new list on
+   * checkout rather than reflowed in place — has no glide to protect and no
+   * meaningfully-long scroll position worth restoring, so it can skip the mechanism
+   * (and the edge cases that come with it, like reserving dead space above the grid
+   * when a sibling row it was measured against shrinks) entirely. Defaults to true,
+   * the behavior every other caller already relies on.
+   */
+  preservesScrollOnReflow?: boolean;
 }
 
 export function PanelCollectionGrid({
   className,
   preview = false,
+  preservesScrollOnReflow = true,
   style,
   children,
   ...props
@@ -174,6 +187,7 @@ export function PanelCollectionGrid({
   // can change with no render at all — the recolumn correction below is only as good as
   // knowing where they really are the instant it runs.
   useEffect(() => {
+    if (!preservesScrollOnReflow) return;
     const scrollOwner = gridNodeRef.current?.closest<HTMLElement>('[data-panel-scroll-owner]');
     if (!scrollOwner) return;
     if (!anchorCaptureSuspendedRef.current) captureAnchor();
@@ -186,7 +200,7 @@ export function PanelCollectionGrid({
     };
     scrollOwner.addEventListener('scroll', handleScroll, { passive: true });
     return () => scrollOwner.removeEventListener('scroll', handleScroll);
-  }, [captureAnchor]);
+  }, [captureAnchor, preservesScrollOnReflow]);
 
   return (
     <div
@@ -202,16 +216,18 @@ export function PanelCollectionGrid({
       }}
     >
       <PanelCollectionColumnsContext.Provider value={columns}>
-        <PanelCollectionAnchorCorrection
-          columns={columns}
-          arrangementWidth={arrangementWidth}
-          suspendAnchorCapture={suspendAnchorCapture}
-          layoutDependency={renderedChildren}
-          gridNodeRef={gridNodeRef}
-          anchorRef={anchorRef}
-          anchorCaptureSuspendedRef={anchorCaptureSuspendedRef}
-          captureAnchor={captureAnchor}
-        />
+        {preservesScrollOnReflow && (
+          <PanelCollectionAnchorCorrection
+            columns={columns}
+            arrangementWidth={arrangementWidth}
+            suspendAnchorCapture={suspendAnchorCapture}
+            layoutDependency={renderedChildren}
+            gridNodeRef={gridNodeRef}
+            anchorRef={anchorRef}
+            anchorCaptureSuspendedRef={anchorCaptureSuspendedRef}
+            captureAnchor={captureAnchor}
+          />
+        )}
         {renderedChildren}
       </PanelCollectionColumnsContext.Provider>
     </div>

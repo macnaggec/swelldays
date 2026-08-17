@@ -48,6 +48,9 @@ export interface BaseGalleryProps<T extends { id: string }> {
 
   /** Accessibility label for the gallery */
   'aria-label'?: string;
+
+  /** Forwarded to PanelCollectionGrid — see its own doc comment. Defaults to true. */
+  preservesScrollOnReflow?: boolean;
 }
 
 /**
@@ -82,6 +85,7 @@ function BaseGallery<T extends { id: string }>({
   emptyState,
   gap = 'md',
   'aria-label': ariaLabel = 'Gallery',
+  preservesScrollOnReflow,
 }: BaseGalleryProps<T>) {
   // Stable click handler to avoid creating new functions per item
   const handleItemClick = useCallback(
@@ -113,6 +117,7 @@ function BaseGallery<T extends { id: string }>({
         className={styles.gallery}
         role="grid"
         aria-label={ariaLabel}
+        preservesScrollOnReflow={preservesScrollOnReflow}
       >
         {/* Prepend slot - for special first items like AddFileCard */}
         {prepend && (

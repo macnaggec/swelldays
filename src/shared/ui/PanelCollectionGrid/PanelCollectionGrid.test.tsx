@@ -313,6 +313,36 @@ describe('PanelCollectionGrid scroll anchoring', () => {
     expect(trackedCard().getBoundingClientRect().top).toBe(offsetBeforeRecolumn);
   });
 
+  it('does not adjust scrollTop across a recolumn when preservesScrollOnReflow is false', () => {
+    // Cart's own opt-out (2026-08-16): it never animates a card's position and is
+    // always short, so it skips this whole mechanism rather than carry a guarantee
+    // it doesn't need. Mirrors the test above, but with the correction disabled —
+    // the browser's own unmodified scroll position must survive the recolumn.
+    const resizeObserver = stubResizeObserver();
+    stubGridLayout();
+
+    const { container } = render(
+      <div data-panel-scroll-owner>
+        <PanelCollectionGrid preservesScrollOnReflow={false}>{SIX_CARDS}</PanelCollectionGrid>
+      </div>,
+    );
+
+    const scrollOwner = container.querySelector('[data-panel-scroll-owner]') as HTMLElement;
+    const grid = container.querySelector('[data-panel-collection-grid]') as HTMLElement;
+
+    resizeObserver.emit(300);
+    scrollOwner.scrollTop = 150;
+    act(() => {
+      scrollOwner.dispatchEvent(new Event('scroll'));
+    });
+
+    resizeObserver.emit(1020);
+
+    expect(scrollOwner.scrollTop).toBe(150);
+    expect(grid.style.getPropertyValue('--wa-panel-collection-scroll-head-runway')).toBe('');
+    expect(grid.style.getPropertyValue('--wa-panel-collection-scroll-runway')).toBe('');
+  });
+
   it('keeps the scrolled-to card fixed when width changes row height without changing columns', () => {
     const resizeObserver = stubResizeObserver();
     stubGridLayout();
