@@ -329,7 +329,12 @@ function UploadSidebarContent({
 
       <PanelLayoutFooter>
         {/* Cancel discards the draft; Publish finalizes it. PanelLayout owns placement. */}
-        <Box component="footer" className={styles.publishFooter} data-ready={canPublish ? 'true' : 'false'}>
+        <Box
+          component="footer"
+          className={styles.publishFooter}
+          data-ready={canPublish ? 'true' : 'false'}
+          data-upload-publish-footer
+        >
           <Group className={styles.footerActions} gap="sm" justify="center">
             <Popover
               opened={isConfirmingDiscard}

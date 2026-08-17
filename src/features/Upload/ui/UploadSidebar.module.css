@@ -36,6 +36,23 @@
   padding: var(--upload-compact-inset) var(--upload-gutter);
 }
 
+:global([data-panel-layout][data-sheet-snap='peek']) .spotSection {
+  /* At Peek this is the sheet's last visible row; its own bottom padding is
+     what clears the true screen edge, so it takes the flat
+     --wa-floating-chrome-edge-gap every bottom-based plate clears the edge
+     by, instead of the ordinary 8px section inset. */
+  padding-block-end: var(--wa-floating-chrome-edge-gap);
+}
+
+:global([data-app-display-mode='standalone'])
+  :global([data-panel-layout][data-sheet-snap='peek']) .spotSection {
+  /* Standalone's full gap-grabber-gap structure, same shared token every
+     other floating plate uses — this row has no separate margin
+     contributor (unlike Browse's toolbar), so it takes the whole offset
+     directly rather than the flat edge gap alone. */
+  padding-block-end: var(--wa-floating-chrome-bottom-offset);
+}
+
 .mediaSection {
   padding-inline: var(--upload-gutter);
 }
@@ -102,10 +119,18 @@
    pair instead, scoped via :has() to this footer's own content so Cart's checkout
    footer, which shares the same chrome, is untouched. The existing rounded-all-corners
    glass background is inherited unchanged — only the shape narrows. PanelLayout owns
-   the presentation-aware bottom position; this consumer adds no competing offset. */
-:global([data-panel-layout][data-sheet-snap]) [data-panel-layout-footer]:has(.publishFooter),
+   the presentation-aware bottom position; this consumer adds no competing offset.
+   Targets the plain data attribute below, not a CSS-module class name: a bare local
+   class inside :has() depends on the module scoper resolving selectors nested in
+   pseudo-classes, which silently never matched here and left this whole override dead.
+   persistent (desktop's own big panel) joins sheet-snap and side-overlay here because
+   it now floats its footer too (PanelLayout.tsx) — without this third line the same
+   full-width chrome bar this whole rule exists to narrow would simply reappear there. */
+:global([data-panel-layout][data-sheet-snap]) [data-panel-layout-footer]:has([data-upload-publish-footer]),
 :global([data-panel-layout][data-drawer-presentation='sideOverlay'])
-  [data-panel-layout-footer]:has(.publishFooter) {
+  [data-panel-layout-footer]:has([data-upload-publish-footer]),
+:global([data-panel-layout][data-drawer-presentation='persistent'])
+  [data-panel-layout-footer]:has([data-upload-publish-footer]) {
   width: fit-content;
   max-width: calc(100% - 2 * var(--wa-panel-content-inset));
   margin-inline: auto;

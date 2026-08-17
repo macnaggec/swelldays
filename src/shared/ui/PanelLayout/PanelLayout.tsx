@@ -53,11 +53,24 @@ export function PanelLayout({
     sheetSnap,
     drawerPresentation,
   } = usePanelScrollChromeState();
-  // Compact mobile surfaces float footer actions above their scrolling content:
-  // portrait uses a bottom sheet, while short landscape uses a side overlay. A
-  // sideWorkspace already has a full-height panel where the ordinary footer row can
-  // stay visible without covering the cards above it.
-  const floatsFooter = sheetSnap !== undefined || drawerPresentation === 'sideOverlay';
+  // Every surface floats footer actions above their scrolling content, not just the
+  // compact/mobile ones: portrait uses a bottom sheet (or, for a siteWorkspace/
+  // routeWorkspace route like Cart, the edge-to-edge fullScreen presentation those
+  // intents use instead of a sheet on a phone), short landscape uses a side overlay
+  // (or, again for a siteWorkspace route, the sideWorkspace panel that presentation
+  // uses instead), and desktop's own persistent panel is no different — Upload's
+  // Cancel/Publish row and Cart's checkout row both sat glued to the bottom of the
+  // one shared panel surface there the same way they did on every mobile presentation
+  // before each was added here in turn: sideWorkspace and fullScreen were originally
+  // left out on the assumption their own full-height panel gave a footer enough room
+  // to stay visible without floating, and persistent was never even considered
+  // because it isn't a compact surface — but the footer's own content never depended
+  // on being compact to want floating above what it sits over.
+  const floatsFooter = sheetSnap !== undefined
+    || drawerPresentation === 'sideOverlay'
+    || drawerPresentation === 'fullScreen'
+    || drawerPresentation === 'sideWorkspace'
+    || drawerPresentation === 'persistent';
 
   // Everything in the panel — search row, filter pills, cards — lays itself out once,
   // at the width the drawer is heading for, instead of being re-flowed on every frame
@@ -153,56 +166,56 @@ export function PanelLayout({
         <PanelLayoutMetadataTargetContext.Provider value={metadataTarget}>
           <PanelLayoutStickyChromeTargetContext.Provider value={stickyChromeTarget}>
             <PanelLayoutStickyChromeRemeasureContext.Provider value={publishChromeHeight}>
-            <div
-              className={styles.root}
-              data-panel-layout
-              data-sheet-snap={sheetSnap}
-              data-drawer-presentation={drawerPresentation}
-              ref={measureRef}
-              style={Object.keys(rootStyle).length === 0 ? undefined : rootStyle}
-            >
-              {header && <div data-panel-layout-header>{header}</div>}
-              <div ref={setMetadataTarget} className={styles.metadata} data-panel-layout-metadata />
+              <div
+                className={styles.root}
+                data-panel-layout
+                data-sheet-snap={sheetSnap}
+                data-drawer-presentation={drawerPresentation}
+                ref={measureRef}
+                style={Object.keys(rootStyle).length === 0 ? undefined : rootStyle}
+              >
+                {header && <div data-panel-layout-header>{header}</div>}
+                <div ref={setMetadataTarget} className={styles.metadata} data-panel-layout-metadata />
 
-              <div className={styles.body} data-panel-layout-body>
-                <div className={styles.scrollRegion} data-panel-layout-scroll-region>
-                  <div
-                    className={styles.scroller}
-                    data-panel-layout-scroller
-                    data-panel-scroll-owner
-                    data-content-scroll={contentScrollable ? undefined : 'locked'}
-                    ref={scrollOwnerMergedRef}
-                    onScrollCapture={handleScrollCapture}
-                  >
-                    <div className={styles.content} data-panel-layout-content>
-                      {children}
+                <div className={styles.body} data-panel-layout-body>
+                  <div className={styles.scrollRegion} data-panel-layout-scroll-region>
+                    <div
+                      className={styles.scroller}
+                      data-panel-layout-scroller
+                      data-panel-scroll-owner
+                      data-content-scroll={contentScrollable ? undefined : 'locked'}
+                      ref={scrollOwnerMergedRef}
+                      onScrollCapture={handleScrollCapture}
+                    >
+                      <div className={styles.content} data-panel-layout-content>
+                        {children}
+                      </div>
+                    </div>
+
+                    <div className={styles.chromeViewport}>
+                      <div
+                        ref={setStickyChromeTarget}
+                        className={styles.stickyChrome}
+                        data-panel-scroll-chrome
+                        data-hidden={hidden || undefined}
+                        data-scrolled-from-top={scrolledFromTop || undefined}
+                      />
                     </div>
                   </div>
 
-                  <div className={styles.chromeViewport}>
-                    <div
-                      ref={setStickyChromeTarget}
-                      className={styles.stickyChrome}
-                      data-panel-scroll-chrome
-                      data-hidden={hidden || undefined}
-                      data-scrolled-from-top={scrolledFromTop || undefined}
-                    />
-                  </div>
+                  <div
+                    ref={setRailTarget}
+                    className={styles.rail}
+                    data-panel-layout-rail
+                  />
                 </div>
 
                 <div
-                  ref={setRailTarget}
-                  className={styles.rail}
-                  data-panel-layout-rail
+                  ref={setFooterTarget}
+                  className={floatsFooter ? `${styles.footer} ${materialClasses.chrome}` : styles.footer}
+                  data-panel-layout-footer
                 />
               </div>
-
-              <div
-                ref={setFooterTarget}
-                className={floatsFooter ? `${styles.footer} ${materialClasses.chrome}` : styles.footer}
-                data-panel-layout-footer
-              />
-            </div>
             </PanelLayoutStickyChromeRemeasureContext.Provider>
           </PanelLayoutStickyChromeTargetContext.Provider>
         </PanelLayoutMetadataTargetContext.Provider>

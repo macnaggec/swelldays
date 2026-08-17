@@ -93,7 +93,7 @@ describe('CartPanelRoute', () => {
     expect(screen.getByText('$12')).not.toBeNull();
   });
 
-  it('keeps the checkout footer in normal flow once the drawer is a sideWorkspace', () => {
+  it('floats the checkout footer over content once the drawer is a sideWorkspace', () => {
     mocks.items = [{
       id: 'cart-item-1',
       label: 'Cart item',
@@ -108,7 +108,7 @@ describe('CartPanelRoute', () => {
 
     const root = container.querySelector('[data-panel-layout]') as HTMLElement;
     expect(root).toHaveAttribute('data-drawer-presentation', 'sideWorkspace');
-    expect(root.style.getPropertyValue('--wa-panel-footer-height')).toBe('');
+    expect(root.style.getPropertyValue('--wa-panel-footer-height')).toBe('0px');
     expect(screen.getByRole('button', { name: 'Checkout' }).closest('[data-panel-layout-footer]')).not.toBeNull();
   });
 });

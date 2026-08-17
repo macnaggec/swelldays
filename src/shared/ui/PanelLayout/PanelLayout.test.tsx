@@ -327,7 +327,7 @@ describe('PanelLayout sheet-bound visible height and floating footer', () => {
     expect(root).toHaveAttribute('data-sheet-snap', 'half');
   });
 
-  it('gives the footer the floating-chrome material only while mounted inside a sheet', () => {
+  it('gives the footer the floating-chrome material on every compact/floating presentation, never on a plain persistent drawer', () => {
     const { container: sheetContainer } = render(
       <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation: 'bottomSheet', sheetSnap: 'half' }}>
         <PanelLayout>
@@ -352,15 +352,17 @@ describe('PanelLayout sheet-bound visible height and floating footer', () => {
     const sideOverlayFooter = sideOverlayContainer.querySelector('[data-panel-layout-footer]');
     expect(sideOverlayFooter?.className.split(' ')).toContain(materialClasses.chrome);
 
-    const { container: plainContainer } = render(
-      <PanelLayout>
-        <PanelLayoutFooter>
-          <button type="button">Publish</button>
-        </PanelLayoutFooter>
-      </PanelLayout>,
+    const { container: fullScreenContainer } = render(
+      <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation: 'fullScreen' }}>
+        <PanelLayout>
+          <PanelLayoutFooter>
+            <button type="button">Checkout</button>
+          </PanelLayoutFooter>
+        </PanelLayout>
+      </PanelScrollChromeStateProvider>,
     );
-    const plainFooter = plainContainer.querySelector('[data-panel-layout-footer]');
-    expect(plainFooter?.className.split(' ')).not.toContain(materialClasses.chrome);
+    const fullScreenFooter = fullScreenContainer.querySelector('[data-panel-layout-footer]');
+    expect(fullScreenFooter?.className.split(' ')).toContain(materialClasses.chrome);
 
     const { container: workspaceContainer } = render(
       <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation: 'sideWorkspace' }}>
@@ -372,7 +374,17 @@ describe('PanelLayout sheet-bound visible height and floating footer', () => {
       </PanelScrollChromeStateProvider>,
     );
     const workspaceFooter = workspaceContainer.querySelector('[data-panel-layout-footer]');
-    expect(workspaceFooter?.className.split(' ')).not.toContain(materialClasses.chrome);
+    expect(workspaceFooter?.className.split(' ')).toContain(materialClasses.chrome);
+
+    const { container: plainContainer } = render(
+      <PanelLayout>
+        <PanelLayoutFooter>
+          <button type="button">Publish</button>
+        </PanelLayoutFooter>
+      </PanelLayout>,
+    );
+    const plainFooter = plainContainer.querySelector('[data-panel-layout-footer]');
+    expect(plainFooter?.className.split(' ')).not.toContain(materialClasses.chrome);
   });
 
   it('height-binds the root to the sheet-visible-height custom property while inside a sheet', () => {
@@ -390,7 +402,7 @@ describe('PanelLayout sheet-bound visible height and floating footer', () => {
 });
 
 describe('PanelLayout sideWorkspace footer', () => {
-  it('keeps the footer in normal flow without reserving floating-footer clearance', () => {
+  it('floats the footer over content and reserves floating-footer clearance, the same as fullScreen and the other compact presentations', () => {
     const { container } = render(
       <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation: 'sideWorkspace' }}>
         <PanelLayout>
@@ -404,27 +416,26 @@ describe('PanelLayout sideWorkspace footer', () => {
     const root = container.querySelector('[data-panel-layout]') as HTMLElement;
     expect(root).toHaveAttribute('data-drawer-presentation', 'sideWorkspace');
     expect(root).not.toHaveAttribute('data-sheet-snap');
-    expect(root.style.getPropertyValue('--wa-panel-footer-height')).toBe('');
+    expect(root.style.getPropertyValue('--wa-panel-footer-height')).toBe('0px');
   });
 
-  it.each(['persistent'] as const)(
-    'reserves no floating-footer clearance property for a plain %s drawer',
-    (drawerPresentation) => {
-      const { container } = render(
-        <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation }}>
-          <PanelLayout>
-            <PanelLayoutFooter>
-              <button type="button">Checkout</button>
-            </PanelLayoutFooter>
-          </PanelLayout>
-        </PanelScrollChromeStateProvider>,
-      );
+  it('reserves no floating-footer clearance property outside any drawer presentation', () => {
+    // Every named presentation now floats its footer (persistent included, since
+    // desktop's own big panel joined the rest — PanelLayout.tsx), so the one
+    // remaining non-floating case is mounting outside a drawer presentation
+    // altogether, the same as the "plainFooter" case above.
+    const { container } = render(
+      <PanelLayout>
+        <PanelLayoutFooter>
+          <button type="button">Checkout</button>
+        </PanelLayoutFooter>
+      </PanelLayout>,
+    );
 
-      const root = container.querySelector('[data-panel-layout]') as HTMLElement;
-      expect(root).toHaveAttribute('data-drawer-presentation', drawerPresentation);
-      expect(root.style.getPropertyValue('--wa-panel-footer-height')).toBe('');
-    },
-  );
+    const root = container.querySelector('[data-panel-layout]') as HTMLElement;
+    expect(root).not.toHaveAttribute('data-drawer-presentation');
+    expect(root.style.getPropertyValue('--wa-panel-footer-height')).toBe('');
+  });
 });
 
 describe('PanelLayoutMetadata', () => {

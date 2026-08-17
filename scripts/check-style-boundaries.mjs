@@ -172,6 +172,7 @@ const requiredResponsiveLayoutTokens = [
   '--wa-sheet-grabber-width',
   '--wa-sheet-grabber-height',
   '--wa-grabber-gap',
+  '--wa-floating-chrome-edge-gap',
   '--wa-floating-chrome-bottom-offset',
   '--wa-browse-sheet-leading-gap',
   '--wa-upload-sheet-gap',
@@ -191,12 +192,12 @@ const requiredResponsiveLayoutTokens = [
 
 const requiredFloatingChromeOffsetStyles = [
   [
-    '8px browser-tab clearance on coarse-pointer devices',
-    /@media\s*\(pointer:\s*coarse\)\s*\{[\s\S]*?--wa-floating-chrome-bottom-offset:\s*var\(--wa-grabber-gap\)/s,
+    'flat 4px browser-tab clearance regardless of pointer type',
+    /--wa-floating-chrome-bottom-offset:\s*var\(--wa-floating-chrome-edge-gap\)/,
   ],
   [
     'standalone mobile clearance around the physical iOS home indicator',
-    /@media\s*\(pointer:\s*coarse\)\s*\{[\s\S]*?\[data-app-display-mode='standalone'\]\s*\{[\s\S]*?--wa-floating-chrome-bottom-offset:\s*calc\(\s*2\s*\*\s*var\(--wa-grabber-gap\)\s*\+\s*var\(--wa-sheet-grabber-height\)\s*\)/s,
+    /@media\s*\(pointer:\s*coarse\)\s*\{[\s\S]*?\[data-app-display-mode='standalone'\]\s*\{[\s\S]*?--wa-floating-chrome-bottom-offset:\s*calc\(\s*2\s*\*\s*var\(--wa-floating-chrome-edge-gap\)\s*\+\s*var\(--wa-sheet-grabber-height\)\s*\)/s,
   ],
 ];
 
@@ -489,8 +490,23 @@ const requiredUploadSidebarStyles = [
     /\.spotSection\s*\{[^}]*padding:\s*var\(--upload-compact-inset\)\s+var\(--upload-gutter\)/s,
   ],
   [
-    'Upload action bar narrowing portrait and short-landscape chrome without owning bottom placement',
-    /\[data-panel-layout\]\[data-sheet-snap\][^{]*\[data-panel-layout-footer\]:has\(\.publishFooter\),\s*:global\(\[data-panel-layout\]\[data-drawer-presentation='sideOverlay'\]\)[^{]*\[data-panel-layout-footer\]:has\(\.publishFooter\)\s*\{[^}]*width:\s*fit-content;[^}]*margin-bottom:\s*0;[^}]*padding:\s*8px;/s,
+    'Upload search at Peek clearing the true screen edge by the flat bottom-plate gap',
+    /:global\(\[data-panel-layout\]\[data-sheet-snap='peek'\]\)\s+\.spotSection\s*\{[^}]*padding-block-end:\s*var\(--wa-floating-chrome-edge-gap\)/s,
+  ],
+  [
+    'Upload search at Peek in standalone taking the full shared gap-grabber-gap offset',
+    /:global\(\[data-app-display-mode='standalone'\]\)\s*:global\(\[data-panel-layout\]\[data-sheet-snap='peek'\]\)\s+\.spotSection\s*\{[^}]*padding-block-end:\s*var\(--wa-floating-chrome-bottom-offset\)/s,
+  ],
+  [
+    'Upload action bar narrowing portrait, short-landscape, and desktop chrome without owning bottom placement',
+    /\[data-panel-layout\]\[data-sheet-snap\][^{]*\[data-panel-layout-footer\]:has\(\[data-upload-publish-footer\]\),\s*:global\(\[data-panel-layout\]\[data-drawer-presentation='sideOverlay'\]\)[^{]*\[data-panel-layout-footer\]:has\(\[data-upload-publish-footer\]\),\s*:global\(\[data-panel-layout\]\[data-drawer-presentation='persistent'\]\)[^{]*\[data-panel-layout-footer\]:has\(\[data-upload-publish-footer\]\)\s*\{[^}]*width:\s*fit-content;[^}]*margin-bottom:\s*0;[^}]*padding:\s*8px;/s,
+  ],
+];
+
+const requiredCartCheckoutFooterStyles = [
+  [
+    'checkout card stripping the shared floating-footer chrome down to an invisible shrink-to-fit box on every floating presentation (sheet, side-overlay, fullScreen, sideWorkspace, persistent), since the card paints its own complete glass pill',
+    /\[data-panel-layout\]\[data-sheet-snap\][^{]*\[data-panel-layout-footer\]:has\(\[data-cart-checkout-footer\]\),\s*:global\(\[data-panel-layout\]\[data-drawer-presentation='sideOverlay'\]\)[^{]*\[data-panel-layout-footer\]:has\(\[data-cart-checkout-footer\]\),\s*:global\(\[data-panel-layout\]\[data-drawer-presentation='fullScreen'\]\)[^{]*\[data-panel-layout-footer\]:has\(\[data-cart-checkout-footer\]\),\s*:global\(\[data-panel-layout\]\[data-drawer-presentation='sideWorkspace'\]\)[^{]*\[data-panel-layout-footer\]:has\(\[data-cart-checkout-footer\]\),\s*:global\(\[data-panel-layout\]\[data-drawer-presentation='persistent'\]\)[^{]*\[data-panel-layout-footer\]:has\(\[data-cart-checkout-footer\]\)\s*\{[^}]*width:\s*fit-content;[^}]*background:\s*none;[^}]*border:\s*none;[^}]*box-shadow:\s*none;/s,
   ],
 ];
 
@@ -623,10 +639,15 @@ const requiredPanelLayoutStyles = [
     /^\.scroller\s*\{[^}]*overflow-anchor:\s*none/ms,
   ],
   [
-    // The compact toolbar contributes 4px margin-block. These asymmetric values
-    // complete 16px below the sheet grabber and 8px above the iOS indicator.
-    'peek search row uses 16px above and 8px below',
-    /\.root\[data-sheet-snap='peek'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*calc\(var\(--wa-browse-sheet-leading-gap\)\s*-\s*4px\)\s+calc\(var\(--wa-grabber-gap\)\s*-\s*4px\)/s,
+    // The compact toolbar already contributes 4px margin-block, the flat
+    // bottom-plate edge gap, so this row adds nothing below it — only 16px
+    // above it, after the sheet grabber.
+    'peek search row uses 16px above and the flat edge gap below',
+    /\.root\[data-sheet-snap='peek'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*calc\(var\(--wa-browse-sheet-leading-gap\)\s*-\s*4px\)\s+calc\(var\(--wa-floating-chrome-edge-gap\)\s*-\s*4px\)/s,
+  ],
+  [
+    'peek search row in standalone taking the full shared gap-grabber-gap offset below',
+    /:global\(\[data-app-display-mode='standalone'\]\)\s+\.root\[data-sheet-snap='peek'\]\s+\.stickyChrome\s*\{[^}]*padding-block-end:\s*calc\(var\(--wa-floating-chrome-bottom-offset\)\s*-\s*4px\)/s,
   ],
   [
     // DrawerShell publishes the snap's reachable content height: safe-area strips are
@@ -662,8 +683,12 @@ const requiredPanelLayoutStyles = [
     /\.root\[data-drawer-presentation='sideOverlay'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*var\(--wa-panel-stack-gap\)/s,
   ],
   [
-    'side-overlay footer meets the physical panel edge with its enclosing border compensated',
-    /\.root\[data-drawer-presentation='sideOverlay'\]\s+\.footer\s*\{[^}]*bottom:\s*-1px/s,
+    'side-overlay footer always uses the flat edge gap, never the standalone indicator reserve',
+    /\.root\[data-drawer-presentation='sideOverlay'\]\s+\.footer\s*\{[^}]*bottom:\s*var\(--wa-floating-chrome-edge-gap\)/s,
+  ],
+  [
+    'side-workspace footer always uses the flat edge gap, never the standalone indicator reserve',
+    /\.root\[data-drawer-presentation='sideWorkspace'\]\s+\.footer\s*\{[^}]*padding-block-end:\s*var\(--wa-floating-chrome-edge-gap\)/s,
   ],
   [
     'header-bearing Upload sheet subtracts its independent 8px handle band',
@@ -672,6 +697,14 @@ const requiredPanelLayoutStyles = [
   [
     'full-screen footer actions clearing the bottom by the same offset every other floating footer uses',
     /\.root\[data-drawer-presentation='fullScreen'\]\s+\.footer\s*\{[^}]*padding-block-end:\s*var\(--wa-floating-chrome-bottom-offset\)/s,
+  ],
+  [
+    'full-screen, side-workspace, and persistent footer joining the sheet and side-overlay footer as a floating overlay above content, not a normal-flow row inside the drawer surface',
+    /\.root\[data-sheet-snap\]\s+\.footer,\s*\.root\[data-drawer-presentation='sideOverlay'\]\s+\.footer,\s*\.root\[data-drawer-presentation='fullScreen'\]\s+\.footer,\s*\.root\[data-drawer-presentation='sideWorkspace'\]\s+\.footer,\s*\.root\[data-drawer-presentation='persistent'\]\s+\.footer\s*\{[^}]*position:\s*absolute/s,
+  ],
+  [
+    'full-screen, side-workspace, and persistent scroll content reserving space for the floating footer the same way sheet and side-overlay content already do',
+    /\.root\[data-sheet-snap\]\s+\.content,\s*\.root\[data-drawer-presentation='sideOverlay'\]\s+\.content,\s*\.root\[data-drawer-presentation='fullScreen'\]\s+\.content,\s*\.root\[data-drawer-presentation='sideWorkspace'\]\s+\.content,\s*\.root\[data-drawer-presentation='persistent'\]\s+\.content\s*\{[^}]*padding-bottom:\s*calc\(var\(--wa-panel-footer-height/s,
   ],
 ];
 
@@ -1143,12 +1176,6 @@ const rules = [
     include: file => file === 'src/widgets/SidePanel/SidePanel.module.css',
   },
   {
-    id: 'side-workspace-footer-remains-in-flow',
-    message: 'The short-landscape workspace footer is a normal flex row; only bottom-sheet footers may float over content.',
-    pattern: /\.root\[data-drawer-presentation='sideWorkspace'\]\s+\.(?:footer|content)/,
-    include: file => file === 'src/shared/ui/PanelLayout/PanelLayout.module.css',
-  },
-  {
     id: 'no-local-responsive-control-motion',
     message: 'Shell controls must use the semantic control motion tokens.',
     pattern: /transition:[^;]*150ms\s+ease/,
@@ -1362,6 +1389,20 @@ for (const [requirement, pattern] of requiredUploadSidebarStyles) {
     line: 1,
     rule: 'upload-sidebar-required-styles',
     message: `Upload sidebar is missing ${requirement}.`,
+  });
+}
+
+const cartCheckoutFooterStyles = readFileSync(
+  path.join(root, 'src/features/Cart/ui/CartCheckoutFooter.module.css'),
+  'utf8',
+);
+for (const [requirement, pattern] of requiredCartCheckoutFooterStyles) {
+  if (pattern.test(cartCheckoutFooterStyles)) continue;
+  violations.push({
+    file: 'src/features/Cart/ui/CartCheckoutFooter.module.css',
+    line: 1,
+    rule: 'cart-checkout-footer-required-styles',
+    message: `Cart checkout footer is missing ${requirement}.`,
   });
 }
 

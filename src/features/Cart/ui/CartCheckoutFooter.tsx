@@ -12,7 +12,12 @@ export interface CartCheckoutFooterProps {
 
 export function CartCheckoutFooter({ totalCents, isPending, onCheckout }: CartCheckoutFooterProps) {
   return (
-    <Stack gap={10} align="center" className={`${styles.substrate} ${materialClasses.chrome}`}>
+    <Stack
+      gap={10}
+      align="center"
+      className={`${styles.substrate} ${materialClasses.chrome}`}
+      data-cart-checkout-footer
+    >
       <CartTotal totalCents={totalCents} />
       <CheckoutButton isPending={isPending} onCheckout={onCheckout} />
     </Stack>

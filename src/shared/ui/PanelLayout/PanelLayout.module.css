@@ -257,19 +257,29 @@
 .root[data-drawer-presentation='fullScreen'] .footer {
   /* The surrounding full-screen surface paints through to the physical screen
      edge with no safe-area reserve of its own, so this footer's own bottom
-     padding is what clears the iOS indicator. Reuses the same
-     --wa-floating-chrome-bottom-offset every other floating footer (sheet,
-     side overlay, section bars) already clears it by, instead of a separate
-     hardcoded distance that stayed the standalone-app amount even in an
-     ordinary browser tab. */
+     padding is what clears the iOS indicator. A full-bleed presentation, like
+     the sheet's own floating footer, needs the standalone-aware
+     --wa-floating-chrome-bottom-offset rather than the flat edge gap alone
+     (side presentations use below) — it genuinely sits under the physical
+     home-indicator strip a bounded side panel never reaches. */
   padding-block-end: var(--wa-floating-chrome-bottom-offset);
 }
 
 .root[data-sheet-snap='peek'] .stickyChrome {
-  /* The compact toolbar contributes 4px margin on each side. Add 8px above it
-     for 16px after the sheet grabber, and 4px below it for the 8px clearance
-     before the iOS home indicator. */
-  padding-block: calc(var(--wa-browse-sheet-leading-gap) - 4px) calc(var(--wa-grabber-gap) - 4px);
+  /* The compact toolbar contributes a fixed 4px margin on each side. This
+     padding tops that up to the full --wa-browse-sheet-leading-gap above
+     (the space after the sheet grabber) and to the flat
+     --wa-floating-chrome-edge-gap below, the same distance every
+     bottom-based plate clears the true edge by. Standalone below replaces
+     the bottom padding with the rest of the shared
+     --wa-floating-chrome-bottom-offset on top of that same 4px margin, the
+     same explicit gap-grabber-gap structure every other floating plate uses,
+     rather than leaving it to an invisible sheet-height reserve. */
+  padding-block: calc(var(--wa-browse-sheet-leading-gap) - 4px) calc(var(--wa-floating-chrome-edge-gap) - 4px);
+}
+
+:global([data-app-display-mode='standalone']) .root[data-sheet-snap='peek'] .stickyChrome {
+  padding-block-end: calc(var(--wa-floating-chrome-bottom-offset) - 4px);
 }
 
 .root[data-sheet-snap] {
@@ -360,7 +370,20 @@
 }
 
 .root[data-sheet-snap] .footer,
-.root[data-drawer-presentation='sideOverlay'] .footer {
+.root[data-drawer-presentation='sideOverlay'] .footer,
+.root[data-drawer-presentation='fullScreen'] .footer,
+.root[data-drawer-presentation='sideWorkspace'] .footer,
+.root[data-drawer-presentation='persistent'] .footer {
+  /* fullScreen, sideWorkspace, and persistent (desktop's own big panel) all join the
+     sheet and side-overlay here for the same reason: floatsFooter's own comment
+     already treats "sits above scrolling content" as the case that floats, but each
+     of these three was left out in turn — fullScreen and sideWorkspace on the mistaken
+     assumption that their own full-height panel gave a footer enough room to stay
+     visible without floating, persistent because it was never considered a candidate
+     at all, being desktop rather than compact. All three left this footer sitting in
+     normal flow inside the drawer's own panel surface (DrawerShell.module.css's
+     `.surface` + materialClasses.panel) instead of floating above it, reading as a
+     footer bar wrapping a floating card rather than the floating card itself. */
   position: absolute;
   inset-inline: 0;
   bottom: var(--wa-floating-chrome-bottom-offset);
@@ -369,11 +392,24 @@
 }
 
 .root[data-drawer-presentation='sideOverlay'] .footer {
-  /* Landscape Upload's compact action substrate meets the side sheet's physical
-     bottom edge. The root ends inside DrawerShell's 1px material border, so -1px
-     aligns the visible substrate edge with that enclosing border rather than
-     leaving a strip beneath it. Portrait sheets keep the shared safe-area offset. */
-  bottom: -1px;
+  /* A side panel never spans the physical home-indicator strip the way a
+     full-bleed sheet does, so it never needs the standalone indicator
+     reserve, in any display mode. This exact offset is hand-tuned to align
+     the visible substrate edge against the panel's own border rather than
+     derived from --wa-floating-chrome-edge-gap. */
+  bottom: 6px;
+}
+
+.root[data-drawer-presentation='sideWorkspace'] .footer {
+  /* Left over from before this footer floated (it used to be the padding that cleared
+     the true bottom edge for a normal-flow row); superseded in practice by Cart's own
+     footer-target override (CartCheckoutFooter.module.css), the only content ever
+     portaled into a sideWorkspace panel's footer, which zeroes this out and positions
+     entirely off the shared floating `bottom` offset above instead. Left in place
+     rather than removed here: an existing check elsewhere already tracks bringing this
+     specific rule in line with the flat edge gap every other bounded (non-full-bleed)
+     floating footer uses, as part of separate, already in-progress work. */
+  padding-block-end: 20px;
 }
 
 .root[data-sheet-snap='peek'] .footer {
@@ -381,6 +417,9 @@
 }
 
 .root[data-sheet-snap] .content,
-.root[data-drawer-presentation='sideOverlay'] .content {
+.root[data-drawer-presentation='sideOverlay'] .content,
+.root[data-drawer-presentation='fullScreen'] .content,
+.root[data-drawer-presentation='sideWorkspace'] .content,
+.root[data-drawer-presentation='persistent'] .content {
   padding-bottom: calc(var(--wa-panel-footer-height, 0px) + var(--wa-panel-content-inset));
 }
