@@ -73,8 +73,9 @@ interface DrawerShellPanelProps extends DrawerShellBaseProps {
   open?: boolean;
 }
 
-interface DrawerShellSheetProps extends DrawerShellBaseProps {
+interface DrawerShellSnappedSheetProps extends DrawerShellBaseProps {
   presentation: 'bottomSheet';
+  sizing?: 'snapped';
   snap: SheetSnap;
   onSnapChange: (snap: SheetSnap) => void;
   /** True when this sheet keeps its own header row (back chevron + title) visible at
@@ -84,7 +85,18 @@ interface DrawerShellSheetProps extends DrawerShellBaseProps {
   availableSnaps?: readonly SheetSnap[];
 }
 
-export type DrawerShellProps = DrawerShellPanelProps | DrawerShellSheetProps;
+interface DrawerShellContentSheetProps extends DrawerShellBaseProps {
+  presentation: 'bottomSheet';
+  /** Fit the surface to its current content and expose no drag affordance. */
+  sizing: 'content';
+}
+
+export type DrawerShellProps =
+  | DrawerShellPanelProps
+  | DrawerShellSnappedSheetProps
+  | DrawerShellContentSheetProps;
+
+type DrawerShellPositionKey = DrawerShellState | SheetSnap | 'content';
 
 // Small because dragConstraints already bounds the travel between full and peek; this
 // only softens the stop at either end rather than allowing real overshoot.
@@ -121,15 +133,27 @@ function resolveSideOverlayWidthPx(viewportWidthPx: number, heightBand: 'short' 
  */
 export function DrawerShell(props: DrawerShellProps) {
   const { modality, ariaLabel = 'Content drawer', restoreFocusRef, onEscape, children } = props;
-  const snap = props.presentation === 'bottomSheet' ? props.snap : undefined;
-  const onSnapChange = props.presentation === 'bottomSheet' ? props.onSnapChange : undefined;
-  const peekIncludesHeader = props.presentation === 'bottomSheet' ? props.peekIncludesHeader : undefined;
-  const availableSnaps = props.presentation === 'bottomSheet' ? props.availableSnaps : undefined;
-  const isSheetDraggable = props.presentation === 'bottomSheet'
+  const isContentSizedSheet = props.presentation === 'bottomSheet' && props.sizing === 'content';
+  const snap = props.presentation === 'bottomSheet' && props.sizing !== 'content'
+    ? props.snap
+    : undefined;
+  const onSnapChange = props.presentation === 'bottomSheet' && props.sizing !== 'content'
+    ? props.onSnapChange
+    : undefined;
+  const peekIncludesHeader = props.presentation === 'bottomSheet' && props.sizing !== 'content'
+    ? props.peekIncludesHeader
+    : undefined;
+  const availableSnaps = props.presentation === 'bottomSheet' && props.sizing !== 'content'
+    ? props.availableSnaps
+    : undefined;
+  const isSheetDraggable = props.presentation === 'bottomSheet' && !isContentSizedSheet
     && (availableSnaps === undefined || availableSnaps.length > 1);
   const panelOpen = props.presentation === 'bottomSheet' ? true : (props.open ?? true);
-  const positionKey: DrawerShellState | SheetSnap =
-    props.presentation === 'bottomSheet' ? props.snap : props.state;
+  const positionKey: DrawerShellPositionKey = isContentSizedSheet
+    ? 'content'
+    : props.presentation === 'bottomSheet'
+      ? (snap ?? 'content')
+      : props.state;
 
   const { prefersReducedMotion, isStandalone, heightBand } = useViewportCapabilities();
   const {
@@ -187,7 +211,7 @@ export function DrawerShell(props: DrawerShellProps) {
   // (and useDrawerMoving's published flag) stuck true forever with nothing to
   // ever clear it.
   const transitionKey = props.presentation === 'bottomSheet'
-    ? `bottomSheet:${props.snap}`
+    ? `bottomSheet:${positionKey}`
     : `${props.presentation}:${targetWidthPx}:${panelOpen ? 'open' : 'closed'}`;
   const dragControls = useDragControls();
   const dragConstraints = useMemo(
@@ -214,7 +238,7 @@ export function DrawerShell(props: DrawerShellProps) {
   // two states are pure viewport fractions. The short side overlay instead has one
   // DrawerShell-owned viewport fraction plus its closed zero-width state. The sheet is
   // full width at every snap, so its resting measurement is already the destination.
-  const [resting, setResting] = useState<{ key: DrawerShellState | SheetSnap; width: number }>({
+  const [resting, setResting] = useState<{ key: DrawerShellPositionKey; width: number }>({
     key: positionKey,
     width: 0,
   });
@@ -224,11 +248,13 @@ export function DrawerShell(props: DrawerShellProps) {
   // frame already knows the surface has started moving.
   const transitioningRef = useRef(false);
   const positionKeyRef = useRef(positionKey);
+  const contentSizedSheetRef = useRef(isContentSizedSheet);
   useLayoutEffect(() => {
     transitioningRef.current = transitioning;
     positionKeyRef.current = positionKey;
+    contentSizedSheetRef.current = isContentSizedSheet;
     publishDrawerMotion(transitioning);
-  }, [transitioning, positionKey]);
+  }, [transitioning, positionKey, isContentSizedSheet]);
 
   useLayoutEffect(() => {
     const surface = surfaceRef.current;
@@ -236,20 +262,33 @@ export function DrawerShell(props: DrawerShellProps) {
 
     let target: DrawerGeometry;
     if (props.presentation === 'bottomSheet') {
-      const targetHeight = targetSheetHeightPx;
-      if (targetHeight === null) return;
-      // The surface's own opaque background still spans down to the true screen bottom
-      // (bottom stays viewportHeightPx below) — only its top edge shifts, so the reported
-      // bounds keep matching what actually renders, not just the reachable content span.
-      const targetTop = sheetRestPx - targetHeight;
-      target = {
-        left: 0,
-        top: targetTop,
-        right: viewportWidthPx,
-        bottom: viewportHeightPx,
-        width: viewportWidthPx,
-        height: viewportHeightPx - targetTop,
-      };
+      if (isContentSizedSheet) {
+        const bounds = surfaceRef.current?.getBoundingClientRect();
+        if (!bounds) return;
+        target = {
+          left: bounds.left,
+          top: bounds.top,
+          right: bounds.right,
+          bottom: bounds.bottom,
+          width: bounds.width,
+          height: bounds.height,
+        };
+      } else {
+        const targetHeight = targetSheetHeightPx;
+        if (targetHeight === null) return;
+        // The surface's own opaque background still spans down to the true screen bottom
+        // (bottom stays viewportHeightPx below) — only its top edge shifts, so the reported
+        // bounds keep matching what actually renders, not just the reachable content span.
+        const targetTop = sheetRestPx - targetHeight;
+        target = {
+          left: 0,
+          top: targetTop,
+          right: viewportWidthPx,
+          bottom: viewportHeightPx,
+          width: viewportWidthPx,
+          height: viewportHeightPx - targetTop,
+        };
+      }
     } else {
       const targetWidth = panelOpen
         ? targetWidthPx
@@ -272,6 +311,7 @@ export function DrawerShell(props: DrawerShellProps) {
     snap,
     targetWidthPx,
     targetSheetHeightPx,
+    isContentSizedSheet,
     sheetRestPx,
     viewportHeightPx,
     viewportWidthPx,
@@ -296,6 +336,7 @@ export function DrawerShell(props: DrawerShellProps) {
       pendingFrame = null;
       const bounds = surface.getBoundingClientRect();
       publishDrawerGeometry(bounds);
+      if (contentSizedSheetRef.current) publishDrawerTargetGeometry(bounds);
       // Only a measurement taken while standing still describes a settled width; the
       // ones taken mid-toggle are the animation passing through. This also picks up a
       // browser-window resize, which changes the settled width without any toggle.
@@ -431,7 +472,9 @@ export function DrawerShell(props: DrawerShellProps) {
   // from wide to compact would then show the sheet still wearing the panel's 25vw width,
   // and only a reload — which mounts straight into the sheet — would look right.
   const animate = props.presentation === 'bottomSheet'
-    ? { x: '0%', y: sheetRestPx - heights[props.snap], width: '100%' }
+    ? isContentSizedSheet
+      ? { x: '0%', y: 0, width: '100%' }
+      : { x: '0%', y: sheetRestPx - heights[props.snap], width: '100%' }
     : props.presentation === 'sideOverlay'
       // Its own width never moves (M06h): opening/closing translates the unchanged box
       // on/off screen instead of scaling it down, which used to visibly squeeze whatever
@@ -477,14 +520,15 @@ export function DrawerShell(props: DrawerShellProps) {
         className={`${styles.surface} ${materialClasses.panel}`}
         data-drawer-presentation={props.presentation}
         data-drawer-state={props.presentation === 'bottomSheet' ? undefined : props.state}
-        data-drawer-snap={props.presentation === 'bottomSheet' ? props.snap : undefined}
+        data-drawer-sheet-sizing={isContentSizedSheet ? 'content' : undefined}
+        data-drawer-snap={snap}
         data-drawer-sheet-has-header={peekIncludesHeader ? true : undefined}
         data-drawer-modality={modality}
         initial={false}
         // Snap travel stops above the home gesture, but the painted content continues
         // through that bottom strip so imagery reaches the physical screen edge.
-        style={props.presentation === 'bottomSheet'
-          ? { '--wa-sheet-visible-height': `${heights[props.snap] + sheetBottomInsetPx}px` } as CSSProperties
+        style={props.presentation === 'bottomSheet' && snap
+          ? { '--wa-sheet-visible-height': `${heights[snap] + sheetBottomInsetPx}px` } as CSSProperties
           : undefined}
         animate={animate}
         transition={transition}
@@ -521,7 +565,7 @@ export function DrawerShell(props: DrawerShellProps) {
         <PanelSettledWidthContext.Provider value={settledWidth}>
           <SheetScrollOwnerContext.Provider value={registerScrollOwner}>
             <SheetContentScrollContext.Provider
-              value={props.presentation === 'bottomSheet' ? props.snap === 'full' : true}
+              value={props.presentation === 'bottomSheet' ? isContentSizedSheet || snap === 'full' : true}
             >
               {children}
             </SheetContentScrollContext.Provider>

@@ -28,6 +28,18 @@
   overflow: hidden;
 }
 
+/* Single-placement map workflows size to their actual controls instead of
+   inheriting Browse's viewport-fraction snaps. The shell still owns the fixed
+   edge, safe-area clearance, and measured map occlusion. */
+.surface[data-drawer-presentation='bottomSheet'][data-drawer-sheet-sizing='content'] {
+  inset-block-start: auto;
+  inset-block-end: 0;
+  height: auto;
+  max-height: calc(100dvh - var(--wa-safe-area-top));
+  padding-block-start: 0;
+  padding-block-end: var(--wa-safe-area-bottom);
+}
+
 .surface[data-drawer-presentation='sideOverlay'] {
   /* Landscape media may reach both horizontal screen edges; controls inside
      retain their own panel-content inset. */

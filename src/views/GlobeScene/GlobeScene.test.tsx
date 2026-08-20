@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   galleryExpanded: true,
   drawerGeometry: null as DrawerGeometry | null,
   drawerTargetGeometry: ((): DrawerGeometry | null => null)(),
+  alternateDrawerTargetGeometry: false,
+  drawerTargetGeometryReadCount: 0,
   sheetSnap: null as SheetSnap | null,
   setBrowsingPanelExpanded: vi.fn(),
   setGalleryPanelExpanded: vi.fn(),
@@ -104,7 +106,19 @@ vi.mock('shared/model/panelExpansionStore', () => ({
 
 vi.mock('shared/ui/DrawerShell', () => ({
   useDrawerGeometry: () => mocks.drawerGeometry,
-  useDrawerTargetGeometry: () => mocks.drawerTargetGeometry,
+  useDrawerTargetGeometry: () => {
+    if (!mocks.alternateDrawerTargetGeometry) return mocks.drawerTargetGeometry;
+
+    const height = mocks.drawerTargetGeometryReadCount++ % 2 === 0 ? 180 : 260;
+    return {
+      left: 0,
+      top: 844 - height,
+      right: 390,
+      bottom: 844,
+      width: 390,
+      height,
+    };
+  },
   useDrawerSheetSnap: () => mocks.sheetSnap,
   useBrowseSurface: () => ({
     mode: mocks.browseSurfaceMode,
@@ -147,6 +161,8 @@ beforeEach(() => {
   mocks.galleryExpanded = true;
   mocks.drawerGeometry = null;
   mocks.drawerTargetGeometry = null;
+  mocks.alternateDrawerTargetGeometry = false;
+  mocks.drawerTargetGeometryReadCount = 0;
   mocks.sheetSnap = null;
   mocks.browseSurfaceMode = 'results';
 });
@@ -677,5 +693,21 @@ describe('GlobeScene map camera insets', () => {
 
     expect(screen.getByText('Select Pipeline').parentElement)
       .toHaveAttribute('data-camera-inset-bottom-px', '116');
+  });
+
+  it('does not schedule render-phase updates while a content-fitted sheet changes height', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 844, configurable: true });
+    mocks.matches = [];
+    mocks.addSpotState.isActive = true;
+    mocks.drawerTargetGeometry = {
+      left: 0, top: 664, right: 390, bottom: 844, width: 390, height: 180,
+    };
+
+    const { rerender } = renderGlobeScene();
+
+    mocks.alternateDrawerTargetGeometry = true;
+    mocks.drawerTargetGeometryReadCount = 1;
+    expect(() => rerender(globeSceneTree())).not.toThrow();
   });
 });

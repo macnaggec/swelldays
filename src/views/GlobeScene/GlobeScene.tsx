@@ -135,13 +135,16 @@ export function GlobeScene() {
   });
   // The sheet's `full` snap covers nearly the whole viewport, so recentering the map as
   // it crosses into `full` is motion with no payoff (see resolveFrozenBottomInsetPx).
+  // Content-fitted sheets have no snap and use their live inset directly; feeding their
+  // changing measured height into this render-time snap transition state can otherwise
+  // make the scene schedule a new render for every measurement.
   const [frozenBottomInsetPx, setFrozenBottomInsetPx] = useState(rawCameraInsetsPx.bottom);
   const nextFrozenBottomInsetPx = resolveFrozenBottomInsetPx(
     sheetSnap,
     rawCameraInsetsPx.bottom,
     frozenBottomInsetPx,
   );
-  if (nextFrozenBottomInsetPx !== frozenBottomInsetPx) {
+  if (sheetSnap !== null && nextFrozenBottomInsetPx !== frozenBottomInsetPx) {
     setFrozenBottomInsetPx(nextFrozenBottomInsetPx);
   }
   const cameraInsetsPx = sheetSnap === 'full'

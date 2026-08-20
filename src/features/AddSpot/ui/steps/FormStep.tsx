@@ -1,4 +1,5 @@
 import { Button, Group, Loader, Stack, TextInput } from '@mantine/core';
+import styles from '../AddSpotPanel.module.css';
 
 interface FormStepProps {
   name: string;
@@ -28,7 +29,7 @@ export function FormStep({
   onSubmit,
 }: FormStepProps) {
   return (
-    <Stack gap={6}>
+    <Stack gap={8} className={styles.step}>
       <TextInput
         label="Spot name"
         placeholder="e.g. Uluwatu"
@@ -37,7 +38,7 @@ export function FormStep({
         error={nameError}
         required
         autoFocus
-        size="xs"
+        classNames={{ label: styles.fieldLabel, input: styles.textInput, error: styles.fieldError }}
       />
       <TextInput
         label="Location"
@@ -47,18 +48,18 @@ export function FormStep({
         error={locationError}
         required
         rightSection={isGeocoding ? <Loader size={14} /> : null}
-        size="xs"
+        classNames={{ label: styles.fieldLabel, input: styles.textInput, error: styles.fieldError }}
       />
-      <Group justify="space-between" mt={2}>
+      <Group justify="space-between" gap="sm" mt={4} wrap="nowrap" className={styles.actions}>
         <Group gap="xs">
-          <Button variant="default" size="xs" onClick={onBack}>Back</Button>
-          <Button variant="default" size="xs" onClick={onCancel}>Cancel</Button>
+          <Button variant="default" onClick={onBack} className={styles.controlButton}>Back</Button>
+          <Button variant="default" onClick={onCancel} className={styles.controlButton}>Cancel</Button>
         </Group>
         <Button
-          size="xs"
           onClick={onSubmit}
           loading={isSubmitting}
           disabled={!name.trim() || !location.trim()}
+          className={`${styles.controlButton} ${styles.primaryButton}`}
         >
           Add
         </Button>

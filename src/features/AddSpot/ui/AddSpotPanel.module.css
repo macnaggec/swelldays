@@ -1,14 +1,36 @@
 .panel {
   position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(340px, calc(100vw - 24px));
-  max-height: calc(100dvh - 24px);
+  inset-block-start: calc(var(--wa-safe-area-top) + var(--wa-shell-edge-clearance));
+  inset-inline-end: calc(var(--wa-safe-area-right) + var(--wa-shell-edge-clearance));
+  width: min(400px, calc(100vw - 2 * var(--wa-shell-edge-clearance)));
+  max-height: calc(
+    100dvh - var(--wa-safe-area-top) - var(--wa-safe-area-bottom) - 2 * var(--wa-shell-edge-clearance)
+  );
   overflow-y: auto;
-  z-index: 500;
+  z-index: var(--wa-z-status);
   color: var(--wa-text-primary);
-  border-radius: var(--wa-radius-status);
+  border-radius: var(--wa-radius-sheet);
+}
+
+.drawerContent {
+  box-sizing: border-box;
+  min-width: 0;
+  max-height: inherit;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+:global([data-drawer-presentation='sideOverlay']) .drawerContent {
+  height: 100%;
+  padding: var(--wa-panel-content-inset);
+}
+
+.step {
+  min-width: 0;
+}
+
+.hintHeading {
+  min-width: 0;
 }
 
 .hintIcon {
@@ -19,16 +41,103 @@
 .hintTitle {
   color: var(--wa-text-strong);
   line-height: 1.25;
+  font-size: 15px;
 }
 
 .hintCopy {
   color: var(--wa-text-muted);
   line-height: 1.45;
+  margin-inline-start: 28px;
 }
 
-.drawerContent {
-  padding: var(--mantine-spacing-xs);
-  overflow-y: auto;
-  height: 100%;
-  box-sizing: border-box;
+.fieldLabel {
+  margin-block-end: 4px;
+  color: var(--wa-text-strong);
+  font-size: var(--wa-font-size-sm);
+  font-weight: 600;
+}
+
+.textInput {
+  height: var(--wa-control-height-default);
+  padding-inline: 12px;
+  border-radius: var(--wa-radius-control-md);
+  transition:
+    border-color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    background-color var(--wa-motion-duration-control) var(--wa-motion-easing-standard);
+}
+
+.textInput:focus {
+  border-color: var(--wa-accent-spot);
+}
+
+.textInput::placeholder {
+  color: var(--wa-text-muted);
+}
+
+.fieldError {
+  color: var(--wa-status-danger);
+  font-size: var(--wa-font-size-xs);
+}
+
+.actions {
+  min-width: 0;
+}
+
+.controlButton {
+  height: var(--wa-control-height-default);
+  padding-inline: 12px;
+  border: 1px solid var(--wa-control-border);
+  border-radius: var(--wa-radius-control-md);
+  background: var(--wa-control-fill);
+  color: var(--wa-text-primary);
+  font-size: var(--wa-font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: none;
+  transition:
+    color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    background-color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    border-color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    transform 120ms var(--wa-motion-easing-standard);
+}
+
+.controlButton:hover {
+  background: var(--wa-control-fill-hover);
+  border-color: var(--wa-glass-border-media-overlay-hover);
+}
+
+.controlButton:active {
+  transform: translateY(1px);
+}
+
+.primaryButton {
+  border-color: var(--wa-accent-spot);
+  background: var(--wa-accent-spot);
+  color: var(--wa-text-on-accent);
+}
+
+.primaryButton:hover {
+  border-color: var(--wa-accent-spot);
+  background: color-mix(in srgb, var(--wa-accent-spot) 88%, var(--wa-control-fill-hover));
+}
+
+.primaryButton:where([data-disabled], :disabled) {
+  border-color: var(--wa-control-border);
+  background: var(--wa-control-fill);
+  color: var(--wa-text-muted);
+  opacity: 1;
+}
+
+.proximityAlert,
+.nearbySpot {
+  border: 1px solid var(--wa-control-border);
+  border-radius: var(--wa-radius-control-md);
+  background: var(--wa-control-fill-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .textInput,
+  .controlButton {
+    transition: none;
+  }
 }

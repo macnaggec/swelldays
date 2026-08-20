@@ -114,20 +114,23 @@ describe('AddSpotPanel', () => {
       .toHaveAttribute('data-drawer-presentation', 'sideOverlay');
   });
 
-  it('raises the sheet to full once the pin is placed and the form step needs room for the keyboard', () => {
+  it('keeps one content-fitted, non-draggable sheet placement through pin selection and form entry', () => {
     mocks.sizeBand = 'compact';
     mocks.heightBand = 'regular';
     render(<TestShellPolicyProvider><AddSpotPanel /></TestShellPolicyProvider>);
 
-    expect(screen.getByRole('complementary', { name: 'Content drawer' }))
-      .toHaveAttribute('data-drawer-snap', 'half');
+    const sheet = screen.getByRole('complementary', { name: 'Content drawer' });
+    expect(sheet).toHaveAttribute('data-drawer-sheet-sizing', 'content');
+    expect(sheet).not.toHaveAttribute('data-drawer-snap');
+    expect(sheet.querySelector('[data-drawer-sheet-handle]')).toBeNull();
 
     act(() => {
       useAddSpotStore.getState().setTempPin([1, 2]);
     });
 
-    expect(screen.getByRole('complementary', { name: 'Content drawer' }))
-      .toHaveAttribute('data-drawer-snap', 'full');
+    expect(sheet).toHaveAttribute('data-drawer-sheet-sizing', 'content');
+    expect(sheet).not.toHaveAttribute('data-drawer-snap');
+    expect(sheet.querySelector('[data-drawer-sheet-handle]')).toBeNull();
   });
 
   it('mounts the step content as the sheet\'s registered scroll owner without throwing', () => {

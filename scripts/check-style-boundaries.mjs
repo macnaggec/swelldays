@@ -322,6 +322,12 @@ const requiredResponsiveTokensByFile = new Map([
   ['src/features/Upload/ui/UploadSidebar.module.css', [
     '--wa-control-height-default',
   ]],
+  ['src/features/AddSpot/ui/AddSpotPanel.module.css', [
+    '--wa-control-height-default',
+    '--wa-radius-control-md',
+    '--wa-radius-sheet',
+    '--wa-accent-spot',
+  ]],
   ['src/widgets/SidePanel/FilterPills.module.css', [
     '--wa-control-height-default',
     '--wa-panel-content-inset',
@@ -377,7 +383,7 @@ const requiredDrawerShellStyles = [
 const requiredDrawerShellRuntime = [
   [
     'presentation-aware bottom inset included in the rendered sheet-content height',
-    /--wa-sheet-visible-height': `\$\{heights\[props\.snap\] \+ sheetBottomInsetPx\}px`/,
+    /--wa-sheet-visible-height': `\$\{heights\[snap\] \+ sheetBottomInsetPx\}px`/,
   ],
   [
     'standalone-only bottom inset for sheet geometry',
@@ -793,6 +799,8 @@ const sessionLifecycleInvalidationCallers = new Set([
   'src/entities/SurfSession/model/usePublishedSession.ts',
   'src/features/Upload/model/usePublishUploadSession.ts',
 ]);
+
+const isAddSpotUi = (file) => file.startsWith('src/features/AddSpot/ui/');
 
 const mantineRadiusLiteralConsumers = new Set([
   'src/features/Upload/ui/UploadGallery/UploadZone.tsx',
@@ -1227,9 +1235,15 @@ const rules = [
   },
   {
     id: 'no-raw-mantine-radius-literal',
-    message: 'Upload/Search controls must resolve their radius from a --wa-radius-* token (see SectionSwitcher), not a raw Mantine radius prop literal.',
-    pattern: /\bradius="/,
-    include: file => mantineRadiusLiteralConsumers.has(file),
+    message: 'Upload/Search/Add Spot controls must resolve their radius from a --wa-radius-* token, not a raw Mantine radius prop or inline style literal.',
+    pattern: /\bradius="|\bborderRadius\s*:/,
+    include: file => mantineRadiusLiteralConsumers.has(file) || isAddSpotUi(file),
+  },
+  {
+    id: 'add-spot-controls-use-radius-tokens',
+    message: 'Add Spot surface and control radii must use the shared --wa-radius-* tokens.',
+    pattern: /border-radius:(?!\s*var\(--wa-radius-)[^;]+/,
+    include: file => file === 'src/features/AddSpot/ui/AddSpotPanel.module.css',
   },
 ];
 
