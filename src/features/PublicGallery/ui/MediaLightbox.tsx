@@ -35,7 +35,7 @@ export interface MediaLightboxProps {
 
 /**
  * MediaLightbox - Full-size watermarked preview modal.
- * Caption above the image: price + date on the left. Control rail: add/remove cart button.
+ * Caption above the image: price + date on the left. Floating actions: cart and favorite buttons.
  */
 const MediaLightbox: FC<MediaLightboxProps> = memo(({
   items,
@@ -54,6 +54,7 @@ const MediaLightbox: FC<MediaLightboxProps> = memo(({
     id: item.id,
     url: item.lightboxUrl,
     type: item.type,
+    posterUrl: item.type === 'video' ? item.thumbnailUrl : undefined,
     alt: `Surf photo from ${formatCapturedAtDate(item.capturedAt)}`,
     width: item.width,
     height: item.height,

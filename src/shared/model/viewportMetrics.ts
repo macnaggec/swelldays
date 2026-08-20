@@ -43,6 +43,16 @@ export const indeterminateViewportMetrics: ViewportMetrics = {
   safeAreaBottomPx: 0,
 };
 
+/**
+ * The browser's instantaneous inner viewport, for event-time geometry that must
+ * preserve the exact screen bounds used by pointer and wheel gestures. Raw
+ * `window.inner*` reads stay behind this owner so consumers cannot invent a
+ * second viewport authority.
+ */
+export function getViewportInnerSize(): { readonly widthPx: number; readonly heightPx: number } {
+  return { widthPx: window.innerWidth, heightPx: window.innerHeight };
+}
+
 let cachedMetrics: ViewportMetrics | undefined;
 
 const KEYBOARD_VIEWPORT_REDUCTION_THRESHOLD_PX = 120;

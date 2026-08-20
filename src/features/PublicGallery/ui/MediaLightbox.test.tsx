@@ -25,7 +25,7 @@ describe('MediaLightbox', () => {
     } as unknown as typeof IntersectionObserver;
   });
 
-  it('puts media metadata in a caption above the image and cart actions in the control rail', () => {
+  it('puts media metadata in a caption above the image and cart actions in the floating action area', () => {
     render(
       <MediaLightbox
         items={[mediaItem]}
@@ -49,7 +49,7 @@ describe('MediaLightbox', () => {
     expect(addToCart).toHaveAttribute('data-lightbox-icon-action', 'true');
     expect(addToCart).toHaveAttribute('data-lightbox-icon-frame', 'chip');
     expect(addToCart).toHaveAttribute('data-lightbox-tooltip-layer', 'above-media');
-    expect(addToCart.closest('[data-lightbox-control-rail]')).not.toBeNull();
+    expect(addToCart.closest('[data-lightbox-floating-actions]')).not.toBeNull();
     expect(addToCart.closest('[data-lightbox-media-caption]')).toBeNull();
   });
 
@@ -103,6 +103,33 @@ describe('MediaLightbox', () => {
 
     expect(screen.getByText(formatPrice(sizedItem.price ?? 0))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add to cart' })).toBeInTheDocument();
+  });
+
+  it('gives Safari an explicit inline preview for video slides', () => {
+    const videoItem: LightboxMedia = {
+      ...mediaItem,
+      lightboxUrl: 'https://cdn.example.com/lightbox.mp4',
+      thumbnailUrl: 'https://cdn.example.com/video-poster.jpg',
+      type: 'video',
+      width: 1920,
+      height: 1080,
+    };
+
+    render(
+      <MediaLightbox
+        items={[videoItem]}
+        initialIndex={0}
+        opened
+        onClose={vi.fn()}
+      />,
+    );
+
+    const video = document.querySelector('video');
+    expect(video).not.toBeNull();
+    expect(video).toHaveAttribute('poster', videoItem.thumbnailUrl);
+    expect(video).toHaveAttribute('playsinline');
+    expect(video).toHaveAttribute('width', '1920');
+    expect(video).toHaveAttribute('height', '1080');
   });
 
   it('withholds price/cart/favorites until the media loads, and drops them for good on failure — keeping the date either way', () => {

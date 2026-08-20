@@ -58,7 +58,7 @@ describe('BaseLightbox', () => {
     expect(document.querySelector('[data-lightbox-indicators-placement]')).toBeNull();
   });
 
-  it('shows a loader and hides the chrome until the image is sized', () => {
+  it('shows a loader while keeping the screen-fixed close action reachable until the image is sized', () => {
     render(
       <BaseLightbox
         item={{ id: 'media-1', url: 'https://cdn.example.com/photo.jpg' }}
@@ -68,7 +68,8 @@ describe('BaseLightbox', () => {
 
     const chrome = () => document.querySelector('[data-lightbox-static-chrome="media-frame"]');
     expect(document.querySelector('[data-lightbox-media-loader]')).not.toBeNull();
-    expect(chrome()?.getAttribute('data-lightbox-chrome-hidden')).toBe('true');
+    expect(chrome()?.getAttribute('data-lightbox-chrome-hidden')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Close preview' })).toBeInTheDocument();
 
     const image = screen.getByAltText('Media preview');
     Object.defineProperty(image, 'naturalWidth', { value: 1200, configurable: true });

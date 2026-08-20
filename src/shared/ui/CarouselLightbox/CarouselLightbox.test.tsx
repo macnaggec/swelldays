@@ -77,9 +77,7 @@ describe('CarouselLightbox', () => {
     const closeButton = screen.getByRole('button', { name: 'Close preview' });
     const staticChrome = closeButton.closest('[data-lightbox-static-chrome="media-frame"]');
     expect(closeButton.getAttribute('data-lightbox-icon-frame')).toBe('chip');
-    expect(closeButton.closest('[data-lightbox-control-rail]')?.getAttribute('data-lightbox-layout-animation')).toBe(
-      'position-only',
-    );
+    expect(closeButton.closest('[data-lightbox-control-rail]')).not.toBeNull();
     expect(staticChrome).not.toBeNull();
     expect(closeButton.closest('[data-lightbox-media-transition]')).toBeNull();
 
@@ -92,12 +90,8 @@ describe('CarouselLightbox', () => {
     const nextButton = screen.getByRole('button', { name: 'Next media' });
     expect(previousButton.getAttribute('data-lightbox-icon-frame')).toBe('chip');
     expect(nextButton.getAttribute('data-lightbox-icon-frame')).toBe('chip');
-    expect(previousButton.closest('[data-lightbox-control-anchor]')?.getAttribute('data-lightbox-layout-animation')).toBe(
-      'position-only',
-    );
-    expect(nextButton.closest('[data-lightbox-control-anchor]')?.getAttribute('data-lightbox-layout-animation')).toBe(
-      'position-only',
-    );
+    expect(previousButton.closest('[data-lightbox-control-anchor]')).not.toBeNull();
+    expect(nextButton.closest('[data-lightbox-control-anchor]')).not.toBeNull();
     expect(previousButton.closest('[data-lightbox-static-chrome="media-frame"]')).toBe(staticChrome);
     expect(nextButton.closest('[data-lightbox-static-chrome="media-frame"]')).toBe(staticChrome);
     expect(previousButton.closest('[data-lightbox-media-transition]')).toBeNull();
@@ -108,9 +102,34 @@ describe('CarouselLightbox', () => {
     expect(
       document.querySelector('[data-lightbox-media-frame="frameless"]')?.getAttribute('data-lightbox-active-media-id'),
     ).toBe('media-2');
-    expect(screen.getByRole('button', { name: 'Show media 2' }).getAttribute('data-active')).toBe('true');
+    expect(screen.getByText('2 / 2')).toBe(document.querySelector('[data-lightbox-position-counter]'));
     expect(screen.getByText('Second status').closest('[data-lightbox-caption-transition]')).not.toBeNull();
     expect(nextButton.closest('[data-lightbox-static-chrome="media-frame"]')).toBe(staticChrome);
+  });
+
+  it('crossfades tall and short slides in independent full-frame overlays', () => {
+    render(
+      <CarouselLightbox
+        items={[
+          { id: 'portrait', url: 'https://cdn.example.com/portrait.jpg', width: 600, height: 1200 },
+          { id: 'landscape', url: 'https://cdn.example.com/landscape.jpg', width: 1200, height: 800 },
+        ]}
+        initialIndex={0}
+        opened
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    const transitioningSlides = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-lightbox-media-transition]'),
+    );
+    expect(transitioningSlides).toHaveLength(2);
+    expect(cssRule('.mediaTransition')).toContain('position: absolute');
+    expect(cssRule('.mediaTransition')).toContain('inset: 0');
+    expect(cssRule('.mediaTransition')).toContain('grid-template: minmax(0, 1fr) / minmax(0, 1fr)');
+    expect(transitioningSlides.every((slide) => !slide.style.transform)).toBe(true);
   });
 
   it('moves focus onto the close control when it opens', async () => {
@@ -126,7 +145,7 @@ describe('CarouselLightbox', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Close preview' })).toHaveFocus());
   });
 
-  it('supports keyboard and touch navigation without a sliding carousel track', () => {
+  it('navigates by keyboard; a touch drag no longer navigates (reserved for zoom)', () => {
     render(
       <CarouselLightbox
         items={[
@@ -147,12 +166,78 @@ describe('CarouselLightbox', () => {
 
     const mediaFrame = document.querySelector('[data-lightbox-media-frame="frameless"]');
     expect(mediaFrame).not.toBeNull();
-    fireEvent.pointerDown(mediaFrame!, { clientX: 200, clientY: 50, pointerType: 'touch' });
-    fireEvent.pointerUp(mediaFrame!, { clientX: 120, clientY: 54, pointerType: 'touch' });
+    fireEvent.pointerDown(mediaFrame!, { pointerId: 1, clientX: 200, clientY: 50, pointerType: 'touch' });
+    fireEvent.pointerMove(mediaFrame!, { pointerId: 1, clientX: 80, clientY: 54, pointerType: 'touch' });
+    fireEvent.pointerUp(mediaFrame!, { pointerId: 1, clientX: 80, clientY: 54, pointerType: 'touch' });
 
     expect(
       document.querySelector('[data-lightbox-media-frame="frameless"]')?.getAttribute('data-lightbox-active-media-id'),
-    ).toBe('media-3');
+    ).toBe('media-2');
+  });
+
+  it('keeps touches on navigation icons out of media gesture tracking', () => {
+    render(
+      <CarouselLightbox
+        items={[
+          { id: 'media-1', url: 'https://cdn.example.com/photo-1.jpg' },
+          { id: 'media-2', url: 'https://cdn.example.com/photo-2.jpg' },
+        ]}
+        initialIndex={0}
+        opened
+        onClose={vi.fn()}
+      />,
+    );
+
+    const mediaFrame = document.querySelector<HTMLElement>('[data-lightbox-media-frame="frameless"]')!;
+    const capturePointer = vi.fn();
+    Object.defineProperty(mediaFrame, 'setPointerCapture', { configurable: true, value: capturePointer });
+    const nextIconPath = screen.getByRole('button', { name: 'Next media' }).querySelector('path')!;
+
+    fireEvent.pointerDown(nextIconPath, {
+      pointerId: 1,
+      clientX: 320,
+      clientY: 200,
+      pointerType: 'touch',
+    });
+
+    expect(capturePointer).not.toHaveBeenCalled();
+  });
+
+  it('zooms in on a confirmed double tap and back out on a second one', async () => {
+    render(
+      <CarouselLightbox
+        items={[{ id: 'media-1', url: 'https://cdn.example.com/photo-1.jpg' }]}
+        initialIndex={0}
+        opened
+        onClose={vi.fn()}
+      />,
+    );
+
+    const zoomLayer = document.querySelector<HTMLElement>('[data-lightbox-zoom-layer]');
+    expect(zoomLayer).not.toBeNull();
+    const mediaFrame = document.querySelector('[data-lightbox-media-frame="frameless"]')!;
+    mediaFrame.getBoundingClientRect = () =>
+      ({ width: 400, height: 300, x: 0, y: 0, top: 0, left: 0, right: 400, bottom: 300, toJSON: () => ({}) }) as DOMRect;
+
+    const tap = (clientX: number, clientY: number) => {
+      fireEvent.pointerDown(zoomLayer!, { pointerId: 1, clientX, clientY, pointerType: 'touch' });
+      fireEvent.pointerUp(zoomLayer!, { pointerId: 1, clientX, clientY, pointerType: 'touch' });
+    };
+    // The zoom level animates in via a spring rather than jumping straight to its
+    // target, so read the settling value rather than asserting an exact number.
+    const currentScale = () => {
+      const match = zoomLayer!.style.transform.match(/scale\(([^)]+)\)/);
+      return match?.[1] ? parseFloat(match[1]) : 1;
+    };
+
+    expect(currentScale()).toBe(1);
+    tap(200, 150);
+    tap(200, 150);
+    await waitFor(() => expect(currentScale()).toBeGreaterThan(1.5));
+
+    tap(200, 150);
+    tap(200, 150);
+    await waitFor(() => expect(currentScale()).toBeLessThan(1.2));
   });
 
   it('waits for the incoming image to decode before switching slides', async () => {
@@ -208,9 +293,7 @@ describe('CarouselLightbox', () => {
     }
   });
 
-  it('keeps the frame chrome hidden until the first image is sized', () => {
-    // On first open no gate has stamped dimensions, so the collapsed frame
-    // would render every anchored control piled at its center while loading.
+  it('keeps screen-fixed frame chrome reachable while the first image is sized', () => {
     render(
       <CarouselLightbox
         items={[
@@ -224,7 +307,8 @@ describe('CarouselLightbox', () => {
     );
 
     const chrome = () => document.querySelector('[data-lightbox-static-chrome="media-frame"]');
-    expect(chrome()?.getAttribute('data-lightbox-chrome-hidden')).toBe('true');
+    expect(chrome()?.getAttribute('data-lightbox-chrome-hidden')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Close preview' })).toBeInTheDocument();
     expect(document.querySelector('[data-lightbox-media-loader]')).not.toBeNull();
 
     const image = screen.getByAltText('Media preview');
@@ -236,7 +320,7 @@ describe('CarouselLightbox', () => {
     expect(document.querySelector('[data-lightbox-media-loader]')).toBeNull();
   });
 
-  it('uses the shared, media-bounded skeleton for newly uploaded media until the image loads', () => {
+  it('uses the media-bounded loader for newly uploaded media until the image loads', () => {
     render(
       <CarouselLightbox
         items={[
@@ -255,9 +339,10 @@ describe('CarouselLightbox', () => {
 
     const loader = document.querySelector('[data-lightbox-media-loader]');
     expect(loader).not.toBeNull();
-    expect(loader?.classList.contains('mantine-Skeleton-root')).toBe(true);
-    expect(loader?.closest('[data-lightbox-media-frame="frameless"]')).not.toBeNull();
-    const mediaSizer = loader?.parentElement?.querySelector('[data-lightbox-media-sizer]');
+    expect(loader?.classList.contains('mantine-Loader-root')).toBe(true);
+    const mediaFrame = loader?.closest('[data-lightbox-media-frame="frameless"]');
+    expect(mediaFrame).not.toBeNull();
+    const mediaSizer = mediaFrame?.querySelector('[data-lightbox-geometry-sizer]');
     expect(mediaSizer?.getAttribute('width')).toBe('2400');
     expect(mediaSizer?.getAttribute('height')).toBe('1600');
 
@@ -349,6 +434,214 @@ describe('CarouselLightbox', () => {
     expect(video!.getAttribute('height')).toBe('1080');
   });
 
+  it('hides unknown-geometry video behind the loader until metadata supplies its dimensions', () => {
+    render(
+      <CarouselLightbox
+        items={[{ id: 'media-1', url: 'https://cdn.example.com/clip-1.mp4', type: 'video' }]}
+        initialIndex={0}
+        opened
+        onClose={vi.fn()}
+      />,
+    );
+
+    const video = document.querySelector('video');
+    expect(video).not.toBeNull();
+    expect(video!.style.visibility).toBe('hidden');
+    expect(document.querySelector('[data-lightbox-media-loader]')).not.toBeNull();
+
+    Object.defineProperty(video!, 'videoWidth', { value: 1920, configurable: true });
+    Object.defineProperty(video!, 'videoHeight', { value: 1080, configurable: true });
+    fireEvent(video!, new Event('loadedmetadata'));
+
+    expect(video!.style.visibility).toBe('');
+    expect(document.querySelector('[data-lightbox-media-loader]')).toBeNull();
+  });
+
+  it('keeps Safari video controls hidden until metadata and the poster are ready', async () => {
+    let resolvePoster: (() => void) | undefined;
+    class DecodingPoster {
+      src = '';
+      naturalWidth = 640;
+      naturalHeight = 360;
+      decode() {
+        return new Promise<void>((resolve) => {
+          resolvePoster = resolve;
+        });
+      }
+    }
+    vi.stubGlobal('Image', DecodingPoster);
+
+    try {
+      render(
+        <CarouselLightbox
+          items={[{
+            id: 'media-1',
+            url: 'https://cdn.example.com/clip-1.mp4',
+            posterUrl: 'https://cdn.example.com/clip-1-poster.jpg',
+            type: 'video',
+            width: 1920,
+            height: 1080,
+          }]}
+          initialIndex={0}
+          opened
+          onClose={vi.fn()}
+        />,
+      );
+
+      const video = document.querySelector('video');
+      expect(video).not.toBeNull();
+      expect(video!.style.visibility).toBe('hidden');
+      expect(video!.hasAttribute('controls')).toBe(false);
+      expect(document.querySelector('[data-lightbox-media-loader]')).not.toBeNull();
+
+      Object.defineProperty(video!, 'videoWidth', { value: 1920, configurable: true });
+      Object.defineProperty(video!, 'videoHeight', { value: 1080, configurable: true });
+      fireEvent(video!, new Event('loadedmetadata'));
+
+      expect(video!.style.visibility).toBe('hidden');
+      expect(video!.hasAttribute('controls')).toBe(false);
+      expect(document.querySelector('[data-lightbox-media-loader]')).not.toBeNull();
+
+      await act(async () => resolvePoster?.());
+
+      expect(video!.style.visibility).toBe('');
+      expect(video!.hasAttribute('controls')).toBe(true);
+      expect(document.querySelector('[data-lightbox-media-loader]')).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('keeps declared video geometry when the delivered preview has smaller dimensions', () => {
+    render(
+      <CarouselLightbox
+        items={[
+          {
+            id: 'media-1',
+            url: 'https://cdn.example.com/clip-1.mp4',
+            type: 'video',
+            width: 3840,
+            height: 2160,
+          },
+        ]}
+        initialIndex={0}
+        opened
+        onClose={vi.fn()}
+      />,
+    );
+
+    const video = document.querySelector('video');
+    expect(video).not.toBeNull();
+    expect(video!.getAttribute('width')).toBe('3840');
+    expect(video!.getAttribute('height')).toBe('2160');
+
+    // The public lightbox URL is a capped Cloudinary preview, so its encoded
+    // dimensions can be smaller than the original media record.
+    Object.defineProperty(video!, 'videoWidth', { value: 1024, configurable: true });
+    Object.defineProperty(video!, 'videoHeight', { value: 576, configurable: true });
+    fireEvent(video!, new Event('loadedmetadata'));
+
+    expect(video!.getAttribute('width')).toBe('3840');
+    expect(video!.getAttribute('height')).toBe('2160');
+  });
+
+  it('owns known frame geometry outside the animated media layer', () => {
+    render(
+      <CarouselLightbox
+        items={[
+          { id: 'media-1', url: 'https://cdn.example.com/photo-1.jpg', width: 1006, height: 644 },
+          { id: 'media-2', url: 'https://cdn.example.com/photo-2.jpg', width: 1920, height: 1080 },
+        ]}
+        initialIndex={0}
+        opened
+        onClose={vi.fn()}
+      />,
+    );
+
+    const frame = document.querySelector('[data-lightbox-media-frame="frameless"]');
+    const geometrySizer = () => frame?.querySelector('[data-lightbox-geometry-sizer]');
+
+    expect(geometrySizer()?.parentElement).toBe(frame);
+    expect(geometrySizer()?.closest('[data-lightbox-media-transition]')).toBeNull();
+    expect(geometrySizer()?.getAttribute('width')).toBe('1006');
+    expect(geometrySizer()?.getAttribute('height')).toBe('644');
+    expect(cssRule('.geometrySizer')).toContain('grid-area: 1 / 1');
+    expect(cssRule('.geometrySizer')).toContain('visibility: hidden');
+    expect(cssRule('.zoomLayer')).toContain('position: absolute');
+    expect(cssRule('.zoomLayer')).toContain('inset: 0');
+    expect(carouselLightboxCss).toMatch(
+      /@container lightbox \(min-width: 760px\)\s*\{\s*\.mediaFrame,\s*\.media,\s*\.geometrySizer\s*\{[^}]*max-height:/,
+    );
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    expect(geometrySizer()?.getAttribute('width')).toBe('1920');
+    expect(geometrySizer()?.getAttribute('height')).toBe('1080');
+  });
+
+  it('keeps the neutral frame when unknown-geometry media fails', () => {
+    render(
+      <CarouselLightbox
+        items={[{ id: 'media-1', url: 'https://cdn.example.com/missing.jpg' }]}
+        initialIndex={0}
+        opened
+        onClose={vi.fn()}
+      />,
+    );
+
+    const frame = document.querySelector('[data-lightbox-media-frame="frameless"]');
+    fireEvent.error(screen.getByAltText('Media preview'));
+
+    expect(frame?.getAttribute('data-lightbox-loading')).toBe('true');
+    expect(screen.getByRole('img', { name: 'Image unavailable' })).toBeInTheDocument();
+  });
+
+  it('preloads neighboring video posters without preloading the video body', () => {
+    const requestedUrls: string[] = [];
+    class PreloadingImage {
+      naturalWidth = 0;
+      naturalHeight = 0;
+      private currentSrc = '';
+      set src(value: string) {
+        this.currentSrc = value;
+        requestedUrls.push(value);
+      }
+      get src() {
+        return this.currentSrc;
+      }
+      decode() {
+        return Promise.resolve();
+      }
+    }
+    vi.stubGlobal('Image', PreloadingImage);
+
+    try {
+      render(
+        <CarouselLightbox
+          items={[
+            { id: 'media-1', url: 'https://cdn.example.com/photo-1.jpg', width: 1200, height: 800 },
+            {
+              id: 'media-2',
+              url: 'https://cdn.example.com/clip-1.mp4',
+              posterUrl: 'https://cdn.example.com/clip-1-poster.jpg',
+              type: 'video',
+              width: 1920,
+              height: 1080,
+            },
+          ]}
+          initialIndex={0}
+          opened
+          onClose={vi.fn()}
+        />,
+      );
+
+      expect(requestedUrls).toContain('https://cdn.example.com/clip-1-poster.jpg');
+      expect(requestedUrls).not.toContain('https://cdn.example.com/clip-1.mp4');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('opts the carousel modal content out of the themed dialog frame', () => {
     testingLibraryRender(
       <MantineProvider theme={framedModalTheme}>
@@ -375,36 +668,67 @@ describe('CarouselLightbox', () => {
   it('shrink-wraps lightbox chrome to the rendered media dimensions', () => {
     expect(cssRule('.mediaSurface')).toContain('width: fit-content');
     expect(cssRule('.mediaSurface')).toContain('margin: 0 auto');
-    expect(cssRule('.stage')).toContain('--lightbox-media-control-gap: 0.75rem');
     expect(cssRule('.mediaFrame')).toContain('width: fit-content');
     expect(cssRule('.media')).toMatch(/(?:^|; )width: auto;/);
     expect(cssRule('.media')).not.toMatch(/(?:^|; )width: 100%;/);
 
-    expect(cssRule('.mediaTransition')).toContain('grid-area: 1 / 1');
+    // Loading feedback overlays the final media box; entering/leaving the
+    // loading state must not add or remove a layout participant.
+    expect(cssRule('.loadingSlot')).toContain('position: absolute');
+    expect(cssRule('.loadingSlot')).toContain('inset: 0');
+    expect(cssRule('.loadingSlot')).toContain('pointer-events: none');
+
+    expect(cssRule('.mediaTransition')).toContain('position: absolute');
+    expect(cssRule('.mediaTransition')).toContain('inset: 0');
     expect(cssRule('.staticChrome')).toContain('position: absolute');
     expect(cssRule('.staticChrome')).toContain('inset: 0');
     expect(cssRule('.mediaControls')).toContain('position: absolute');
     expect(cssRule('.mediaControls')).toContain('padding: 0');
-    expect(cssRule('.controlAnchor')).toContain('position: absolute');
-    expect(cssRule('.controlAnchor')).toContain('top: 50%');
-    expect(cssRule('.previousControlAnchor')).toContain(
-      'right: calc(100% + var(--lightbox-media-control-gap))',
-    );
-    expect(cssRule('.nextControlAnchor')).toContain(
-      'left: calc(100% + var(--lightbox-media-control-gap))',
-    );
+    // Arrows are shown at every size now — nothing left navigates by touch, so
+    // they're no longer "redundant on touch" the way they were when swipe existed.
+    expect(cssRule('.mediaControls')).not.toContain('display: none');
     expect(cssRule('.staticChrome')).toContain('pointer-events: none');
-    expect(cssRule('.controlRail')).toContain('position: absolute');
-    expect(cssRule('.controlRail')).toContain('top: 0.5rem');
-    expect(cssRule('.controlRail')).toContain('right: 0.5rem');
+    // Every piece of chrome — arrows, rail, counter, caption — is pinned to the screen's
+    // own edges (not the photo's) at every size, so nothing about the photo — its aspect
+    // ratio, a load, a re-render — can ever displace it.
+    expect(cssRule('.controlAnchor')).toContain('position: fixed');
+    expect(cssRule('.controlAnchor')).toContain('top: 50%');
+    expect(cssRule('.previousControlAnchor')).toContain('left: calc(var(--wa-safe-area-left) + 0.5rem)');
+    expect(cssRule('.nextControlAnchor')).toContain('right: calc(var(--wa-safe-area-right) + 0.5rem)');
+    expect(cssRule('.controlRail')).toContain('position: fixed');
+    expect(cssRule('.controlRail')).toContain('top: calc(var(--wa-safe-area-top) + 0.5rem)');
+    expect(cssRule('.controlRail')).toContain('right: calc(var(--wa-safe-area-right) + 0.5rem)');
     expect(cssRule('.controlRail')).not.toContain('transform:');
-    // Above the compact band the rail hangs beside the media, inside the
-    // lightbox container query rather than a viewport breakpoint.
+    // Cart/favorite live in the bottom-right corner, separate from the close button up
+    // top — stacking all three in one corner left no room in short landscape viewports.
+    expect(cssRule('.floatingActions')).toContain('position: fixed');
+    expect(cssRule('.floatingActions')).toContain('bottom: calc(var(--wa-safe-area-bottom) + 0.5rem)');
+    expect(cssRule('.floatingActions')).toContain('right: calc(var(--wa-safe-area-right) + 0.5rem)');
+    expect(cssRule('.indicators')).toContain('position: fixed');
+    expect(cssRule('.indicators')).toContain('bottom: calc(var(--wa-safe-area-bottom) + 0.75rem)');
+    expect(cssRule('.mediaCaption')).toContain('position: fixed');
+    expect(cssRule('.mediaCaption')).toContain('top: calc(var(--wa-safe-area-top) + 0.75rem)');
+    expect(cssRule('.mediaCaption')).toContain('left: calc(var(--wa-safe-area-left) + 0.75rem)');
+    // Nothing about chrome placement is still gated by the lightbox container query —
+    // the only thing that block still adjusts is the photo's own max height.
     const wideLightboxCss = carouselLightboxCss.split('@container lightbox (min-width: 760px)')[1] ?? '';
-    expect(wideLightboxCss).toContain(
-      'left: calc(100% + var(--lightbox-media-control-gap))',
-    );
-    expect(cssRule('.indicators')).toContain('position: absolute');
-    expect(cssRule('.indicators')).toContain('top: calc(100% + 0.75rem)');
+    expect(wideLightboxCss).not.toContain('.controlAnchor');
+    expect(wideLightboxCss).not.toContain('.controlRail');
+    expect(wideLightboxCss).not.toContain('.indicators');
+    expect(wideLightboxCss).not.toContain('.mediaCaption');
+    expect(wideLightboxCss).not.toContain('.mediaControls');
+  });
+
+  it('lets a zoomed photo grow past its own footprint and gestures on it stay off the browser', () => {
+    // No overflow:hidden here: a zoomed-in photo is meant to use the full screen,
+    // not stay cropped to the photo's own unzoomed footprint.
+    expect(cssRule('.mediaFrame')).not.toContain('overflow: hidden');
+    expect(cssRule('.mediaFrame')).not.toContain('touch-action: none');
+    expect(cssRule('.zoomLayer')).toContain('touch-action: none');
+    // Explicit and below .staticChrome's z-index of 3, so an actively zooming photo
+    // (which gets its own stacking context from the scale/pan transform) can never
+    // end up ordered above the fixed controls.
+    expect(cssRule('.zoomLayer')).toContain('z-index: 1');
+    expect(cssRule('.staticChrome')).toContain('z-index: 3');
   });
 });

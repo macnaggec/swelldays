@@ -18,8 +18,6 @@
 }
 
 .stage {
-  --lightbox-media-control-gap: 0.75rem;
-
   position: relative;
   display: grid;
   width: min(92vw, 1120px);
@@ -40,7 +38,17 @@
 }
 
 .mediaCaption {
-  align-self: stretch;
+  /* Pinned to the screen's own top-left corner instead of floating above the
+     photo: its position no longer depends on the photo's size, so nothing
+     about the photo (its own aspect ratio, a load, an unrelated re-render)
+     can ever displace it. */
+  position: fixed;
+  top: calc(var(--wa-safe-area-top) + 0.75rem);
+  left: calc(var(--wa-safe-area-left) + 0.75rem);
+  /* Stays clear of the control rail's icon column on the right so large
+     system text wraps instead of running under the icons. */
+  right: calc(var(--wa-safe-area-right) + 4rem);
+  z-index: 2;
   min-width: 0;
   max-width: 100%;
 }
@@ -52,18 +60,42 @@
   max-width: 100%;
   max-height: calc(100dvh - 2rem);
   place-items: center;
+  /* No overflow clip here on purpose: a zoomed-in photo is meant to grow past
+     this box, using as much of the actual screen as the zoom level allows,
+     not stay cropped to the photo's own unzoomed footprint. */
 }
 
-.dragLayer {
+.geometrySizer {
+  display: block;
+  grid-area: 1 / 1;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: calc(100dvh - 2rem);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.zoomLayer {
+  position: absolute;
+  inset: 0;
   display: grid;
   grid-area: 1 / 1;
   place-items: center;
   max-width: 100%;
+  touch-action: none;
+  /* Explicit and lower than .staticChrome's z-index below — the active
+     scale/pan transform here creates its own stacking context, and without
+     an explicit value a zoomed-in photo can end up ordered above the fixed
+     controls instead of under them. */
+  z-index: 1;
 }
 
 .mediaTransition {
+  position: absolute;
+  inset: 0;
   display: grid;
-  grid-area: 1 / 1;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   place-items: center;
 }
 
@@ -114,29 +146,17 @@ video.media {
 }
 
 .loadingSlot {
-  position: relative;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   display: grid;
-  grid-area: 1 / 1;
-  width: fit-content;
-  height: fit-content;
-  max-width: 100%;
-  max-height: min(68vh, calc(100dvh - 9rem));
   place-items: center;
+  pointer-events: none;
 }
 
 .mediaFrame[data-lightbox-loading] .loadingSlot {
   width: 100%;
   height: 100%;
-}
-
-.loadingSizer {
-  display: block;
-  grid-area: 1 / 1;
-  width: auto;
-  max-width: 100%;
-  height: auto;
-  max-height: min(68vh, calc(100dvh - 9rem));
-  visibility: hidden;
 }
 
 .loadingSkeleton {
@@ -168,8 +188,7 @@ video.media {
   text-align: center;
 }
 
-.staticChrome :global([data-lightbox-icon-action]),
-.staticChrome .indicator {
+.staticChrome :global([data-lightbox-icon-action]) {
   pointer-events: auto;
 }
 
@@ -179,32 +198,33 @@ video.media {
   z-index: 2;
   padding: 0;
   pointer-events: none;
-  /* Prev/next chips are redundant on touch: swipe and indicators cover
-     navigation, and the anchors would overflow the viewport. */
-  display: none;
 }
 
 .controlAnchor {
-  position: absolute;
+  /* Pinned to the screen's own left/right-middle edge instead of flanking the
+     photo: its position no longer depends on the photo's size, so nothing
+     about the photo can ever displace it. */
+  position: fixed;
   top: 50%;
   margin-top: -1.375rem;
   pointer-events: auto;
 }
 
 .previousControlAnchor {
-  right: calc(100% + var(--lightbox-media-control-gap));
+  left: calc(var(--wa-safe-area-left) + 0.5rem);
 }
 
 .nextControlAnchor {
-  left: calc(100% + var(--lightbox-media-control-gap));
+  right: calc(var(--wa-safe-area-right) + 0.5rem);
 }
 
 .controlRail {
-  position: absolute;
-  /* Keep the rail reachable: overlay it on the media instead of hanging it
-     off-screen past the right edge. */
-  top: 0.5rem;
-  right: 0.5rem;
+  /* Pinned to the screen's own top-right corner instead of the photo's: its
+     position no longer depends on the photo's size, so nothing about the
+     photo can ever displace it. */
+  position: fixed;
+  top: calc(var(--wa-safe-area-top) + 0.5rem);
+  right: calc(var(--wa-safe-area-right) + 0.5rem);
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -241,10 +261,17 @@ video.media {
 }
 
 .floatingActions {
+  /* Pinned to the screen's own bottom-right corner, separate from the close
+     button in the top-right corner: stacking all three there left no room to
+     breathe in short landscape viewports, where vertical space is tight. */
+  position: fixed;
+  bottom: calc(var(--wa-safe-area-bottom) + 0.5rem);
+  right: calc(var(--wa-safe-area-right) + 0.5rem);
+  z-index: 2;
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
-  align-items: flex-start;
+  align-items: flex-end;
 }
 
 .floatingActions > * {
@@ -252,8 +279,12 @@ video.media {
 }
 
 .indicators {
-  position: absolute;
-  top: calc(100% + 0.75rem);
+  /* Pinned to the screen's own bottom edge instead of trailing the photo:
+     its position no longer depends on the photo's size, so nothing about
+     the photo can ever displace it. */
+  position: fixed;
+  top: auto;
+  bottom: calc(var(--wa-safe-area-bottom) + 0.75rem);
   right: 0;
   left: 0;
   z-index: 1;
@@ -261,44 +292,6 @@ video.media {
   gap: 0;
   justify-content: center;
   margin-top: 0;
-}
-
-/* The button is an enlarged tap target; the visible dot is drawn by ::before
-   and stretches into a pill when active. */
-.indicator {
-  position: relative;
-  width: 1.25rem;
-  height: 1.25rem;
-  padding: 0;
-  appearance: none;
-  background: transparent;
-  cursor: pointer;
-  border: 0;
-  box-shadow: none;
-}
-
-.indicator::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0.375rem;
-  height: 0.375rem;
-  background-color: var(--wa-control-indicator);
-  border-radius: 999px;
-  transform: translate(-50%, -50%);
-  transition:
-    background-color 150ms ease,
-    width 180ms ease;
-}
-
-.indicator:hover::before {
-  background-color: var(--wa-text-primary);
-}
-
-.indicator[data-active]::before {
-  width: 1rem;
-  background-color: var(--wa-text-inverse);
 }
 
 .counter {
@@ -315,17 +308,8 @@ video.media {
 
 @container lightbox (min-width: 760px) {
   .mediaFrame,
-  .media {
+  .media,
+  .geometrySizer {
     max-height: min(68vh, calc(100dvh - 9rem));
-  }
-
-  .mediaControls {
-    display: block;
-  }
-
-  .controlRail {
-    top: 0;
-    right: auto;
-    left: calc(100% + var(--lightbox-media-control-gap));
   }
 }

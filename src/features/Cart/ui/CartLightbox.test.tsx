@@ -27,14 +27,14 @@ describe('CartLightbox', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('puts the spot, date, and price in the caption rather than the control rail', () => {
+  it('puts the spot, date, and price in the caption and the remove action in the floating action area', () => {
     render(<CartLightbox item={item} onClose={vi.fn()} onRemove={vi.fn()} />);
 
     const caption = screen.getByText('Green Bowl').closest('[data-lightbox-media-caption]');
     expect(caption).not.toBeNull();
     expect(caption?.textContent).toContain('$3.00');
     expect(screen.getByRole('button', { name: 'Remove from cart' }).closest(
-      '[data-lightbox-control-rail]',
+      '[data-lightbox-floating-actions]',
     )).not.toBeNull();
   });
 });

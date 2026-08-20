@@ -30,6 +30,6 @@ describe('PurchaseLightbox', () => {
     expect(closeButton).toHaveAttribute('data-lightbox-icon-frame', 'chip');
     expect(downloadButton).toHaveAttribute('data-lightbox-icon-action', 'true');
     expect(downloadButton).toHaveAttribute('data-lightbox-icon-frame', 'chip');
-    expect(downloadButton.closest('[data-lightbox-control-rail]')).not.toBeNull();
+    expect(downloadButton.closest('[data-lightbox-floating-actions]')).not.toBeNull();
   });
 });

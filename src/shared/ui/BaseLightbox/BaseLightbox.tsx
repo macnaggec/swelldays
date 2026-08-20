@@ -9,7 +9,7 @@ export interface BaseLightboxProps {
   onClose: () => void;
   /** Render badges or metadata in the caption above the media. */
   renderOverlay?: () => ReactNode;
-  /** Render icon actions in the floating control rail. */
+  /** Render icon actions in the floating action area. */
   renderActions?: () => ReactNode;
 }
 
