@@ -2,8 +2,10 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const EXPECTED_PX = {
   grabberGap: 8,
-  sheetLeadingGap: 16,
+  sheetLeadingGap: 8,
   stackGap: 12,
+  scopeSwitcherGap: 4,
+  sideOverlayFooterPhysicalGap: 7,
   browserBottomOffset: 8,
   standaloneBottomOffset: 21,
 } as const;
@@ -147,7 +149,7 @@ test.describe('approved mobile spacing rhythm', () => {
     });
   });
 
-  test('keeps the shared 8/12/16px token contract', async ({ page }) => {
+  test('keeps the approved shared 8/12/8px token contract', async ({ page }) => {
     await openContract(page, 'browser');
 
     await expectToken(page, '--wa-grabber-gap', EXPECTED_PX.grabberGap);
@@ -178,7 +180,7 @@ test.describe('approved mobile spacing rhythm', () => {
     ).toBeCloseTo(EXPECTED_PX.browserBottomOffset, 1);
   });
 
-  test('keeps initial Half and Full stacks at 16/12/12px', async ({ page }) => {
+  test('keeps initial Half and Full stacks at 8/12/12px', async ({ page }) => {
     await openContract(page, 'browser');
 
     for (const snap of ['Half', 'Full'] as const) {
@@ -290,15 +292,15 @@ test.describe('approved mobile spacing rhythm', () => {
       if (!(element instanceof HTMLElement)) throw new Error('Panel chrome must be an HTML element.');
       return {
         height: element.offsetHeight,
-        hasRunningTransformTransition: element.getAnimations().some((animation) => (
+        hasRunningTranslateTransition: element.getAnimations().some((animation) => (
           animation instanceof CSSTransition
-          && animation.transitionProperty === 'transform'
+          && animation.transitionProperty === 'translate'
           && animation.playState === 'running'
         )),
       };
     });
     expect(finalReturn.height, 'final return must not resize the chrome row').toBe(returningHeight);
-    expect(finalReturn.hasRunningTransformTransition, 'final 8px return must use the chrome motion')
+    expect(finalReturn.hasRunningTranslateTransition, 'final 8px return must use the chrome motion')
       .toBe(true);
   });
 
@@ -381,7 +383,7 @@ test.describe('approved mobile spacing rhythm', () => {
     ).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height - 0.5);
   });
 
-  test('keeps 8px above and below the Feed/Gallery switcher in compact and expanded panels', async ({ page }) => {
+  test('keeps the approved 4px above and below the Feed/Gallery switcher in compact and expanded panels', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
 
     for (const panelState of ['compact', 'expanded'] as const) {
@@ -400,12 +402,12 @@ test.describe('approved mobile spacing rhythm', () => {
       expect(switcherBox, `${panelState} switcher must be measurable`).not.toBeNull();
       expectPhysicalGap(
         switcherBox!.y - headerBox!.y,
-        EXPECTED_PX.grabberGap,
+        EXPECTED_PX.scopeSwitcherGap,
         `${panelState} switcher top gap`,
       );
       expectPhysicalGap(
         headerBox!.y + headerBox!.height - (switcherBox!.y + switcherBox!.height),
-        EXPECTED_PX.grabberGap,
+        EXPECTED_PX.scopeSwitcherGap,
         `${panelState} switcher bottom gap`,
       );
     }
@@ -576,8 +578,8 @@ test.describe('approved mobile spacing rhythm', () => {
       expect(footerStyle.backgroundColor, `${mode} Cancel/Publish substrate fill`).not.toBe('rgba(0, 0, 0, 0)');
       expectPhysicalGap(
         page.viewportSize()!.height - (footerBox!.y + footerBox!.height),
-        0,
-        `${mode} landscape Cancel/Publish substrate to physical bottom`,
+        EXPECTED_PX.sideOverlayFooterPhysicalGap,
+        `${mode} landscape Cancel/Publish substrate to side-panel bottom`,
       );
     }
   });

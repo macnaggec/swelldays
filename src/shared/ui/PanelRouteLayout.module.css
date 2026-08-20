@@ -291,12 +291,24 @@
    so left-aligned pills would instead sit stranded right after Upload with a
    wide empty gap before the row's true edge. Push them to that edge here
    instead, scoped to 3+ columns only so 1-2 columns keep the confirmed
-   flush-left placement untouched. */
+   flush-left placement untouched.
+
+   `safe` (not plain flex-end) matters once the pills no longer fit the row
+   and [data-horizontal-scroll]'s own overflow-x: auto kicks in (mobile
+   Gallery at 3 columns, 2026-08-16): plain flex-end lets the browser treat
+   the row's own left inset as alignment overflow it's allowed to clip rather
+   than make scrollable, so the pills land flush against the true screen
+   edge with none of FilterPills.module.css's padding-inline left before
+   "Today" — no gap where the search field above still has one. `safe`
+   falls back to start-alignment exactly when that clipping would otherwise
+   happen, so an overflowing row keeps its left inset (matching Feed's
+   1-column, non-overridden case) while a row that still fits keeps
+   pushing right as before. */
 :global([data-panel-layout]:has([data-panel-collection-grid][data-columns='3'])) .toolbarTrailing :global([data-horizontal-scroll]),
 :global([data-panel-layout]:has([data-panel-collection-grid][data-columns='4'])) .toolbarTrailing :global([data-horizontal-scroll]),
 :global([data-panel-layout]:has([data-panel-collection-grid][data-columns='5'])) .toolbarTrailing :global([data-horizontal-scroll]),
 :global([data-panel-layout]:has([data-panel-collection-grid][data-columns='6'])) .toolbarTrailing :global([data-horizontal-scroll]) {
-  justify-content: flex-end;
+  justify-content: safe flex-end;
 }
 
 /* The short-landscape Map plate shrink-wraps this row, so the inner controls

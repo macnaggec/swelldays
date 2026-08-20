@@ -87,7 +87,13 @@ export function getViewportCapabilitiesSnapshot(): ViewportCapabilities {
     primaryPointer: coarsePointer ? 'coarse' : finePointer ? 'fine' : 'none',
     supportsHover: window.matchMedia('(hover: hover)').matches,
     prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    isStandalone: window.matchMedia('(display-mode: standalone)').matches,
+    // `display-mode: standalone` alone misses iOS home-screen launches on several
+    // Safari versions, where the media query never flips even though the app is
+    // genuinely running full-screen with no browser chrome. `navigator.standalone`
+    // is Apple's own non-standard, pre-media-query signal for exactly this case —
+    // undefined everywhere else, so it only ever adds a true, never a false one.
+    isStandalone: window.matchMedia('(display-mode: standalone)').matches
+      || (window.navigator as Navigator & { standalone?: boolean }).standalone === true,
   };
 
   if (cachedSnapshot && snapshotsMatch(cachedSnapshot, nextSnapshot)) return cachedSnapshot;

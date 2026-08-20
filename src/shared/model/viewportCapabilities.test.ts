@@ -62,6 +62,7 @@ describe('viewport capabilities', () => {
   afterEach(() => {
     Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
     Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+    delete (window.navigator as Navigator & { standalone?: boolean }).standalone;
   });
 
   // Phase T (constrained × regular — tablet-portrait) is retired, 2026-08-15: that width
@@ -107,6 +108,13 @@ describe('viewport capabilities', () => {
     expect(capabilities.supportsHover).toBe(true);
     expect(capabilities.prefersReducedMotion).toBe(true);
     expect(capabilities.isStandalone).toBe(true);
+  });
+
+  it('reports standalone via navigator.standalone when display-mode never flips (iOS home-screen launches)', () => {
+    mediaQueries.set('(display-mode: standalone)', createMediaQuery('(display-mode: standalone)', false));
+    Object.defineProperty(window.navigator, 'standalone', { value: true, configurable: true });
+
+    expect(getViewportCapabilitiesSnapshot().isStandalone).toBe(true);
   });
 
   it.each([

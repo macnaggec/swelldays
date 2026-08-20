@@ -63,6 +63,15 @@
   flex-direction: row;
 }
 
+/* sideWorkspace decouples the switcher into its own vertically-centered box (see
+   .switcherAnchor below), so this stack only ever holds the menu/cart buttons. Laid out
+   as a row instead of a column, it stays one button tall whether or not the cart button
+   is mounted, so growing to fit the cart button can never reach down into the switcher
+   hovering at the viewport's vertical center. */
+.root[data-navigation-presentation='compactRail'][data-drawer-presentation='sideWorkspace'] .stack {
+  flex-direction: row;
+}
+
 .button {
   width: var(--wa-control-size-navigation);
   height: var(--wa-control-size-navigation);

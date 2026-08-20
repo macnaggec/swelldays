@@ -23,6 +23,7 @@ export default defineConfig({
   },
   webServer: {
     command: `npm run dev:client -- --port ${PORT}`,
+    env: { DEV_HTTPS: 'true' },
     url: `${BASE_URL}/__mobile-layout-contract.html`,
     reuseExistingServer: false,
     ignoreHTTPSErrors: true,

@@ -85,7 +85,11 @@ function ContractUploadContent() {
         Landscape Upload content
       </div>
       <PanelLayoutFooter>
-        <footer className={uploadStyles.publishFooter} data-contract-upload-footer>
+        <footer
+          className={uploadStyles.publishFooter}
+          data-contract-upload-footer
+          data-upload-publish-footer
+        >
           <Group className={uploadStyles.footerActions} gap="sm" justify="center">
             <button type="button" style={{ height: 44 }}>Cancel</button>
             <button type="button" style={{ height: 44 }}>Publish</button>

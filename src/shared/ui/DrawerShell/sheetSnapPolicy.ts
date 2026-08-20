@@ -14,9 +14,18 @@ const SHEET_FULL_TOP_INSET_PX = 24;
 /**
  * Browse Peek's physical standalone height. On an iPhone it is the exact bottom-up
  * sequence approved for this surface: 8px screen-edge gap + 5px iOS home indicator +
- * 8px gap + 44px search row + 16px gap + 5px sheet grabber + 8px top-edge gap = 94px.
+ * 8px gap + 44px search row + 8px gap + 5px sheet grabber + 8px top-edge gap = 86px.
+ * The bottom three segments mirror --wa-floating-chrome-bottom-offset's own
+ * standalone value in tokens.css — every bottom-based plate clears the true
+ * edge the same way, whether it is a floating footer or a sheet's own Peek row.
  */
-export const SHEET_PEEK_HEIGHT_PX = 94;
+export const SHEET_PEEK_HEIGHT_PX = 86;
+/**
+ * What a browser tab removes from each sheet's own standalone peek-height
+ * constant: the 5px iOS indicator plus one of its two flanking 8px gaps,
+ * since a plain tab has no physical indicator to clear and keeps only the
+ * single flat --wa-floating-chrome-edge-gap.
+ */
 const STANDALONE_HOME_INDICATOR_RESERVE_PX = 13;
 
 interface SheetPeekHeightInput {
@@ -37,13 +46,14 @@ export function resolveBrowseSheetPeekHeightPx({
 /**
  * Peek height for a sheet whose header row (back chevron + title) stays visible at
  * Peek, unlike Browse's own sheet, which has no header row at all. Its physical
- * stack is 8px sheet edge + 5px grabber + 8px + 52px header + 8px + 44px search +
- * 8px + 5px iOS indicator + 8px screen edge = 146px. The header's own row
+ * stack is 8px sheet edge + 5px grabber + 0px + 52px header + 8px + 44px search +
+ * 8px + 5px iOS indicator + 8px screen edge = 138px. The header's own row
  * (SidePanel's panelTop) is its coarse-pointer back control height plus the 8px
  * of centering slack that row's min-height always adds around that control —
- * not the bare control height alone.
+ * not the bare control height alone. The bottom three segments mirror Browse's
+ * own tail above (STANDALONE_HOME_INDICATOR_RESERVE_PX).
  */
-export const SHEET_PEEK_WITH_HEADER_HEIGHT_PX = 146;
+export const SHEET_PEEK_WITH_HEADER_HEIGHT_PX = 138;
 
 export function resolveHeaderSheetPeekHeightPx({
   safeAreaBottomPx,

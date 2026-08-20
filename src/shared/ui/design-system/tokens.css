@@ -37,12 +37,17 @@
   --wa-sheet-grabber-width: 36px;
   --wa-sheet-grabber-height: 5px;
   --wa-grabber-gap: 8px;
-  --wa-browse-sheet-leading-gap: 16px;
-  --wa-upload-sheet-gap: 8px;
+  --wa-browse-sheet-leading-gap: 8px;
+  --wa-upload-sheet-gap:0px;
   --wa-panel-stack-gap: 12px;
+  /* The flat clearance between any bottom-based plate (a floating footer, a
+     sheet's own last visible row at Peek) and the true bottom edge in an
+     ordinary browser tab — distinct from --wa-grabber-gap, which spaces the
+     sheet's own top handle and is unrelated to bottom clearance. */
+  --wa-floating-chrome-edge-gap: 8px;
   /* Ordinary browser tabs end at their own viewport edge; installed mobile
      apps override this below to clear the physical iOS home indicator. */
-  --wa-floating-chrome-bottom-offset: var(--wa-shell-edge-clearance);
+  --wa-floating-chrome-bottom-offset: var(--wa-floating-chrome-edge-gap);
   --wa-sheet-drag-handle-height: calc(
     var(--wa-grabber-gap) + var(--wa-sheet-grabber-height) + var(--wa-browse-sheet-leading-gap)
   );
@@ -169,15 +174,19 @@
     --wa-control-size-compact: 44px;
     --wa-control-height-default: 44px;
     --wa-control-size-navigation-compact: 44px;
-    --wa-floating-chrome-bottom-offset: var(--wa-grabber-gap);
   }
 }
 
 @media (pointer: coarse) {
   [data-app-display-mode='standalone'] {
-    /* Physical bottom → 8px → 5px iOS indicator → 8px → switcher. */
+    /* Physical bottom → 8px → 5px iOS indicator → 8px → switcher, symmetric
+       around the indicator by design (not measured from the device's own
+       real safe-area value, which reports the indicator's system-owned
+       exclusion zone rather than this app's own chosen clearance). A browser
+       tab has no physical indicator to clear, so it keeps the flat edge gap
+       above unconditionally, regardless of pointer type. */
     --wa-floating-chrome-bottom-offset: calc(
-      2 * var(--wa-grabber-gap) + var(--wa-sheet-grabber-height)
+      2 * var(--wa-floating-chrome-edge-gap) + var(--wa-sheet-grabber-height)
     );
   }
 }
