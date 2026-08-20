@@ -1,3 +1,4 @@
+import { networkInterfaces } from 'node:os';
 import { defineConfig } from 'vite';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import react from '@vitejs/plugin-react';
@@ -9,6 +10,15 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 const clientPort = Number(process.env.CLIENT_PORT ?? 3000);
 const apiPort = Number(process.env.SERVER_PORT ?? 3001);
 
+// So the self-signed cert covers the LAN IP too, not just localhost, letting
+// other devices on the network open the https dev server without a hostname mismatch.
+function getLocalNetworkIps(): string[] {
+  return Object.values(networkInterfaces())
+    .flatMap((iface) => iface ?? [])
+    .filter((net) => net.family === 'IPv4' && !net.internal)
+    .map((net) => net.address);
+}
+
 export default defineConfig(() => {
   const argv = process.argv.slice(2).join(' ');
   const httpsRequested = argv.includes('--https') || process.env.DEV_HTTPS === 'true' || process.env.HTTPS === 'true';
@@ -16,7 +26,7 @@ export default defineConfig(() => {
   return {
     envPrefix: 'VITE_',
     plugins: [
-      ...(httpsRequested ? [basicSsl()] : []),
+      ...(httpsRequested ? [basicSsl({ domains: getLocalNetworkIps() })] : []),
       tanstackRouter({
         routesDirectory: './src/app/routes',
         generatedRouteTree: './src/app/routeTree.gen.ts',
@@ -26,6 +36,7 @@ export default defineConfig(() => {
     ],
     server: {
       port: clientPort,
+      host: httpsRequested ? true : undefined,
       allowedHosts: true as const,
       proxy: {
         '/api': {

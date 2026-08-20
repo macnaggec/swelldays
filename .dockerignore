@@ -1,0 +1,34 @@
+# Ignore everything
+**
+
+# Package metadata
+!package.json
+!package-lock.json
+!.npmrc
+
+# Docker
+!Dockerfile
+!Dockerfile.frontend
+!deploy/
+!deploy/**
+
+# Frontend build entry and static assets
+!index.html
+!vite.config.ts
+!postcss.config.cjs
+!public/
+!public/**
+
+# TypeScript config
+!tsconfig.json
+!tsconfig.server.json
+!vitest.d.ts
+
+# Prisma
+!prisma/
+!prisma/**
+!prisma.config.ts
+
+# Application source
+!src/
+!src/**

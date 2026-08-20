@@ -689,12 +689,12 @@ const requiredPanelLayoutStyles = [
     /\.root\[data-drawer-presentation='sideOverlay'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*var\(--wa-panel-stack-gap\)/s,
   ],
   [
-    'side-overlay footer always uses the flat edge gap, never the standalone indicator reserve',
-    /\.root\[data-drawer-presentation='sideOverlay'\]\s+\.footer\s*\{[^}]*bottom:\s*var\(--wa-floating-chrome-edge-gap\)/s,
+    'side-overlay footer preserves its approved 6px panel-edge offset in every display mode',
+    /\.root\[data-drawer-presentation='sideOverlay'\]\s+\.footer\s*\{[^}]*bottom:\s*6px/s,
   ],
   [
-    'side-workspace footer always uses the flat edge gap, never the standalone indicator reserve',
-    /\.root\[data-drawer-presentation='sideWorkspace'\]\s+\.footer\s*\{[^}]*padding-block-end:\s*var\(--wa-floating-chrome-edge-gap\)/s,
+    'side-workspace footer preserves its approved 20px bottom padding',
+    /\.root\[data-drawer-presentation='sideWorkspace'\]\s+\.footer\s*\{[^}]*padding-block-end:\s*20px/s,
   ],
   [
     'header-bearing Upload sheet subtracts its independent 8px handle band',
@@ -809,6 +809,13 @@ const mantineRadiusLiteralConsumers = new Set([
 ]);
 
 const rules = [
+  {
+    id: 'api-origin-has-one-owner',
+    message: 'Read the deployed API origin through shared/lib/apiOrigin so auth and data requests cannot drift apart.',
+    pattern: /\bVITE_API_URL\b/,
+    include: isRuntimeTypeScript,
+    exclude: file => file === 'src/shared/lib/apiOrigin.ts',
+  },
   {
     id: 'no-route-panel-css-modules',
     message: 'Panel route files must compose shared/feature UI instead of owning CSS modules.',

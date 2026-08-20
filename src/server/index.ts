@@ -1,8 +1,5 @@
 import 'dotenv/config';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { serve } from '@hono/node-server';
-import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { trpcServer } from '@hono/trpc-server';
@@ -21,8 +18,7 @@ const webhookLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
 
 const app = new Hono();
 
-const isProd = process.env.NODE_ENV === 'production';
-const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:3000';
+const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:5173';
 
 app.use('/api/*', cors({
   origin: clientUrl,
@@ -72,14 +68,6 @@ app.post('/api/webhook/cryptocloud', async (c) => {
 
   return c.json({ ok: true });
 });
-
-// Serve Vite SPA in production
-if (isProd) {
-  const distPath = resolve(process.cwd(), 'dist/client');
-  app.use('/*', serveStatic({ root: './dist/client' }));
-  const indexHtml = readFileSync(resolve(distPath, 'index.html'), 'utf-8');
-  app.get('*', (c) => c.html(indexHtml));
-}
 
 const RECONCILE_INTERVAL_MS = 15 * 60_000;
 const runReconciler = () => reconcileUploadAttempts().catch((err) => logger.error('[reconciler] run failed', { err }));

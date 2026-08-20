@@ -9,69 +9,54 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as PanelRouteImport } from './routes/_panel'
 import { Route as PageRouteImport } from './routes/_page'
-import { Route as PanelIndexRouteImport } from './routes/_panel.index'
-import { Route as PanelUploadRouteImport } from './routes/_panel.upload'
-import { Route as PanelMeRouteImport } from './routes/_panel.me'
-import { Route as PanelGalleryRouteImport } from './routes/_panel.gallery'
-import { Route as PanelCartRouteImport } from './routes/_panel.cart'
-import { Route as PanelAboutRouteImport } from './routes/_panel.about'
-import { Route as PanelSpotIdRouteImport } from './routes/_panel.$spotId'
-import { Route as PageOrderSuccessRouteImport } from './routes/_page.order-success'
+import { Route as PanelRouteImport } from './routes/_panel'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PageAdminRouteImport } from './routes/_page.admin'
-import { Route as PanelMeIndexRouteImport } from './routes/_panel.me.index'
+import { Route as PageOrderSuccessRouteImport } from './routes/_page.order-success'
+import { Route as PanelIndexRouteImport } from './routes/_panel.index'
+import { Route as PanelSpotIdRouteImport } from './routes/_panel.$spotId'
+import { Route as PanelAboutRouteImport } from './routes/_panel.about'
+import { Route as PanelCartRouteImport } from './routes/_panel.cart'
+import { Route as PanelGalleryRouteImport } from './routes/_panel.gallery'
+import { Route as PanelMeRouteImport } from './routes/_panel.me'
+import { Route as PanelUploadRouteImport } from './routes/_panel.upload'
 import { Route as PanelSpotIdIndexRouteImport } from './routes/_panel.$spotId.index'
-import { Route as PanelMeEarningsRouteImport } from './routes/_panel.me.earnings'
-import { Route as PanelMeCollectionsRouteImport } from './routes/_panel.me.collections'
 import { Route as PanelSpotIdGalleryRouteImport } from './routes/_panel.$spotId.gallery'
-import { Route as PanelMeCollectionsIndexRouteImport } from './routes/_panel.me.collections.index'
-import { Route as PanelMeCollectionsPurchasesRouteImport } from './routes/_panel.me.collections.purchases'
-import { Route as PanelMeCollectionsFavoritesRouteImport } from './routes/_panel.me.collections.favorites'
+import { Route as PanelMeIndexRouteImport } from './routes/_panel.me.index'
+import { Route as PanelMeCollectionsRouteImport } from './routes/_panel.me.collections'
+import { Route as PanelMeEarningsRouteImport } from './routes/_panel.me.earnings'
 import { Route as PanelSpotIdSessionSessionIdRouteImport } from './routes/_panel.$spotId.session.$sessionId'
+import { Route as PanelMeCollectionsIndexRouteImport } from './routes/_panel.me.collections.index'
+import { Route as PanelMeCollectionsFavoritesRouteImport } from './routes/_panel.me.collections.favorites'
+import { Route as PanelMeCollectionsPurchasesRouteImport } from './routes/_panel.me.collections.purchases'
 
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const PageRoute = PageRouteImport.update({
+  id: '/_page',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PanelRoute = PanelRouteImport.update({
   id: '/_panel',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PageRoute = PageRouteImport.update({
-  id: '/_page',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PageAdminRoute = PageAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => PageRoute,
+} as any)
+const PageOrderSuccessRoute = PageOrderSuccessRouteImport.update({
+  id: '/order-success',
+  path: '/order-success',
+  getParentRoute: () => PageRoute,
 } as any)
 const PanelIndexRoute = PanelIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => PanelRoute,
-} as any)
-const PanelUploadRoute = PanelUploadRouteImport.update({
-  id: '/upload',
-  path: '/upload',
-  getParentRoute: () => PanelRoute,
-} as any)
-const PanelMeRoute = PanelMeRouteImport.update({
-  id: '/me',
-  path: '/me',
-  getParentRoute: () => PanelRoute,
-} as any)
-const PanelGalleryRoute = PanelGalleryRouteImport.update({
-  id: '/gallery',
-  path: '/gallery',
-  getParentRoute: () => PanelRoute,
-} as any)
-const PanelCartRoute = PanelCartRouteImport.update({
-  id: '/cart',
-  path: '/cart',
-  getParentRoute: () => PanelRoute,
-} as any)
-const PanelAboutRoute = PanelAboutRouteImport.update({
-  id: '/about',
-  path: '/about',
   getParentRoute: () => PanelRoute,
 } as any)
 const PanelSpotIdRoute = PanelSpotIdRouteImport.update({
@@ -79,29 +64,44 @@ const PanelSpotIdRoute = PanelSpotIdRouteImport.update({
   path: '/$spotId',
   getParentRoute: () => PanelRoute,
 } as any)
-const PageOrderSuccessRoute = PageOrderSuccessRouteImport.update({
-  id: '/order-success',
-  path: '/order-success',
-  getParentRoute: () => PageRoute,
+const PanelAboutRoute = PanelAboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => PanelRoute,
 } as any)
-const PageAdminRoute = PageAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => PageRoute,
+const PanelCartRoute = PanelCartRouteImport.update({
+  id: '/cart',
+  path: '/cart',
+  getParentRoute: () => PanelRoute,
 } as any)
-const PanelMeIndexRoute = PanelMeIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PanelMeRoute,
+const PanelGalleryRoute = PanelGalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelMeRoute = PanelMeRouteImport.update({
+  id: '/me',
+  path: '/me',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelUploadRoute = PanelUploadRouteImport.update({
+  id: '/upload',
+  path: '/upload',
+  getParentRoute: () => PanelRoute,
 } as any)
 const PanelSpotIdIndexRoute = PanelSpotIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PanelSpotIdRoute,
 } as any)
-const PanelMeEarningsRoute = PanelMeEarningsRouteImport.update({
-  id: '/earnings',
-  path: '/earnings',
+const PanelSpotIdGalleryRoute = PanelSpotIdGalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
+  getParentRoute: () => PanelSpotIdRoute,
+} as any)
+const PanelMeIndexRoute = PanelMeIndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => PanelMeRoute,
 } as any)
 const PanelMeCollectionsRoute = PanelMeCollectionsRouteImport.update({
@@ -109,33 +109,33 @@ const PanelMeCollectionsRoute = PanelMeCollectionsRouteImport.update({
   path: '/collections',
   getParentRoute: () => PanelMeRoute,
 } as any)
-const PanelSpotIdGalleryRoute = PanelSpotIdGalleryRouteImport.update({
-  id: '/gallery',
-  path: '/gallery',
-  getParentRoute: () => PanelSpotIdRoute,
+const PanelMeEarningsRoute = PanelMeEarningsRouteImport.update({
+  id: '/earnings',
+  path: '/earnings',
+  getParentRoute: () => PanelMeRoute,
 } as any)
+const PanelSpotIdSessionSessionIdRoute =
+  PanelSpotIdSessionSessionIdRouteImport.update({
+    id: '/session/$sessionId',
+    path: '/session/$sessionId',
+    getParentRoute: () => PanelSpotIdRoute,
+  } as any)
 const PanelMeCollectionsIndexRoute = PanelMeCollectionsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PanelMeCollectionsRoute,
 } as any)
-const PanelMeCollectionsPurchasesRoute =
-  PanelMeCollectionsPurchasesRouteImport.update({
-    id: '/purchases',
-    path: '/purchases',
-    getParentRoute: () => PanelMeCollectionsRoute,
-  } as any)
 const PanelMeCollectionsFavoritesRoute =
   PanelMeCollectionsFavoritesRouteImport.update({
     id: '/favorites',
     path: '/favorites',
     getParentRoute: () => PanelMeCollectionsRoute,
   } as any)
-const PanelSpotIdSessionSessionIdRoute =
-  PanelSpotIdSessionSessionIdRouteImport.update({
-    id: '/session/$sessionId',
-    path: '/session/$sessionId',
-    getParentRoute: () => PanelSpotIdRoute,
+const PanelMeCollectionsPurchasesRoute =
+  PanelMeCollectionsPurchasesRouteImport.update({
+    id: '/purchases',
+    path: '/purchases',
+    getParentRoute: () => PanelMeCollectionsRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -274,11 +274,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/_page': {
+      id: '/_page'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof PageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_panel': {
@@ -288,53 +288,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanelRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_page': {
-      id: '/_page'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof PageRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_page/admin': {
+      id: '/_page/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof PageAdminRouteImport
+      parentRoute: typeof PageRoute
+    }
+    '/_page/order-success': {
+      id: '/_page/order-success'
+      path: '/order-success'
+      fullPath: '/order-success'
+      preLoaderRoute: typeof PageOrderSuccessRouteImport
+      parentRoute: typeof PageRoute
     }
     '/_panel/': {
       id: '/_panel/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof PanelIndexRouteImport
-      parentRoute: typeof PanelRoute
-    }
-    '/_panel/upload': {
-      id: '/_panel/upload'
-      path: '/upload'
-      fullPath: '/upload'
-      preLoaderRoute: typeof PanelUploadRouteImport
-      parentRoute: typeof PanelRoute
-    }
-    '/_panel/me': {
-      id: '/_panel/me'
-      path: '/me'
-      fullPath: '/me'
-      preLoaderRoute: typeof PanelMeRouteImport
-      parentRoute: typeof PanelRoute
-    }
-    '/_panel/gallery': {
-      id: '/_panel/gallery'
-      path: '/gallery'
-      fullPath: '/gallery'
-      preLoaderRoute: typeof PanelGalleryRouteImport
-      parentRoute: typeof PanelRoute
-    }
-    '/_panel/cart': {
-      id: '/_panel/cart'
-      path: '/cart'
-      fullPath: '/cart'
-      preLoaderRoute: typeof PanelCartRouteImport
-      parentRoute: typeof PanelRoute
-    }
-    '/_panel/about': {
-      id: '/_panel/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof PanelAboutRouteImport
       parentRoute: typeof PanelRoute
     }
     '/_panel/$spotId': {
@@ -344,26 +323,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanelSpotIdRouteImport
       parentRoute: typeof PanelRoute
     }
-    '/_page/order-success': {
-      id: '/_page/order-success'
-      path: '/order-success'
-      fullPath: '/order-success'
-      preLoaderRoute: typeof PageOrderSuccessRouteImport
-      parentRoute: typeof PageRoute
+    '/_panel/about': {
+      id: '/_panel/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof PanelAboutRouteImport
+      parentRoute: typeof PanelRoute
     }
-    '/_page/admin': {
-      id: '/_page/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof PageAdminRouteImport
-      parentRoute: typeof PageRoute
+    '/_panel/cart': {
+      id: '/_panel/cart'
+      path: '/cart'
+      fullPath: '/cart'
+      preLoaderRoute: typeof PanelCartRouteImport
+      parentRoute: typeof PanelRoute
     }
-    '/_panel/me/': {
-      id: '/_panel/me/'
-      path: '/'
-      fullPath: '/me/'
-      preLoaderRoute: typeof PanelMeIndexRouteImport
-      parentRoute: typeof PanelMeRoute
+    '/_panel/gallery': {
+      id: '/_panel/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof PanelGalleryRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/_panel/me': {
+      id: '/_panel/me'
+      path: '/me'
+      fullPath: '/me'
+      preLoaderRoute: typeof PanelMeRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/_panel/upload': {
+      id: '/_panel/upload'
+      path: '/upload'
+      fullPath: '/upload'
+      preLoaderRoute: typeof PanelUploadRouteImport
+      parentRoute: typeof PanelRoute
     }
     '/_panel/$spotId/': {
       id: '/_panel/$spotId/'
@@ -372,11 +365,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanelSpotIdIndexRouteImport
       parentRoute: typeof PanelSpotIdRoute
     }
-    '/_panel/me/earnings': {
-      id: '/_panel/me/earnings'
-      path: '/earnings'
-      fullPath: '/me/earnings'
-      preLoaderRoute: typeof PanelMeEarningsRouteImport
+    '/_panel/$spotId/gallery': {
+      id: '/_panel/$spotId/gallery'
+      path: '/gallery'
+      fullPath: '/$spotId/gallery'
+      preLoaderRoute: typeof PanelSpotIdGalleryRouteImport
+      parentRoute: typeof PanelSpotIdRoute
+    }
+    '/_panel/me/': {
+      id: '/_panel/me/'
+      path: '/'
+      fullPath: '/me/'
+      preLoaderRoute: typeof PanelMeIndexRouteImport
       parentRoute: typeof PanelMeRoute
     }
     '/_panel/me/collections': {
@@ -386,11 +386,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanelMeCollectionsRouteImport
       parentRoute: typeof PanelMeRoute
     }
-    '/_panel/$spotId/gallery': {
-      id: '/_panel/$spotId/gallery'
-      path: '/gallery'
-      fullPath: '/$spotId/gallery'
-      preLoaderRoute: typeof PanelSpotIdGalleryRouteImport
+    '/_panel/me/earnings': {
+      id: '/_panel/me/earnings'
+      path: '/earnings'
+      fullPath: '/me/earnings'
+      preLoaderRoute: typeof PanelMeEarningsRouteImport
+      parentRoute: typeof PanelMeRoute
+    }
+    '/_panel/$spotId/session/$sessionId': {
+      id: '/_panel/$spotId/session/$sessionId'
+      path: '/session/$sessionId'
+      fullPath: '/$spotId/session/$sessionId'
+      preLoaderRoute: typeof PanelSpotIdSessionSessionIdRouteImport
       parentRoute: typeof PanelSpotIdRoute
     }
     '/_panel/me/collections/': {
@@ -400,13 +407,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanelMeCollectionsIndexRouteImport
       parentRoute: typeof PanelMeCollectionsRoute
     }
-    '/_panel/me/collections/purchases': {
-      id: '/_panel/me/collections/purchases'
-      path: '/purchases'
-      fullPath: '/me/collections/purchases'
-      preLoaderRoute: typeof PanelMeCollectionsPurchasesRouteImport
-      parentRoute: typeof PanelMeCollectionsRoute
-    }
     '/_panel/me/collections/favorites': {
       id: '/_panel/me/collections/favorites'
       path: '/favorites'
@@ -414,12 +414,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanelMeCollectionsFavoritesRouteImport
       parentRoute: typeof PanelMeCollectionsRoute
     }
-    '/_panel/$spotId/session/$sessionId': {
-      id: '/_panel/$spotId/session/$sessionId'
-      path: '/session/$sessionId'
-      fullPath: '/$spotId/session/$sessionId'
-      preLoaderRoute: typeof PanelSpotIdSessionSessionIdRouteImport
-      parentRoute: typeof PanelSpotIdRoute
+    '/_panel/me/collections/purchases': {
+      id: '/_panel/me/collections/purchases'
+      path: '/purchases'
+      fullPath: '/me/collections/purchases'
+      preLoaderRoute: typeof PanelMeCollectionsPurchasesRouteImport
+      parentRoute: typeof PanelMeCollectionsRoute
     }
   }
 }

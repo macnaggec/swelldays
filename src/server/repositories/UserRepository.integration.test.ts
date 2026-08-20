@@ -45,7 +45,13 @@ async function fixture({ balance = 0 }: { balance?: number } = {}) {
     },
   });
   await prisma.account.create({
-    data: { userId: photographer.id, accountId: photographer.id, providerId: 'credential', password: 'hashed' },
+    data: {
+      issuer: 'local:credential',
+      userId: photographer.id,
+      accountId: photographer.id,
+      providerId: 'credential',
+      password: 'hashed',
+    },
   });
 
   return { photographer, spot, session, media };

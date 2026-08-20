@@ -1,9 +1,11 @@
 import { createAuthClient } from 'better-auth/react';
+import { apiOrigin } from 'shared/lib/apiOrigin';
 
 export const authClient = createAuthClient({
-  baseURL: typeof window !== 'undefined'
-    ? window.location.origin
-    : (import.meta.env.VITE_APP_URL ?? 'http://localhost:3000'),
+  ...(apiOrigin ? { baseURL: apiOrigin } : {}),
+  fetchOptions: {
+    credentials: 'include',
+  },
 });
 
 export const {
