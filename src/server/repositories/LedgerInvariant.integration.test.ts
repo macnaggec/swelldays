@@ -26,7 +26,7 @@ async function recordSale(photographerId: string, amount: number) {
     data: { email: `buyer-${randomUUID()}@example.com` },
   });
   const session = await prisma.surfSession.create({
-    data: { photographerId },
+    data: { photographerId, status: 'PUBLISHED' },
   });
   const mediaItem = await prisma.mediaItem.create({
     data: {

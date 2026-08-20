@@ -1,1 +1,1 @@
-export type { SurfSessionDraft, SurfSessionItem, SurfSessionPage } from 'shared/types/surfSession';
+export type { SurfSessionItem, SurfSessionPage } from 'shared/types/surfSession';

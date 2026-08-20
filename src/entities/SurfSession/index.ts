@@ -1,4 +1,4 @@
-export type { SurfSessionDraft, SurfSessionItem, SurfSessionPage } from './types';
+export type { SurfSessionItem, SurfSessionPage } from './types';
 
 export { SurfSessionCard } from './ui/SurfSessionCard';
 export { RemoveSessionModal } from './ui/RemoveSessionModal';

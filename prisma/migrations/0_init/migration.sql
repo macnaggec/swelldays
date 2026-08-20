@@ -2,7 +2,7 @@
 CREATE SCHEMA IF NOT EXISTS "public";
 
 -- CreateEnum
-CREATE TYPE "SurfSessionStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'DELETED');
+CREATE TYPE "SurfSessionStatus" AS ENUM ('PUBLISHED', 'DELETED');
 
 -- CreateEnum
 CREATE TYPE "MediaType" AS ENUM ('PHOTO', 'VIDEO');
@@ -160,11 +160,12 @@ CREATE TABLE "surf_sessions" (
     "ends_at" TIMESTAMP(3),
     "photo_price" INTEGER NOT NULL DEFAULT 300,
     "video_price" INTEGER NOT NULL DEFAULT 300,
-    "status" "SurfSessionStatus" NOT NULL DEFAULT 'DRAFT',
+    "status" "SurfSessionStatus" NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "surf_sessions_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "surf_sessions_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "surf_sessions_valid_time_window_check" CHECK ("starts_at" IS NULL OR "ends_at" IS NULL OR "starts_at" < "ends_at")
 );
 
 -- CreateTable
@@ -370,13 +371,13 @@ CREATE INDEX "surf_sessions_spot_status_created_idx" ON "surf_sessions"("spot_id
 CREATE INDEX "surf_sessions_photographer_created_idx" ON "surf_sessions"("photographer_id", "created_at");
 
 -- CreateIndex
-CREATE INDEX "surf_sessions_photographer_draft_updated_idx" ON "surf_sessions"("photographer_id", "status", "updated_at");
-
--- CreateIndex
 CREATE UNIQUE INDEX "surf_sessions_id_photographer_id_key" ON "surf_sessions"("id", "photographer_id");
 
 -- CreateIndex
 CREATE INDEX "upload_workspaces_photographer_status_updated_idx" ON "upload_workspaces"("photographer_id", "status", "updated_at");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "upload_workspaces_one_active_per_photographer_idx" ON "upload_workspaces"("photographer_id") WHERE "status" = 'ACTIVE';
 
 -- CreateIndex
 CREATE INDEX "upload_workspaces_target_session_idx" ON "upload_workspaces"("target_session_id");

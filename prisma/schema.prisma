@@ -150,7 +150,7 @@ model SurfSession {
   endsAt         DateTime?         @map("ends_at")
   photoPrice     Int               @default(300) @map("photo_price")
   videoPrice     Int               @default(300) @map("video_price")
-  status         SurfSessionStatus @default(DRAFT)
+  status         SurfSessionStatus
   createdAt      DateTime          @default(now()) @map("created_at")
   updatedAt      DateTime          @default(now()) @updatedAt @map("updated_at")
 
@@ -163,7 +163,6 @@ model SurfSession {
   @@index([status, createdAt], map: "surf_sessions_status_created_idx")
   @@index([spotId, status, createdAt], map: "surf_sessions_spot_status_created_idx")
   @@index([photographerId, createdAt], map: "surf_sessions_photographer_created_idx")
-  @@index([photographerId, status, updatedAt], map: "surf_sessions_photographer_draft_updated_idx")
   @@map("surf_sessions")
 }
 
@@ -344,7 +343,6 @@ model UserFavoriteMedia {
 }
 
 enum SurfSessionStatus {
-  DRAFT
   PUBLISHED
   DELETED
 }

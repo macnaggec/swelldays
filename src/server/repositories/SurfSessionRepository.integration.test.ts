@@ -33,6 +33,7 @@ describe('SurfSession time window constraint', () => {
         photographerId: photographer.id,
         startsAt: new Date('2026-01-01T09:00:00Z'),
         endsAt: new Date('2026-01-01T08:00:00Z'),
+        status: 'PUBLISHED',
       },
     })).rejects.toThrow();
   });

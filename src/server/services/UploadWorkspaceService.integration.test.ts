@@ -196,3 +196,24 @@ describe('UploadWorkspaceService session edits', () => {
     );
   });
 });
+
+describe('Upload workspace occupancy constraint', () => {
+  it('rejects a second active workspace even when it has a different kind', async () => {
+    const { photographer, session } = await seedPublishedSessionWithOnePhoto();
+
+    await prisma.uploadWorkspace.create({
+      data: {
+        photographerId: photographer.id,
+        kind: 'NEW_SESSION',
+      },
+    });
+
+    await expect(prisma.uploadWorkspace.create({
+      data: {
+        photographerId: photographer.id,
+        kind: 'SESSION_EDIT',
+        targetSessionId: session.id,
+      },
+    })).rejects.toThrow();
+  });
+});

@@ -17,7 +17,9 @@ async function fixture() {
   const viewer = await prisma.user.create({ data: { email: 'favorite-viewer@example.com' } });
   const otherViewer = await prisma.user.create({ data: { email: 'favorite-other@example.com' } });
   const spot = await prisma.spot.create({ data: { name: 'Pipeline', location: 'Oahu' } });
-  const session = await prisma.surfSession.create({ data: { photographerId: photographer.id, spotId: spot.id } });
+  const session = await prisma.surfSession.create({
+    data: { photographerId: photographer.id, spotId: spot.id, status: 'PUBLISHED' },
+  });
   const media = await prisma.mediaItem.create({ data: {
     sessionId: session.id, photographerId: photographer.id, spotId: spot.id,
     status: 'PUBLISHED', price: 300, capturedAt: new Date('2026-04-01T10:00:00Z'),

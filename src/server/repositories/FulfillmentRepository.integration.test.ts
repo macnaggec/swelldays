@@ -21,7 +21,7 @@ async function createOrderFixture() {
     data: { email: `buyer-${randomUUID()}@example.com` },
   });
   const session = await prisma.surfSession.create({
-    data: { photographerId: photographer.id },
+    data: { photographerId: photographer.id, status: 'PUBLISHED' },
   });
   const mediaItem = await prisma.mediaItem.create({
     data: {

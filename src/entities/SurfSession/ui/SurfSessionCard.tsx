@@ -1,4 +1,4 @@
-import { ActionIcon, Badge, Group, Menu, Stack, Text } from '@mantine/core';
+import { ActionIcon, Group, Menu, Stack, Text } from '@mantine/core';
 import { IconCalendar, IconDots, IconMapPin, IconPencil, IconPhoto, IconTrash } from '@tabler/icons-react';
 import { formatDateRange } from 'shared/lib/dateUtils';
 import type { SurfSessionItem } from '../types';
@@ -12,7 +12,6 @@ interface SurfSessionCardProps {
 }
 
 export function SurfSessionCard({ session, onClick, onEdit, onRemove }: SurfSessionCardProps) {
-  const isDraft = session.status === 'DRAFT';
   const hasActions = !!(onEdit || onRemove);
 
   return (
@@ -66,9 +65,6 @@ export function SurfSessionCard({ session, onClick, onEdit, onRemove }: SurfSess
             <IconMapPin size={11} className={styles.metaIcon} />
             <Text size="xs" fw={600} truncate>{session.spot.name}</Text>
           </Group>
-          {isDraft && (
-            <Badge size="xs" color="yellow" variant="light">Draft</Badge>
-          )}
         </Group>
 
         <Group gap={4} wrap="nowrap">

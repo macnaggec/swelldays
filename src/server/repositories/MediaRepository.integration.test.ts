@@ -29,7 +29,7 @@ describe('MediaRepository.hasDraftsByUser', () => {
       data: { email: 'new-draft@example.com' },
     });
     const session = await prisma.surfSession.create({
-      data: { photographerId: photographer.id },
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
     });
     await prisma.mediaItem.create({
       data: {
@@ -51,7 +51,7 @@ describe('MediaRepository.hasDraftsByUser', () => {
       data: { email: 'reopened-edit@example.com' },
     });
     const session = await prisma.surfSession.create({
-      data: { photographerId: photographer.id },
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
     });
     // The original, previously-published photo keeps its price, which marks the session as
     // previously published even if legacy unpublished rows still exist.
@@ -94,7 +94,7 @@ describe('MediaRepository.findByIdsForFulfillment', () => {
       data: { email: 'fulfillment-filter@example.com' },
     });
     const session = await prisma.surfSession.create({
-      data: { photographerId: photographer.id },
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
     });
 
     const base = {
@@ -129,7 +129,7 @@ describe('MediaRepository.findByIdsForFulfillment', () => {
       data: { email: 'fulfillment-shape@example.com' },
     });
     const session = await prisma.surfSession.create({
-      data: { photographerId: photographer.id },
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
     });
 
     const media = await prisma.mediaItem.create({
@@ -167,7 +167,9 @@ describe('MediaRepository.findPublishedBySpot', () => {
     const favoriteSpot = await prisma.spot.create({ data: { name: 'Favorite', location: 'North' } });
     const otherSpot = await prisma.spot.create({ data: { name: 'Other', location: 'South' } });
     await prisma.userFavoriteSpot.create({ data: { userId: viewer.id, spotId: favoriteSpot.id } });
-    const session = await prisma.surfSession.create({ data: { photographerId: photographer.id } });
+    const session = await prisma.surfSession.create({
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
+    });
 
     const createMedia = (spotId: string, capturedAt: Date, publicId: string) => prisma.mediaItem.create({
       data: {
@@ -203,7 +205,7 @@ describe('MediaRepository.findPublishedBySpot', () => {
     });
     const spot = await prisma.spot.create({ data: { name: 'Backdoor', location: 'North Shore' } });
     const session = await prisma.surfSession.create({
-      data: { photographerId: photographer.id },
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
     });
 
     const base = {
@@ -237,7 +239,7 @@ describe('MediaRepository.findPublishedBySpot', () => {
     });
     const spot = await prisma.spot.create({ data: { name: 'Pipeline', location: 'North Shore' } });
     const session = await prisma.surfSession.create({
-      data: { photographerId: photographer.id },
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
     });
 
     const base = {
@@ -268,7 +270,7 @@ describe('MediaRepository.findPublishedBySpot', () => {
     });
     const spot = await prisma.spot.create({ data: { name: 'Sunset', location: 'North Shore' } });
     const session = await prisma.surfSession.create({
-      data: { photographerId: photographer.id },
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
     });
 
     // Insert 4 items with distinct descending capturedAt (newest first in results)
@@ -306,7 +308,7 @@ describe('MediaRepository.findPublishedBySpot', () => {
     });
     const spot = await prisma.spot.create({ data: { name: 'Tied', location: 'North Shore' } });
     const session = await prisma.surfSession.create({
-      data: { photographerId: photographer.id },
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
     });
 
     const tiedCapturedAt = new Date('2026-01-01T06:00:00Z');
@@ -355,7 +357,7 @@ describe('MediaRepository.findPublishedBySpot', () => {
     const spotA = await prisma.spot.create({ data: { name: 'Backdoor', location: 'North Shore' } });
     const spotB = await prisma.spot.create({ data: { name: 'Pipeline', location: 'North Shore' } });
     const session = await prisma.surfSession.create({
-      data: { photographerId: photographer.id },
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
     });
 
     const itemA = await prisma.mediaItem.create({
@@ -401,7 +403,9 @@ describe('MediaRepository.findPublishedBySpot', () => {
       data: { email: 'projection-photographer@example.com', name: 'Projection Tester' },
     });
     const spot = await prisma.spot.create({ data: { name: 'Uluwatu', location: 'Bukit' } });
-    const session = await prisma.surfSession.create({ data: { photographerId: photographer.id } });
+    const session = await prisma.surfSession.create({
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
+    });
     await prisma.mediaItem.create({
       data: {
         sessionId: session.id,
@@ -443,7 +447,9 @@ describe('MediaRepository.findPublishedDates', () => {
     const favoriteSpot = await prisma.spot.create({ data: { name: 'Indexed', location: 'North' } });
     const otherSpot = await prisma.spot.create({ data: { name: 'Excluded', location: 'South' } });
     await prisma.userFavoriteSpot.create({ data: { userId: viewer.id, spotId: favoriteSpot.id } });
-    const session = await prisma.surfSession.create({ data: { photographerId: photographer.id } });
+    const session = await prisma.surfSession.create({
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
+    });
     const base = {
       sessionId: session.id,
       photographerId: photographer.id,
@@ -491,7 +497,9 @@ describe('MediaRepository.findPublishedBySpotBefore', () => {
   async function seedFiveTiedMedia() {
     const photographer = await prisma.user.create({ data: { email: `before-tied-${crypto.randomUUID()}@example.com` } });
     const spot = await prisma.spot.create({ data: { name: 'Tied Before', location: 'North Shore' } });
-    const session = await prisma.surfSession.create({ data: { photographerId: photographer.id } });
+    const session = await prisma.surfSession.create({
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
+    });
     const tiedCapturedAt = new Date('2026-01-01T06:00:00Z');
     const created = [];
     for (let i = 0; i < 5; i++) {
