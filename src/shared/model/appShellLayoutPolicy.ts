@@ -33,7 +33,6 @@ export interface AppShellLayoutPolicy {
   };
   map: {
     interaction: 'interactive' | 'background' | 'decorative' | 'hidden';
-    navigationControl: 'visible' | 'hidden';
   };
   chrome: {
     panelControls: 'adjacent' | 'insideDrawer' | 'hidden';
@@ -53,7 +52,6 @@ const hiddenLayoutPolicy: AppShellLayoutPolicy = {
   },
   map: {
     interaction: 'hidden',
-    navigationControl: 'hidden',
   },
   chrome: {
     panelControls: 'hidden',
@@ -71,7 +69,6 @@ export function deriveAppShellLayoutPolicy(
       ...hiddenLayoutPolicy,
       map: {
         interaction: 'interactive',
-        navigationControl: 'hidden',
       },
     };
   }
@@ -170,11 +167,6 @@ export function deriveAppShellLayoutPolicy(
     },
     map: {
       interaction: mapInteraction,
-      navigationControl: isImmersiveMapInput
-        || (sizeBand !== 'wide' && mapInteraction === 'background')
-        || mapInteraction === 'decorative'
-        ? 'hidden'
-        : 'visible',
     },
     chrome: {
       panelControls,

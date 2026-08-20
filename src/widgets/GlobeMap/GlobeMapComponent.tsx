@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState, useMemo, useEffect, type ReactNode } from 'react';
-import Map, { MapRef, NavigationControl, Source, Layer, Popup, ViewStateChangeEvent, MapMouseEvent } from 'react-map-gl';
+import Map, { MapRef, Source, Layer, Popup, ViewStateChangeEvent, MapMouseEvent } from 'react-map-gl';
 import { Loader, Paper, Text } from '@mantine/core';
 import { materialClasses } from 'shared/ui/design-system';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -68,7 +68,6 @@ export interface GlobeMapProps {
   /** Px of the map canvas covered by app chrome per edge — reserved as camera padding so a focused spot centers in the visible map area. */
   cameraInsetsPx?: MapCameraInsets;
   isCoordinatePickerActive?: boolean;
-  showNavigationControl?: boolean;
   tempPin?: LngLat | null;
   onMapCoordinateClick?: (coords: LngLat) => void;
   onUserExploreStart?: () => void;
@@ -89,7 +88,6 @@ export function GlobeMapComponent({
   selectedSpotFocusEnabled = true,
   cameraInsetsPx = NO_MAP_CAMERA_INSETS,
   isCoordinatePickerActive = false,
-  showNavigationControl = true,
   tempPin = null,
   onMapCoordinateClick,
   onUserExploreStart,
@@ -449,8 +447,6 @@ export function GlobeMapComponent({
           tempPin={tempPin}
           isActive={isCoordinatePickerActive}
         />
-
-        {showNavigationControl && <NavigationControl position="bottom-right" />}
       </Map>
     </div>
   );

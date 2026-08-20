@@ -40,7 +40,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock('widgets/GlobeMap', () => ({
   GlobeMap: ({
     isCoordinatePickerActive,
-    showNavigationControl,
     onMapCoordinateClick,
     onSpotSelect,
     onCameraGestureStart,
@@ -50,7 +49,6 @@ vi.mock('widgets/GlobeMap', () => ({
     ...restProps
   }: {
     isCoordinatePickerActive?: boolean;
-    showNavigationControl?: boolean;
     onMapCoordinateClick?: (coords: LngLat) => void;
     onSpotSelect: (spot: { id: string }) => void;
     onCameraGestureStart?: () => void;
@@ -62,7 +60,6 @@ vi.mock('widgets/GlobeMap', () => ({
   }) => (
     <div
       data-coordinate-picker-active={String(isCoordinatePickerActive)}
-      data-show-navigation-control={String(showNavigationControl)}
       data-temp-pin={tempPin?.join(',') ?? ''}
       data-selected-spot-id={selectedSpotId ?? ''}
       data-selected-spot-focus-enabled={String(selectedSpotFocusEnabled)}
@@ -266,7 +263,6 @@ describe('GlobeScene Add Spot flow', () => {
 
     expect(screen.getByText('Add spot panel')).toBeInTheDocument();
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-coordinate-picker-active', 'true');
-    expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-show-navigation-control', 'false');
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-temp-pin', '151,-34');
 
     fireEvent.click(screen.getByRole('button', { name: 'Place pin' }));

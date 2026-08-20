@@ -224,7 +224,6 @@ export function GlobeScene() {
         selectedSpotFocusEnabled={sheetSnap !== 'full'}
         cameraInsetsPx={cameraInsetsPx}
         isCoordinatePickerActive={isImmersiveMapInput}
-        showNavigationControl={layoutPolicy.map.navigationControl === 'visible'}
         tempPin={tempPin}
         onMapCoordinateClick={handleMapCoordinateClick}
         onUserExploreStart={() => setIsUserExploring(true)}

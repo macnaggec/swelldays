@@ -163,7 +163,6 @@ describe('the mobile browse section shell cells', () => {
     expect(resolved.drawer.control).toBe('routeBack');
     expect(resolved.drawer.modality).toBe('nonmodal');
     expect(resolved.map.interaction).toBe('decorative');
-    expect(resolved.map.navigationControl).toBe('hidden');
   });
 
   it('activates the constrained/regular browse cell as a nonmodal side overlay coexisting with the interactive map', () => {

@@ -37,7 +37,6 @@ describe('deriveAppShellLayoutPolicy — wide', () => {
     expect(policy.drawer.contentDensity).toBe(preferredExpanded ? 'comfortable' : 'compact');
     expect(policy.drawer.canWaitForContent).toBe(routeIntent === 'browse');
     expect(policy.map.interaction).toBe('interactive');
-    expect(policy.map.navigationControl).toBe('visible');
     expect(policy.chrome.panelControls).toBe('adjacent');
   });
 
@@ -85,7 +84,6 @@ describe('deriveAppShellLayoutPolicy — wide', () => {
     expect(policy.drawer.state).toBe('hidden');
     expect(policy.drawer.control).toBe('none');
     expect(policy.map.interaction).toBe(expectedMapInteraction);
-    expect(policy.map.navigationControl).toBe('hidden');
   });
 });
 
@@ -335,25 +333,6 @@ describe('deriveAppShellLayoutPolicy — height band', () => {
 
     expect(policy.drawer.presentation).toBe('persistent');
     expect(policy.drawer.mapExclusive).toBe(false);
-  });
-
-  it.each([
-    ['wide', 'regular'],
-    ['constrained', 'short'],
-    ['compact', 'regular'],
-  ] as const)('hides the map navigation control for siteWorkspace at every band (%s/%s)', (
-    sizeBand,
-    heightBand,
-  ) => {
-    const policy = deriveAppShellLayoutPolicy({
-      routeIntent: 'siteWorkspace',
-      sizeBand,
-      heightBand,
-      preferences: compactPreferences,
-    });
-
-    expect(policy.map.interaction).toBe('decorative');
-    expect(policy.map.navigationControl).toBe('hidden');
   });
 
   it('never downgrades wide at short height', () => {

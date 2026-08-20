@@ -19,7 +19,6 @@ const mocks = vi.hoisted(() => ({
   easeTo: vi.fn(),
   setPadding: vi.fn(),
   getZoom: vi.fn(() => 1.5),
-  navigationControl: vi.fn(),
 }));
 
 vi.mock('mapbox-gl', () => ({
@@ -134,10 +133,6 @@ vi.mock('react-map-gl', () => ({
     </div>
   ),
   Layer: () => null,
-  NavigationControl: () => {
-    mocks.navigationControl();
-    return <div data-testid="navigation-control" />;
-  },
   Popup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   Source: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
@@ -267,23 +262,6 @@ describe('GlobeMapComponent coordinate picking', () => {
     expect(screen.getByRole('button', { name: /click map/i })).toHaveAttribute('data-cursor', 'crosshair');
     expect(screen.getByRole('button', { name: /click map/i })).toHaveAttribute('data-interactive-layers', '');
     expect(mocks.tempPinMarker).toHaveBeenCalledWith({ tempPin: [151, -34], isActive: true });
-  });
-
-  it('hides map chrome when navigation controls are disabled', () => {
-    render(
-      <GlobeMapComponent
-        spots={spots}
-        onSpotSelect={vi.fn()}
-        motionPolicy="paused"
-        isCoordinatePickerActive={true}
-        showNavigationControl={false}
-        tempPin={[151, -34]}
-        onMapCoordinateClick={vi.fn()}
-      />,
-    );
-
-    expect(screen.queryByTestId('navigation-control')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /click map/i })).toHaveAttribute('data-cursor', 'crosshair');
   });
 });
 
