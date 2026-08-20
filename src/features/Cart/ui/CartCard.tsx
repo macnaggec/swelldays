@@ -49,6 +49,7 @@ const CartCard: FC<CartCardProps> = memo(({ item, onRemove, onClick }) => {
           variant="filled"
           color="red"
           size="md"
+          radius="xl"
           aria-label={`Remove ${item.label} from cart`}
           onClick={handleRemove}
         >
