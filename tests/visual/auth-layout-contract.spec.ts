@@ -156,6 +156,7 @@ test.describe('auth mobile workspace', () => {
       offsetLeft: 0,
       offsetTop: 0,
     });
+    await expect(dialog).toHaveCSS('border-radius', '0px');
 
     const heading = dialog.getByRole('heading');
     const scrollSurface = dialog.locator('[data-auth-scroll-surface]');
@@ -235,6 +236,20 @@ test.describe('auth mobile workspace', () => {
     )).toBeLessThanOrEqual(1);
   });
 
+  test('presents mobile landscape as an edge-to-edge page with square outer corners', async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await installWritableVisualViewport(page, { width: 844, height: 390 });
+    const dialog = await openAuth(page);
+
+    await expectBoxMatchesViewport(dialog, {
+      width: 844,
+      height: 390,
+      offsetLeft: 0,
+      offsetTop: 0,
+    });
+    await expect(dialog).toHaveCSS('border-radius', '0px');
+  });
+
   test('keeps the primary auth action compact and centered with Upload proportions', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await installWritableVisualViewport(page, { width: 390, height: 844 });
@@ -302,6 +317,56 @@ test.describe('auth mobile workspace', () => {
       dialog.getByRole('textbox', { name: 'Confirm password', exact: true }),
       dialog.getByRole('button', { name: 'Register', exact: true }),
     );
+  });
+
+  test('positions invalid-credentials feedback near the password without moving controls', async ({ page }) => {
+    await page.route('**/api/auth/sign-in/email', async (route) => {
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'INVALID_EMAIL_OR_PASSWORD',
+          message: 'Invalid email or password',
+        }),
+      });
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await installWritableVisualViewport(page, { width: 390, height: 844 });
+    const dialog = await openAuth(page);
+    const email = dialog.getByRole('textbox', { name: 'Email' });
+    const password = dialog.getByRole('textbox', { name: 'Password', exact: true });
+    const submit = dialog.getByRole('button', { name: 'Sign in', exact: true });
+    const modeQuestion = dialog.getByText("Don't have an account?", { exact: true });
+
+    await email.fill('nobody@example.com');
+    await password.fill('invalid-password');
+    const [submitBefore, promptBefore] = await Promise.all([
+      submit.boundingBox(),
+      modeQuestion.boundingBox(),
+    ]);
+
+    await submit.click();
+    const errorMessage = dialog.getByText('Invalid email or password', { exact: true });
+    await expect(errorMessage).toBeVisible();
+    await waitForStableBox(submit);
+    const [passwordAfter, errorAfter, submitAfter, promptAfter] = await Promise.all([
+      password.boundingBox(),
+      errorMessage.boundingBox(),
+      submit.boundingBox(),
+      modeQuestion.boundingBox(),
+    ]);
+
+    expect(submitBefore).not.toBeNull();
+    expect(promptBefore).not.toBeNull();
+    expect(passwordAfter).not.toBeNull();
+    expect(errorAfter).not.toBeNull();
+    expect(submitAfter).not.toBeNull();
+    expect(promptAfter).not.toBeNull();
+    const passwordToErrorGap = errorAfter!.y - (passwordAfter!.y + passwordAfter!.height);
+    expect(passwordToErrorGap).toBeGreaterThanOrEqual(8);
+    expect(passwordToErrorGap).toBeLessThanOrEqual(12);
+    expect(submitAfter!.y).toBeCloseTo(submitBefore!.y, 1);
+    expect(promptAfter!.y).toBeCloseTo(promptBefore!.y, 1);
   });
 
   test('keeps the landscape header fixed while the single form surface scrolls', async ({ page }) => {

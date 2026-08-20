@@ -103,7 +103,7 @@ export function AuthModalProvider({ children }: { children: ReactNode }): ReactE
         onClose={close}
         centered
         size="sm"
-        fullScreen={presentation === 'portraitWorkspace'}
+        fullScreen={presentation !== 'dialog'}
         title={mode === 'login'
           ? 'Sign in to Swelldays'
           : 'Create your Swelldays account'}

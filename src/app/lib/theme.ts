@@ -87,7 +87,7 @@ export const theme = createTheme({
           background:           'var(--wa-surface-dialog-opaque)',
           backdropFilter:       'none',
           WebkitBackdropFilter: 'none',
-          borderRadius:         'var(--wa-radius-dialog)',
+          borderRadius:         'var(--modal-border-radius, var(--wa-radius-dialog))',
         },
         header: {
           background: 'transparent',

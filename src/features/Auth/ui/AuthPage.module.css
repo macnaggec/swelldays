@@ -33,8 +33,12 @@
   color: var(--wa-accent-spot);
 }
 
-:global([data-auth-presentation='portraitWorkspace']) .scrollSurface {
-  padding-block-end: calc(var(--mantine-spacing-lg) + var(--wa-safe-area-bottom));
+:global([data-auth-presentation='portraitWorkspace']) .scrollSurface,
+:global([data-auth-presentation='landscapeWorkspace']) .scrollSurface {
   padding-inline-end: calc(var(--mantine-spacing-lg) + var(--wa-safe-area-right));
   padding-inline-start: calc(var(--mantine-spacing-lg) + var(--wa-safe-area-left));
+}
+
+:global([data-auth-presentation='portraitWorkspace']) .scrollSurface {
+  padding-block-end: calc(var(--mantine-spacing-lg) + var(--wa-safe-area-bottom));
 }

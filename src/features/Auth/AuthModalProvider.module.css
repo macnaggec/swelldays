@@ -39,11 +39,13 @@
   border-radius: var(--wa-radius-pill);
 }
 
-.root[data-auth-presentation='portraitWorkspace'] .inner {
+.root[data-auth-presentation='portraitWorkspace'] .inner,
+.root[data-auth-presentation='landscapeWorkspace'] .inner {
   padding: 0;
 }
 
-.root[data-auth-presentation='portraitWorkspace'] .content {
+.root[data-auth-presentation='portraitWorkspace'] .content,
+.root[data-auth-presentation='landscapeWorkspace'] .content {
   flex: 0 0 100%;
   width: 100%;
   max-width: none;
@@ -52,21 +54,13 @@
   border-radius: 0;
 }
 
-.root[data-auth-presentation='portraitWorkspace'] .header {
+.root[data-auth-presentation='portraitWorkspace'] .header,
+.root[data-auth-presentation='landscapeWorkspace'] .header {
   padding-block-start: calc(var(--mantine-spacing-md) + var(--wa-safe-area-top));
   padding-inline-end: calc(var(--mantine-spacing-md) + var(--wa-safe-area-right));
   padding-inline-start: calc(var(--mantine-spacing-md) + var(--wa-safe-area-left));
 }
 
-.root[data-auth-presentation='landscapeWorkspace'] .inner {
-  padding-block:
-    max(var(--wa-shell-edge-clearance), var(--wa-safe-area-top))
-    max(var(--wa-shell-edge-clearance), var(--wa-safe-area-bottom));
-  padding-inline:
-    max(var(--wa-shell-edge-clearance), var(--wa-safe-area-left))
-    max(var(--wa-shell-edge-clearance), var(--wa-safe-area-right));
-}
-
-.root[data-auth-presentation='landscapeWorkspace'] .content {
-  max-height: 100%;
+.root[data-auth-presentation='landscapeWorkspace'] .body {
+  padding-block-end: var(--wa-safe-area-bottom);
 }

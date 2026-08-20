@@ -49,25 +49,29 @@ export function LoginForm({ onSuccess }: LoginFormProps): ReactElement {
           autoComplete="email"
           classNames={{ input: classes.input }}
         />
-        <PasswordInput
-          name="password"
-          label="Password"
-          placeholder="Your password"
-          required
-          minLength={6}
-          autoComplete="current-password"
-          rightSectionWidth="var(--wa-control-height-default)"
-          visibilityToggleButtonProps={{
-            'aria-label': 'Toggle password visibility',
-            tabIndex: 0,
-          }}
-          classNames={{
-            input: classes.input,
-            innerInput: classes.innerInput,
-            visibilityToggle: classes.visibilityToggle,
-          }}
-        />
-        {error && <Input.Error>{error}</Input.Error>}
+        <div className={classes.passwordField}>
+          <PasswordInput
+            name="password"
+            label="Password"
+            placeholder="Your password"
+            required
+            minLength={6}
+            autoComplete="current-password"
+            rightSectionWidth="var(--wa-control-height-default)"
+            visibilityToggleButtonProps={{
+              'aria-label': 'Toggle password visibility',
+              tabIndex: 0,
+            }}
+            classNames={{
+              input: classes.input,
+              innerInput: classes.innerInput,
+              visibilityToggle: classes.visibilityToggle,
+            }}
+          />
+          <div className={classes.errorSlot} aria-live="polite" aria-atomic="true">
+            {error && <Input.Error>{error}</Input.Error>}
+          </div>
+        </div>
         <Group justify="center" mt="calc(var(--mantine-spacing-xl) + 1px)">
           <Button type="submit" loading={isPending} className={classes.submit}>Sign in</Button>
         </Group>

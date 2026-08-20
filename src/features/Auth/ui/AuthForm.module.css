@@ -17,6 +17,16 @@
   border-radius: var(--wa-radius-pill);
 }
 
+.passwordField {
+  position: relative;
+}
+
+.errorSlot {
+  position: absolute;
+  top: calc(100% + var(--mantine-spacing-xs));
+  inset-inline: 0;
+}
+
 .submit {
   min-width: var(--wa-control-height-default);
   height: var(--wa-control-height-default);
