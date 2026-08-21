@@ -7,7 +7,7 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { decodeWebEnvironment } from './src/config/decodeWebEnvironment';
 
-const environmentDirectory = fileURLToPath(new URL('../..', import.meta.url));
+const environmentDirectory = fileURLToPath(new URL('.', import.meta.url));
 
 // Configurable so a second instance (e.g. the visual-capture run, which needs a
 // different database) can run alongside an ordinary dev server. Defaults unchanged.

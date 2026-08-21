@@ -10,7 +10,9 @@ The root owns orchestration and CI. `apps/web`, `apps/api`, and `packages/contra
 
 ## Configuration ownership
 
-Never commit `.env.production` or real credentials. Record each production value in the deployment platform's secret/configuration store.
+Never commit `apps/api/.env.production`, `apps/web/.env.production`, `deploy/.env.production`, or real credentials. Record each production value in the deployment platform's secret/configuration store.
+
+Production runtime values are split by owner: `apps/api/.env.production` holds the API's own config and secrets (`DATABASE_URL`, `BETTER_AUTH_*`, Google/Cloudinary server credentials, payment config), `apps/web/.env.production` holds the `VITE_*` build-time values, and `deploy/.env.production` holds only `POSTGRES_PASSWORD` — the orchestration-level value Compose needs to interpolate `${POSTGRES_PASSWORD}` both in `docker-compose.prod.yml`'s `db` service and inside `apps/api/.env.production`'s `DATABASE_URL`.
 
 ### Web build-time public values
 
@@ -37,7 +39,7 @@ Changing these values requires restarting the API, not rebuilding either image.
 | `FRONTEND_ORIGIN` | One absolute web origin used by credentialed CORS, Better Auth trusted origins, and checkout redirects. |
 | `BETTER_AUTH_URL` | Absolute public API origin used by Better Auth. |
 | `SERVER_PORT=3001` | API listen port inside the container. |
-| `GOOGLE_CLIENT_ID` | Server-side Google OAuth client ID. |
+| `GOOGLE_CLIENT_ID` | Server-side Google OAuth client ID. Optional — omitting both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` disables the "Sign in with Google" provider; email/password sign-in still works. |
 | `CLOUDINARY_CLOUD_NAME` | Server-side copy of the public Cloudinary account identifier. |
 | `CLOUDINARY_API_KEY` | Server-side copy of the public Cloudinary API key. |
 | `PAYMENT_PROVIDER` | Explicitly `mock` or `cryptocloud`; production must never infer a real provider. |
@@ -51,13 +53,15 @@ Changing these values requires restarting the API and, where noted, the database
 | `DATABASE_URL` | PostgreSQL connection URL used by the API and migrator. With Compose, use host `db` and port `5432`. |
 | `POSTGRES_PASSWORD` | Compose interpolation and initial PostgreSQL password. It must agree with `DATABASE_URL`. |
 | `BETTER_AUTH_SECRET` | Random Better Auth signing/encryption secret of at least 32 characters; placeholders are rejected. |
-| `GOOGLE_CLIENT_SECRET` | Server-side Google OAuth secret. |
+| `GOOGLE_CLIENT_SECRET` | Server-side Google OAuth secret. Optional — see `GOOGLE_CLIENT_ID` above. |
 | `CLOUDINARY_API_SECRET` | Server-only Cloudinary signing secret. |
 | `CRYPTOCLOUD_API_KEY` | Required only when `PAYMENT_PROVIDER=cryptocloud`. |
 | `CRYPTOCLOUD_SHOP_ID` | Required only when `PAYMENT_PROVIDER=cryptocloud`. |
 | `CRYPTOCLOUD_SECRET_KEY` | Required only when `PAYMENT_PROVIDER=cryptocloud`; verifies webhooks. |
 
-Google server credentials are a pair. Selecting CryptoCloud requires all three CryptoCloud values. Invalid production configuration exits before the API listens.
+Google server credentials are optional but must be provided as a pair — set both to enable "Sign in with Google," or leave both unset to defer it. Selecting CryptoCloud requires all three CryptoCloud values. Invalid production configuration exits before the API listens.
+
+Note: `apps/web/.env.production`'s `VITE_GOOGLE_CLIENT_ID`/`VITE_GOOGLE_API_KEY` are a separate, always-required pair — they power the "import from Google Drive" upload feature (Google Picker), independent of server-side sign-in. Deferring `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` above does not defer those.
 
 ## Build immutable images
 
@@ -99,7 +103,7 @@ The web image contains only Nginx configuration and compiled browser assets. The
 
 ```sh
 docker compose \
-  --env-file .env.production \
+  --env-file deploy/.env.production \
   --file docker-compose.prod.yml \
   config --quiet
 ```
@@ -107,7 +111,7 @@ docker compose \
 Use the same prefix for every production Compose command:
 
 ```sh
-docker compose --env-file .env.production --file docker-compose.prod.yml <command>
+docker compose --env-file deploy/.env.production --file docker-compose.prod.yml <command>
 ```
 
 ## First deployment order
@@ -117,19 +121,19 @@ Before touching a non-empty database, take and verify a backup. For the first em
 1. Start persistent PostgreSQL and wait for its health check.
 
    ```sh
-   docker compose --env-file .env.production --file docker-compose.prod.yml up --detach --wait db
+   docker compose --env-file deploy/.env.production --file docker-compose.prod.yml up --detach --wait db
    ```
 
 2. Run the migrator once and require a zero exit status.
 
    ```sh
-   docker compose --env-file .env.production --file docker-compose.prod.yml run --rm migrate
+   docker compose --env-file deploy/.env.production --file docker-compose.prod.yml run --rm migrate
    ```
 
 3. Start the API from the same release commit, without rerunning dependencies.
 
    ```sh
-   docker compose --env-file .env.production --file docker-compose.prod.yml up --detach --no-deps api
+   docker compose --env-file deploy/.env.production --file docker-compose.prod.yml up --detach --no-deps api
    curl --fail --show-error --silent https://api.example.com/api/health
    ```
 
@@ -171,7 +175,7 @@ Provider login, payment, and real browser flows require a human with production 
 ## Logs to inspect
 
 ```sh
-docker compose --env-file .env.production --file docker-compose.prod.yml logs --since=15m api migrate db
+docker compose --env-file deploy/.env.production --file docker-compose.prod.yml logs --since=15m api migrate db
 docker logs --since=15m wave-atlas-web
 ```
 
@@ -191,7 +195,7 @@ The PostgreSQL volume is persistent but is not a backup. Before every migration 
 
 ```sh
 BACKUP_FILE="wave-atlas-$(date -u +%Y%m%dT%H%M%SZ).dump"
-docker compose --env-file .env.production --file docker-compose.prod.yml \
+docker compose --env-file deploy/.env.production --file docker-compose.prod.yml \
   exec --no-TTY db pg_dump --username surfuser --dbname surfdb --format custom \
   > "$BACKUP_FILE"
 

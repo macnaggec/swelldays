@@ -3,6 +3,7 @@ import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 import boundaries from 'eslint-plugin-boundaries';
 import reactHooks from 'eslint-plugin-react-hooks';
+import importX from 'eslint-plugin-import-x';
 
 const serverClientIntegrationRestriction = {
   group: ['shared/lib/trpc', 'shared/lib/trpcClient', 'shared/lib/queryClient'],
@@ -87,8 +88,16 @@ export default defineConfig(
         { type: 'types',   pattern: 'apps/web/src/types/**' },
       ],
       // eslint-import-resolver-typescript resolves the '*' → './src/*' tsconfig alias so
-      // boundaries can match resolved paths against element patterns.
+      // boundaries can match resolved paths against element patterns. Duplicated under the
+      // import-x/ key because eslint-plugin-boundaries reads import/resolver while
+      // eslint-plugin-import-x reads its own namespaced key.
       'import/resolver': {
+        typescript: {
+          project: ['./tsconfig.json', './apps/api/tsconfig.json', './apps/web/tsconfig.json', './packages/contracts/tsconfig.json'],
+          noWarnOnMultipleProjects: true,
+        },
+      },
+      'import-x/resolver': {
         typescript: {
           project: ['./tsconfig.json', './apps/api/tsconfig.json', './apps/web/tsconfig.json', './packages/contracts/tsconfig.json'],
           noWarnOnMultipleProjects: true,
@@ -197,6 +206,51 @@ export default defineConfig(
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [contractsDeepImportRestriction, serverClientIntegrationRestriction, apiWebImportRestriction],
+      }],
+    },
+  },
+  // A workspace may only import what its own package.json declares. Hoisting makes every
+  // dependency physically resolvable from anywhere in the tree, so without this rule a
+  // workspace can start relying on a package only a sibling workspace (or root) declared —
+  // invisible locally, broken the moment installs aren't hoisted the same way (e.g. Docker,
+  // which prunes each image to its own workspace's declared dependencies).
+  {
+    files: ['apps/web/src/**/*.ts', 'apps/web/src/**/*.tsx', 'apps/web/vite.config.ts'],
+    plugins: { 'import-x': importX },
+    rules: {
+      'import-x/no-extraneous-dependencies': ['error', {
+        packageDir: './apps/web',
+        devDependencies: [
+          'apps/web/vite.config.ts',
+          'apps/web/src/test/**',
+          'apps/web/src/**/*.test.ts',
+          'apps/web/src/**/*.test.tsx',
+        ],
+      }],
+    },
+  },
+  {
+    files: ['apps/api/src/**/*.ts', 'apps/api/prisma.config.ts'],
+    plugins: { 'import-x': importX },
+    rules: {
+      'import-x/no-extraneous-dependencies': ['error', {
+        packageDir: './apps/api',
+        devDependencies: [
+          'apps/api/prisma.config.ts',
+          'apps/api/src/test/**',
+          'apps/api/src/**/*.test.ts',
+          'apps/api/src/**/*.integration.test.ts',
+        ],
+      }],
+    },
+  },
+  {
+    files: ['packages/contracts/src/**/*.ts'],
+    plugins: { 'import-x': importX },
+    rules: {
+      'import-x/no-extraneous-dependencies': ['error', {
+        packageDir: './packages/contracts',
+        devDependencies: ['packages/contracts/src/**/*.test.ts'],
       }],
     },
   },

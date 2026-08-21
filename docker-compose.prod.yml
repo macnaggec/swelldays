@@ -7,7 +7,7 @@ services:
       target: runner
     restart: unless-stopped
     env_file:
-      - .env.production
+      - apps/api/.env.production
     ports:
       - "3001:3001"
     depends_on:
@@ -20,7 +20,7 @@ services:
       dockerfile: apps/api/Dockerfile
       target: migrator
     env_file:
-      - .env.production
+      - apps/api/.env.production
     depends_on:
       db:
         condition: service_healthy

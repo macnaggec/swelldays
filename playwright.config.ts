@@ -13,8 +13,9 @@
  *
  * Environment: `node --env-file=.env.capture` supplies DATABASE_URL (the
  * dedicated capture database) plus REFERENCE_EMAIL / REFERENCE_PASSWORD. The
- * dev server inherits them; `apps/api/src/index.ts` loads `.env` via dotenv, which
- * does not overwrite variables already present, so the capture DATABASE_URL wins.
+ * dev server inherits them; `apps/api/src/index.ts` loads `apps/api/.env.development`
+ * via dotenv, which does not overwrite variables already present, so the capture
+ * DATABASE_URL wins.
  */
 
 import { defineConfig, devices } from '@playwright/test';

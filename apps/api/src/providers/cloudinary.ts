@@ -26,10 +26,6 @@ export function generateDeliveryUrl(
   });
 }
 
-export const MEDIA_UPLOAD_CONFIG = {
-  FOLDER: 'swelldays/raw',
-} as const;
-
 /**
  * Cloudinary Named Transformation identifiers.
  * Define these in Cloudinary dashboard:

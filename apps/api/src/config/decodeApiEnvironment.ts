@@ -104,7 +104,6 @@ const parsePort = (value: string | undefined): number => {
 
 const parseGoogleConfig = (
   raw: Record<string, string | undefined>,
-  nodeEnv: ApiNodeEnvironment,
 ): ApiConfig['google'] => {
   const clientId = optionalValue(raw, 'GOOGLE_CLIENT_ID');
   const clientSecret = optionalValue(raw, 'GOOGLE_CLIENT_SECRET');
@@ -112,12 +111,7 @@ const parseGoogleConfig = (
   if (Boolean(clientId) !== Boolean(clientSecret)) {
     throw new Error('Google credentials must be provided as a pair');
   }
-  if (!clientId || !clientSecret) {
-    if (nodeEnv === 'production') {
-      throw new Error('Google credentials are required in production');
-    }
-    return null;
-  }
+  if (!clientId || !clientSecret) return null;
   return { clientId, clientSecret };
 };
 
@@ -197,7 +191,7 @@ export function decodeApiEnvironment(
       secret: betterAuthSecret,
     },
     serverPort: parsePort(optionalValue(raw, 'SERVER_PORT')),
-    google: parseGoogleConfig(raw, nodeEnv),
+    google: parseGoogleConfig(raw),
     cloudinary: {
       cloudName,
       apiKey: cloudinaryApiKey,

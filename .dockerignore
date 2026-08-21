@@ -19,3 +19,10 @@ apps/**/dist/
 apps/**/node_modules/
 !packages/
 !packages/**
+
+# Real env files now live inside apps/api and apps/web (split from root) —
+# never ship secrets into a build context or image layer.
+apps/api/.env
+apps/api/.env.*
+apps/web/.env
+apps/web/.env.*

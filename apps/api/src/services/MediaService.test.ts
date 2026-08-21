@@ -31,7 +31,6 @@ const mockEntitlements = {
 const mockCloudinary = {
   uploadFromUrl: vi.fn(),
   deleteAsset: vi.fn(),
-  generateUploadSignature: vi.fn(),
 };
 
 const service = new (MediaService as unknown as new (

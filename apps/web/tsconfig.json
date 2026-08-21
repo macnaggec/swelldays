@@ -6,20 +6,19 @@
     "esModuleInterop": true,
     "jsx": "react-jsx",
     "types": ["vite/client"],
-    "baseUrl": ".",
     "paths": {
       "@wave-atlas/api/router": ["../api/src/routerType.ts"],
       "@wave-atlas/contracts": ["../../packages/contracts/src/index.ts"],
       "server/*": ["../api/src/*"],
-      "config/*": ["src/config/*"],
-      "app/*": ["src/app/*"],
-      "views/*": ["src/views/*"],
-      "widgets/*": ["src/widgets/*"],
-      "features/*": ["src/features/*"],
-      "entities/*": ["src/entities/*"],
-      "shared/*": ["src/shared/*"],
-      "test/*": ["src/test/*"],
-      "types/*": ["src/types/*"]
+      "config/*": ["./src/config/*"],
+      "app/*": ["./src/app/*"],
+      "views/*": ["./src/views/*"],
+      "widgets/*": ["./src/widgets/*"],
+      "features/*": ["./src/features/*"],
+      "entities/*": ["./src/entities/*"],
+      "shared/*": ["./src/shared/*"],
+      "test/*": ["./src/test/*"],
+      "types/*": ["./src/types/*"]
     }
   },
   "include": [

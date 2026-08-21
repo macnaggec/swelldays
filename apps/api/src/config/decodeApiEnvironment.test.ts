@@ -64,8 +64,6 @@ describe('decodeApiEnvironment', () => {
     ['FRONTEND_ORIGIN', 'frontend'],
     ['BETTER_AUTH_URL', 'Better Auth URL'],
     ['BETTER_AUTH_SECRET', 'Better Auth secret'],
-    ['GOOGLE_CLIENT_ID', 'Google'],
-    ['GOOGLE_CLIENT_SECRET', 'Google'],
     ['CLOUDINARY_CLOUD_NAME', 'Cloudinary'],
     ['CLOUDINARY_API_KEY', 'Cloudinary'],
     ['CLOUDINARY_API_SECRET', 'Cloudinary'],
@@ -74,6 +72,16 @@ describe('decodeApiEnvironment', () => {
     environment[key] = undefined;
 
     expect(() => decodeApiEnvironment(environment)).toThrow(message);
+  });
+
+  it('allows Google sign-in to stay deferred in production (both credentials absent)', () => {
+    const environment = productionEnvironment();
+    environment.GOOGLE_CLIENT_ID = undefined;
+    environment.GOOGLE_CLIENT_SECRET = undefined;
+
+    const config = decodeApiEnvironment(environment);
+
+    expect(config.google).toBeNull();
   });
 
   it.each([

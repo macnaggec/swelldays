@@ -7,24 +7,12 @@
  */
 
 import { z } from 'zod';
-import cloudinary, { generateDeliveryUrl as libGenerateDeliveryUrl, getWatermarkedPreviewTransform, MEDIA_UPLOAD_CONFIG, MEDIA_CLOUDINARY_TRANSFORMS } from 'server/providers/cloudinary';
+import cloudinary, { generateDeliveryUrl as libGenerateDeliveryUrl, getWatermarkedPreviewTransform, MEDIA_CLOUDINARY_TRANSFORMS } from 'server/providers/cloudinary';
 import { InternalServerError, BadRequestError } from 'server/errors';
 import type { MediaResourceType } from '@wave-atlas/contracts';
 import type { DirectUploadPort, RemoteImportPort, AssetCleanupPort, UploadTarget, StoredAsset, StoredAssetIdentity, RemoteImportInput } from 'server/ports/UploadAssetStorage';
 import type { DirectUploadGrant } from '@wave-atlas/contracts';
 import { apiConfig } from 'server/config/env';
-
-export interface CloudinarySignatureData {
-  signature: string;
-  timestamp: number;
-  cloudName: string;
-  apiKey: string;
-  folder: string;
-  /** Delivery type — must be forwarded in upload FormData exactly as-is */
-  type: 'authenticated';
-  /** Eager transform string — must be forwarded in upload FormData exactly as-is */
-  eager: string;
-}
 
 export interface SignedMediaAccessResult {
   downloadUrl: string; // full-resolution download with fl_attachment — signed, expires in TTL
@@ -46,7 +34,6 @@ function toMediaResourceType(value: string): MediaResourceType {
 }
 
 export interface ICloudinaryService {
-  generateUploadSignature(folder?: string): CloudinarySignatureData;
   uploadFromUrl(sourceUrl: string, authHeaders: Record<string, string>, folder: string, resourceType?: 'image' | 'video'): Promise<RemoteUploadResult>;
   deleteAsset(publicId: string, resourceType?: 'image' | 'video'): Promise<void>;
   generateDeliveryUrl(cloudinaryPublicId: string, transform: string, resourceType?: 'image' | 'video', format?: string): string;
@@ -67,51 +54,6 @@ const cloudinaryReceiptSchema = z.object({
  * Uses the configuration validated before API startup to create signed upload parameters.
  */
 export class CloudinaryService implements ICloudinaryService, DirectUploadPort, RemoteImportPort, AssetCleanupPort {
-  /**
-   * Generates signed upload parameters for client-side Cloudinary uploads
-   *
-   * @param folder - Upload folder path (defaults to MEDIA_UPLOAD_CONFIG.FOLDER)
-   * @returns Signature data needed for secure client-side upload
-   */
-  generateUploadSignature(folder: string = MEDIA_UPLOAD_CONFIG.FOLDER): CloudinarySignatureData {
-    const { apiSecret, cloudName, apiKey } = apiConfig.cloudinary;
-
-    const timestamp = Math.round(new Date().getTime() / 1000);
-
-    // Eager transforms pre-compute two independent derived images at upload time:
-    //   - thumbnail:          gallery card (small, no watermark)
-    //   - lightbox_watermark: watermarked preview (medium)
-    // '|' produces two separate outputs; ',' would chain them into one pipeline.
-    const eager = [
-      MEDIA_CLOUDINARY_TRANSFORMS.THUMBNAIL,
-      getWatermarkedPreviewTransform('image'),
-    ].join('|');
-
-    // All params that affect the upload MUST be signed to prevent tampering.
-    const paramsToSign = {
-      timestamp,
-      folder,
-      type: 'authenticated' as const,
-      eager,
-    };
-
-    // Generate cryptographic signature
-    const signature = cloudinary.utils.api_sign_request(
-      paramsToSign,
-      apiSecret
-    );
-
-    return {
-      signature,
-      timestamp,
-      cloudName,
-      apiKey,
-      folder,
-      type: 'authenticated' as const,
-      eager,
-    };
-  }
-
   // ── DirectUploadPort ────────────────────────────────────────────────────────
 
   createUploadGrant(target: UploadTarget, expiresAt: Date): DirectUploadGrant {
