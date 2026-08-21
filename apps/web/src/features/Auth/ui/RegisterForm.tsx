@@ -79,25 +79,29 @@ export function RegisterForm({ onSuccess }: RegisterFormProps): ReactElement {
             visibilityToggle: classes.visibilityToggle,
           }}
         />
-        <PasswordInput
-          name="confirmPassword"
-          label="Confirm password"
-          placeholder="Confirm your password"
-          required
-          minLength={6}
-          autoComplete="new-password"
-          rightSectionWidth="var(--wa-control-height-default)"
-          visibilityToggleButtonProps={{
-            'aria-label': 'Toggle password visibility',
-            tabIndex: 0,
-          }}
-          classNames={{
-            input: classes.input,
-            innerInput: classes.innerInput,
-            visibilityToggle: classes.visibilityToggle,
-          }}
-        />
-        {error && <Input.Error>{error}</Input.Error>}
+        <div className={classes.passwordField}>
+          <PasswordInput
+            name="confirmPassword"
+            label="Confirm password"
+            placeholder="Confirm your password"
+            required
+            minLength={6}
+            autoComplete="new-password"
+            rightSectionWidth="var(--wa-control-height-default)"
+            visibilityToggleButtonProps={{
+              'aria-label': 'Toggle password visibility',
+              tabIndex: 0,
+            }}
+            classNames={{
+              input: classes.input,
+              innerInput: classes.innerInput,
+              visibilityToggle: classes.visibilityToggle,
+            }}
+          />
+          <div className={classes.errorSlot} aria-live="polite" aria-atomic="true">
+            {error && <Input.Error>{error}</Input.Error>}
+          </div>
+        </div>
         <Group justify="center" mt="calc(var(--mantine-spacing-xl) + 1px)">
           <Button type="submit" loading={isPending} className={classes.submit}>Register</Button>
         </Group>
