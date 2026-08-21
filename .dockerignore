@@ -8,6 +8,7 @@
 
 # TypeScript config
 !tsconfig.json
+!tsconfig.base.json
 !tsconfig.server.json
 !vitest.d.ts
 
@@ -18,7 +19,3 @@ apps/**/dist/
 apps/**/node_modules/
 !packages/
 !packages/**
-
-# Application source
-!src/
-!src/**

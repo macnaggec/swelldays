@@ -53,3 +53,30 @@ jobs:
       - name: Stop integration-test database
         if: always()
         run: npm run test:db:down
+
+  artifacts:
+    name: Production artifacts
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Build API runtime image
+        run: docker build --file apps/api/Dockerfile --target runner --tag wave-atlas-api:ci .
+
+      - name: Build web runtime image
+        run: |
+          docker build \
+            --file apps/web/Dockerfile \
+            --target runner \
+            --build-arg VITE_API_URL=https://api.example.test \
+            --build-arg VITE_MAPBOX_ACCESS_TOKEN=pk.test-placeholder \
+            --build-arg VITE_GOOGLE_CLIENT_ID=test-client.apps.googleusercontent.com \
+            --build-arg VITE_GOOGLE_API_KEY=test-google-api-key \
+            --build-arg VITE_CLOUDINARY_CLOUD_NAME=test-cloud \
+            --build-arg VITE_CLOUDINARY_API_KEY=test-cloudinary-key \
+            --tag wave-atlas-web:ci \
+            .

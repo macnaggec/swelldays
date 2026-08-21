@@ -5,6 +5,7 @@ FROM node:24-trixie-slim AS manifests
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY tsconfig.base.json ./tsconfig.base.json
 COPY apps/api/package.json ./apps/api/package.json
 COPY apps/web/package.json ./apps/web/package.json
 COPY packages/contracts/package.json ./packages/contracts/package.json
@@ -28,9 +29,7 @@ FROM builder AS migrator
 CMD ["npm", "run", "prisma:migrate:deploy", "--workspace", "@wave-atlas/api"]
 
 
-# Prune the built tree against an orchestration-only root and the API workspace.
-# Root dependency ownership is finalized later; clearing it only in this stage
-# prevents browser packages from leaking into the API runner meanwhile.
+# Prune the built tree against the orchestration-only root and API workspace.
 FROM builder AS prod-deps
 
 RUN npm pkg delete dependencies devDependencies
