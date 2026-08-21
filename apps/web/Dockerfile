@@ -5,13 +5,15 @@ FROM node:24-trixie-slim AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY apps/api/package.json ./apps/api/package.json
+COPY apps/web/package.json ./apps/web/package.json
+COPY packages/contracts/package.json ./packages/contracts/package.json
 
 RUN --mount=type=cache,target=/root/.npm \
   npm ci
 
-COPY index.html postcss.config.cjs tsconfig.json vite.config.ts ./
-COPY public ./public
-COPY src ./src
+COPY apps/web ./apps/web
+COPY packages/contracts ./packages/contracts
 
 ARG VITE_API_URL
 ARG VITE_MAPBOX_ACCESS_TOKEN
@@ -24,12 +26,12 @@ RUN case "$VITE_API_URL" in \
       http://*|https://*) ;; \
       *) echo "VITE_API_URL must be an absolute http(s) API origin" >&2; exit 1 ;; \
     esac \
-  && npm run build:client
+  && npm run build --workspace @wave-atlas/web
 
 
 FROM nginxinc/nginx-unprivileged:1.29.4-alpine AS runner
 
-COPY deploy/nginx.frontend.conf /etc/nginx/conf.d/default.conf
-COPY --from=builder /app/dist/client /usr/share/nginx/html
+COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 
 EXPOSE 8080

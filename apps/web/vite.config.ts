@@ -24,12 +24,13 @@ export default defineConfig(() => {
   const httpsRequested = argv.includes('--https') || process.env.DEV_HTTPS === 'true' || process.env.HTTPS === 'true';
 
   return {
+    envDir: '../..',
     envPrefix: 'VITE_',
     plugins: [
       ...(httpsRequested ? [basicSsl({ domains: getLocalNetworkIps() })] : []),
       tanstackRouter({
-        routesDirectory: './apps/web/src/app/routes',
-        generatedRouteTree: './apps/web/src/app/routeTree.gen.ts',
+        routesDirectory: './src/app/routes',
+        generatedRouteTree: './src/app/routeTree.gen.ts',
       }),
       react(),
       tsconfigPaths(),
@@ -46,7 +47,7 @@ export default defineConfig(() => {
       },
     },
     build: {
-      outDir: 'dist/client',
+      outDir: 'dist',
     },
   };
 });

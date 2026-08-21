@@ -1261,12 +1261,12 @@ const files = sourceRoots.flatMap(listFiles).filter(isCodeOrCss);
 const violations = [];
 
 const webAppManifest = JSON.parse(
-  readFileSync(path.join(root, 'public/site.webmanifest'), 'utf8'),
+  readFileSync(path.join(root, 'apps/web/public/site.webmanifest'), 'utf8'),
 );
 for (const field of ['id', 'start_url', 'scope']) {
   if (webAppManifest[field] === '/') continue;
   violations.push({
-    file: 'public/site.webmanifest',
+    file: 'apps/web/public/site.webmanifest',
     line: 1,
     rule: 'home-screen-manifest-rooted',
     message: `Web app manifest ${field} must be explicitly rooted at "/".`,

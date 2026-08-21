@@ -6,19 +6,6 @@
 !package-lock.json
 !.npmrc
 
-# Docker
-!Dockerfile
-!Dockerfile.frontend
-!deploy/
-!deploy/**
-
-# Frontend build entry and static assets
-!index.html
-!vite.config.ts
-!postcss.config.cjs
-!public/
-!public/**
-
 # TypeScript config
 !tsconfig.json
 !tsconfig.server.json
@@ -27,6 +14,8 @@
 # Workspaces (including API-owned Prisma and shared contracts)
 !apps/
 !apps/**
+apps/**/dist/
+apps/**/node_modules/
 !packages/
 !packages/**
 
