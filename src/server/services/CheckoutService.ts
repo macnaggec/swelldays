@@ -10,7 +10,7 @@ import type { ICloudinaryService } from 'server/services/CloudinaryService';
 import { cloudinaryService } from 'server/services/CloudinaryService';
 import { BadRequestError, BadGatewayError, ForbiddenError } from 'shared/errors';
 import { logger } from 'shared/lib/logger';
-import { MEDIA_STATUS } from 'shared/constants/media';
+import { MEDIA_STATUS } from '@wave-atlas/contracts';
 
 const APP_URL = process.env.APP_URL!;
 

@@ -1,6 +1,6 @@
 import { Spot as PrismaSpot } from '@prisma/client';
-import type { MediaType } from 'shared/types/media';
-import type { Spot, SpotStatus } from 'shared/types';
+import type { MediaType } from '@wave-atlas/contracts';
+import type { Spot, SpotStatus } from '@wave-atlas/contracts';
 import { prisma } from 'server/db';
 import { haversineDistance, EARTH_RADIUS_M } from 'shared/lib/geoUtils';
 import { runQuery } from 'server/lib/PrismaErrorMapper';

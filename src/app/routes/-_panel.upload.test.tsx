@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import type { ComponentType, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route } from './_panel.upload';
-import type { UploadWorkspaceState, UploadWorkspaceSummary } from 'shared/types/uploadWorkspace';
+import type { UploadWorkspaceState, UploadWorkspaceSummary } from '@wave-atlas/contracts';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 
 const activeWorkspace: UploadWorkspaceSummary = {

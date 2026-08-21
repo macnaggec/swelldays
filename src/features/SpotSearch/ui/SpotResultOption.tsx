@@ -2,7 +2,7 @@ import { Combobox, Text, Group, TextInput, ActionIcon } from '@mantine/core';
 import { IconCheck, IconX } from '@tabler/icons-react';
 import { useState, useCallback } from 'react';
 import { useAddSpotAlias, Spot } from 'entities/Spot';
-import { spotAliasSchema } from 'shared/validation/spotSchemas';
+import { spotAliasSchema } from '@wave-atlas/contracts';
 import classes from './SpotResultOption.module.css';
 
 interface SpotResultOptionProps {

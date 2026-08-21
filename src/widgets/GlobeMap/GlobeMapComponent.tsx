@@ -5,7 +5,7 @@ import { materialClasses } from 'shared/ui/design-system';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import mapboxgl from 'mapbox-gl';
 
-import type { LngLat } from 'shared/types/coordinates';
+import type { LngLat } from '@wave-atlas/contracts';
 import { useMapStore } from 'widgets/GlobeMap/model/mapStore';
 import type { GlobeMotionPolicy } from './model/globeMotionPolicy';
 import type { GlobeInteractionPolicy } from './model/globeInteractionPolicy';

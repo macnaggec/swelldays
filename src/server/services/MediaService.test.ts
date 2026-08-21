@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MediaService } from 'server/services/MediaService';
 import type { IMediaRepository } from 'server/repositories/MediaRepository';
 import { BadRequestError } from 'shared/errors';
-import { MEDIA_STATUS } from 'shared/constants/media';
+import { MEDIA_STATUS } from '@wave-atlas/contracts';
 
 // ---------------------------------------------------------------------------
 // Mocks

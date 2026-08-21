@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Menu } from '@mantine/core';
 import { IconChevronDown } from '@tabler/icons-react';
-import { formatCapturedAtDate, getVisibleCalendarDayKey } from 'shared/lib/dateUtils';
+import { getCapturedMediaCalendarDayKey } from '@wave-atlas/contracts';
+import { formatCapturedAtDate } from 'shared/lib/dateUtils';
 import { usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
 import { usePanelSettledWidth } from 'shared/ui/DrawerShell/panelSettledWidth';
 import { materialClasses } from 'shared/ui/design-system';
@@ -56,9 +57,9 @@ export function GalleryDateJumpHeading({ date, dayHighlights, onJump }: GalleryD
     return () => pinChromeHidden?.(false);
   }, [opened, pinChromeHidden]);
   const uniqueDays = useMemo(() => toDayHighlights(dayHighlights), [dayHighlights]);
-  const activeDayKey = getVisibleCalendarDayKey(date);
+  const activeDayKey = getCapturedMediaCalendarDayKey(date);
   const activeDay = uniqueDays.find(
-    (day) => getVisibleCalendarDayKey(day.date) === activeDayKey,
+    (day) => getCapturedMediaCalendarDayKey(day.date) === activeDayKey,
   ) ?? uniqueDays[0];
 
   // A month/day pick is a completed interaction, not a step toward one: close

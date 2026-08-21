@@ -41,7 +41,7 @@ export default defineConfig({
           name: 'server',
           environment: 'node',
           globals: true,
-          include: ['src/server/**/*.test.ts'],
+          include: ['src/server/**/*.test.ts', 'packages/contracts/src/**/*.test.ts'],
           exclude: ['src/server/**/*.integration.test.ts'],
           setupFiles: ['./vitest.setup.server.ts'],
         },

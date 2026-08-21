@@ -1,4 +1,4 @@
-export type { Spot } from 'shared/types';
+export type { Spot } from '@wave-atlas/contracts';
 
 export interface MapBounds {
   swLat: number;

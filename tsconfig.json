@@ -23,6 +23,9 @@
       "vite/client"
     ],
     "paths": {
+      "@wave-atlas/contracts": [
+        "./packages/contracts/src/index.ts"
+      ],
       "*": [
         "./src/*"
       ]
@@ -30,6 +33,7 @@
   },
   "include": [
     "src",
+    "packages/contracts/src",
     "vitest.d.ts",
     "tests",
     "playwright.config.ts"

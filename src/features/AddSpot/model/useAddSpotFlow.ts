@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAddSpotStore } from './addSpotStore';
 import { useCreateSpot, useNearbySpots } from 'entities/Spot';
-import { spotNameSchema, spotLocationSchema } from 'shared/validation/spotSchemas';
+import { spotNameSchema, spotLocationSchema } from '@wave-atlas/contracts';
 import { notify } from 'shared/lib/notifications';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { useReverseGeocode } from './useReverseGeocode';

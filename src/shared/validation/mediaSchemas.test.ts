@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { MIN_MEDIA_PRICE_CENTS } from 'shared/constants/media';
 import {
-  mediaBatchUpdateSchema,
   mediaCloudinaryResultSchema,
   mediaCreateSchema,
-  mediaUpdateSchema,
 } from 'shared/validation/mediaSchemas';
 
 const CLOUDINARY_BASE = 'https://res.cloudinary.com/test-cloud/';
-const mediaId = '11111111-1111-4111-8111-111111111111';
 
 describe('mediaCloudinaryResultSchema', () => {
   const validResult = {
@@ -41,27 +37,5 @@ describe('mediaCreateSchema', () => {
     if (!result.success) {
       expect(result.error.issues.some((issue) => issue.path[0] === 'draftId')).toBe(true);
     }
-  });
-});
-
-describe('mediaUpdateSchema', () => {
-  it('rejects single-media prices below the media price floor', () => {
-    const result = mediaUpdateSchema.safeParse({
-      id: mediaId,
-      price: MIN_MEDIA_PRICE_CENTS - 1,
-    });
-
-    expect(result.success).toBe(false);
-  });
-});
-
-describe('mediaBatchUpdateSchema', () => {
-  it('rejects batch prices below the media price floor', () => {
-    const result = mediaBatchUpdateSchema.safeParse({
-      mediaIds: [mediaId],
-      price: MIN_MEDIA_PRICE_CENTS - 1,
-    });
-
-    expect(result.success).toBe(false);
   });
 });

@@ -9,6 +9,11 @@ const serverClientIntegrationRestriction = {
   message: 'Server code must use server/trpc and server-safe shared contracts, not browser tRPC/query clients.',
 };
 
+const contractsDeepImportRestriction = {
+  group: ['@wave-atlas/contracts/*'],
+  message: 'Import contracts through the explicit @wave-atlas/contracts public surface.',
+};
+
 export default defineConfig(
   ...tseslint.configs.recommended,
   {
@@ -22,7 +27,7 @@ export default defineConfig(
     ],
   },
   {
-    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    files: ['src/**/*.ts', 'src/**/*.tsx', 'packages/contracts/src/**/*.ts'],
     plugins: { boundaries, 'react-hooks': reactHooks },
     languageOptions: {
       parser: tseslint.parser,
@@ -60,13 +65,15 @@ export default defineConfig(
         },
         { type: 'shared',  pattern: 'src/shared/**' },
         { type: 'server',  pattern: 'src/server/**' },
+        { type: 'contracts', pattern: 'packages/contracts/src/**', mode: 'full' },
         { type: 'types',   pattern: 'src/types/**' },
       ],
       // eslint-import-resolver-typescript resolves the '*' → './src/*' tsconfig alias so
       // boundaries can match resolved paths against element patterns.
       'import/resolver': {
         typescript: {
-          project: './tsconfig.json',
+          project: ['./tsconfig.json', './packages/contracts/tsconfig.json'],
+          noWarnOnMultipleProjects: true,
         },
       },
     },
@@ -90,7 +97,7 @@ export default defineConfig(
                 { type: 'widgets', path: 'src/widgets/*/index.ts' },
                 { type: 'feature', path: 'src/features/*/index.ts' },
                 { type: 'entity', path: 'src/entities/*/index.ts' },
-                { type: 'shared' }, { type: 'server' }, { type: 'types' },
+                { type: 'shared' }, { type: 'server' }, { type: 'types' }, { type: 'contracts' },
               ],
             },
           },
@@ -102,7 +109,7 @@ export default defineConfig(
                 { type: 'widgets', path: 'src/widgets/*/index.ts' },
                 { type: 'feature', path: 'src/features/*/index.ts' },
                 { type: 'entity', path: 'src/entities/*/index.ts' },
-                { type: 'shared' }, { type: 'types' },
+                { type: 'shared' }, { type: 'types' }, { type: 'contracts' },
               ],
             },
           },
@@ -113,7 +120,7 @@ export default defineConfig(
               to: [
                 { type: 'feature', path: 'src/features/*/index.ts' },
                 { type: 'entity', path: 'src/entities/*/index.ts' },
-                { type: 'shared' }, { type: 'types' },
+                { type: 'shared' }, { type: 'types' }, { type: 'contracts' },
                 { type: 'widgets', captured: { widgetName: '{{widgetName}}' } },
               ],
             },
@@ -127,6 +134,7 @@ export default defineConfig(
                 { type: 'entity', path: 'src/entities/*/index.ts' },
                 { type: 'shared' },
                 { type: 'types' },
+                { type: 'contracts' },
                 { type: 'feature', captured: { featureName: '{{featureName}}' } },
               ],
             },
@@ -141,20 +149,28 @@ export default defineConfig(
                 { type: 'entity', path: 'src/entities/*/index.ts' },
                 { type: 'shared' },
                 { type: 'types' },
+                { type: 'contracts' },
               ],
             },
           },
           // shared/lib/trpc.ts and trpcClient.ts need a type-only import of AppRouter from server/router
           // for tRPC end-to-end type safety. This is erased at compile time — no runtime coupling.
           { from: { type: 'shared', path: 'src/shared/lib/trpc*.ts' }, allow: { to: [{ type: 'server', path: 'src/server/router.ts' }] } },
+          // Browser-owned shared modules may use the platform-neutral contracts package.
+          { from: { type: 'shared' }, allow: { to: [{ type: 'shared' }, { type: 'types' }, { type: 'contracts' }] } },
           // server: routes/services/repositories use server-internal modules and shared/server-safe contracts.
-          { from: { type: 'server' },  allow: { to: [{ type: 'server' }, { type: 'shared' }, { type: 'types' }] } },
+          { from: { type: 'server' },  allow: { to: [{ type: 'server' }, { type: 'shared' }, { type: 'types' }, { type: 'contracts' }] } },
           // server tests may use server code, shared contracts, global types, and test helpers,
           // but not client-facing app/entity/feature/widget/view layers.
-          { from: { type: 'server-test' }, allow: { to: [{ type: 'server' }, { type: 'shared' }, { type: 'types' }, { type: 'test' }] } },
+          { from: { type: 'server-test' }, allow: { to: [{ type: 'server' }, { type: 'shared' }, { type: 'types' }, { type: 'test' }, { type: 'contracts' }] } },
           // test helpers may import anything
-          { from: { type: 'test' },    allow: { to: { type: ['app', 'views', 'widgets', 'feature', 'entity', 'shared', 'server', 'types', 'test'] } } },
+          { from: { type: 'test' },    allow: { to: { type: ['app', 'views', 'widgets', 'feature', 'entity', 'shared', 'server', 'types', 'test', 'contracts'] } } },
+          // Contracts are the platform-neutral leaf of the workspace graph.
+          { from: { type: 'contracts' }, allow: { to: [{ type: 'contracts' }] } },
         ],
+      }],
+      'no-restricted-imports': ['error', {
+        patterns: [contractsDeepImportRestriction],
       }],
     },
   },
@@ -162,7 +178,7 @@ export default defineConfig(
     files: ['src/server/**/*.ts'],
     rules: {
       'no-restricted-imports': ['error', {
-        patterns: [serverClientIntegrationRestriction],
+        patterns: [contractsDeepImportRestriction, serverClientIntegrationRestriction],
       }],
     },
   },
@@ -182,6 +198,7 @@ export default defineConfig(
           },
         ],
         patterns: [
+          contractsDeepImportRestriction,
           {
             group: ['features/*', 'features/**'],
             message: 'GlobeMap is a map adapter. Feature state/actions belong in GlobeScene or feature-owned containers.',
@@ -200,6 +217,7 @@ export default defineConfig(
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [
+          contractsDeepImportRestriction,
           serverClientIntegrationRestriction,
           {
             group: ['server/services/*', 'server/providers/*', 'server/providers/**/*'],
@@ -219,7 +237,7 @@ export default defineConfig(
           group: ['server/*', 'server/**/*'],
           allowTypeImports: true,
           message: 'Shared tRPC files may only type-import from server modules. Use `import type` to prevent runtime coupling.',
-        }],
+        }, contractsDeepImportRestriction],
       }],
     },
   },
@@ -228,6 +246,7 @@ export default defineConfig(
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [
+          contractsDeepImportRestriction,
           {
             group: ['server/providers/*', 'cloudinary', '@cloudinary/*'],
             message: 'Feature code must not import provider SDKs directly. Use a port or command hook.',
@@ -238,6 +257,41 @@ export default defineConfig(
           },
         ],
       }],
+    },
+  },
+  {
+    files: ['packages/contracts/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: [
+              '@wave-atlas/api', '@wave-atlas/api/*',
+              '@wave-atlas/web', '@wave-atlas/web/*',
+              'app/*', 'views/*', 'widgets/*', 'features/*', 'entities/*', 'shared/*', 'server/*',
+            ],
+            message: 'Contracts cannot depend on either application.',
+          },
+          {
+            group: [
+              'react', 'react/*', 'react-dom', 'react-dom/*',
+              'vite', 'vite/*', '@vitejs/*',
+              'hono', 'hono/*', '@hono/*', '@trpc/*',
+              '@prisma/*', 'prisma', 'better-auth', 'better-auth/*',
+              '@mantine/*', '@tanstack/*', 'mapbox-gl', 'cloudinary', 'pg',
+              'node:*', 'fs', 'fs/*', 'path', 'path/*', 'crypto', 'http', 'https',
+              'stream', 'buffer', 'url', 'os', 'net', 'tls',
+            ],
+            message: 'Contracts must remain platform-neutral.',
+          },
+        ],
+      }],
+      'no-restricted-globals': ['error',
+        { name: 'process', message: 'Contracts cannot read Node process state.' },
+        { name: 'window', message: 'Contracts cannot read browser globals.' },
+        { name: 'document', message: 'Contracts cannot read browser globals.' },
+        { name: 'navigator', message: 'Contracts cannot read browser globals.' },
+      ],
     },
   },
   {

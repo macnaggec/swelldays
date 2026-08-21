@@ -1,4 +1,4 @@
-import type { LngLat } from 'shared/types/coordinates';
+import type { LngLat } from '@wave-atlas/contracts';
 
 export interface CreateSpotCoordinates {
   lat: number;

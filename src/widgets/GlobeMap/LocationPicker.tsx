@@ -5,7 +5,7 @@ import Map, { MapRef, Marker, NavigationControl, MapLayerMouseEvent } from 'reac
 import { Loader } from '@mantine/core';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-import { LngLat } from 'shared/types/coordinates';
+import { LngLat } from '@wave-atlas/contracts';
 import globeClasses from './GlobeMap.module.css';
 import classes from './LocationPicker.module.css';
 

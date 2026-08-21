@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { formatCapturedAtDate, getVisibleCalendarDayKey } from 'shared/lib/dateUtils';
+import { getCapturedMediaCalendarDayKey } from '@wave-atlas/contracts';
+import { formatCapturedAtDate } from 'shared/lib/dateUtils';
 import {
   groupDaysByMonth,
   monthKeyOf,
@@ -44,7 +45,7 @@ export function GalleryDateMonthList({
     setOpenMonth({ activeKey: activeMonthKey, openKey: activeMonthKey });
   }
   const openKey = activeMonthChanged ? activeMonthKey : openMonth.openKey;
-  const activeDayKey = activeDay ? getVisibleCalendarDayKey(activeDay.date) : undefined;
+  const activeDayKey = activeDay ? getCapturedMediaCalendarDayKey(activeDay.date) : undefined;
   const activeDayRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -91,7 +92,7 @@ export function GalleryDateMonthList({
 
   const renderDays = (month: (typeof months)[number]) => month.days.map((day) => {
     const isActive = month.key === activeMonthKey
-      && getVisibleCalendarDayKey(day.date) === activeDayKey;
+      && getCapturedMediaCalendarDayKey(day.date) === activeDayKey;
 
     return (
       <button

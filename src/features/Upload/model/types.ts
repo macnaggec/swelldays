@@ -1,5 +1,5 @@
 import type { DraftMedia } from 'entities/Media';
-import type { UploadAttemptStatus, UploadSource } from 'shared/types/upload';
+import type { UploadAttemptStatus, UploadSource } from '@wave-atlas/contracts';
 
 // ── Browser-only transfer resources ────────────────────────────────────────
 // The store owns these. They are lost on page reload.

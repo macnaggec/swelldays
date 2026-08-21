@@ -5,7 +5,7 @@ import { FavoriteSpotButton } from 'features/FavoriteSpot';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMatches, useNavigate } from '@tanstack/react-router';
 import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
-import type { LngLat } from 'shared/types/coordinates';
+import type { LngLat } from '@wave-atlas/contracts';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
 import { useViewportCapabilities } from 'shared/model/viewportCapabilities';

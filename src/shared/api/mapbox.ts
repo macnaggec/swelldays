@@ -1,4 +1,4 @@
-import type { LngLat } from 'shared/types/coordinates';
+import type { LngLat } from '@wave-atlas/contracts';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string;
 

@@ -1,9 +1,6 @@
 import { router, protectedProcedure } from 'server/trpc';
 import { mediaService } from 'server/services/MediaService';
-import {
-  mediaUpdateSchema,
-  mediaBatchUpdateSchema,
-} from 'shared/validation/mediaSchemas';
+import { mediaBatchUpdateSchema, mediaUpdateSchema } from '@wave-atlas/contracts';
 import { z } from 'zod';
 import { mediaFavoriteService } from 'server/services/MediaFavoriteService';
 

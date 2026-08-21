@@ -4,7 +4,7 @@ import { NotFoundError } from 'shared/errors';
 import { logger } from 'shared/lib/logger';
 import type { IUploadAttemptRepository } from 'server/repositories/UploadAttemptRepository';
 import type { DirectUploadPort, RemoteImportPort, AssetCleanupPort } from 'server/ports/UploadAssetStorage';
-import type { DirectUploadGrant, UploadAttemptProjection } from 'shared/types/upload';
+import type { DirectUploadGrant, UploadAttemptProjection } from '@wave-atlas/contracts';
 
 const GRANT_TTL_MS   = 60 * 60 * 1000;          // 1 hour
 const ATTEMPT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days

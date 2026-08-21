@@ -2,7 +2,7 @@ import { MediaStatus, SurfSessionStatus } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
 import { BadRequestError } from 'shared/errors';
-import type { SurfSessionItem, SurfSessionPage } from 'shared/types/surfSession';
+import type { SurfSessionItem, SurfSessionPage } from '@wave-atlas/contracts';
 
 export interface ISurfSessionRepository {
   listPublished(filter: { spotId?: string; cursor?: string; limit: number; dateFrom?: Date; dateTo?: Date; favoriteUserId?: string }): Promise<SurfSessionPage>;

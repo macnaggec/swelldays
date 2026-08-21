@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTabNavigation } from 'shared/hooks';
 import { useTRPC } from 'shared/lib/trpc';
 import type { SurfSessionItem } from 'entities/SurfSession';
-import type { PublicMedia } from 'shared/types/media';
+import type { PublicMedia } from '@wave-atlas/contracts';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import {
   COLLECTION_TAB_ROUTES,

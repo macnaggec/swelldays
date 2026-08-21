@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from 'server/trpc';
 import { checkoutService } from 'server/services/CheckoutService';
-import { createCheckoutSchema, getSignedMediaAccessSchema } from 'shared/validation/checkoutSchemas';
+import { createCheckoutSchema, getSignedMediaAccessSchema } from '@wave-atlas/contracts';
 import { createRateLimiter } from 'server/lib/rateLimiter';
 
 // 5 checkout session creations per user per minute — prevents CryptoCloud API abuse

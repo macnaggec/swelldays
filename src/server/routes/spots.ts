@@ -4,9 +4,9 @@ import { router, publicProcedure, protectedProcedure } from 'server/trpc';
 import { mediaRepository } from 'server/repositories/MediaRepository';
 import { mediaService } from 'server/services/MediaService';
 import { spotRepository } from 'server/repositories/SpotRepository';
-import { SPOT_STATUS } from 'shared/types';
-import type { Spot } from 'shared/types';
-import { spotNameSchema, spotLocationSchema, spotAliasSchema } from 'shared/validation/spotSchemas';
+import { SPOT_STATUS } from '@wave-atlas/contracts';
+import type { Spot } from '@wave-atlas/contracts';
+import { spotNameSchema, spotLocationSchema, spotAliasSchema } from '@wave-atlas/contracts';
 import { NotFoundError } from 'shared/errors';
 
 export const spotsRouter = router({

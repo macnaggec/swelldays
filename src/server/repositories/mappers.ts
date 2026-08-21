@@ -1,6 +1,6 @@
 import { MediaItem as PrismaMediaItem, MediaType } from '@prisma/client';
-import { MEDIA_RESOURCE_TYPE } from 'shared/constants/media';
-import type { DraftMedia } from 'shared/types/media';
+import { MEDIA_RESOURCE_TYPE } from '@wave-atlas/contracts';
+import type { DraftMedia } from '@wave-atlas/contracts';
 
 export function mapToDraftMedia(row: PrismaMediaItem): DraftMedia {
   return {

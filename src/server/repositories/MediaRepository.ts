@@ -2,9 +2,9 @@ import { MediaItem as PrismaMediaItem } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
-import { MEDIA_STATUS } from 'shared/constants/media';
-import { getVisibleCalendarDayKey } from 'shared/lib/dateUtils';
-import type { DraftMedia, MediaStatus as DomainMediaStatus, PublicMedia } from 'shared/types/media';
+import { MEDIA_STATUS } from '@wave-atlas/contracts';
+import { getCapturedMediaCalendarDayKey } from '@wave-atlas/contracts';
+import type { DraftMedia, MediaStatus as DomainMediaStatus, PublicMedia } from '@wave-atlas/contracts';
 import { mapToDraftMedia } from './mappers';
 
 /** Public projection before the service attaches the viewer's entitlement. */
@@ -393,7 +393,7 @@ export class MediaRepository implements IMediaRepository {
       const seenDays = new Set<string>();
       const days: Date[] = [];
       for (const { capturedAt } of rows) {
-        const dayKey = getVisibleCalendarDayKey(capturedAt);
+        const dayKey = getCapturedMediaCalendarDayKey(capturedAt);
         if (seenDays.has(dayKey)) continue;
         seenDays.add(dayKey);
         days.push(capturedAt);

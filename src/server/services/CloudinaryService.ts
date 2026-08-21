@@ -9,9 +9,9 @@
 import { z } from 'zod';
 import cloudinary, { generateDeliveryUrl as libGenerateDeliveryUrl, getWatermarkedPreviewTransform, MEDIA_UPLOAD_CONFIG, MEDIA_CLOUDINARY_TRANSFORMS } from 'server/providers/cloudinary';
 import { InternalServerError, BadRequestError } from 'shared/errors';
-import type { MediaResourceType } from 'shared/types/media';
+import type { MediaResourceType } from '@wave-atlas/contracts';
 import type { DirectUploadPort, RemoteImportPort, AssetCleanupPort, UploadTarget, StoredAsset, StoredAssetIdentity, RemoteImportInput } from 'server/ports/UploadAssetStorage';
-import type { DirectUploadGrant } from 'shared/types/upload';
+import type { DirectUploadGrant } from '@wave-atlas/contracts';
 
 export interface CloudinarySignatureData {
   signature: string;

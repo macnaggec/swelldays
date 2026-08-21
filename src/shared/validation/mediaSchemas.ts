@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MEDIA_RESOURCE_TYPE, MIN_MEDIA_PRICE_CENTS } from 'shared/constants/media';
+import { MEDIA_RESOURCE_TYPE } from '@wave-atlas/contracts';
 
 const cloudName =
   typeof process !== 'undefined'
@@ -26,28 +26,4 @@ export const mediaCreateSchema = z.object({
   draftId: z.uuid(),
   cloudinaryResult: mediaCloudinaryResultSchema,
   capturedAt: z.coerce.date().optional(),
-});
-
-export const mediaUpdateSchema = z.object({
-  id: z.uuid(),
-  price: z.number().int().min(MIN_MEDIA_PRICE_CENTS).optional(),
-  capturedAt: z.coerce.date().optional(),
-});
-
-export const mediaBatchUpdateSchema = z
-  .object({
-    mediaIds: z.array(z.uuid()).min(1),
-    price: z.number().int().min(MIN_MEDIA_PRICE_CENTS).optional(),
-    capturedAt: z.coerce.date().optional(),
-    spotId: z.uuid().optional(),
-  })
-  .refine((d) => d.price !== undefined || d.capturedAt !== undefined || d.spotId !== undefined, {
-    error: 'Must provide at least one of: price, capturedAt, spotId',
-  });
-
-export const registerDriveImportSchema = z.object({
-  draftId: z.uuid(),
-  remoteFileId: z.string().min(1),
-  mimeType: z.string().min(1),
-  accessToken: z.string().min(1),
 });

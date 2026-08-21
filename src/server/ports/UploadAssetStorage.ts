@@ -1,5 +1,5 @@
 import type { MediaType } from '@prisma/client';
-import type { DirectUploadGrant } from 'shared/types/upload';
+import type { DirectUploadGrant } from '@wave-atlas/contracts';
 
 export interface UploadTarget {
   cloudinaryPublicId: string;

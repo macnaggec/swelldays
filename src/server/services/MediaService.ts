@@ -7,15 +7,15 @@ import type {
 import { mediaRepository } from 'server/repositories/MediaRepository';
 import { logger } from 'shared/lib/logger';
 import { BadRequestError, ForbiddenError, NotFoundError } from 'shared/errors';
-import { MEDIA_STATUS, MIN_MEDIA_PRICE_CENTS } from 'shared/constants/media';
-import type { MediaStatus, DraftMedia } from 'shared/types/media';
+import { MEDIA_STATUS, MIN_MEDIA_PRICE_CENTS } from '@wave-atlas/contracts';
+import type { MediaStatus, DraftMedia } from '@wave-atlas/contracts';
 import type { ICloudinaryService } from './CloudinaryService';
 import { cloudinaryService } from './CloudinaryService';
 import {
   purchaseEntitlementService,
   type IPurchaseEntitlementService,
 } from './PurchaseEntitlementService';
-import type { PublicMedia, PublicMediaPage } from 'shared/types/media';
+import type { PublicMedia, PublicMediaPage } from '@wave-atlas/contracts';
 import type { AttributedPublishedMedia } from 'server/repositories/MediaRepository';
 
 function assertPriceFloor(price: number | null | undefined): void {

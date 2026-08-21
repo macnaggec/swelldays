@@ -2,7 +2,7 @@ import { MediaType, Prisma, UploadWorkspaceKind, UploadWorkspaceStatus } from '@
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
 import { BadRequestError, ForbiddenError, NotFoundError } from 'shared/errors';
-import type { UploadWorkspaceState, UploadWorkspaceSummary } from 'shared/types/uploadWorkspace';
+import type { UploadWorkspaceState, UploadWorkspaceSummary } from '@wave-atlas/contracts';
 
 type WorkspaceSeed = {
   spotId?: string | null;

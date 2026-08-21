@@ -1,4 +1,4 @@
-import { getVisibleCalendarDayKey } from 'shared/lib/dateUtils';
+import { getCapturedMediaCalendarDayKey } from '@wave-atlas/contracts';
 
 /**
  * Width below which the rail hides. Below this the gallery is a dense one-to-few-
@@ -48,7 +48,7 @@ export interface GalleryDateHighlight {
 export function toDayHighlights(highlights: GalleryDateHighlight[]): GalleryDateHighlight[] {
   const seen = new Set<string>();
   return highlights.filter(({ date }) => {
-    const key = getVisibleCalendarDayKey(date);
+    const key = getCapturedMediaCalendarDayKey(date);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -65,14 +65,14 @@ export function mergeGalleryDateHighlights(
 ): GalleryDateHighlight[] {
   const loadedRowByDay = new Map(
     toDayHighlights(loadedHighlights).map(({ date, rowIndex }) => [
-      getVisibleCalendarDayKey(date),
+      getCapturedMediaCalendarDayKey(date),
       rowIndex,
     ]),
   );
   const seen = new Set<string>();
 
   return availableDates.flatMap((date) => {
-    const key = getVisibleCalendarDayKey(date);
+    const key = getCapturedMediaCalendarDayKey(date);
     if (seen.has(key)) return [];
     seen.add(key);
     return [{
@@ -98,7 +98,7 @@ export function activeDayIndex(dayHighlights: GalleryDateHighlight[], firstVisib
   return active;
 }
 
-/** Calendar-month identity used to fold the rail's days into month sections. UTC — see getVisibleCalendarDayKey. */
+/** Calendar-month identity used to fold the rail's days into month sections. UTC — see getCapturedMediaCalendarDayKey. */
 export function monthKeyOf(date: Date): string {
   return `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
 }

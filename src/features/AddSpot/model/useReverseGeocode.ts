@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { LngLat } from 'shared/types/coordinates';
+import type { LngLat } from '@wave-atlas/contracts';
 import { fetchReverseGeocode } from 'shared/api/mapbox';
 
 interface UseReverseGeocodeResult {
