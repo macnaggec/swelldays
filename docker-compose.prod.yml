@@ -3,6 +3,7 @@ services:
   api:
     build:
       context: .
+      dockerfile: apps/api/Dockerfile
       target: runner
     restart: unless-stopped
     env_file:
@@ -16,6 +17,7 @@ services:
   migrate:
     build:
       context: .
+      dockerfile: apps/api/Dockerfile
       target: migrator
     env_file:
       - .env.production

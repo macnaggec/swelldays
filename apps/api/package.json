@@ -9,6 +9,7 @@
     }
   },
   "scripts": {
+    "build": "npm run typecheck && esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --alias:@wave-atlas/contracts=../../packages/contracts/src/index.ts --outfile=dist/index.js",
     "dev": "DOTENV_CONFIG_PATH=../../.env tsx watch src/index.ts",
     "prisma:generate": "DOTENV_CONFIG_PATH=../../.env prisma generate --config prisma.config.ts",
     "prisma:validate": "DOTENV_CONFIG_PATH=../../.env prisma validate --config prisma.config.ts",
@@ -17,6 +18,7 @@
     "prisma:migrate:status": "DOTENV_CONFIG_PATH=../../.env prisma migrate status --config prisma.config.ts",
     "prisma:studio": "DOTENV_CONFIG_PATH=../../.env prisma studio --config prisma.config.ts",
     "prisma:seed": "DOTENV_CONFIG_PATH=../../.env prisma db seed --config prisma.config.ts",
+    "start": "DOTENV_CONFIG_PATH=../../.env node dist/index.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -35,6 +37,9 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
-    "prisma": "^7.2.0"
+    "esbuild": "^0.28.2",
+    "prisma": "^7.2.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }
