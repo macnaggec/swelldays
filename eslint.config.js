@@ -14,6 +14,19 @@ const contractsDeepImportRestriction = {
   message: 'Import contracts through the explicit @wave-atlas/contracts public surface.',
 };
 
+const webApiImplementationRestriction = {
+  group: ['@wave-atlas/api', '@wave-atlas/api/*', 'server/*', 'server/**'],
+  message: 'Web runtime code cannot import API implementation. Use the approved type-only router seam in the tRPC adapters.',
+};
+
+const apiWebImportRestriction = {
+  group: [
+    '@wave-atlas/web', '@wave-atlas/web/*',
+    'app/*', 'views/*', 'widgets/*', 'features/*', 'entities/*', 'shared/*',
+  ],
+  message: 'API code cannot import the web application.',
+};
+
 export default defineConfig(
   ...tseslint.configs.recommended,
   {
@@ -27,7 +40,7 @@ export default defineConfig(
     ],
   },
   {
-    files: ['apps/api/src/**/*.ts', 'apps/web/src/**/*.ts', 'apps/web/src/**/*.tsx', 'src/**/*.ts', 'src/**/*.tsx', 'packages/contracts/src/**/*.ts'],
+    files: ['apps/api/src/**/*.ts', 'apps/web/src/**/*.ts', 'apps/web/src/**/*.tsx', 'packages/contracts/src/**/*.ts'],
     plugins: { boundaries, 'react-hooks': reactHooks },
     languageOptions: {
       parser: tseslint.parser,
@@ -39,7 +52,7 @@ export default defineConfig(
         { type: 'server-test', pattern: ['apps/api/src/**/*.test.ts', 'apps/api/src/**/*.integration.test.ts'], mode: 'full' },
         // Test files are file-path matches, not folder elements. Keep this before
         // app layers so non-server tests are classified as test before their containing layer.
-        { type: 'test',    pattern: ['src/test/**', 'apps/api/src/test/**', 'apps/web/src/test/**', 'src/**/*.test.ts', 'src/**/*.test.tsx', 'apps/web/src/**/*.test.ts', 'apps/web/src/**/*.test.tsx', 'src/**/*.spec.ts', 'src/**/*.spec.tsx', 'apps/web/src/**/*.spec.ts', 'apps/web/src/**/*.spec.tsx'], mode: 'full' },
+        { type: 'test',    pattern: ['apps/api/src/test/**', 'apps/web/src/test/**', 'apps/web/src/**/*.test.ts', 'apps/web/src/**/*.test.tsx', 'apps/web/src/**/*.spec.ts', 'apps/web/src/**/*.spec.tsx'], mode: 'full' },
         { type: 'app',     pattern: 'apps/web/src/app/**' },
         { type: 'views',   pattern: 'apps/web/src/views/**' },
         // Each widget folder is its own element; cross-widget imports are forbidden
@@ -63,10 +76,10 @@ export default defineConfig(
           pattern: 'apps/web/src/entities/*/**',
           capture: ['entityName'],
         },
-        { type: 'shared',  pattern: ['src/shared/**', 'apps/web/src/shared/**'] },
+        { type: 'shared',  pattern: 'apps/web/src/shared/**' },
         { type: 'server',  pattern: 'apps/api/src/**' },
         { type: 'contracts', pattern: 'packages/contracts/src/**', mode: 'full' },
-        { type: 'types',   pattern: ['src/types/**', 'apps/web/src/types/**'] },
+        { type: 'types',   pattern: 'apps/web/src/types/**' },
       ],
       // eslint-import-resolver-typescript resolves the '*' → './src/*' tsconfig alias so
       // boundaries can match resolved paths against element patterns.
@@ -88,7 +101,7 @@ export default defineConfig(
         default: 'disallow',
         rules: [
           // app may import browser layers and contracts. The tRPC type seam is owned
-          // narrowly by src/shared/lib/trpc*.ts below, not by the app layer generally.
+          // narrowly by apps/web/src/shared/lib/trpc*.ts below, not by the app layer generally.
           {
             from: { type: 'app' },
             allow: {
@@ -155,7 +168,7 @@ export default defineConfig(
           },
           // shared/lib/trpc.ts and trpcClient.ts need the one approved API type seam
           // for tRPC end-to-end type safety. This is erased at compile time — no runtime coupling.
-          { from: { type: 'shared', path: ['src/shared/lib/trpc*.ts', 'apps/web/src/shared/lib/trpc*.ts'] }, allow: { to: [{ type: 'server', path: 'apps/api/src/routerType.ts' }] } },
+          { from: { type: 'shared', path: 'apps/web/src/shared/lib/trpc*.ts' }, allow: { to: [{ type: 'server', path: 'apps/api/src/routerType.ts' }] } },
           // Browser-owned shared modules may use the platform-neutral contracts package.
           { from: { type: 'shared' }, allow: { to: [{ type: 'shared' }, { type: 'types' }, { type: 'contracts' }] } },
           // API runtime code may use only API modules and platform-neutral contracts.
@@ -178,7 +191,15 @@ export default defineConfig(
     files: ['apps/api/src/**/*.ts'],
     rules: {
       'no-restricted-imports': ['error', {
-        patterns: [contractsDeepImportRestriction, serverClientIntegrationRestriction],
+        patterns: [contractsDeepImportRestriction, serverClientIntegrationRestriction, apiWebImportRestriction],
+      }],
+    },
+  },
+  {
+    files: ['apps/web/src/**/*.ts', 'apps/web/src/**/*.tsx'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [contractsDeepImportRestriction, webApiImplementationRestriction],
       }],
     },
   },
@@ -199,6 +220,7 @@ export default defineConfig(
         ],
         patterns: [
           contractsDeepImportRestriction,
+          webApiImplementationRestriction,
           {
             group: ['features/*', 'features/**'],
             message: 'GlobeMap is a map adapter. Feature state/actions belong in GlobeScene or feature-owned containers.',
@@ -230,7 +252,7 @@ export default defineConfig(
   // shared/lib/trpc*.ts may only type-import from server modules.
   // A runtime import would pull the server router and all its dependencies into the browser bundle.
   {
-    files: ['src/shared/lib/trpc.ts', 'src/shared/lib/trpcClient.ts', 'apps/web/src/shared/lib/trpc.ts', 'apps/web/src/shared/lib/trpcClient.ts'],
+    files: ['apps/web/src/shared/lib/trpc.ts', 'apps/web/src/shared/lib/trpcClient.ts'],
     rules: {
       'no-restricted-imports': ['error', {
         paths: [{
@@ -238,11 +260,17 @@ export default defineConfig(
           allowTypeImports: true,
           message: 'The browser may only type-import the approved @wave-atlas/api/router surface.',
         }],
-        patterns: [{
-          group: ['server/*', 'server/**/*'],
-          allowTypeImports: true,
-          message: 'Shared tRPC files may only type-import from server modules. Use `import type` to prevent runtime coupling.',
-        }, contractsDeepImportRestriction],
+        patterns: [
+          {
+            regex: '^@wave-atlas/api(?:/(?!router$).*)?$',
+            message: 'Only the approved @wave-atlas/api/router type surface may cross into web.',
+          },
+          {
+            group: ['server/*', 'server/**'],
+            message: 'Web code cannot import API implementation through server aliases.',
+          },
+          contractsDeepImportRestriction,
+        ],
       }],
     },
   },
@@ -252,6 +280,7 @@ export default defineConfig(
       'no-restricted-imports': ['error', {
         patterns: [
           contractsDeepImportRestriction,
+          webApiImplementationRestriction,
           {
             group: ['server/providers/*', 'cloudinary', '@cloudinary/*'],
             message: 'Feature code must not import provider SDKs directly. Use a port or command hook.',
@@ -300,8 +329,8 @@ export default defineConfig(
     },
   },
   {
-    files: ['src/**/*.ts', 'src/**/*.tsx', 'apps/web/src/**/*.ts', 'apps/web/src/**/*.tsx'],
-    ignores: ['src/shared/model/appRouteIntent.ts', 'apps/web/src/shared/model/appRouteIntent.ts'],
+    files: ['apps/web/src/**/*.ts', 'apps/web/src/**/*.tsx'],
+    ignores: ['apps/web/src/shared/model/appRouteIntent.ts'],
     rules: {
       'no-restricted-syntax': ['error', {
         selector: 'TSUnionType:has(TSLiteralType Literal[value=/^(browse|browsing|galleryWorkspace|routeWorkspace|workspace|mapInput|fullPage|immersiveMapInput)$/])',

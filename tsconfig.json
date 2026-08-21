@@ -1,68 +1,6 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ESNext"
-    ],
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitReturns": true,
-    "allowJs": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "react-jsx",
-    "types": [
-      "vite/client"
-    ],
-    "paths": {
-      "@wave-atlas/api/router": [
-        "./apps/api/src/routerType.ts"
-      ],
-      "@wave-atlas/contracts": [
-        "./packages/contracts/src/index.ts"
-      ],
-      "server/*": [
-        "./apps/api/src/*"
-      ],
-      "app/*": [
-        "./apps/web/src/app/*"
-      ],
-      "views/*": [
-        "./apps/web/src/views/*"
-      ],
-      "widgets/*": [
-        "./apps/web/src/widgets/*"
-      ],
-      "features/*": [
-        "./apps/web/src/features/*"
-      ],
-      "entities/*": [
-        "./apps/web/src/entities/*"
-      ],
-      "shared/*": [
-        "./apps/web/src/shared/*"
-      ],
-      "test/*": [
-        "./apps/web/src/test/*"
-      ],
-      "types/*": [
-        "./apps/web/src/types/*"
-      ],
-      "*": [
-        "./src/*"
-      ]
-    }
-  },
+  "extends": "./apps/web/tsconfig.json",
   "include": [
-    "src",
     "apps/web/src",
     "packages/contracts/src",
     "vitest.d.ts",

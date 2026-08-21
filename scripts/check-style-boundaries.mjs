@@ -3,10 +3,7 @@ import path from 'node:path';
 import ts from 'typescript';
 
 const root = process.cwd();
-const sourceRoots = [
-  path.join(root, 'src'),
-  path.join(root, 'apps/web/src'),
-];
+const sourceRoots = [path.join(root, 'apps/web/src')];
 
 const toPosix = (file) => file.split(path.sep).join('/');
 
@@ -55,11 +52,11 @@ const isMigratedMaterialSurface = (file) => (
   || file === 'apps/web/src/widgets/AppNavigation/CartControl.tsx'
   || file.startsWith('apps/web/src/views/GlobeScene/')
   || file === 'apps/web/src/widgets/GlobeMap/LocationPicker.module.css'
-  || /^src\/app\/routes\/_panel.*\.tsx$/.test(file)
+  || /^apps\/web\/src\/app\/routes\/_panel.*\.tsx$/.test(file)
 );
 
-const routePanelCssModulePattern = /^src\/app\/routes\/_panel.*\.module\.css$/;
-const routeCodeFilePattern = /^src\/app\/routes\/.*\.tsx?$/;
+const routePanelCssModulePattern = /^apps\/web\/src\/app\/routes\/_panel.*\.module\.css$/;
+const routeCodeFilePattern = /^apps\/web\/src\/app\/routes\/.*\.tsx?$/;
 
 const isIgnoredRouteTest = (file) => (
   routeCodeFilePattern.test(file)
