@@ -53,14 +53,14 @@ export default defineConfig(
         // the same-feature allow rule below (C2 guard).
         {
           type: 'feature',
-          pattern: 'src/features/*/**',
+          pattern: 'apps/web/src/features/*/**',
           capture: ['featureName'],
         },
         // Each entity slice is its own element; entityName is captured for the
         // same-entity allow rule (internal imports stay legal; external must use the index).
         {
           type: 'entity',
-          pattern: 'src/entities/*/**',
+          pattern: 'apps/web/src/entities/*/**',
           capture: ['entityName'],
         },
         { type: 'shared',  pattern: ['src/shared/**', 'apps/web/src/shared/**'] },
@@ -95,8 +95,8 @@ export default defineConfig(
               to: [
                 { type: 'views' },
                 { type: 'widgets', path: 'src/widgets/*/index.ts' },
-                { type: 'feature', path: 'src/features/*/index.ts' },
-                { type: 'entity', path: 'src/entities/*/index.ts' },
+                { type: 'feature', path: 'apps/web/src/features/*/index.ts' },
+                { type: 'entity', path: 'apps/web/src/entities/*/index.ts' },
                 { type: 'shared' }, { type: 'types' }, { type: 'contracts' },
               ],
             },
@@ -107,8 +107,8 @@ export default defineConfig(
             allow: {
               to: [
                 { type: 'widgets', path: 'src/widgets/*/index.ts' },
-                { type: 'feature', path: 'src/features/*/index.ts' },
-                { type: 'entity', path: 'src/entities/*/index.ts' },
+                { type: 'feature', path: 'apps/web/src/features/*/index.ts' },
+                { type: 'entity', path: 'apps/web/src/entities/*/index.ts' },
                 { type: 'shared' }, { type: 'types' }, { type: 'contracts' },
               ],
             },
@@ -118,8 +118,8 @@ export default defineConfig(
             from: { type: 'widgets' },
             allow: {
               to: [
-                { type: 'feature', path: 'src/features/*/index.ts' },
-                { type: 'entity', path: 'src/entities/*/index.ts' },
+                { type: 'feature', path: 'apps/web/src/features/*/index.ts' },
+                { type: 'entity', path: 'apps/web/src/entities/*/index.ts' },
                 { type: 'shared' }, { type: 'types' }, { type: 'contracts' },
                 { type: 'widgets', captured: { widgetName: '{{widgetName}}' } },
               ],
@@ -131,7 +131,7 @@ export default defineConfig(
             from: { type: 'feature' },
             allow: {
               to: [
-                { type: 'entity', path: 'src/entities/*/index.ts' },
+                { type: 'entity', path: 'apps/web/src/entities/*/index.ts' },
                 { type: 'shared' },
                 { type: 'types' },
                 { type: 'contracts' },
@@ -146,7 +146,7 @@ export default defineConfig(
             allow: {
               to: [
                 { type: 'entity', captured: { entityName: '{{entityName}}' } },
-                { type: 'entity', path: 'src/entities/*/index.ts' },
+                { type: 'entity', path: 'apps/web/src/entities/*/index.ts' },
                 { type: 'shared' },
                 { type: 'types' },
                 { type: 'contracts' },
@@ -247,7 +247,7 @@ export default defineConfig(
     },
   },
   {
-    files: ['src/features/**/*.ts', 'src/features/**/*.tsx'],
+    files: ['apps/web/src/features/**/*.ts', 'apps/web/src/features/**/*.tsx'],
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [

@@ -23,8 +23,8 @@
       "app/*": ["../../src/app/*"],
       "views/*": ["../../src/views/*"],
       "widgets/*": ["../../src/widgets/*"],
-      "features/*": ["../../src/features/*"],
-      "entities/*": ["../../src/entities/*"],
+      "features/*": ["src/features/*"],
+      "entities/*": ["src/entities/*"],
       "shared/*": ["src/shared/*"],
       "server/*": ["../api/src/*"],
       "test/*": ["src/test/*", "../../src/test/*"],
@@ -36,8 +36,6 @@
     "../../src/app",
     "../../src/views",
     "../../src/widgets",
-    "../../src/features",
-    "../../src/entities",
     "../../packages/contracts/src",
     "../../vitest.d.ts"
   ]

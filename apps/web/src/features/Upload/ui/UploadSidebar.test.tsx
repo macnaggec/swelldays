@@ -7,7 +7,7 @@ import { PanelLayout } from 'shared/ui/PanelLayout';
 import { UploadSidebar } from './UploadSidebar';
 import type { UploadWorkspaceState } from '@wave-atlas/contracts';
 
-const uploadSidebarCss = readFileSync('src/features/Upload/ui/UploadSidebar.module.css', 'utf8');
+const uploadSidebarCss = readFileSync('apps/web/src/features/Upload/ui/UploadSidebar.module.css', 'utf8');
 
 function cssRule(selector: string) {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

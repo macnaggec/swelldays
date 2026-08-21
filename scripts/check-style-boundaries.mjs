@@ -27,26 +27,26 @@ const isDesignSystemOwner = (file) => (
 );
 
 const isOverlayConsumer = (file) => (
-  file.startsWith('src/features/Auth/')
-  || file.startsWith('src/features/SpotSearch/')
-  || file.startsWith('src/features/Upload/ui/popovers/')
+  file.startsWith('apps/web/src/features/Auth/')
+  || file.startsWith('apps/web/src/features/SpotSearch/')
+  || file.startsWith('apps/web/src/features/Upload/ui/popovers/')
   || file.startsWith('apps/web/src/shared/ui/BaseLightbox/')
   || file.startsWith('apps/web/src/shared/ui/CarouselLightbox/')
-  || file === 'src/features/Upload/ui/UploadGallery/StepModeModal.tsx'
+  || file === 'apps/web/src/features/Upload/ui/UploadGallery/StepModeModal.tsx'
   || file === 'apps/web/src/shared/ui/DatePickerPopover/DatePickerPopover.tsx'
 );
 
 const isMigratedMaterialSurface = (file) => (
   isOverlayConsumer(file)
-  || file.startsWith('src/features/Cart/')
-  || file.startsWith('src/features/Purchases/')
-  || file.startsWith('src/features/Upload/ui/UploadGallery/')
-  || file === 'src/features/Upload/ui/steps/helpers.tsx'
+  || file.startsWith('apps/web/src/features/Cart/')
+  || file.startsWith('apps/web/src/features/Purchases/')
+  || file.startsWith('apps/web/src/features/Upload/ui/UploadGallery/')
+  || file === 'apps/web/src/features/Upload/ui/steps/helpers.tsx'
   || file.startsWith('apps/web/src/shared/ui/BaseGallery/')
   || file.startsWith('apps/web/src/shared/ui/BaseLightbox/')
   || file.startsWith('apps/web/src/shared/ui/CarouselLightbox/')
   || file.startsWith('apps/web/src/shared/ui/PanelGalleryLayout')
-  || file.startsWith('src/entities/SurfSession/ui/')
+  || file.startsWith('apps/web/src/entities/SurfSession/ui/')
   || file.startsWith('src/widgets/SidePanel/SessionFeed')
   || file.startsWith('src/widgets/SidePanel/SidePanel')
   || file.startsWith('src/widgets/AppNavigation/AppNavigation')
@@ -132,7 +132,7 @@ const panelGridGapConsumers = new Set([
 
 const panelGridSpacingPropConsumers = new Set([
   'src/app/routes/_panel.me.collections.index.tsx',
-  'src/features/PublicGallery/PublicGallery.tsx',
+  'apps/web/src/features/PublicGallery/PublicGallery.tsx',
   'apps/web/src/shared/ui/PanelContentSkeleton/PanelContentSkeleton.tsx',
 ]);
 
@@ -144,7 +144,7 @@ const ordinaryPanelCollectionCssConsumers = new Set([
 
 const panelLocalResponsiveCssConsumers = new Set([
   ...ordinaryPanelCollectionCssConsumers,
-  'src/features/Collections/ui/CollectionsToolbar.module.css',
+  'apps/web/src/features/Collections/ui/CollectionsToolbar.module.css',
 ]);
 
 const sessionFeedLayoutConsumers = new Set([
@@ -159,7 +159,7 @@ const panelLoadingCollectionConsumers = new Set([
 ]);
 
 const requiredPanelSpacingTokensByFile = new Map([
-  ['src/features/PublicGallery/PublicGallery.tsx', ['--wa-panel-content-inset', '--wa-panel-grid-gap']],
+  ['apps/web/src/features/PublicGallery/PublicGallery.tsx', ['--wa-panel-content-inset', '--wa-panel-grid-gap']],
 ]);
 
 const requiredResponsiveLayoutTokens = [
@@ -209,11 +209,11 @@ const requiredFloatingChromeOffsetStyles = [
 // it (auth) each declare their tier so an interrupt always outranks content.
 const requiredModalRoleTokenByFile = new Map([
   ['apps/web/src/shared/ui/CarouselLightbox/CarouselLightbox.tsx', 'var(--wa-z-modal-content)'],
-  ['src/features/Auth/AuthModalProvider.tsx', 'var(--wa-z-modal-interrupt)'],
+  ['apps/web/src/features/Auth/AuthModalProvider.tsx', 'var(--wa-z-modal-interrupt)'],
 ]);
 
 const requiredResponsiveTokensByFile = new Map([
-  ['src/features/Auth/AuthModalProvider.module.css', [
+  ['apps/web/src/features/Auth/AuthModalProvider.module.css', [
     '--wa-shell-edge-clearance',
     '--wa-safe-area-top',
     '--wa-safe-area-right',
@@ -223,7 +223,7 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-radius-dialog',
     '--wa-control-size-compact',
   ]],
-  ['src/features/Auth/ui/AuthForm.module.css', [
+  ['apps/web/src/features/Auth/ui/AuthForm.module.css', [
     '--wa-control-height-default',
     '--wa-radius-chrome',
     '--wa-radius-pill',
@@ -279,7 +279,7 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-floating-chrome-bottom-offset',
     '--wa-z-floating-chrome',
   ]],
-  ['src/features/Collections/ui/CollectionsSectionBar.module.css', [
+  ['apps/web/src/features/Collections/ui/CollectionsSectionBar.module.css', [
     '--wa-floating-chrome-bottom-offset',
     '--wa-z-floating-chrome',
   ]],
@@ -322,10 +322,10 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-panel-stack-gap',
     '--wa-gallery-tile-comfortable',
   ]],
-  ['src/features/Upload/ui/UploadSidebar.module.css', [
+  ['apps/web/src/features/Upload/ui/UploadSidebar.module.css', [
     '--wa-control-height-default',
   ]],
-  ['src/features/AddSpot/ui/AddSpotPanel.module.css', [
+  ['apps/web/src/features/AddSpot/ui/AddSpotPanel.module.css', [
     '--wa-control-height-default',
     '--wa-radius-control-md',
     '--wa-radius-sheet',
@@ -335,10 +335,10 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-control-height-default',
     '--wa-panel-content-inset',
   ]],
-  ['src/features/Collections/ui/CollectionsToolbar.module.css', [
+  ['apps/web/src/features/Collections/ui/CollectionsToolbar.module.css', [
     '--wa-control-height-default',
   ]],
-  ['src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css', [
+  ['apps/web/src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css', [
     '--wa-control-height-default',
   ]],
 ]);
@@ -771,14 +771,14 @@ const requiredMobileGalleryLargeTextStyles = [
 ];
 
 const mobileGalleryLargeTextCssConsumers = new Set([
-  'src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css',
-  'src/features/PublicGallery/ui/GalleryDateMonthList.module.css',
+  'apps/web/src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css',
+  'apps/web/src/features/PublicGallery/ui/GalleryDateMonthList.module.css',
   'apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css',
 ]);
 
 const requiredGalleryDateMonthListConsumers = [
-  'src/features/PublicGallery/ui/GalleryDateJumpHeading.tsx',
-  'src/features/PublicGallery/ui/GalleryDateSidebar.tsx',
+  'apps/web/src/features/PublicGallery/ui/GalleryDateJumpHeading.tsx',
+  'apps/web/src/features/PublicGallery/ui/GalleryDateSidebar.tsx',
 ];
 
 // The component owns the count (F12k); the stylesheet must not re-column.
@@ -799,16 +799,16 @@ const isRuntimeTypeScript = (file) => (
 );
 
 const sessionLifecycleInvalidationCallers = new Set([
-  'src/entities/SurfSession/model/usePublishedSession.ts',
-  'src/features/Upload/model/usePublishUploadSession.ts',
+  'apps/web/src/entities/SurfSession/model/usePublishedSession.ts',
+  'apps/web/src/features/Upload/model/usePublishUploadSession.ts',
 ]);
 
-const isAddSpotUi = (file) => file.startsWith('src/features/AddSpot/ui/');
+const isAddSpotUi = (file) => file.startsWith('apps/web/src/features/AddSpot/ui/');
 
 const mantineRadiusLiteralConsumers = new Set([
-  'src/features/Upload/ui/UploadGallery/UploadZone.tsx',
-  'src/features/SpotSearch/SpotSearch.tsx',
-  'src/features/Upload/ui/steps/TimeStep.tsx',
+  'apps/web/src/features/Upload/ui/UploadGallery/UploadZone.tsx',
+  'apps/web/src/features/SpotSearch/SpotSearch.tsx',
+  'apps/web/src/features/Upload/ui/steps/TimeStep.tsx',
 ]);
 
 const rules = [
@@ -1035,8 +1035,8 @@ const rules = [
     include: file => (
       file === 'apps/web/src/shared/ui/PanelGalleryLayout.tsx'
       || file === 'apps/web/src/shared/ui/PanelGalleryLayout.module.css'
-      || file === 'src/features/Upload/ui/UploadSidebar.tsx'
-      || file === 'src/features/Upload/ui/UploadSidebar.module.css'
+      || file === 'apps/web/src/features/Upload/ui/UploadSidebar.tsx'
+      || file === 'apps/web/src/features/Upload/ui/UploadSidebar.module.css'
     ),
   },
   {
@@ -1156,10 +1156,10 @@ const rules = [
       || file === 'src/widgets/BrowseSectionBar/BrowseSectionBar.module.css'
       || file === 'src/widgets/SidePanel/SidePanel.module.css'
       || file === 'apps/web/src/shared/ui/PanelRouteLayout.module.css'
-      || file === 'src/features/Upload/ui/UploadSidebar.module.css'
+      || file === 'apps/web/src/features/Upload/ui/UploadSidebar.module.css'
       || file === 'src/widgets/SidePanel/FilterPills.module.css'
-      || file === 'src/features/Collections/ui/CollectionsToolbar.module.css'
-      || file === 'src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css'
+      || file === 'apps/web/src/features/Collections/ui/CollectionsToolbar.module.css'
+      || file === 'apps/web/src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css'
     ),
   },
   {
@@ -1178,8 +1178,8 @@ const rules = [
     id: 'mobile-gallery-preview-metadata-wraps',
     message: 'Mobile Gallery preview metadata must wrap rather than clip at large text.',
     pattern: /wrap=["\']nowrap["\']/,
-    include: file => file === 'src/features/PublicGallery/ui/MediaLightbox.tsx'
-      || file === 'src/features/PublicGallery/ui/cards/PublicCard.tsx',
+    include: file => file === 'apps/web/src/features/PublicGallery/ui/MediaLightbox.tsx'
+      || file === 'apps/web/src/features/PublicGallery/ui/cards/PublicCard.tsx',
   },
   {
     id: 'no-local-panel-chrome-height',
@@ -1253,7 +1253,7 @@ const rules = [
     id: 'add-spot-controls-use-radius-tokens',
     message: 'Add Spot surface and control radii must use the shared --wa-radius-* tokens.',
     pattern: /border-radius:(?!\s*var\(--wa-radius-)[^;]+/,
-    include: file => file === 'src/features/AddSpot/ui/AddSpotPanel.module.css',
+    include: file => file === 'apps/web/src/features/AddSpot/ui/AddSpotPanel.module.css',
   },
 ];
 
@@ -1389,13 +1389,13 @@ for (const [requirement, pattern] of forbiddenCompactBrowseNavigationStyles) {
 }
 
 const collectionsToolbarStyles = readFileSync(
-  path.join(root, 'src/features/Collections/ui/CollectionsToolbar.module.css'),
+  path.join(root, 'apps/web/src/features/Collections/ui/CollectionsToolbar.module.css'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredCollectionsToolbarStyles) {
   if (pattern.test(collectionsToolbarStyles)) continue;
   violations.push({
-    file: 'src/features/Collections/ui/CollectionsToolbar.module.css',
+    file: 'apps/web/src/features/Collections/ui/CollectionsToolbar.module.css',
     line: 1,
     rule: 'collections-toolbar-required-styles',
     message: `Collections toolbar is missing ${requirement}.`,
@@ -1403,13 +1403,13 @@ for (const [requirement, pattern] of requiredCollectionsToolbarStyles) {
 }
 
 const uploadSidebarStyles = readFileSync(
-  path.join(root, 'src/features/Upload/ui/UploadSidebar.module.css'),
+  path.join(root, 'apps/web/src/features/Upload/ui/UploadSidebar.module.css'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredUploadSidebarStyles) {
   if (pattern.test(uploadSidebarStyles)) continue;
   violations.push({
-    file: 'src/features/Upload/ui/UploadSidebar.module.css',
+    file: 'apps/web/src/features/Upload/ui/UploadSidebar.module.css',
     line: 1,
     rule: 'upload-sidebar-required-styles',
     message: `Upload sidebar is missing ${requirement}.`,
@@ -1417,13 +1417,13 @@ for (const [requirement, pattern] of requiredUploadSidebarStyles) {
 }
 
 const cartCheckoutFooterStyles = readFileSync(
-  path.join(root, 'src/features/Cart/ui/CartCheckoutFooter.module.css'),
+  path.join(root, 'apps/web/src/features/Cart/ui/CartCheckoutFooter.module.css'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredCartCheckoutFooterStyles) {
   if (pattern.test(cartCheckoutFooterStyles)) continue;
   violations.push({
-    file: 'src/features/Cart/ui/CartCheckoutFooter.module.css',
+    file: 'apps/web/src/features/Cart/ui/CartCheckoutFooter.module.css',
     line: 1,
     rule: 'cart-checkout-footer-required-styles',
     message: `Cart checkout footer is missing ${requirement}.`,
@@ -1459,13 +1459,13 @@ for (const [requirement, pattern] of requiredBrowseSectionBarStyles) {
 }
 
 const collectionsSectionBarStyles = readFileSync(
-  path.join(root, 'src/features/Collections/ui/CollectionsSectionBar.module.css'),
+  path.join(root, 'apps/web/src/features/Collections/ui/CollectionsSectionBar.module.css'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredCollectionsSectionBarStyles) {
   if (pattern.test(collectionsSectionBarStyles)) continue;
   violations.push({
-    file: 'src/features/Collections/ui/CollectionsSectionBar.module.css',
+    file: 'apps/web/src/features/Collections/ui/CollectionsSectionBar.module.css',
     line: 1,
     rule: 'collections-section-bar-required-styles',
     message: `Collections section navigation is missing ${requirement}.`,

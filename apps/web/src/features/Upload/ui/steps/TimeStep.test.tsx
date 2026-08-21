@@ -5,7 +5,7 @@ import { MantineProvider } from '@mantine/core';
 import { describe, expect, it, vi } from 'vitest';
 import { TimeStep } from './TimeStep';
 
-const timeStepCss = readFileSync('src/features/Upload/ui/steps/TimeStep.module.css', 'utf8');
+const timeStepCss = readFileSync('apps/web/src/features/Upload/ui/steps/TimeStep.module.css', 'utf8');
 
 function coarsePointerRangeThumbRule() {
   const match = timeStepCss.match(/@media \(pointer: coarse\) \{\s*\.rangeThumb \{([^}]*)\}/);
