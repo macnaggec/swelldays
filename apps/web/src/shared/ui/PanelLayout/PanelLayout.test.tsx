@@ -14,7 +14,7 @@ import {
   PanelLayoutStickyChromeReplacement,
 } from './PanelLayout';
 
-const panelLayoutCss = readFileSync('src/shared/ui/PanelLayout/PanelLayout.module.css', 'utf8');
+const panelLayoutCss = readFileSync('apps/web/src/shared/ui/PanelLayout/PanelLayout.module.css', 'utf8');
 
 function cssRule(selector: string) {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

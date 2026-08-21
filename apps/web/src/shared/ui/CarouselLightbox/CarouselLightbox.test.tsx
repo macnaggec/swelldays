@@ -21,7 +21,7 @@ const framedModalTheme = createTheme({
   },
 });
 
-const carouselLightboxCss = readFileSync('src/shared/ui/CarouselLightbox/CarouselLightbox.module.css', 'utf8');
+const carouselLightboxCss = readFileSync('apps/web/src/shared/ui/CarouselLightbox/CarouselLightbox.module.css', 'utf8');
 
 function cssRule(selector: string) {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

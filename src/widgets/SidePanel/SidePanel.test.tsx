@@ -16,8 +16,8 @@ vi.mock('shared/model/navigationRailGeometry', () => ({
   useNavigationRailGeometry: useNavigationRailGeometryMock,
 }));
 
-const sidePanelCss = readFileSync('src/shared/ui/PanelLayout/PanelLayout.module.css', 'utf8');
-const designTokensCss = readFileSync('src/shared/ui/design-system/tokens.css', 'utf8');
+const sidePanelCss = readFileSync('apps/web/src/shared/ui/PanelLayout/PanelLayout.module.css', 'utf8');
+const designTokensCss = readFileSync('apps/web/src/shared/ui/design-system/tokens.css', 'utf8');
 
 function setScrollMetrics(
   element: HTMLElement,

@@ -24,7 +24,7 @@
      changes the chrome or content geometry. */
   --wa-panel-chrome-paint-allowance: 12px;
   /* Comfortable gallery card edge; mirrors GALLERY_DENSITY.comfortable.targetTilePx
-     (src/shared/lib/galleryColumns.ts) so the search toolbar caps to one card. */
+     (apps/web/src/shared/lib/galleryColumns.ts) so the search toolbar caps to one card. */
   --wa-gallery-tile-comfortable: 340px;
 
   /* Responsive controls */

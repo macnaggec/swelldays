@@ -8,8 +8,17 @@ const alias = {
   widgets: resolve(__dirname, './src/widgets'),
   features: resolve(__dirname, './src/features'),
   entities: resolve(__dirname, './src/entities'),
-  shared: resolve(__dirname, './src/shared'),
+  shared: resolve(__dirname, './apps/web/src/shared'),
   server: resolve(__dirname, './apps/api/src'),
+}
+
+const clientAlias = {
+  ...alias,
+  test: resolve(__dirname, './apps/web/src/test'),
+}
+
+const serverAlias = {
+  ...alias,
   test: resolve(__dirname, './src/test'),
 }
 
@@ -26,11 +35,11 @@ export default defineConfig({
           name: 'client',
           environment: 'jsdom',
           globals: true,
-          include: ['src/**/*.test.{ts,tsx}'],
+          include: ['src/**/*.test.{ts,tsx}', 'apps/web/src/**/*.test.{ts,tsx}'],
           exclude: ['apps/api/src/**'],
           setupFiles: ['./vitest.setup.client.ts'],
         },
-        resolve: { alias },
+        resolve: { alias: clientAlias },
       },
       // -----------------------------------------------------------------------
       // Server — services, repositories, adapters, route handlers.
@@ -45,7 +54,7 @@ export default defineConfig({
           exclude: ['apps/api/src/**/*.integration.test.ts'],
           setupFiles: ['./vitest.setup.server.ts'],
         },
-        resolve: { alias },
+        resolve: { alias: serverAlias },
       },
       // -----------------------------------------------------------------------
       // Integration — server code tested against a real Postgres DB.
@@ -62,7 +71,7 @@ export default defineConfig({
           globalSetup: ['./vitest.globalSetup.integration.ts'],
           fileParallelism: false,
         },
-        resolve: { alias },
+        resolve: { alias: serverAlias },
       },
     ],
   },

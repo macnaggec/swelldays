@@ -3,7 +3,10 @@ import path from 'node:path';
 import ts from 'typescript';
 
 const root = process.cwd();
-const srcRoot = path.join(root, 'src');
+const sourceRoots = [
+  path.join(root, 'src'),
+  path.join(root, 'apps/web/src'),
+];
 
 const toPosix = (file) => file.split(path.sep).join('/');
 
@@ -19,7 +22,7 @@ const listFiles = (dir) => {
 
 const isCodeOrCss = (file) => /\.(css|tsx?)$/.test(file);
 const isDesignSystemOwner = (file) => (
-  file.startsWith('src/shared/ui/design-system/')
+  file.startsWith('apps/web/src/shared/ui/design-system/')
   || file === 'src/app/lib/theme.ts'
 );
 
@@ -27,10 +30,10 @@ const isOverlayConsumer = (file) => (
   file.startsWith('src/features/Auth/')
   || file.startsWith('src/features/SpotSearch/')
   || file.startsWith('src/features/Upload/ui/popovers/')
-  || file.startsWith('src/shared/ui/BaseLightbox/')
-  || file.startsWith('src/shared/ui/CarouselLightbox/')
+  || file.startsWith('apps/web/src/shared/ui/BaseLightbox/')
+  || file.startsWith('apps/web/src/shared/ui/CarouselLightbox/')
   || file === 'src/features/Upload/ui/UploadGallery/StepModeModal.tsx'
-  || file === 'src/shared/ui/DatePickerPopover/DatePickerPopover.tsx'
+  || file === 'apps/web/src/shared/ui/DatePickerPopover/DatePickerPopover.tsx'
 );
 
 const isMigratedMaterialSurface = (file) => (
@@ -39,16 +42,16 @@ const isMigratedMaterialSurface = (file) => (
   || file.startsWith('src/features/Purchases/')
   || file.startsWith('src/features/Upload/ui/UploadGallery/')
   || file === 'src/features/Upload/ui/steps/helpers.tsx'
-  || file.startsWith('src/shared/ui/BaseGallery/')
-  || file.startsWith('src/shared/ui/BaseLightbox/')
-  || file.startsWith('src/shared/ui/CarouselLightbox/')
-  || file.startsWith('src/shared/ui/PanelGalleryLayout')
+  || file.startsWith('apps/web/src/shared/ui/BaseGallery/')
+  || file.startsWith('apps/web/src/shared/ui/BaseLightbox/')
+  || file.startsWith('apps/web/src/shared/ui/CarouselLightbox/')
+  || file.startsWith('apps/web/src/shared/ui/PanelGalleryLayout')
   || file.startsWith('src/entities/SurfSession/ui/')
   || file.startsWith('src/widgets/SidePanel/SessionFeed')
   || file.startsWith('src/widgets/SidePanel/SidePanel')
   || file.startsWith('src/widgets/AppNavigation/AppNavigation')
   || file.startsWith('src/widgets/BrowseSectionBar/')
-  || file.startsWith('src/shared/ui/SectionSwitcher/')
+  || file.startsWith('apps/web/src/shared/ui/SectionSwitcher/')
   || file === 'src/widgets/AppNavigation/CartControl.tsx'
   || file.startsWith('src/views/GlobeScene/')
   || file === 'src/widgets/GlobeMap/LocationPicker.module.css'
@@ -115,26 +118,26 @@ const declaresTanStackRoute = (contents, file) => {
 };
 
 const panelInsetConsumers = new Set([
-  'src/shared/ui/PanelGalleryLayout.module.css',
-  'src/shared/ui/PanelRouteLayout.module.css',
-  'src/shared/ui/PanelScrollChrome.module.css',
-  'src/shared/ui/VirtualGallery/VirtualGallery.module.css',
+  'apps/web/src/shared/ui/PanelGalleryLayout.module.css',
+  'apps/web/src/shared/ui/PanelRouteLayout.module.css',
+  'apps/web/src/shared/ui/PanelScrollChrome.module.css',
+  'apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css',
   'src/widgets/SidePanel/SessionFeed.module.css',
 ]);
 
 const panelGridGapConsumers = new Set([
-  'src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.module.css',
-  'src/shared/ui/VirtualGallery/VirtualGallery.module.css',
+  'apps/web/src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.module.css',
+  'apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css',
 ]);
 
 const panelGridSpacingPropConsumers = new Set([
   'src/app/routes/_panel.me.collections.index.tsx',
   'src/features/PublicGallery/PublicGallery.tsx',
-  'src/shared/ui/PanelContentSkeleton/PanelContentSkeleton.tsx',
+  'apps/web/src/shared/ui/PanelContentSkeleton/PanelContentSkeleton.tsx',
 ]);
 
 const ordinaryPanelCollectionCssConsumers = new Set([
-  'src/shared/ui/BaseGallery/BaseGallery.module.css',
+  'apps/web/src/shared/ui/BaseGallery/BaseGallery.module.css',
   'src/widgets/SidePanel/SessionDetail.module.css',
   'src/widgets/SidePanel/SessionFeed.module.css',
 ]);
@@ -152,7 +155,7 @@ const sessionFeedLayoutConsumers = new Set([
 
 const panelLoadingCollectionConsumers = new Set([
   'src/app/routes/_panel.me.collections.index.tsx',
-  'src/shared/ui/PanelContentSkeleton/PanelContentSkeleton.tsx',
+  'apps/web/src/shared/ui/PanelContentSkeleton/PanelContentSkeleton.tsx',
 ]);
 
 const requiredPanelSpacingTokensByFile = new Map([
@@ -205,7 +208,7 @@ const requiredFloatingChromeOffsetStyles = [
 // mount-order default: the content surface (lightbox) and the interrupt above
 // it (auth) each declare their tier so an interrupt always outranks content.
 const requiredModalRoleTokenByFile = new Map([
-  ['src/shared/ui/CarouselLightbox/CarouselLightbox.tsx', 'var(--wa-z-modal-content)'],
+  ['apps/web/src/shared/ui/CarouselLightbox/CarouselLightbox.tsx', 'var(--wa-z-modal-content)'],
   ['src/features/Auth/AuthModalProvider.tsx', 'var(--wa-z-modal-interrupt)'],
 ]);
 
@@ -237,7 +240,7 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-control-indicator',
     '--wa-radius-control-md',
   ]],
-  ['src/shared/ui/DrawerShell/DrawerShell.module.css', [
+  ['apps/web/src/shared/ui/DrawerShell/DrawerShell.module.css', [
     '--wa-safe-area-top',
     '--wa-safe-area-right',
     '--wa-safe-area-bottom',
@@ -248,15 +251,15 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-sheet-grabber-height',
     '--wa-grabber-gap',
   ]],
-  ['src/shared/ui/BaseGallery/BaseGallery.module.css', [
+  ['apps/web/src/shared/ui/BaseGallery/BaseGallery.module.css', [
     '--wa-motion-duration-chrome',
     '--wa-motion-easing-standard',
     '--wa-z-panel-chrome',
   ]],
-  ['src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.module.css', [
+  ['apps/web/src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.module.css', [
     '--wa-panel-grid-gap',
   ]],
-  ['src/shared/ui/VirtualGallery/VirtualGallery.module.css', [
+  ['apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css', [
     '--wa-panel-grid-gap',
     '--wa-panel-section-chrome-height',
     '--wa-panel-stack-gap',
@@ -284,7 +287,7 @@ const requiredResponsiveTokensByFile = new Map([
   // styling was extracted into the shared SectionSwitcher so a second
   // consumer (CollectionsSectionBar) would not duplicate it — the rule
   // travels with the declarations, not the original filename.
-  ['src/shared/ui/SectionSwitcher/SectionSwitcher.module.css', [
+  ['apps/web/src/shared/ui/SectionSwitcher/SectionSwitcher.module.css', [
     '--wa-control-size-navigation',
     '--wa-control-width-section-navigation',
     '--wa-motion-duration-control',
@@ -300,7 +303,7 @@ const requiredResponsiveTokensByFile = new Map([
   // paths onto one seam: the layer token was required of
   // PanelScrollChrome.module.css before that file was deleted, and the rule
   // must travel with the declarations, not die with the filename.
-  ['src/shared/ui/PanelLayout/PanelLayout.module.css', [
+  ['apps/web/src/shared/ui/PanelLayout/PanelLayout.module.css', [
     '--wa-sheet-grabber-height',
     '--wa-grabber-gap',
     '--wa-browse-sheet-leading-gap',
@@ -308,7 +311,7 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-panel-chrome-paint-allowance',
     '--wa-z-panel-chrome',
   ]],
-  ['src/shared/ui/PanelRouteLayout.module.css', [
+  ['apps/web/src/shared/ui/PanelRouteLayout.module.css', [
     '--wa-control-height-default',
     '--wa-safe-area-top',
     '--wa-shell-edge-clearance',
@@ -731,37 +734,37 @@ const forbiddenPanelLayoutStyles = [
 
 const requiredMobileGalleryLargeTextStyles = [
   [
-    'src/shared/ui/VirtualGallery/VirtualGallery.module.css',
+    'apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css',
     'the first compact date divider owning the 12px gap below filter pills',
     /\.container\[data-dense\]\s+\[data-index='0'\]\s+\.divider\s*\{[^}]*align-items:\s*flex-start;[^}]*box-sizing:\s*border-box;[^}]*padding-block-start:\s*var\(--wa-panel-stack-gap\)/s,
   ],
   [
-    'src/shared/ui/VirtualGallery/VirtualGallery.module.css',
+    'apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css',
     'semantic minimum height for gallery date dividers',
     /\.divider\s*\{[^}]*min-height:\s*var\(--wa-panel-section-chrome-height\)/s,
   ],
   [
-    'src/shared/ui/VirtualGallery/VirtualGallery.module.css',
+    'apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css',
     'overflow wrapping for gallery date dividers',
     /\.dividerText\s*\{[^}]*overflow-wrap:\s*anywhere/s,
   ],
   [
-    'src/shared/ui/BaseGallery/BaseCard.module.css',
+    'apps/web/src/shared/ui/BaseGallery/BaseCard.module.css',
     'a capped width so the card overlay badge row wraps within the card instead of overflowing it',
     /\.overlays\s*\{[^}]*max-width:/s,
   ],
   [
-    'src/shared/ui/CarouselLightbox/CarouselLightbox.module.css',
+    'apps/web/src/shared/ui/CarouselLightbox/CarouselLightbox.module.css',
     'a caption that stretches to the media frame width instead of clipping at its content width',
     /\.mediaCaption\s*\{[^}]*max-width:\s*100%/s,
   ],
   [
-    'src/shared/ui/CarouselLightbox/CarouselLightbox.module.css',
+    'apps/web/src/shared/ui/CarouselLightbox/CarouselLightbox.module.css',
     'a media-unavailable placeholder that grows instead of clipping its label',
     /\.mediaUnavailable\s*\{[^}]*min-height:/s,
   ],
   [
-    'src/shared/ui/CarouselLightbox/CarouselLightbox.module.css',
+    'apps/web/src/shared/ui/CarouselLightbox/CarouselLightbox.module.css',
     'overflow wrapping for the media-unavailable label',
     /\.mediaUnavailableLabel\s*\{[^}]*overflow-wrap:\s*anywhere/s,
   ],
@@ -770,7 +773,7 @@ const requiredMobileGalleryLargeTextStyles = [
 const mobileGalleryLargeTextCssConsumers = new Set([
   'src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css',
   'src/features/PublicGallery/ui/GalleryDateMonthList.module.css',
-  'src/shared/ui/VirtualGallery/VirtualGallery.module.css',
+  'apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css',
 ]);
 
 const requiredGalleryDateMonthListConsumers = [
@@ -814,7 +817,7 @@ const rules = [
     message: 'Read the deployed API origin through shared/lib/apiOrigin so auth and data requests cannot drift apart.',
     pattern: /\bVITE_API_URL\b/,
     include: isRuntimeTypeScript,
-    exclude: file => file === 'src/shared/lib/apiOrigin.ts',
+    exclude: file => file === 'apps/web/src/shared/lib/apiOrigin.ts',
   },
   {
     id: 'no-route-panel-css-modules',
@@ -834,8 +837,8 @@ const rules = [
     pattern: /\b(?:innerWidth|innerHeight|matchMedia)\b/,
     include: isRuntimeTypeScript,
     exclude: file => (
-      file === 'src/shared/model/viewportCapabilities.ts'
-      || file === 'src/shared/model/viewportMetrics.ts'
+      file === 'apps/web/src/shared/model/viewportCapabilities.ts'
+      || file === 'apps/web/src/shared/model/viewportMetrics.ts'
     ),
   },
   {
@@ -843,21 +846,21 @@ const rules = [
     message: 'Read visual-viewport geometry (the keyboard-aware viewport) through shared/model/viewportMetrics.',
     pattern: /\bvisualViewport\b/,
     include: isRuntimeTypeScript,
-    exclude: file => file === 'src/shared/model/viewportMetrics.ts',
+    exclude: file => file === 'apps/web/src/shared/model/viewportMetrics.ts',
   },
   {
     id: 'viewport-metrics-owns-safe-area-insets',
     message: 'Read safe-area insets as px through shared/model/viewportMetrics (safeAreaTopPx/safeAreaBottomPx), not a raw env() probe.',
     pattern: /safe-area-inset-(?:top|right|bottom|left)/,
     include: isRuntimeTypeScript,
-    exclude: file => file === 'src/shared/model/viewportMetrics.ts',
+    exclude: file => file === 'apps/web/src/shared/model/viewportMetrics.ts',
   },
   {
     id: 'app-shell-layout-policy-has-one-owner',
     message: 'Derive shell presentation through shared/model/appShellLayoutPolicy.',
     pattern: /\b(?:deriveAppChromePolicy|derivePanelTargetPolicy|deriveGlobeInteractionPolicy|deriveDesktopFoundationAppShellLayoutPolicy)\b/,
     include: isRuntimeTypeScript,
-    exclude: file => file === 'src/shared/model/appShellLayoutPolicy.ts',
+    exclude: file => file === 'apps/web/src/shared/model/appShellLayoutPolicy.ts',
   },
   {
     id: 'app-shell-policy-is-reached-through-the-presentation-seam',
@@ -865,8 +868,8 @@ const rules = [
     pattern: /\bderiveAppShellLayoutPolicy\b/,
     include: isRuntimeTypeScript,
     exclude: file => (
-      file === 'src/shared/model/appShellPresentation.tsx'
-      || file === 'src/shared/model/appShellLayoutPolicy.ts'
+      file === 'apps/web/src/shared/model/appShellPresentation.tsx'
+      || file === 'apps/web/src/shared/model/appShellLayoutPolicy.ts'
     ),
   },
   {
@@ -874,7 +877,7 @@ const rules = [
     message: 'The activation matrix is temporary scaffolding owned by the policy provider; consumers read the semantic policy through useAppShellLayoutPolicy.',
     pattern: /\b(?:ACTIVE_CELLS|ActivationCell|isCellActive|resolveShellLayoutPolicy)\b/,
     include: isRuntimeTypeScript,
-    exclude: file => file === 'src/shared/model/appShellPresentation.tsx',
+    exclude: file => file === 'apps/web/src/shared/model/appShellPresentation.tsx',
   },
   {
     id: 'app-shell-policy-provider-is-mounted-at-the-composition-root',
@@ -882,7 +885,7 @@ const rules = [
     pattern: /\bAppShellLayoutPolicyProvider\b/,
     include: isRuntimeTypeScript,
     exclude: file => (
-      file === 'src/shared/model/appShellPresentation.tsx'
+      file === 'apps/web/src/shared/model/appShellPresentation.tsx'
       || file === 'src/app/routes/__root.tsx'
     ),
   },
@@ -899,8 +902,8 @@ const rules = [
     pattern: /\buseBrowseSurface\b/,
     include: isRuntimeTypeScript,
     exclude: file => (
-      file === 'src/shared/ui/DrawerShell/browseSurface.tsx'
-      || file === 'src/shared/ui/DrawerShell/index.ts'
+      file === 'apps/web/src/shared/ui/DrawerShell/browseSurface.tsx'
+      || file === 'apps/web/src/shared/ui/DrawerShell/index.ts'
       || file === 'src/app/routes/_panel.tsx'
       || file === 'src/widgets/AppNavigation/AppNavigation.tsx'
       || file === 'src/views/GlobeScene/GlobeScene.tsx'
@@ -943,8 +946,8 @@ const rules = [
     pattern: /\bpublishDrawer(?:Target)?Geometry\b/,
     include: isRuntimeTypeScript,
     exclude: file => (
-      file === 'src/shared/ui/DrawerShell/DrawerShell.tsx'
-      || file === 'src/shared/ui/DrawerShell/geometry.ts'
+      file === 'apps/web/src/shared/ui/DrawerShell/DrawerShell.tsx'
+      || file === 'apps/web/src/shared/ui/DrawerShell/geometry.ts'
     ),
   },
   {
@@ -981,7 +984,7 @@ const rules = [
     pattern: /\bPANEL_WIDTH_VW\b|\b25vw\b|calc\([^)]*\bvw\b/,
     include: file => (
       file === 'src/app/routes/_panel.tsx'
-      || file.startsWith('src/shared/ui/PanelRouteLayout')
+      || file.startsWith('apps/web/src/shared/ui/PanelRouteLayout')
     ),
   },
   {
@@ -1000,19 +1003,19 @@ const rules = [
     id: 'drawer-shell-owns-sheet-snap-geometry',
     message: 'Bottom-sheet snap positions and heights belong to shared/ui/DrawerShell; consume the shell instead of declaring snap geometry.',
     pattern: /\bSHEET_(?:SNAP_FRACTIONS|HALF_HEIGHT_FRACTION|FULL_TOP_INSET_PX|PEEK_HEIGHT_PX|PEEK_WITH_HEADER_HEIGHT_PX)\b|\bresolveSheetSnapHeights\b|\bnearestSheetSnap\b|\bresolveBrowseSheetNavigationOpacity\b|\[data-drawer-snap/,
-    include: file => /\.(?:css|tsx?)$/.test(file) && !file.startsWith('src/shared/ui/DrawerShell/'),
+    include: file => /\.(?:css|tsx?)$/.test(file) && !file.startsWith('apps/web/src/shared/ui/DrawerShell/'),
   },
   {
     id: 'panel-layout-owns-standard-scrolling',
     message: 'Standard panel scrolling belongs to shared/ui/PanelLayout, not DrawerShell or browse/session content.',
     pattern: /data-panel-scroll-owner|overflowY|overflowX|overflow-y:\s*auto|overflow-x:\s*(?:auto|hidden|scroll)|overscroll-behavior/,
     include: file => (
-      file === 'src/shared/ui/DrawerShell/DrawerShell.tsx'
-      || file === 'src/shared/ui/DrawerShell/DrawerShell.module.css'
+      file === 'apps/web/src/shared/ui/DrawerShell/DrawerShell.tsx'
+      || file === 'apps/web/src/shared/ui/DrawerShell/DrawerShell.module.css'
       || file === 'src/widgets/SidePanel/SessionFeed.tsx'
       || file === 'src/widgets/SidePanel/SessionFeed.module.css'
-      || file === 'src/shared/ui/PanelGalleryLayout.tsx'
-      || file === 'src/shared/ui/PanelGalleryLayout.module.css'
+      || file === 'apps/web/src/shared/ui/PanelGalleryLayout.tsx'
+      || file === 'apps/web/src/shared/ui/PanelGalleryLayout.module.css'
     ),
   },
   {
@@ -1021,8 +1024,8 @@ const rules = [
     pattern: /<PanelScrollChrome[\s/>]|data-panel-scroll-chrome/,
     include: file => (
       (isRuntimeTypeScript(file) || file.endsWith('.module.css'))
-      && file !== 'src/shared/ui/PanelLayout/PanelLayout.tsx'
-      && file !== 'src/shared/ui/PanelLayout/PanelLayout.module.css'
+      && file !== 'apps/web/src/shared/ui/PanelLayout/PanelLayout.tsx'
+      && file !== 'apps/web/src/shared/ui/PanelLayout/PanelLayout.module.css'
     ),
   },
   {
@@ -1030,8 +1033,8 @@ const rules = [
     message: 'Project panel actions into PanelLayout footer slots instead of owning local sticky/absolute placement or clearance.',
     pattern: /\bgalleryInsetWithFooter\b|\bdata-panel-gallery-footer\b|padding-bottom:\s*92px|position:\s*(?:absolute|sticky)/,
     include: file => (
-      file === 'src/shared/ui/PanelGalleryLayout.tsx'
-      || file === 'src/shared/ui/PanelGalleryLayout.module.css'
+      file === 'apps/web/src/shared/ui/PanelGalleryLayout.tsx'
+      || file === 'apps/web/src/shared/ui/PanelGalleryLayout.module.css'
       || file === 'src/features/Upload/ui/UploadSidebar.tsx'
       || file === 'src/features/Upload/ui/UploadSidebar.module.css'
     ),
@@ -1091,7 +1094,7 @@ const rules = [
     message: 'Only shared/ui/PanelCollectionGrid/PanelCollectionGrid.tsx may set gridTemplateColumns; every panel collection grid derives its column count from that component.',
     pattern: /gridTemplateColumns/,
     include: file => file.endsWith('.tsx'),
-    exclude: file => file === 'src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.tsx',
+    exclude: file => file === 'apps/web/src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.tsx',
   },
   {
     id: 'panel-local-responsiveness-uses-container-queries',
@@ -1129,9 +1132,9 @@ const rules = [
     message: 'Panel sticky chrome must use --wa-z-panel-chrome.',
     pattern: /z-index:\s*10/,
     include: file => (
-      file === 'src/shared/ui/BaseGallery/BaseGallery.module.css'
-      || file === 'src/shared/ui/PanelScrollChrome.module.css'
-      || file === 'src/shared/ui/VirtualGallery/VirtualGallery.module.css'
+      file === 'apps/web/src/shared/ui/BaseGallery/BaseGallery.module.css'
+      || file === 'apps/web/src/shared/ui/PanelScrollChrome.module.css'
+      || file === 'apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css'
     ),
   },
   {
@@ -1139,9 +1142,9 @@ const rules = [
     message: 'Panel sticky chrome must use the semantic chrome motion tokens.',
     pattern: /transition:\s*transform\s+220ms\s+ease/,
     include: file => (
-      file === 'src/shared/ui/BaseGallery/BaseGallery.module.css'
-      || file === 'src/shared/ui/PanelScrollChrome.module.css'
-      || file === 'src/shared/ui/VirtualGallery/VirtualGallery.module.css'
+      file === 'apps/web/src/shared/ui/BaseGallery/BaseGallery.module.css'
+      || file === 'apps/web/src/shared/ui/PanelScrollChrome.module.css'
+      || file === 'apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css'
     ),
   },
   {
@@ -1152,7 +1155,7 @@ const rules = [
       file === 'src/widgets/AppNavigation/AppNavigation.module.css'
       || file === 'src/widgets/BrowseSectionBar/BrowseSectionBar.module.css'
       || file === 'src/widgets/SidePanel/SidePanel.module.css'
-      || file === 'src/shared/ui/PanelRouteLayout.module.css'
+      || file === 'apps/web/src/shared/ui/PanelRouteLayout.module.css'
       || file === 'src/features/Upload/ui/UploadSidebar.module.css'
       || file === 'src/widgets/SidePanel/FilterPills.module.css'
       || file === 'src/features/Collections/ui/CollectionsToolbar.module.css'
@@ -1182,7 +1185,7 @@ const rules = [
     id: 'no-local-panel-chrome-height',
     message: 'Panel chrome bands must use semantic chrome-height tokens.',
     pattern: /height:\s*32px/,
-    include: file => file === 'src/shared/ui/VirtualGallery/VirtualGallery.module.css',
+    include: file => file === 'apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css',
   },
   {
     id: 'no-local-panel-header-height',
@@ -1214,10 +1217,10 @@ const rules = [
   },
   {
     id: 'no-duplicated-flash-border',
-    message: 'Flash-border motion belongs in src/shared/ui/design-system/motion.module.css.',
+    message: 'Flash-border motion belongs in apps/web/src/shared/ui/design-system/motion.module.css.',
     pattern: /@keyframes\s+flashBorder|\.flashBorder\b/,
     include: file => file.endsWith('.css'),
-    exclude: file => file === 'src/shared/ui/design-system/motion.module.css',
+    exclude: file => file === 'apps/web/src/shared/ui/design-system/motion.module.css',
   },
   {
     id: 'no-viewport-width-breakpoints',
@@ -1238,7 +1241,7 @@ const rules = [
     message: 'Read safe-area insets through the --wa-safe-area-* custom properties in design-system/tokens.css instead of a raw env() call.',
     pattern: /env\(\s*safe-area-inset-/,
     include: file => file.endsWith('.css'),
-    exclude: file => file === 'src/shared/ui/design-system/tokens.css',
+    exclude: file => file === 'apps/web/src/shared/ui/design-system/tokens.css',
   },
   {
     id: 'no-raw-mantine-radius-literal',
@@ -1254,7 +1257,7 @@ const rules = [
   },
 ];
 
-const files = listFiles(srcRoot).filter(isCodeOrCss);
+const files = sourceRoots.flatMap(listFiles).filter(isCodeOrCss);
 const violations = [];
 
 const webAppManifest = JSON.parse(
@@ -1271,13 +1274,13 @@ for (const field of ['id', 'start_url', 'scope']) {
 }
 
 const designSystemTokens = readFileSync(
-  path.join(root, 'src/shared/ui/design-system/tokens.css'),
+  path.join(root, 'apps/web/src/shared/ui/design-system/tokens.css'),
   'utf8',
 );
 for (const token of requiredResponsiveLayoutTokens) {
   if (designSystemTokens.includes(`${token}:`)) continue;
   violations.push({
-    file: 'src/shared/ui/design-system/tokens.css',
+    file: 'apps/web/src/shared/ui/design-system/tokens.css',
     line: 1,
     rule: 'required-responsive-layout-token',
     message: `Missing responsive layout token ${token}.`,
@@ -1287,7 +1290,7 @@ for (const token of requiredResponsiveLayoutTokens) {
 for (const [requirement, pattern] of requiredFloatingChromeOffsetStyles) {
   if (pattern.test(designSystemTokens)) continue;
   violations.push({
-    file: 'src/shared/ui/design-system/tokens.css',
+    file: 'apps/web/src/shared/ui/design-system/tokens.css',
     line: 1,
     rule: 'floating-chrome-offset-follows-display-mode',
     message: `Floating chrome is missing ${requirement}.`,
@@ -1306,13 +1309,13 @@ for (const [file, requiredToken] of requiredModalRoleTokenByFile) {
 }
 
 const drawerShellStyles = readFileSync(
-  path.join(root, 'src/shared/ui/DrawerShell/DrawerShell.module.css'),
+  path.join(root, 'apps/web/src/shared/ui/DrawerShell/DrawerShell.module.css'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredDrawerShellStyles) {
   if (pattern.test(drawerShellStyles)) continue;
   violations.push({
-    file: 'src/shared/ui/DrawerShell/DrawerShell.module.css',
+    file: 'apps/web/src/shared/ui/DrawerShell/DrawerShell.module.css',
     line: 1,
     rule: 'drawer-shell-required-styles',
     message: `DrawerShell is missing ${requirement}.`,
@@ -1320,13 +1323,13 @@ for (const [requirement, pattern] of requiredDrawerShellStyles) {
 }
 
 const drawerShellRuntime = readFileSync(
-  path.join(root, 'src/shared/ui/DrawerShell/DrawerShell.tsx'),
+  path.join(root, 'apps/web/src/shared/ui/DrawerShell/DrawerShell.tsx'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredDrawerShellRuntime) {
   if (pattern.test(drawerShellRuntime)) continue;
   violations.push({
-    file: 'src/shared/ui/DrawerShell/DrawerShell.tsx',
+    file: 'apps/web/src/shared/ui/DrawerShell/DrawerShell.tsx',
     line: 1,
     rule: 'drawer-shell-required-runtime',
     message: `DrawerShell is missing ${requirement}.`,
@@ -1470,13 +1473,13 @@ for (const [requirement, pattern] of requiredCollectionsSectionBarStyles) {
 }
 
 const compactBrowseToolbarStyles = readFileSync(
-  path.join(root, 'src/shared/ui/PanelRouteLayout.module.css'),
+  path.join(root, 'apps/web/src/shared/ui/PanelRouteLayout.module.css'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredCompactBrowseToolbarStyles) {
   if (pattern.test(compactBrowseToolbarStyles)) continue;
   violations.push({
-    file: 'src/shared/ui/PanelRouteLayout.module.css',
+    file: 'apps/web/src/shared/ui/PanelRouteLayout.module.css',
     line: 1,
     rule: 'compact-browse-toolbar-required-styles',
     message: `Compact browse toolbar is missing ${requirement}.`,
@@ -1512,13 +1515,13 @@ for (const [requirement, pattern] of requiredFilterPillStyles) {
 }
 
 const panelLayoutStyles = readFileSync(
-  path.join(root, 'src/shared/ui/PanelLayout/PanelLayout.module.css'),
+  path.join(root, 'apps/web/src/shared/ui/PanelLayout/PanelLayout.module.css'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredPanelLayoutStyles) {
   if (pattern.test(panelLayoutStyles)) continue;
   violations.push({
-    file: 'src/shared/ui/PanelLayout/PanelLayout.module.css',
+    file: 'apps/web/src/shared/ui/PanelLayout/PanelLayout.module.css',
     line: 1,
     rule: 'panel-layout-required-styles',
     message: `PanelLayout is missing ${requirement}.`,
@@ -1528,7 +1531,7 @@ for (const [requirement, pattern] of requiredPanelLayoutStyles) {
 for (const [requirement, pattern] of forbiddenPanelLayoutStyles) {
   if (!pattern.test(panelLayoutStyles)) continue;
   violations.push({
-    file: 'src/shared/ui/PanelLayout/PanelLayout.module.css',
+    file: 'apps/web/src/shared/ui/PanelLayout/PanelLayout.module.css',
     line: 1,
     rule: 'panel-layout-forbidden-styles',
     message: `PanelLayout must not use ${requirement}.`,
@@ -1558,13 +1561,13 @@ for (const file of requiredGalleryDateMonthListConsumers) {
 }
 
 const panelCollectionGridStyles = readFileSync(
-  path.join(root, 'src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.module.css'),
+  path.join(root, 'apps/web/src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.module.css'),
   'utf8',
 );
 for (const [requirement, pattern] of forbiddenPanelCollectionGridStyles) {
   if (!pattern.test(panelCollectionGridStyles)) continue;
   violations.push({
-    file: 'src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.module.css',
+    file: 'apps/web/src/shared/ui/PanelCollectionGrid/PanelCollectionGrid.module.css',
     line: 1,
     rule: 'panel-collection-grid-forbidden-styles',
     message: `PanelCollectionGrid must not re-column via ${requirement}; the component owns the count.`,

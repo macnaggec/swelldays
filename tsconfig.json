@@ -32,6 +32,16 @@
       "server/*": [
         "./apps/api/src/*"
       ],
+      "shared/*": [
+        "./apps/web/src/shared/*"
+      ],
+      "test/*": [
+        "./apps/web/src/test/*",
+        "./src/test/*"
+      ],
+      "types/*": [
+        "./apps/web/src/types/*"
+      ],
       "*": [
         "./src/*"
       ]
@@ -39,6 +49,7 @@
   },
   "include": [
     "src",
+    "apps/web/src",
     "packages/contracts/src",
     "vitest.d.ts",
     "tests",
