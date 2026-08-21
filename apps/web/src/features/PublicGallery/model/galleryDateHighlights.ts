@@ -1,4 +1,4 @@
-import { getCapturedMediaCalendarDayKey } from '@wave-atlas/contracts';
+import { getCapturedMediaCalendarDayKey } from '@swelldays/contracts';
 
 /**
  * Width below which the rail hides. Below this the gallery is a dense one-to-few-

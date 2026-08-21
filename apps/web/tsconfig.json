@@ -7,8 +7,8 @@
     "jsx": "react-jsx",
     "types": ["vite/client"],
     "paths": {
-      "@wave-atlas/api/router": ["../api/src/routerType.ts"],
-      "@wave-atlas/contracts": ["../../packages/contracts/src/index.ts"],
+      "@swelldays/api/router": ["../api/src/routerType.ts"],
+      "@swelldays/contracts": ["../../packages/contracts/src/index.ts"],
       "server/*": ["../api/src/*"],
       "config/*": ["./src/config/*"],
       "app/*": ["./src/app/*"],

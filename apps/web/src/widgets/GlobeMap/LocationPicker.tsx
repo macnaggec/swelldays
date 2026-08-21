@@ -6,7 +6,7 @@ import { Loader } from '@mantine/core';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { webConfig } from 'config/env';
 
-import { LngLat } from '@wave-atlas/contracts';
+import { LngLat } from '@swelldays/contracts';
 import globeClasses from './GlobeMap.module.css';
 import classes from './LocationPicker.module.css';
 

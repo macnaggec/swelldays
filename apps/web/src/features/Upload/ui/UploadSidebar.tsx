@@ -21,7 +21,7 @@ import { TimeStep } from './steps/TimeStep';
 import { combineDateAndTime, minutesToTime } from './steps/helpers';
 import { PanelLayoutFooter } from 'shared/ui/PanelLayout';
 import styles from './UploadSidebar.module.css';
-import type { UploadWorkspaceState } from '@wave-atlas/contracts';
+import type { UploadWorkspaceState } from '@swelldays/contracts';
 
 interface UploadSidebarProps {
   header?: ReactNode;

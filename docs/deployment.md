@@ -1,6 +1,6 @@
 # Split web/API release runbook
 
-Wave Atlas remains one npm-workspace monorepo with one lockfile, but it produces three release artifacts:
+Swelldays remains one npm-workspace monorepo with one lockfile, but it produces three release artifacts:
 
 - `apps/web/Dockerfile` builds static browser assets and serves them with unprivileged Nginx on port `8080`.
 - `apps/api/Dockerfile --target runner` builds the Node API on port `3001`.
@@ -79,19 +79,19 @@ docker build \
   --build-arg VITE_GOOGLE_API_KEY="$VITE_GOOGLE_API_KEY" \
   --build-arg VITE_CLOUDINARY_CLOUD_NAME="$VITE_CLOUDINARY_CLOUD_NAME" \
   --build-arg VITE_CLOUDINARY_API_KEY="$VITE_CLOUDINARY_API_KEY" \
-  --tag "wave-atlas-web:$RELEASE_TAG" \
+  --tag "swelldays-web:$RELEASE_TAG" \
   .
 
 docker build \
   --file apps/api/Dockerfile \
   --target runner \
-  --tag "wave-atlas-api:$RELEASE_TAG" \
+  --tag "swelldays-api:$RELEASE_TAG" \
   .
 
 docker build \
   --file apps/api/Dockerfile \
   --target migrator \
-  --tag "wave-atlas-migrator:$RELEASE_TAG" \
+  --tag "swelldays-migrator:$RELEASE_TAG" \
   .
 ```
 
@@ -141,10 +141,10 @@ Before touching a non-empty database, take and verify a backup. For the first em
 
    ```sh
    docker run --detach \
-     --name wave-atlas-web \
+     --name swelldays-web \
      --restart unless-stopped \
      --publish 127.0.0.1:8080:8080 \
-     "wave-atlas-web:$RELEASE_TAG"
+     "swelldays-web:$RELEASE_TAG"
    curl --fail --show-error --silent https://app.example.com/healthz
    ```
 
@@ -176,7 +176,7 @@ Provider login, payment, and real browser flows require a human with production 
 
 ```sh
 docker compose --env-file deploy/.env.production --file docker-compose.prod.yml logs --since=15m api migrate db
-docker logs --since=15m wave-atlas-web
+docker logs --since=15m swelldays-web
 ```
 
 Confirm that:
@@ -194,7 +194,7 @@ Do not log environment values while diagnosing configuration.
 The PostgreSQL volume is persistent but is not a backup. Before every migration or database-affecting release, create an encrypted, access-controlled dump and verify that it can be listed and restored into a separate database.
 
 ```sh
-BACKUP_FILE="wave-atlas-$(date -u +%Y%m%dT%H%M%SZ).dump"
+BACKUP_FILE="swelldays-$(date -u +%Y%m%dT%H%M%SZ).dump"
 docker compose --env-file deploy/.env.production --file docker-compose.prod.yml \
   exec --no-TTY db pg_dump --username surfuser --dbname surfdb --format custom \
   > "$BACKUP_FILE"

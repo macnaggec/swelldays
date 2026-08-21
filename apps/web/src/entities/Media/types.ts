@@ -5,4 +5,4 @@ export type {
   PublicMedia,
   PublicMediaPage,
   MediaType,
-} from '@wave-atlas/contracts';
+} from '@swelldays/contracts';

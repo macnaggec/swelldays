@@ -1,4 +1,4 @@
-import type { LngLat } from '@wave-atlas/contracts';
+import type { LngLat } from '@swelldays/contracts';
 import { webConfig } from 'config/env';
 
 const MAPBOX_TOKEN = webConfig.mapboxAccessToken;

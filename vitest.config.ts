@@ -47,7 +47,7 @@ export default defineConfig({
       {
         plugins: [react()],
         define: {
-          __WAVE_ATLAS_WEB_CONFIG__: JSON.stringify(testWebConfig),
+          __SWELLDAYS_WEB_CONFIG__: JSON.stringify(testWebConfig),
         },
         test: {
           name: 'client',

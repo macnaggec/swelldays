@@ -1,7 +1,7 @@
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
 import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query';
 import superjson from 'superjson';
-import type { AppRouter } from '@wave-atlas/api/router';
+import type { AppRouter } from '@swelldays/api/router';
 import { buildApiUrl } from 'shared/lib/apiOrigin';
 import { queryClient } from 'shared/lib/queryClient';
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { LngLat } from '@wave-atlas/contracts';
+import type { LngLat } from '@swelldays/contracts';
 
 interface AddSpotState {
   isActive: boolean;

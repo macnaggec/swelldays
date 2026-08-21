@@ -23,7 +23,7 @@ ARG VITE_GOOGLE_API_KEY
 ARG VITE_CLOUDINARY_CLOUD_NAME
 ARG VITE_CLOUDINARY_API_KEY
 
-RUN npm run build --workspace @wave-atlas/web
+RUN npm run build --workspace @swelldays/web
 
 
 FROM nginxinc/nginx-unprivileged:1.29.4-alpine AS runner

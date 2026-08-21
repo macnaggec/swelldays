@@ -65,7 +65,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Build API runtime image
-        run: docker build --file apps/api/Dockerfile --target runner --tag wave-atlas-api:ci .
+        run: docker build --file apps/api/Dockerfile --target runner --tag swelldays-api:ci .
 
       - name: Build web runtime image
         run: |
@@ -78,5 +78,5 @@ jobs:
             --build-arg VITE_GOOGLE_API_KEY=test-google-api-key \
             --build-arg VITE_CLOUDINARY_CLOUD_NAME=test-cloud \
             --build-arg VITE_CLOUDINARY_API_KEY=test-cloudinary-key \
-            --tag wave-atlas-web:ci \
+            --tag swelldays-web:ci \
             .

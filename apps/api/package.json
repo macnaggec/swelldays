@@ -1,5 +1,5 @@
 {
-  "name": "@wave-atlas/api",
+  "name": "@swelldays/api",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     }
   },
   "scripts": {
-    "build": "npm run typecheck && esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --alias:@wave-atlas/contracts=../../packages/contracts/src/index.ts --outfile=dist/index.js",
+    "build": "npm run typecheck && esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --alias:@swelldays/contracts=../../packages/contracts/src/index.ts --outfile=dist/index.js",
     "dev": "DOTENV_CONFIG_PATH=.env.development tsx watch src/index.ts",
     "prisma:generate": "DOTENV_CONFIG_PATH=.env.development prisma generate --config prisma.config.ts",
     "prisma:validate": "DOTENV_CONFIG_PATH=.env.development prisma validate --config prisma.config.ts",
@@ -27,7 +27,7 @@
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@trpc/server": "^11.15.0",
-    "@wave-atlas/contracts": "*",
+    "@swelldays/contracts": "*",
     "better-auth": "1.7.0",
     "cloudinary": "^2.4.0",
     "dotenv": "^17.4.2",

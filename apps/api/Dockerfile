@@ -19,14 +19,14 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY apps/api ./apps/api
 COPY packages/contracts ./packages/contracts
 
-RUN npm run prisma:generate --workspace @wave-atlas/api
-RUN npm run build --workspace @wave-atlas/api
+RUN npm run prisma:generate --workspace @swelldays/api
+RUN npm run build --workspace @swelldays/api
 
 
 # One-shot image that owns the Prisma CLI, config, schema, and migrations.
 FROM builder AS migrator
 
-CMD ["npm", "run", "prisma:migrate:deploy", "--workspace", "@wave-atlas/api"]
+CMD ["npm", "run", "prisma:migrate:deploy", "--workspace", "@swelldays/api"]
 
 
 # Prune the built tree against the orchestration-only root and API workspace.
@@ -34,7 +34,7 @@ FROM builder AS prod-deps
 
 RUN npm pkg delete dependencies devDependencies
 RUN npm pkg set "workspaces[0]=apps/api" "workspaces[1]=packages/contracts"
-RUN npm pkg delete devDependencies --workspace @wave-atlas/api
+RUN npm pkg delete devDependencies --workspace @swelldays/api
 RUN npm prune --omit=dev --omit=peer
 
 

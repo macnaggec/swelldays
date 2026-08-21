@@ -1,6 +1,6 @@
 import type { IPurchaseRepository } from 'server/repositories/PurchaseRepository';
 import { purchaseRepository } from 'server/repositories/PurchaseRepository';
-import type { ViewerMediaEntitlement } from '@wave-atlas/contracts';
+import type { ViewerMediaEntitlement } from '@swelldays/contracts';
 
 export interface IPurchaseEntitlementService {
   getViewerMediaEntitlements(

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Menu } from '@mantine/core';
 import { IconChevronDown } from '@tabler/icons-react';
-import { getCapturedMediaCalendarDayKey } from '@wave-atlas/contracts';
+import { getCapturedMediaCalendarDayKey } from '@swelldays/contracts';
 import { formatCapturedAtDate } from 'shared/lib/dateUtils';
 import { usePanelScrollChromeState } from 'shared/ui/PanelScrollChrome';
 import { usePanelSettledWidth } from 'shared/ui/DrawerShell/panelSettledWidth';

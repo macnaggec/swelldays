@@ -1,2 +1,2 @@
-export { SPOT_STATUS } from '@wave-atlas/contracts';
-export type { SpotStatus } from '@wave-atlas/contracts';
+export { SPOT_STATUS } from '@swelldays/contracts';
+export type { SpotStatus } from '@swelldays/contracts';

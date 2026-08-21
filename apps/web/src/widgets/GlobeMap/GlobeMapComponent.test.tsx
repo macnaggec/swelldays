@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GlobeMapComponent } from './GlobeMapComponent';
 import { SPOT_INTERACTIVE_LAYERS } from './layerStyles';
 import type { Spot } from 'entities/Spot';
-import type { LngLat } from '@wave-atlas/contracts';
+import type { LngLat } from '@swelldays/contracts';
 
 const mocks = vi.hoisted(() => ({
   loadImages: vi.fn(),

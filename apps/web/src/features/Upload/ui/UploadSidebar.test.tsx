@@ -5,7 +5,7 @@ import { render as renderWithProviders } from 'test/setup/render';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PanelLayout } from 'shared/ui/PanelLayout';
 import { UploadSidebar } from './UploadSidebar';
-import type { UploadWorkspaceState } from '@wave-atlas/contracts';
+import type { UploadWorkspaceState } from '@swelldays/contracts';
 
 const uploadSidebarCss = readFileSync('apps/web/src/features/Upload/ui/UploadSidebar.module.css', 'utf8');
 

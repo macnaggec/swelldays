@@ -4,7 +4,7 @@
     "lib": ["ES2022"],
     "types": ["node", "vitest/globals"],
     "paths": {
-      "@wave-atlas/contracts": ["../../packages/contracts/src/index.ts"],
+      "@swelldays/contracts": ["../../packages/contracts/src/index.ts"],
       "server/*": ["./src/*"],
       "test/*": ["./src/test/*"]
     }

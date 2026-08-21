@@ -1,4 +1,4 @@
-import { getCapturedMediaCalendarDayKey } from '@wave-atlas/contracts';
+import { getCapturedMediaCalendarDayKey } from '@swelldays/contracts';
 
 export type GalleryRow<T = { id: string; capturedAt: Date }> =
   | { type: 'divider'; date: Date; key: string; mediaRowCount: number }

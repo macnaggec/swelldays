@@ -10,7 +10,7 @@ import type { ICloudinaryService } from 'server/services/CloudinaryService';
 import { cloudinaryService } from 'server/services/CloudinaryService';
 import { BadRequestError, BadGatewayError, ForbiddenError } from 'server/errors';
 import { logger } from 'server/lib/logger';
-import { MEDIA_STATUS } from '@wave-atlas/contracts';
+import { MEDIA_STATUS } from '@swelldays/contracts';
 import { apiConfig } from 'server/config/env';
 
 export class CheckoutService {

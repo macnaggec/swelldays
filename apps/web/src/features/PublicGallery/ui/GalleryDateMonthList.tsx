@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getCapturedMediaCalendarDayKey } from '@wave-atlas/contracts';
+import { getCapturedMediaCalendarDayKey } from '@swelldays/contracts';
 import { formatCapturedAtDate } from 'shared/lib/dateUtils';
 import {
   groupDaysByMonth,

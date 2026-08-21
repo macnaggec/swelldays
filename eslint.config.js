@@ -11,18 +11,18 @@ const serverClientIntegrationRestriction = {
 };
 
 const contractsDeepImportRestriction = {
-  group: ['@wave-atlas/contracts/*'],
-  message: 'Import contracts through the explicit @wave-atlas/contracts public surface.',
+  group: ['@swelldays/contracts/*'],
+  message: 'Import contracts through the explicit @swelldays/contracts public surface.',
 };
 
 const webApiImplementationRestriction = {
-  group: ['@wave-atlas/api', '@wave-atlas/api/*', 'server/*', 'server/**'],
+  group: ['@swelldays/api', '@swelldays/api/*', 'server/*', 'server/**'],
   message: 'Web runtime code cannot import API implementation. Use the approved type-only router seam in the tRPC adapters.',
 };
 
 const apiWebImportRestriction = {
   group: [
-    '@wave-atlas/web', '@wave-atlas/web/*',
+    '@swelldays/web', '@swelldays/web/*',
     'app/*', 'views/*', 'widgets/*', 'features/*', 'entities/*', 'shared/*',
   ],
   message: 'API code cannot import the web application.',
@@ -335,14 +335,14 @@ export default defineConfig(
     rules: {
       'no-restricted-imports': ['error', {
         paths: [{
-          name: '@wave-atlas/api/router',
+          name: '@swelldays/api/router',
           allowTypeImports: true,
-          message: 'The browser may only type-import the approved @wave-atlas/api/router surface.',
+          message: 'The browser may only type-import the approved @swelldays/api/router surface.',
         }],
         patterns: [
           {
-            regex: '^@wave-atlas/api(?:/(?!router$).*)?$',
-            message: 'Only the approved @wave-atlas/api/router type surface may cross into web.',
+            regex: '^@swelldays/api(?:/(?!router$).*)?$',
+            message: 'Only the approved @swelldays/api/router type surface may cross into web.',
           },
           {
             group: ['server/*', 'server/**'],
@@ -379,8 +379,8 @@ export default defineConfig(
         patterns: [
           {
             group: [
-              '@wave-atlas/api', '@wave-atlas/api/*',
-              '@wave-atlas/web', '@wave-atlas/web/*',
+              '@swelldays/api', '@swelldays/api/*',
+              '@swelldays/web', '@swelldays/web/*',
               'app/*', 'views/*', 'widgets/*', 'features/*', 'entities/*', 'shared/*', 'server/*',
             ],
             message: 'Contracts cannot depend on either application.',

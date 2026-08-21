@@ -15,7 +15,7 @@ export default function setup() {
   config({ path: '.env.test' })
 
   console.log('[integration] Running prisma migrate deploy on test DB...')
-  execSync('npm run prisma:migrate:deploy --workspace @wave-atlas/api', {
+  execSync('npm run prisma:migrate:deploy --workspace @swelldays/api', {
     stdio: 'inherit',
     env: { ...process.env },
   })

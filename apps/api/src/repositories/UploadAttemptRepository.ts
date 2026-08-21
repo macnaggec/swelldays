@@ -2,7 +2,7 @@ import { MediaType, UploadAttemptStatus } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
 import { BadRequestError, NotFoundError } from 'server/errors';
-import type { UploadAttemptProjection } from '@wave-atlas/contracts';
+import type { UploadAttemptProjection } from '@swelldays/contracts';
 
 export type BeginLocalInput = {
   clientRequestId: string;

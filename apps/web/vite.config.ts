@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => {
     envDir: environmentDirectory,
     envPrefix: 'VITE_',
     define: {
-      __WAVE_ATLAS_WEB_CONFIG__: JSON.stringify(webConfig),
+      __SWELLDAYS_WEB_CONFIG__: JSON.stringify(webConfig),
     },
     plugins: [
       ...(httpsRequested ? [basicSsl({ domains: getLocalNetworkIps() })] : []),

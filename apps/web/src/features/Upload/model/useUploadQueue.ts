@@ -2,12 +2,12 @@ import { useMemo } from 'react';
 import { MEDIA_STATUS, type DraftMedia } from 'entities/Media';
 import { useUploadStore } from './uploadStore';
 import type { AttemptCard, GalleryCard } from './types';
-import type { UploadAttemptProjection } from '@wave-atlas/contracts';
+import type { UploadAttemptProjection } from '@swelldays/contracts';
 import type {
   UploadWorkspaceAssetProjection,
   UploadWorkspaceExistingMedia,
   UploadWorkspaceState,
-} from '@wave-atlas/contracts';
+} from '@swelldays/contracts';
 
 export function useUploadQueue(workspaceState: UploadWorkspaceState | undefined) {
   const transferMap = useUploadStore(s => s.transfers);

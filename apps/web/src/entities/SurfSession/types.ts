@@ -1,1 +1,1 @@
-export type { SurfSessionItem, SurfSessionPage } from '@wave-atlas/contracts';
+export type { SurfSessionItem, SurfSessionPage } from '@swelldays/contracts';

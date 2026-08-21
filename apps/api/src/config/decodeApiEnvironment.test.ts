@@ -3,7 +3,7 @@ import { decodeApiEnvironment } from './decodeApiEnvironment';
 
 const productionEnvironment = (): Record<string, string | undefined> => ({
   NODE_ENV: 'production',
-  DATABASE_URL: 'postgresql://wave:test-password@db.example.test:5432/wave_atlas',
+  DATABASE_URL: 'postgresql://wave:test-password@db.example.test:5432/swelldays',
   FRONTEND_ORIGIN: 'https://wave.example.test',
   BETTER_AUTH_URL: 'https://api.wave.example.test',
   BETTER_AUTH_SECRET: 'test-only-auth-secret-that-is-longer-than-32-characters',
@@ -22,7 +22,7 @@ describe('decodeApiEnvironment', () => {
 
     expect(config).toMatchObject({
       nodeEnv: 'production',
-      databaseUrl: 'postgresql://wave:test-password@db.example.test:5432/wave_atlas',
+      databaseUrl: 'postgresql://wave:test-password@db.example.test:5432/swelldays',
       frontendOrigin: 'https://wave.example.test',
       betterAuth: {
         baseUrl: 'https://api.wave.example.test',

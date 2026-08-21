@@ -28,10 +28,10 @@ describe('resolveAuthTrustedOrigins', () => {
 
   it('keeps production limited to the explicitly configured app origin', () => {
     const origins = resolveAuthTrustedOrigins({
-      frontendOrigin: 'https://wave-atlas.example',
+      frontendOrigin: 'https://swelldays.example',
       nodeEnv: 'production',
     });
 
-    expect(origins).toEqual(['https://wave-atlas.example']);
+    expect(origins).toEqual(['https://swelldays.example']);
   });
 });

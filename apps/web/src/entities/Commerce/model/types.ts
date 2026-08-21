@@ -1,4 +1,4 @@
-import type { Cents } from '@wave-atlas/contracts';
+import type { Cents } from '@swelldays/contracts';
 
 export interface CartItem {
   /** Opaque item identifier — the purchasing layer resolves what it points to */

@@ -32,7 +32,7 @@ export type ApiConfig = {
 
 const DEVELOPMENT_FRONTEND_ORIGIN = 'http://localhost:3000';
 const DEVELOPMENT_AUTH_URL = 'http://localhost:3001';
-const DEVELOPMENT_AUTH_SECRET = 'wave-atlas-local-development-only-secret';
+const DEVELOPMENT_AUTH_SECRET = 'swelldays-local-development-only-secret';
 
 const optionalValue = (
   raw: Record<string, string | undefined>,

@@ -1,5 +1,5 @@
 import { Marker } from 'react-map-gl';
-import type { LngLat } from '@wave-atlas/contracts';
+import type { LngLat } from '@swelldays/contracts';
 import classes from '../GlobeMap.module.css';
 
 interface TempPinMarkerProps {
