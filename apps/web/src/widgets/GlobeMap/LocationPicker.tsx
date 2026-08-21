@@ -4,12 +4,13 @@ import { useRef, useCallback, useState } from 'react';
 import Map, { MapRef, Marker, NavigationControl, MapLayerMouseEvent } from 'react-map-gl';
 import { Loader } from '@mantine/core';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { webConfig } from 'config/env';
 
 import { LngLat } from '@wave-atlas/contracts';
 import globeClasses from './GlobeMap.module.css';
 import classes from './LocationPicker.module.css';
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+const MAPBOX_TOKEN = webConfig.mapboxAccessToken;
 
 export interface LocationPickerProps {
   /** Current selected position [lng, lat] */

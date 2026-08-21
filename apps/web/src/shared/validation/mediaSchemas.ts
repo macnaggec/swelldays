@@ -1,10 +1,8 @@
 import { z } from 'zod';
 import { MEDIA_RESOURCE_TYPE } from '@wave-atlas/contracts';
+import { webConfig } from 'config/env';
 
-const cloudName =
-  typeof process !== 'undefined'
-    ? process.env.VITE_CLOUDINARY_CLOUD_NAME
-    : (import.meta as { env?: Record<string, string> }).env?.VITE_CLOUDINARY_CLOUD_NAME;
+const cloudName = webConfig.cloudinary.cloudName;
 const cloudinaryBase = cloudName ? `https://res.cloudinary.com/${cloudName}/` : null;
 
 export const mediaCloudinaryUrlSchema = z.url().refine(

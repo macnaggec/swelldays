@@ -1,7 +1,9 @@
+import { webConfig } from 'config/env';
+
 type BrowserLogContext = Record<string, unknown>;
 
 class BrowserLogger {
-  private readonly isDevelopment = import.meta.env.MODE === 'development';
+  private readonly isDevelopment = webConfig.isDevelopment;
 
   warn(message: string, context?: BrowserLogContext): void {
     if (this.isDevelopment) {

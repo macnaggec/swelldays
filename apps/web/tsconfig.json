@@ -11,6 +11,7 @@
       "@wave-atlas/api/router": ["../api/src/routerType.ts"],
       "@wave-atlas/contracts": ["../../packages/contracts/src/index.ts"],
       "server/*": ["../api/src/*"],
+      "config/*": ["src/config/*"],
       "app/*": ["src/app/*"],
       "views/*": ["src/views/*"],
       "widgets/*": ["src/widgets/*"],

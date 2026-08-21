@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { uploadToCloudinary } from 'features/Upload/model/cloudinaryTransport';
 
-// Allow the Cloudinary URL schema refine to pass for this cloud name
 const CLOUD_NAME = 'test-cloud';
-vi.stubEnv('VITE_CLOUDINARY_CLOUD_NAME', CLOUD_NAME);
 
 const baseParams = {
   signature: 'sig',

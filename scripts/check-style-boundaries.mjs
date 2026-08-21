@@ -811,10 +811,10 @@ const mantineRadiusLiteralConsumers = new Set([
 const rules = [
   {
     id: 'api-origin-has-one-owner',
-    message: 'Read the deployed API origin through shared/lib/apiOrigin so auth and data requests cannot drift apart.',
+    message: 'Decode VITE_API_URL only in config/decodeWebEnvironment and consume it through shared/lib/apiOrigin.',
     pattern: /\bVITE_API_URL\b/,
     include: isRuntimeTypeScript,
-    exclude: file => file === 'apps/web/src/shared/lib/apiOrigin.ts',
+    exclude: file => file === 'apps/web/src/config/decodeWebEnvironment.ts',
   },
   {
     id: 'no-route-panel-css-modules',

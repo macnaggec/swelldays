@@ -1,6 +1,6 @@
-const configuredApiOrigin = import.meta.env.VITE_API_URL?.trim() ?? '';
+import { webConfig } from 'config/env';
 
-export const apiOrigin = configuredApiOrigin.replace(/\/+$/, '');
+export const apiOrigin = webConfig.apiOrigin;
 
 export function buildApiUrl(path: `/${string}`): string {
   return `${apiOrigin}${path}`;

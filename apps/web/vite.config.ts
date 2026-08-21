@@ -1,9 +1,13 @@
 import { networkInterfaces } from 'node:os';
-import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, loadEnv } from 'vite';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import react from '@vitejs/plugin-react';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import { decodeWebEnvironment } from './src/config/decodeWebEnvironment';
+
+const environmentDirectory = fileURLToPath(new URL('../..', import.meta.url));
 
 // Configurable so a second instance (e.g. the visual-capture run, which needs a
 // different database) can run alongside an ordinary dev server. Defaults unchanged.
@@ -19,13 +23,17 @@ function getLocalNetworkIps(): string[] {
     .map((net) => net.address);
 }
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  const webConfig = decodeWebEnvironment(loadEnv(mode, environmentDirectory, 'VITE_'), mode);
   const argv = process.argv.slice(2).join(' ');
   const httpsRequested = argv.includes('--https') || process.env.DEV_HTTPS === 'true' || process.env.HTTPS === 'true';
 
   return {
-    envDir: '../..',
+    envDir: environmentDirectory,
     envPrefix: 'VITE_',
+    define: {
+      __WAVE_ATLAS_WEB_CONFIG__: JSON.stringify(webConfig),
+    },
     plugins: [
       ...(httpsRequested ? [basicSsl({ domains: getLocalNetworkIps() })] : []),
       tanstackRouter({

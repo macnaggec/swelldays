@@ -1,6 +1,7 @@
 import type { LngLat } from '@wave-atlas/contracts';
+import { webConfig } from 'config/env';
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string;
+const MAPBOX_TOKEN = webConfig.mapboxAccessToken;
 
 interface MapboxGeocodeResponse {
   features: { place_name: string }[];

@@ -4,6 +4,7 @@ import { Loader, Paper, Text } from '@mantine/core';
 import { materialClasses } from 'shared/ui/design-system';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import mapboxgl from 'mapbox-gl';
+import { webConfig } from 'config/env';
 
 import type { LngLat } from '@wave-atlas/contracts';
 import { useMapStore } from 'widgets/GlobeMap/model/mapStore';
@@ -35,7 +36,7 @@ import {
 
 import classes from './GlobeMap.module.css';
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN as string;
+const MAPBOX_TOKEN = webConfig.mapboxAccessToken;
 if (!MAPBOX_TOKEN) throw new Error('Missing VITE_MAPBOX_ACCESS_TOKEN');
 
 const DEFAULT_VIEW = {

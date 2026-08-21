@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { notify } from 'shared/lib/notifications';
 import type { DriveSelection } from './uploadCoordinator';
+import { webConfig } from 'config/env';
 
 const DRIVE_READONLY_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 const PICKER_MIME_TYPES = [
@@ -15,7 +16,7 @@ export async function requestDriveAccessToken(): Promise<string> {
   }
   return new Promise((resolve, reject) => {
     const client = google.accounts.oauth2.initTokenClient({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      client_id: webConfig.google.clientId,
       scope: DRIVE_READONLY_SCOPE,
       callback: (r) => r.error || !r.access_token
         ? reject(new Error('Google Drive access was denied.'))
@@ -53,7 +54,7 @@ export function useGooglePicker(
               .setIncludeFolders(false),
           )
           .setOAuthToken(accessToken)
-          .setDeveloperKey(import.meta.env.VITE_GOOGLE_API_KEY ?? '')
+          .setDeveloperKey(webConfig.google.apiKey)
           .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
           .setTitle('Select photos or videos from Google Drive')
           .setCallback(async (data: google.picker.PickerResponseObject) => {

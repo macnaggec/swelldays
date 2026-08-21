@@ -27,6 +27,11 @@ const apiWebImportRestriction = {
   message: 'API code cannot import the web application.',
 };
 
+const browserEnvironmentAccessRestriction = {
+  selector: "MemberExpression[object.type='MetaProperty'][object.meta.name='import'][object.property.name='meta'][property.name='env']",
+  message: 'Browser modules must consume the typed web configuration instead of import.meta.env.',
+};
+
 export default defineConfig(
   ...tseslint.configs.recommended,
   {
@@ -76,7 +81,7 @@ export default defineConfig(
           pattern: 'apps/web/src/entities/*/**',
           capture: ['entityName'],
         },
-        { type: 'shared',  pattern: 'apps/web/src/shared/**' },
+        { type: 'shared',  pattern: ['apps/web/src/shared/**', 'apps/web/src/config/**'] },
         { type: 'server',  pattern: 'apps/api/src/**' },
         { type: 'contracts', pattern: 'packages/contracts/src/**', mode: 'full' },
         { type: 'types',   pattern: 'apps/web/src/types/**' },
@@ -355,7 +360,13 @@ export default defineConfig(
       'no-restricted-syntax': ['error', {
         selector: 'TSUnionType:has(TSLiteralType Literal[value=/^(browse|browsing|galleryWorkspace|routeWorkspace|workspace|mapInput|fullPage|immersiveMapInput)$/])',
         message: 'Route intent unions must be imported from shared/model/appRouteIntent.',
-      }],
+      }, browserEnvironmentAccessRestriction],
+    },
+  },
+  {
+    files: ['apps/web/src/shared/model/appRouteIntent.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', browserEnvironmentAccessRestriction],
     },
   },
 );

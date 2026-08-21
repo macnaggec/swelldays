@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
 const alias = {
+  config: resolve(__dirname, './apps/web/src/config'),
   app: resolve(__dirname, './apps/web/src/app'),
   views: resolve(__dirname, './apps/web/src/views'),
   widgets: resolve(__dirname, './apps/web/src/widgets'),
@@ -22,6 +23,20 @@ const serverAlias = {
   test: resolve(__dirname, './apps/api/src/test'),
 }
 
+const testWebConfig = {
+  apiOrigin: 'http://localhost:3001',
+  mapboxAccessToken: 'pk.test-mapbox-token',
+  google: {
+    clientId: 'test-client.apps.googleusercontent.com',
+    apiKey: 'test-google-api-key',
+  },
+  cloudinary: {
+    cloudName: 'test-cloud',
+    apiKey: 'test-cloudinary-api-key',
+  },
+  isDevelopment: false,
+}
+
 export default defineConfig({
   test: {
     projects: [
@@ -31,6 +46,9 @@ export default defineConfig({
       // -----------------------------------------------------------------------
       {
         plugins: [react()],
+        define: {
+          __WAVE_ATLAS_WEB_CONFIG__: JSON.stringify(testWebConfig),
+        },
         test: {
           name: 'client',
           environment: 'jsdom',

@@ -23,11 +23,7 @@ ARG VITE_GOOGLE_API_KEY
 ARG VITE_CLOUDINARY_CLOUD_NAME
 ARG VITE_CLOUDINARY_API_KEY
 
-RUN case "$VITE_API_URL" in \
-      http://*|https://*) ;; \
-      *) echo "VITE_API_URL must be an absolute http(s) API origin" >&2; exit 1 ;; \
-    esac \
-  && npm run build --workspace @wave-atlas/web
+RUN npm run build --workspace @wave-atlas/web
 
 
 FROM nginxinc/nginx-unprivileged:1.29.4-alpine AS runner
