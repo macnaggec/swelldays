@@ -10,6 +10,13 @@
   },
   "scripts": {
     "dev": "DOTENV_CONFIG_PATH=../../.env tsx watch src/index.ts",
+    "prisma:generate": "DOTENV_CONFIG_PATH=../../.env prisma generate --config prisma.config.ts",
+    "prisma:validate": "DOTENV_CONFIG_PATH=../../.env prisma validate --config prisma.config.ts",
+    "prisma:migrate:dev": "DOTENV_CONFIG_PATH=../../.env prisma migrate dev --config prisma.config.ts",
+    "prisma:migrate:deploy": "DOTENV_CONFIG_PATH=../../.env prisma migrate deploy --config prisma.config.ts",
+    "prisma:migrate:status": "DOTENV_CONFIG_PATH=../../.env prisma migrate status --config prisma.config.ts",
+    "prisma:studio": "DOTENV_CONFIG_PATH=../../.env prisma studio --config prisma.config.ts",
+    "prisma:seed": "DOTENV_CONFIG_PATH=../../.env prisma db seed --config prisma.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -26,5 +33,8 @@
     "pg": "^8.16.3",
     "superjson": "^2.2.6",
     "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "prisma": "^7.2.0"
   }
 }

@@ -22,6 +22,7 @@
   },
   "include": [
     "src",
+    "prisma.config.ts",
     "../../packages/contracts/src",
     "../../src/test/helpers/resetDb.ts"
   ]

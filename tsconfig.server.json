@@ -5,8 +5,9 @@
   },
   "include": [
     "apps/api/src/**/*",
+    "apps/api/prisma.config.ts",
+    "apps/api/prisma/**/*",
     "packages/contracts/src/**/*",
-    "src/test/helpers/resetDb.ts",
-    "prisma/**/*"
+    "src/test/helpers/resetDb.ts"
   ]
 }

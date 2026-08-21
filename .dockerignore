@@ -24,10 +24,11 @@
 !tsconfig.server.json
 !vitest.d.ts
 
-# Prisma
-!prisma/
-!prisma/**
-!prisma.config.ts
+# Workspaces (including API-owned Prisma and shared contracts)
+!apps/
+!apps/**
+!packages/
+!packages/**
 
 # Application source
 !src/

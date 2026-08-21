@@ -5,20 +5,22 @@ FROM node:24-trixie-slim AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY apps/api/package.json ./apps/api/package.json
+COPY packages/contracts/package.json ./packages/contracts/package.json
 
 RUN --mount=type=cache,target=/root/.npm \
   npm ci
 
 COPY . .
 
-RUN npx prisma generate
+RUN npm run prisma:generate --workspace @wave-atlas/api
 RUN npm run build:server
 
 
 # Одноразовый контейнер только для миграций
 FROM builder AS migrator
 
-CMD ["npx", "prisma", "migrate", "deploy"]
+CMD ["npm", "run", "prisma:migrate:deploy", "--workspace", "@wave-atlas/api"]
 
 
 # Production dependencies
