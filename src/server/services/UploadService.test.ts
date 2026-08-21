@@ -3,7 +3,7 @@ import { UploadService, type UploadWorkspaceVerifier } from './UploadService';
 import type { IUploadAttemptRepository } from 'server/repositories/UploadAttemptRepository';
 import type { DirectUploadPort, RemoteImportPort, AssetCleanupPort } from 'server/ports/UploadAssetStorage';
 import { randomUUID } from 'node:crypto';
-import { ForbiddenError } from 'shared/errors';
+import { ForbiddenError } from 'server/errors';
 
 const mockRepo: IUploadAttemptRepository = {
   beginLocalIdempotent: vi.fn(),

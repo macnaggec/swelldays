@@ -3,7 +3,7 @@ import { mediaRepository } from 'server/repositories/MediaRepository';
 import type { IMediaFavoriteRepository } from 'server/repositories/MediaFavoriteRepository';
 import { mediaFavoriteRepository } from 'server/repositories/MediaFavoriteRepository';
 import { purchaseEntitlementService, type IPurchaseEntitlementService } from './PurchaseEntitlementService';
-import { BadRequestError, NotFoundError } from 'shared/errors';
+import { BadRequestError, NotFoundError } from 'server/errors';
 
 export class MediaFavoriteService {
   constructor(

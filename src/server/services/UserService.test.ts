@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UserService } from 'server/services/UserService';
 import type { IUserRepository } from 'server/repositories/UserRepository';
 import type { LedgerService, LedgerSummary } from 'server/services/LedgerService';
-import { BadRequestError } from 'shared/errors';
+import { BadRequestError } from 'server/errors';
 
 const mockUserRepository = {
   anonymizeAndDelete: vi.fn(),

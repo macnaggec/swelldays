@@ -5,7 +5,7 @@ import type { IMediaRepository } from 'server/repositories/MediaRepository';
 import type { IPurchaseRepository, PurchaseWithMedia } from 'server/repositories/PurchaseRepository';
 import type { PaymentAdapter } from 'server/providers/payment/PaymentAdapter';
 import type { ICloudinaryService } from 'server/services/CloudinaryService';
-import { BadRequestError, BadGatewayError, ForbiddenError } from 'shared/errors';
+import { BadRequestError, BadGatewayError, ForbiddenError } from 'server/errors';
 
 // ---------------------------------------------------------------------------
 // Inline mocks — no vi.mock() needed with constructor injection

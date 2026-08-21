@@ -1,6 +1,6 @@
 import { userRepository, type IUserRepository } from 'server/repositories/UserRepository';
 import { ledgerService, type LedgerService } from 'server/services/LedgerService';
-import { BadRequestError } from 'shared/errors';
+import { BadRequestError } from 'server/errors';
 
 export class UserService {
   constructor(

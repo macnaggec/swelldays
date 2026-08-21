@@ -10,7 +10,7 @@ import {
   type OperatorPayoutRequest,
   type PayoutReservation,
 } from 'server/repositories/LedgerRepository';
-import { BadRequestError, NotFoundError } from 'shared/errors';
+import { BadRequestError, NotFoundError } from 'server/errors';
 
 const PAYOUT_THRESHOLD_CENTS = 2000;
 

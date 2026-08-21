@@ -1,4 +1,4 @@
-import { TooManyRequestsError } from 'shared/errors';
+import { TooManyRequestsError } from 'server/errors';
 
 // Opaque rate-limiter interface — swappable behind this type when moving to distributed state.
 export type RateLimiter = (key: string) => void;

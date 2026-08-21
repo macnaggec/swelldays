@@ -1,4 +1,4 @@
-import { logger } from 'shared/lib/logger';
+import { logger } from 'server/lib/logger';
 import type {
   PaymentAdapter,
   CreateCheckoutParams,

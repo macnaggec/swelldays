@@ -11,7 +11,7 @@ import {
 } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
-import { BadRequestError, NotFoundError } from 'shared/errors';
+import { BadRequestError, NotFoundError } from 'server/errors';
 
 export type LedgerSummaryRecords = {
   user: Pick<User, 'id' | 'balance'> | null;

@@ -1,7 +1,7 @@
 import { MediaStatus, SurfSessionStatus } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
-import { BadRequestError } from 'shared/errors';
+import { BadRequestError } from 'server/errors';
 import type { SurfSessionItem, SurfSessionPage } from '@wave-atlas/contracts';
 
 export interface ISurfSessionRepository {

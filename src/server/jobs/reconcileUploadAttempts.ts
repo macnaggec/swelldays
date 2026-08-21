@@ -1,4 +1,4 @@
-import { logger } from 'shared/lib/logger';
+import { logger } from 'server/lib/logger';
 import { uploadAttemptRepository } from 'server/repositories/UploadAttemptRepository';
 import { cloudinaryService } from 'server/services/CloudinaryService';
 

@@ -7,7 +7,7 @@ import { spotRepository } from 'server/repositories/SpotRepository';
 import { SPOT_STATUS } from '@wave-atlas/contracts';
 import type { Spot } from '@wave-atlas/contracts';
 import { spotNameSchema, spotLocationSchema, spotAliasSchema } from '@wave-atlas/contracts';
-import { NotFoundError } from 'shared/errors';
+import { NotFoundError } from 'server/errors';
 
 export const spotsRouter = router({
   list: publicProcedure

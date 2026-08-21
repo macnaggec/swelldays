@@ -4,8 +4,8 @@ import type { Context } from 'hono';
 import superjson from 'superjson';
 import { auth } from 'server/auth';
 import { prisma } from 'server/db';
-import { isHttpError } from 'shared/errors';
-import { logger } from 'shared/lib/logger';
+import { isHttpError } from 'server/errors';
+import { logger } from 'server/lib/logger';
 
 type GetSessionResult = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
 type ContextUser = GetSessionResult['user'] & { role?: UserRole };

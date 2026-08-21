@@ -8,7 +8,7 @@
 
 import { z } from 'zod';
 import cloudinary, { generateDeliveryUrl as libGenerateDeliveryUrl, getWatermarkedPreviewTransform, MEDIA_UPLOAD_CONFIG, MEDIA_CLOUDINARY_TRANSFORMS } from 'server/providers/cloudinary';
-import { InternalServerError, BadRequestError } from 'shared/errors';
+import { InternalServerError, BadRequestError } from 'server/errors';
 import type { MediaResourceType } from '@wave-atlas/contracts';
 import type { DirectUploadPort, RemoteImportPort, AssetCleanupPort, UploadTarget, StoredAsset, StoredAssetIdentity, RemoteImportInput } from 'server/ports/UploadAssetStorage';
 import type { DirectUploadGrant } from '@wave-atlas/contracts';

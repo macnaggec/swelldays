@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MediaService } from 'server/services/MediaService';
 import type { IMediaRepository } from 'server/repositories/MediaRepository';
-import { BadRequestError } from 'shared/errors';
+import { BadRequestError } from 'server/errors';
 import { MEDIA_STATUS } from '@wave-atlas/contracts';
 
 // ---------------------------------------------------------------------------

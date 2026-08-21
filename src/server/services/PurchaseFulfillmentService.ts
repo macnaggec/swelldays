@@ -7,7 +7,7 @@ import { mediaRepository } from 'server/repositories/MediaRepository';
 import { fulfillmentRepository } from 'server/repositories/FulfillmentRepository';
 import type { ICloudinaryService } from 'server/services/CloudinaryService';
 import { cloudinaryService } from 'server/services/CloudinaryService';
-import { ConflictError } from 'shared/errors';
+import { ConflictError } from 'server/errors';
 
 const PLATFORM_FEE_RATE = 0.20;
 const PHOTOGRAPHER_RATE = 0.80;

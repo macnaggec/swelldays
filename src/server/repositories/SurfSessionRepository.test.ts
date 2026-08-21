@@ -16,7 +16,7 @@ vi.mock('server/db', () => ({
 
 import { prisma } from 'server/db';
 import { SurfSessionRepository } from './SurfSessionRepository';
-import { BadRequestError } from 'shared/errors';
+import { BadRequestError } from 'server/errors';
 
 const repo = new SurfSessionRepository();
 const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;

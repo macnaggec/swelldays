@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { logger } from 'shared/lib/logger';
+import { browserLogger } from 'shared/lib/browserLogger';
 import { mediaCloudinaryResultSchema } from 'shared/validation/mediaSchemas';
 import { UploadError } from './UploadError';
 type CloudinaryResult = z.infer<typeof mediaCloudinaryResultSchema>;
@@ -109,7 +109,7 @@ function parseSuccessResponse(
   });
 
   if (!parsed.success) {
-    logger.warn('[cloudinaryTransport] Unexpected Cloudinary response shape', {
+    browserLogger.warn('[cloudinaryTransport] Unexpected Cloudinary response shape', {
       issues: parsed.error.issues,
       raw,
     });
@@ -127,7 +127,7 @@ function parseRejectedResponse(xhr: XMLHttpRequest): UploadError {
     const parsed = JSON.parse(xhr.responseText);
     if (parsed.error?.message) message = parsed.error.message;
   } catch {
-    logger.warn('[cloudinaryTransport] Non-JSON response from Cloudinary', {
+    browserLogger.warn('[cloudinaryTransport] Non-JSON response from Cloudinary', {
       status: xhr.status,
       body: xhr.responseText,
     });

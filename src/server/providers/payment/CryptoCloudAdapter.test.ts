@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { describe, it, expect, beforeAll, vi, afterEach } from 'vitest';
-import { BadGatewayError } from 'shared/errors';
+import { BadGatewayError } from 'server/errors';
 import { cryptoCloudAdapter } from './CryptoCloudAdapter';
 
 // ---------------------------------------------------------------------------

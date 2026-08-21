@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SurfSessionService } from './SurfSessionService';
 import type { ISurfSessionRepository } from 'server/repositories/SurfSessionRepository';
-import { ForbiddenError, NotFoundError } from 'shared/errors';
+import { ForbiddenError, NotFoundError } from 'server/errors';
 
 const sessions: Pick<ISurfSessionRepository, 'findPublishedById' | 'retire'> = {
   findPublishedById: vi.fn(),

@@ -226,7 +226,7 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
   // -------------------------------------------------------------------------
 
   it('swallows ConflictError from commitFulfillment — treats it as idempotent success', async () => {
-    const { ConflictError } = await import('shared/errors');
+    const { ConflictError } = await import('server/errors');
     setupHappyPath();
     mockFulfillment.commitFulfillment.mockRejectedValue(
       new ConflictError('external_order_id already exists'),

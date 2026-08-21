@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { createRateLimiter } from 'server/lib/rateLimiter';
-import { TooManyRequestsError } from 'shared/errors';
+import { TooManyRequestsError } from 'server/errors';
 
 afterEach(() => {
   vi.useRealTimers();

@@ -1,5 +1,5 @@
 import exifr from 'exifr';
-import { logger } from './logger';
+import { browserLogger } from './browserLogger';
 
 export interface ExifData {
   capturedAt: Date | null;
@@ -97,7 +97,7 @@ export async function extractExifData(file: File): Promise<ExifData> {
       lens: exif.LensModel,
     };
   } catch (error) {
-    logger.warn('EXIF extraction failed', {
+    browserLogger.warn('EXIF extraction failed', {
       error,
       fileName: file.name,
       fileType: file.type,

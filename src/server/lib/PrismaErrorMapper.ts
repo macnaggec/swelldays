@@ -4,7 +4,7 @@ import {
   ConflictError,
   NotFoundError,
   InternalServerError,
-} from 'shared/errors';
+} from 'server/errors';
 
 export function mapPrismaError(error: unknown): Error {
   if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {

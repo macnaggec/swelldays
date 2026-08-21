@@ -5,8 +5,8 @@ import type {
   PublishedSpotMediaScope,
 } from 'server/repositories/MediaRepository';
 import { mediaRepository } from 'server/repositories/MediaRepository';
-import { logger } from 'shared/lib/logger';
-import { BadRequestError, ForbiddenError, NotFoundError } from 'shared/errors';
+import { logger } from 'server/lib/logger';
+import { BadRequestError, ForbiddenError, NotFoundError } from 'server/errors';
 import { MEDIA_STATUS, MIN_MEDIA_PRICE_CENTS } from '@wave-atlas/contracts';
 import type { MediaStatus, DraftMedia } from '@wave-atlas/contracts';
 import type { ICloudinaryService } from './CloudinaryService';

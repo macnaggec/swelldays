@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BadRequestError, NotFoundError } from 'shared/errors';
+import { BadRequestError, NotFoundError } from 'server/errors';
 import { MediaFavoriteService } from './MediaFavoriteService';
 
 describe('MediaFavoriteService.setFavorite', () => {

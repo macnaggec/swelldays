@@ -8,8 +8,8 @@ import type { PaymentAdapter } from 'server/providers/payment/PaymentAdapter';
 import { paymentAdapter } from 'server/providers/payment/activeAdapter';
 import type { ICloudinaryService } from 'server/services/CloudinaryService';
 import { cloudinaryService } from 'server/services/CloudinaryService';
-import { BadRequestError, BadGatewayError, ForbiddenError } from 'shared/errors';
-import { logger } from 'shared/lib/logger';
+import { BadRequestError, BadGatewayError, ForbiddenError } from 'server/errors';
+import { logger } from 'server/lib/logger';
 import { MEDIA_STATUS } from '@wave-atlas/contracts';
 
 const APP_URL = process.env.APP_URL!;

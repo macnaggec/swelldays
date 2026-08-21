@@ -11,7 +11,7 @@ import { purchaseFulfillmentService } from 'server/services/PurchaseFulfillmentS
 import { reconcileUploadAttempts } from 'server/jobs/reconcileUploadAttempts';
 import { createRateLimiter } from 'server/lib/rateLimiter';
 import { getClientIp } from 'server/lib/getClientIp';
-import { logger } from 'shared/lib/logger';
+import { logger } from 'server/lib/logger';
 
 // 20 webhook requests per IP per minute — prevents replay-flood DoS
 const webhookLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });

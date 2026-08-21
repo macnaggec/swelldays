@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { MediaType } from '@prisma/client';
-import { NotFoundError } from 'shared/errors';
-import { logger } from 'shared/lib/logger';
+import { NotFoundError } from 'server/errors';
+import { logger } from 'server/lib/logger';
 import type { IUploadAttemptRepository } from 'server/repositories/UploadAttemptRepository';
 import type { DirectUploadPort, RemoteImportPort, AssetCleanupPort } from 'server/ports/UploadAssetStorage';
 import type { DirectUploadGrant, UploadAttemptProjection } from '@wave-atlas/contracts';

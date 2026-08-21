@@ -2,7 +2,7 @@ import {
   surfSessionRepository,
   type ISurfSessionRepository,
 } from 'server/repositories/SurfSessionRepository';
-import { ForbiddenError, NotFoundError } from 'shared/errors';
+import { ForbiddenError, NotFoundError } from 'server/errors';
 
 export class SurfSessionService {
   constructor(

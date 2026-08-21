@@ -11,7 +11,7 @@ vi.hoisted(() => {
   process.env.CRYPTOCLOUD_SHOP_ID = 'test-shop-id';
 });
 
-import { BadRequestError, ConflictError, NotFoundError } from 'shared/errors';
+import { BadRequestError, ConflictError, NotFoundError } from 'server/errors';
 import { publicProcedure, router } from 'server/trpc';
 
 // A resolver throwing a domain HttpError must reach the caller as a TRPCError whose

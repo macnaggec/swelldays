@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { BadGatewayError } from 'shared/errors';
-import { logger } from 'shared/lib/logger';
+import { BadGatewayError } from 'server/errors';
+import { logger } from 'server/lib/logger';
 import { requireEnv } from 'server/lib/env';
 import type {
   PaymentAdapter,
