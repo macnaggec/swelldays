@@ -3,9 +3,6 @@ import cloudinary from 'server/providers/cloudinary';
 import { CloudinaryService } from 'server/services/CloudinaryService';
 
 beforeAll(() => {
-  process.env.CLOUDINARY_API_SECRET = 'test-secret';
-  process.env.VITE_CLOUDINARY_CLOUD_NAME = 'test-cloud';
-  process.env.VITE_CLOUDINARY_API_KEY = 'test-key';
   cloudinary.config({
     cloud_name: 'test-cloud',
     api_key: 'test-key',

@@ -1,10 +1,7 @@
 type AuthOriginEnvironment = {
-  APP_URL?: string;
-  CLIENT_URL?: string;
-  NODE_ENV?: string;
+  frontendOrigin: string;
+  nodeEnv: string;
 };
-
-const DEFAULT_APP_ORIGIN = 'http://localhost:3000';
 
 const LOCAL_DEVELOPMENT_ORIGINS = [
   'http://localhost:3000',
@@ -23,9 +20,9 @@ const PRIVATE_LAN_DEVELOPMENT_ORIGINS = [
 ];
 
 export function resolveAuthTrustedOrigins(environment: AuthOriginEnvironment): string[] {
-  const appOrigin = environment.CLIENT_URL ?? environment.APP_URL ?? DEFAULT_APP_ORIGIN;
+  const appOrigin = environment.frontendOrigin;
 
-  if (environment.NODE_ENV === 'production') {
+  if (environment.nodeEnv === 'production') {
     return [appOrigin];
   }
 

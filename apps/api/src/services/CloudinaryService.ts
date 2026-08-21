@@ -12,6 +12,7 @@ import { InternalServerError, BadRequestError } from 'server/errors';
 import type { MediaResourceType } from '@wave-atlas/contracts';
 import type { DirectUploadPort, RemoteImportPort, AssetCleanupPort, UploadTarget, StoredAsset, StoredAssetIdentity, RemoteImportInput } from 'server/ports/UploadAssetStorage';
 import type { DirectUploadGrant } from '@wave-atlas/contracts';
+import { apiConfig } from 'server/config/env';
 
 export interface CloudinarySignatureData {
   signature: string;
@@ -63,7 +64,7 @@ const cloudinaryReceiptSchema = z.object({
 
 /**
  * Service for Cloudinary upload signature generation
- * Validates configuration and creates signed upload parameters
+ * Uses the configuration validated before API startup to create signed upload parameters.
  */
 export class CloudinaryService implements ICloudinaryService, DirectUploadPort, RemoteImportPort, AssetCleanupPort {
   /**
@@ -71,26 +72,9 @@ export class CloudinaryService implements ICloudinaryService, DirectUploadPort, 
    *
    * @param folder - Upload folder path (defaults to MEDIA_UPLOAD_CONFIG.FOLDER)
    * @returns Signature data needed for secure client-side upload
-   * @throws InternalServerError if Cloudinary configuration is invalid
    */
   generateUploadSignature(folder: string = MEDIA_UPLOAD_CONFIG.FOLDER): CloudinarySignatureData {
-    // Validate server-side secret
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-    if (!apiSecret) {
-      throw new InternalServerError(
-        'Cloudinary misconfigured: missing CLOUDINARY_API_SECRET'
-      );
-    }
-
-    // Validate public configuration
-    const cloudName = process.env.VITE_CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.VITE_CLOUDINARY_API_KEY;
-
-    if (!cloudName || !apiKey) {
-      throw new InternalServerError(
-        'Cloudinary misconfigured: missing VITE_CLOUDINARY_CLOUD_NAME or VITE_CLOUDINARY_API_KEY'
-      );
-    }
+    const { apiSecret, cloudName, apiKey } = apiConfig.cloudinary;
 
     const timestamp = Math.round(new Date().getTime() / 1000);
 
@@ -131,12 +115,7 @@ export class CloudinaryService implements ICloudinaryService, DirectUploadPort, 
   // ── DirectUploadPort ────────────────────────────────────────────────────────
 
   createUploadGrant(target: UploadTarget, expiresAt: Date): DirectUploadGrant {
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-    if (!apiSecret) throw new InternalServerError('Cloudinary misconfigured: missing CLOUDINARY_API_SECRET');
-
-    const cloudName = process.env.VITE_CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.VITE_CLOUDINARY_API_KEY;
-    if (!cloudName || !apiKey) throw new InternalServerError('Cloudinary misconfigured: missing cloud name or API key');
+    const { apiSecret, cloudName, apiKey } = apiConfig.cloudinary;
 
     const timestamp = Math.round(Date.now() / 1000);
     const publicId = target.cloudinaryPublicId;
@@ -224,10 +203,6 @@ export class CloudinaryService implements ICloudinaryService, DirectUploadPort, 
     folder: string,
     resourceType: 'image' | 'video' = 'image',
   ): Promise<RemoteUploadResult> {
-    if (!process.env.CLOUDINARY_API_SECRET) {
-      throw new InternalServerError('Cloudinary misconfigured: missing CLOUDINARY_API_SECRET');
-    }
-
     const eager = [
       MEDIA_CLOUDINARY_TRANSFORMS.THUMBNAIL,
       getWatermarkedPreviewTransform(resourceType),
@@ -286,11 +261,6 @@ export class CloudinaryService implements ICloudinaryService, DirectUploadPort, 
     cloudinaryPublicId: string,
     resourceType: 'image' | 'video' = 'image',
   ): { downloadUrl: string; expiresAt: number } {
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-    if (!apiSecret) {
-      throw new InternalServerError('Cloudinary misconfigured: missing CLOUDINARY_API_SECRET');
-    }
-
     const SIGNED_TTL = 600; // 10 minutes
     const expiresAt = Math.floor(Date.now() / 1000) + SIGNED_TTL;
 
@@ -316,10 +286,6 @@ export class CloudinaryService implements ICloudinaryService, DirectUploadPort, 
     if (!cloudinaryPublicId) {
       throw new InternalServerError('cloudinaryPublicId is required to generate permanent preview URL');
     }
-    if (!process.env.CLOUDINARY_API_SECRET) {
-      throw new InternalServerError('Cloudinary misconfigured: missing CLOUDINARY_API_SECRET');
-    }
-
     return this.generateDeliveryUrl(cloudinaryPublicId, MEDIA_CLOUDINARY_TRANSFORMS.LIGHTBOX);
   }
 

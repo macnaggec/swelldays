@@ -42,6 +42,7 @@ const service = new CheckoutService(
   mockPurchases as unknown as IPurchaseRepository,
   mockPayment as unknown as PaymentAdapter,
   mockCloudinary as unknown as ICloudinaryService,
+  'http://localhost:3000',
 );
 
 // ---------------------------------------------------------------------------
@@ -50,7 +51,6 @@ const service = new CheckoutService(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.APP_URL = 'http://localhost:3001';
 });
 
 // ---------------------------------------------------------------------------

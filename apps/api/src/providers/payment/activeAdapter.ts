@@ -5,6 +5,7 @@
 
 import { cryptoCloudAdapter } from 'server/providers/payment/CryptoCloudAdapter';
 import { mockPaymentAdapter } from 'server/providers/payment/MockPaymentAdapter';
+import { apiConfig } from 'server/config/env';
 
 export const paymentAdapter =
-  process.env.PAYMENT_PROVIDER === 'mock' ? mockPaymentAdapter : cryptoCloudAdapter;
+  apiConfig.payment.provider === 'mock' ? mockPaymentAdapter : cryptoCloudAdapter;

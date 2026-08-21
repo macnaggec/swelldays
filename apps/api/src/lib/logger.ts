@@ -1,3 +1,5 @@
+import { apiConfig } from 'server/config/env';
+
 /**
  * Simple logger utility
  * In production, replace with Winston, Pino, or your logging service
@@ -10,7 +12,7 @@ interface LogContext {
 }
 
 class Logger {
-  private isDevelopment = process.env.NODE_ENV === 'development';
+  private isDevelopment = apiConfig.nodeEnv === 'development';
 
   private log(level: LogLevel, message: string, context?: LogContext) {
     const timestamp = new Date().toISOString();

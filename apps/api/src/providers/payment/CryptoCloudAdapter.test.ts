@@ -1,21 +1,12 @@
 import { createHmac } from 'node:crypto';
-import { describe, it, expect, beforeAll, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { BadGatewayError } from 'server/errors';
 import { cryptoCloudAdapter } from './CryptoCloudAdapter';
 
 // ---------------------------------------------------------------------------
-// Test secret — any string works for unit tests.
-// We inject it via process.env so creds() inside the adapter can read it.
+// These values match the safe configuration installed by the server test setup.
 // ---------------------------------------------------------------------------
 const TEST_SECRET = 'unit-test-secret-key';
-const TEST_API_KEY = 'unit-test-api-key';
-const TEST_SHOP_ID = 'unit-test-shop-id';
-
-beforeAll(() => {
-  process.env.CRYPTOCLOUD_SECRET_KEY = TEST_SECRET;
-  process.env.CRYPTOCLOUD_API_KEY = TEST_API_KEY;
-  process.env.CRYPTOCLOUD_SHOP_ID = TEST_SHOP_ID;
-});
 
 // ---------------------------------------------------------------------------
 // JWT factory — mirrors exactly how CryptoCloud signs its webhook token.

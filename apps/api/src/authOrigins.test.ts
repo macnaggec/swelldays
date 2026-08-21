@@ -4,8 +4,8 @@ import { resolveAuthTrustedOrigins } from 'server/authOrigins';
 describe('resolveAuthTrustedOrigins', () => {
   it('allows both local http and https origins outside production', () => {
     const origins = resolveAuthTrustedOrigins({
-      APP_URL: 'http://localhost:3000',
-      NODE_ENV: 'test',
+      frontendOrigin: 'http://localhost:3000',
+      nodeEnv: 'test',
     });
 
     expect(origins).toContain('http://localhost:3000');
@@ -16,8 +16,8 @@ describe('resolveAuthTrustedOrigins', () => {
 
   it('allows private-LAN browser origins outside production', () => {
     const origins = resolveAuthTrustedOrigins({
-      APP_URL: 'http://localhost:3000',
-      NODE_ENV: 'test',
+      frontendOrigin: 'http://localhost:3000',
+      nodeEnv: 'test',
     });
 
     expect(origins).toContain('http://10.*.*.*:*');
@@ -28,8 +28,8 @@ describe('resolveAuthTrustedOrigins', () => {
 
   it('keeps production limited to the explicitly configured app origin', () => {
     const origins = resolveAuthTrustedOrigins({
-      APP_URL: 'https://wave-atlas.example',
-      NODE_ENV: 'production',
+      frontendOrigin: 'https://wave-atlas.example',
+      nodeEnv: 'production',
     });
 
     expect(origins).toEqual(['https://wave-atlas.example']);

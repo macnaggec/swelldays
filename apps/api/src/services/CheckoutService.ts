@@ -11,8 +11,7 @@ import { cloudinaryService } from 'server/services/CloudinaryService';
 import { BadRequestError, BadGatewayError, ForbiddenError } from 'server/errors';
 import { logger } from 'server/lib/logger';
 import { MEDIA_STATUS } from '@wave-atlas/contracts';
-
-const APP_URL = process.env.APP_URL!;
+import { apiConfig } from 'server/config/env';
 
 export class CheckoutService {
   constructor(
@@ -21,6 +20,7 @@ export class CheckoutService {
     private purchases: IPurchaseRepository,
     private payment: PaymentAdapter,
     private cloudinary: ICloudinaryService,
+    private frontendOrigin: string,
   ) { }
 
   /**
@@ -145,15 +145,15 @@ export class CheckoutService {
     totalCents: number,
   ): Promise<string> {
     const successUrl = buyerId
-      ? `${APP_URL}/me/collections/purchases?order=${orderId}`
-      : `${APP_URL}/order-success?orderId=${orderId}`;
+      ? `${this.frontendOrigin}/me/collections/purchases?order=${orderId}`
+      : `${this.frontendOrigin}/order-success?orderId=${orderId}`;
 
     try {
       const { checkoutUrl } = await this.payment.createCheckoutSession({
         orderId,
         totalCents,
         successUrl,
-        failUrl: `${APP_URL}/cart`,
+        failUrl: `${this.frontendOrigin}/cart`,
       });
 
       return checkoutUrl;
@@ -172,4 +172,5 @@ export const checkoutService = new CheckoutService(
   purchaseRepository,
   paymentAdapter,
   cloudinaryService,
+  apiConfig.frontendOrigin,
 );

@@ -196,6 +196,26 @@ export default defineConfig(
     },
   },
   {
+    files: ['apps/api/src/**/*.ts'],
+    ignores: [
+      'apps/api/src/config/env.ts',
+      'apps/api/src/**/*.test.ts',
+      'apps/api/src/test/**/*.ts',
+    ],
+    rules: {
+      'no-restricted-syntax': ['error',
+        {
+          selector: "MemberExpression[object.name='process'][property.name='env']",
+          message: 'Read process.env only in the API environment adapter.',
+        },
+        {
+          selector: "MemberExpression[object.name='process'][property.value='env']",
+          message: 'Read process.env only in the API environment adapter.',
+        },
+      ],
+    },
+  },
+  {
     files: ['apps/web/src/**/*.ts', 'apps/web/src/**/*.tsx'],
     rules: {
       'no-restricted-imports': ['error', {

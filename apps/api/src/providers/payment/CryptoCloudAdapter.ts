@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { BadGatewayError } from 'server/errors';
 import { logger } from 'server/lib/logger';
-import { requireEnv } from 'server/lib/env';
+import { apiConfig } from 'server/config/env';
 import type {
   PaymentAdapter,
   CreateCheckoutParams,
@@ -43,11 +43,10 @@ interface CCWebhookPayload {
 // ---------------------------------------------------------------------------
 
 function creds() {
-  return {
-    apiKey: requireEnv('CRYPTOCLOUD_API_KEY'),
-    shopId: requireEnv('CRYPTOCLOUD_SHOP_ID'),
-    secretKey: requireEnv('CRYPTOCLOUD_SECRET_KEY'),
-  };
+  if (!apiConfig.cryptoCloud) {
+    throw new Error('CryptoCloud credentials were not configured at startup');
+  }
+  return apiConfig.cryptoCloud;
 }
 
 // ---------------------------------------------------------------------------

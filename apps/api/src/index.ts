@@ -12,16 +12,15 @@ import { reconcileUploadAttempts } from 'server/jobs/reconcileUploadAttempts';
 import { createRateLimiter } from 'server/lib/rateLimiter';
 import { getClientIp } from 'server/lib/getClientIp';
 import { logger } from 'server/lib/logger';
+import { apiConfig } from 'server/config/env';
 
 // 20 webhook requests per IP per minute — prevents replay-flood DoS
 const webhookLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
 
 const app = new Hono();
 
-const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:5173';
-
 app.use('/api/*', cors({
-  origin: clientUrl,
+  origin: apiConfig.frontendOrigin,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -76,9 +75,8 @@ setInterval(runReconciler, RECONCILE_INTERVAL_MS);
 
 // Configurable so a second instance (e.g. the visual-capture run, which needs a
 // different database) can run alongside an ordinary dev server. Default unchanged.
-const serverPort = Number(process.env.SERVER_PORT ?? 3001);
+const serverPort = apiConfig.serverPort;
 
 serve({ fetch: app.fetch, port: serverPort }, () => {
   console.log(`Server running on http://localhost:${serverPort}`);
 });
-
