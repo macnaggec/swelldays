@@ -23,7 +23,7 @@ const listFiles = (dir) => {
 const isCodeOrCss = (file) => /\.(css|tsx?)$/.test(file);
 const isDesignSystemOwner = (file) => (
   file.startsWith('apps/web/src/shared/ui/design-system/')
-  || file === 'src/app/lib/theme.ts'
+  || file === 'apps/web/src/app/lib/theme.ts'
 );
 
 const isOverlayConsumer = (file) => (
@@ -131,7 +131,7 @@ const panelGridGapConsumers = new Set([
 ]);
 
 const panelGridSpacingPropConsumers = new Set([
-  'src/app/routes/_panel.me.collections.index.tsx',
+  'apps/web/src/app/routes/_panel.me.collections.index.tsx',
   'apps/web/src/features/PublicGallery/PublicGallery.tsx',
   'apps/web/src/shared/ui/PanelContentSkeleton/PanelContentSkeleton.tsx',
 ]);
@@ -148,13 +148,13 @@ const panelLocalResponsiveCssConsumers = new Set([
 ]);
 
 const sessionFeedLayoutConsumers = new Set([
-  'src/app/routes/_panel.$spotId.index.tsx',
-  'src/app/routes/_panel.index.tsx',
+  'apps/web/src/app/routes/_panel.$spotId.index.tsx',
+  'apps/web/src/app/routes/_panel.index.tsx',
   'apps/web/src/widgets/SidePanel/SessionFeed.tsx',
 ]);
 
 const panelLoadingCollectionConsumers = new Set([
-  'src/app/routes/_panel.me.collections.index.tsx',
+  'apps/web/src/app/routes/_panel.me.collections.index.tsx',
   'apps/web/src/shared/ui/PanelContentSkeleton/PanelContentSkeleton.tsx',
 ]);
 
@@ -886,7 +886,7 @@ const rules = [
     include: isRuntimeTypeScript,
     exclude: file => (
       file === 'apps/web/src/shared/model/appShellPresentation.tsx'
-      || file === 'src/app/routes/__root.tsx'
+      || file === 'apps/web/src/app/routes/__root.tsx'
     ),
   },
   {
@@ -894,7 +894,7 @@ const rules = [
     message: 'Mount the browse surface provider once at the composition root.',
     pattern: /<BrowseSurfaceProvider[\s>]/,
     include: isRuntimeTypeScript,
-    exclude: file => file === 'src/app/routes/__root.tsx',
+    exclude: file => file === 'apps/web/src/app/routes/__root.tsx',
   },
   {
     id: 'browse-surface-has-bounded-consumers',
@@ -904,7 +904,7 @@ const rules = [
     exclude: file => (
       file === 'apps/web/src/shared/ui/DrawerShell/browseSurface.tsx'
       || file === 'apps/web/src/shared/ui/DrawerShell/index.ts'
-      || file === 'src/app/routes/_panel.tsx'
+      || file === 'apps/web/src/app/routes/_panel.tsx'
       || file === 'apps/web/src/widgets/AppNavigation/AppNavigation.tsx'
       || file === 'apps/web/src/views/GlobeScene/GlobeScene.tsx'
     ),
@@ -914,7 +914,7 @@ const rules = [
     message: 'Mount compact browse section navigation once from the panel route.',
     pattern: /<BrowseSectionBar[\s>]/,
     include: isRuntimeTypeScript,
-    exclude: file => file === 'src/app/routes/_panel.tsx',
+    exclude: file => file === 'apps/web/src/app/routes/_panel.tsx',
   },
   {
     id: 'app-navigation-is-mounted-once-by-the-shell',
@@ -924,7 +924,7 @@ const rules = [
     pattern: /<AppNavigation[\s/>]/,
     include: isRuntimeTypeScript,
     exclude: file => (
-      file === 'src/app/AppShell.tsx'
+      file === 'apps/web/src/app/AppShell.tsx'
       || file.startsWith('apps/web/src/widgets/AppNavigation/')
     ),
   },
@@ -983,7 +983,7 @@ const rules = [
     message: 'Place drawer-adjacent controls from DrawerShell measured geometry, not local viewport formulas.',
     pattern: /\bPANEL_WIDTH_VW\b|\b25vw\b|calc\([^)]*\bvw\b/,
     include: file => (
-      file === 'src/app/routes/_panel.tsx'
+      file === 'apps/web/src/app/routes/_panel.tsx'
       || file.startsWith('apps/web/src/shared/ui/PanelRouteLayout')
     ),
   },
@@ -1041,7 +1041,7 @@ const rules = [
   },
   {
     id: 'no-local-overlay-props',
-    message: 'Overlay material belongs in src/app/lib/theme.ts, not local overlayProps/backgroundOpacity props.',
+    message: 'Overlay material belongs in apps/web/src/app/lib/theme.ts, not local overlayProps/backgroundOpacity props.',
     pattern: /\boverlayProps\b|\bbackgroundOpacity\b/,
     include: isOverlayConsumer,
   },
@@ -1613,7 +1613,7 @@ for (const file of files) {
       file,
       line: 1,
       rule: 'routes-contain-route-declarations-only',
-      message: 'Move route support code outside src/app/routes; this directory is scanned by TanStack Router.',
+      message: 'Move route support code outside apps/web/src/app/routes; this directory is scanned by TanStack Router.',
     });
   }
 

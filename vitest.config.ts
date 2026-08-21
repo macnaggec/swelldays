@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
 const alias = {
-  app: resolve(__dirname, './src/app'),
+  app: resolve(__dirname, './apps/web/src/app'),
   views: resolve(__dirname, './apps/web/src/views'),
   widgets: resolve(__dirname, './apps/web/src/widgets'),
   features: resolve(__dirname, './apps/web/src/features'),

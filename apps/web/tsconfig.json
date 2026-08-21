@@ -20,7 +20,7 @@
     "paths": {
       "@wave-atlas/api/router": ["../api/src/routerType.ts"],
       "@wave-atlas/contracts": ["../../packages/contracts/src/index.ts"],
-      "app/*": ["../../src/app/*"],
+      "app/*": ["src/app/*"],
       "views/*": ["src/views/*"],
       "widgets/*": ["src/widgets/*"],
       "features/*": ["src/features/*"],
@@ -33,7 +33,6 @@
   },
   "include": [
     "src",
-    "../../src/app",
     "../../packages/contracts/src",
     "../../vitest.d.ts"
   ]

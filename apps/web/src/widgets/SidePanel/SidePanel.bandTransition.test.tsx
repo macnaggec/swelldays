@@ -21,7 +21,7 @@ function DraftField() {
   );
 }
 
-// Mirrors the policy→props mapping in src/app/routes/_panel.tsx.
+// Mirrors the policy→props mapping in apps/web/src/app/routes/_panel.tsx.
 function renderSidePanelForPolicy(policy: AppShellLayoutPolicy) {
   if (policy.drawer.presentation === 'hidden' || policy.drawer.presentation === 'bottomSheet') {
     throw new Error('a band crossing must keep the drawer mounted in its panel form');
@@ -39,7 +39,7 @@ function renderSidePanelForPolicy(policy: AppShellLayoutPolicy) {
   );
 }
 
-// Mirrors the compact/regular browse sheet wiring in src/app/routes/_panel.tsx: the sheet
+// Mirrors the compact/regular browse sheet wiring in apps/web/src/app/routes/_panel.tsx: the sheet
 // position is rendered state seeded once from the browsingExpanded preference, and landing
 // on a snap is the only path that writes the preference back.
 function BrowseSheetHarness() {

@@ -28,8 +28,8 @@ export default defineConfig(() => {
     plugins: [
       ...(httpsRequested ? [basicSsl({ domains: getLocalNetworkIps() })] : []),
       tanstackRouter({
-        routesDirectory: './src/app/routes',
-        generatedRouteTree: './src/app/routeTree.gen.ts',
+        routesDirectory: './apps/web/src/app/routes',
+        generatedRouteTree: './apps/web/src/app/routeTree.gen.ts',
       }),
       react(),
       tsconfigPaths(),
