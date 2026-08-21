@@ -1,16 +1,12 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./apps/api/tsconfig.json",
   "compilerOptions": {
-    "noEmit": false,
-    "outDir": "dist/server",
-    "module": "ESNext",
-    "moduleResolution": "bundler"
+    "noEmit": true
   },
   "include": [
-    "src/server/**/*",
-    "src/shared/**/*",
+    "apps/api/src/**/*",
     "packages/contracts/src/**/*",
-    "prisma/**/*",
-    "vitest.d.ts"
+    "src/test/helpers/resetDb.ts",
+    "prisma/**/*"
   ]
 }

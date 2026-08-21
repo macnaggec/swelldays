@@ -27,7 +27,7 @@ export default defineConfig(
     ],
   },
   {
-    files: ['src/**/*.ts', 'src/**/*.tsx', 'packages/contracts/src/**/*.ts'],
+    files: ['apps/api/src/**/*.ts', 'src/**/*.ts', 'src/**/*.tsx', 'packages/contracts/src/**/*.ts'],
     plugins: { boundaries, 'react-hooks': reactHooks },
     languageOptions: {
       parser: tseslint.parser,
@@ -36,7 +36,7 @@ export default defineConfig(
       'boundaries/elements': [
         // Server tests stay inside the server dependency boundary while still being
         // allowed to use shared contracts and test helpers.
-        { type: 'server-test', pattern: ['src/server/**/*.test.ts', 'src/server/**/*.integration.test.ts'], mode: 'full' },
+        { type: 'server-test', pattern: ['apps/api/src/**/*.test.ts', 'apps/api/src/**/*.integration.test.ts'], mode: 'full' },
         // Test files are file-path matches, not folder elements. Keep this before
         // app layers so non-server tests are classified as test before their containing layer.
         { type: 'test',    pattern: ['src/test/**', 'src/**/*.test.ts', 'src/**/*.test.tsx', 'src/**/*.spec.ts', 'src/**/*.spec.tsx'], mode: 'full' },
@@ -64,7 +64,7 @@ export default defineConfig(
           capture: ['entityName'],
         },
         { type: 'shared',  pattern: 'src/shared/**' },
-        { type: 'server',  pattern: 'src/server/**' },
+        { type: 'server',  pattern: 'apps/api/src/**' },
         { type: 'contracts', pattern: 'packages/contracts/src/**', mode: 'full' },
         { type: 'types',   pattern: 'src/types/**' },
       ],
@@ -72,7 +72,7 @@ export default defineConfig(
       // boundaries can match resolved paths against element patterns.
       'import/resolver': {
         typescript: {
-          project: ['./tsconfig.json', './packages/contracts/tsconfig.json'],
+          project: ['./tsconfig.json', './apps/api/tsconfig.json', './packages/contracts/tsconfig.json'],
           noWarnOnMultipleProjects: true,
         },
       },
@@ -87,8 +87,8 @@ export default defineConfig(
       'boundaries/dependencies': ['error', {
         default: 'disallow',
         rules: [
-          // app may import any layer (including server: tRPC requires the router type for e2e typesafety)
-          // Entity imports are index-only: app code may not reach into entity internals.
+          // app may import browser layers and contracts. The tRPC type seam is owned
+          // narrowly by src/shared/lib/trpc*.ts below, not by the app layer generally.
           {
             from: { type: 'app' },
             allow: {
@@ -97,7 +97,7 @@ export default defineConfig(
                 { type: 'widgets', path: 'src/widgets/*/index.ts' },
                 { type: 'feature', path: 'src/features/*/index.ts' },
                 { type: 'entity', path: 'src/entities/*/index.ts' },
-                { type: 'shared' }, { type: 'server' }, { type: 'types' }, { type: 'contracts' },
+                { type: 'shared' }, { type: 'types' }, { type: 'contracts' },
               ],
             },
           },
@@ -153,16 +153,16 @@ export default defineConfig(
               ],
             },
           },
-          // shared/lib/trpc.ts and trpcClient.ts need a type-only import of AppRouter from server/router
+          // shared/lib/trpc.ts and trpcClient.ts need the one approved API type seam
           // for tRPC end-to-end type safety. This is erased at compile time — no runtime coupling.
-          { from: { type: 'shared', path: 'src/shared/lib/trpc*.ts' }, allow: { to: [{ type: 'server', path: 'src/server/router.ts' }] } },
+          { from: { type: 'shared', path: 'src/shared/lib/trpc*.ts' }, allow: { to: [{ type: 'server', path: 'apps/api/src/routerType.ts' }] } },
           // Browser-owned shared modules may use the platform-neutral contracts package.
           { from: { type: 'shared' }, allow: { to: [{ type: 'shared' }, { type: 'types' }, { type: 'contracts' }] } },
-          // server: routes/services/repositories use server-internal modules and shared/server-safe contracts.
-          { from: { type: 'server' },  allow: { to: [{ type: 'server' }, { type: 'shared' }, { type: 'types' }, { type: 'contracts' }] } },
-          // server tests may use server code, shared contracts, global types, and test helpers,
+          // API runtime code may use only API modules and platform-neutral contracts.
+          { from: { type: 'server' },  allow: { to: [{ type: 'server' }, { type: 'contracts' }] } },
+          // server tests may use server code, contracts, and test helpers,
           // but not client-facing app/entity/feature/widget/view layers.
-          { from: { type: 'server-test' }, allow: { to: [{ type: 'server' }, { type: 'shared' }, { type: 'types' }, { type: 'test' }, { type: 'contracts' }] } },
+          { from: { type: 'server-test' }, allow: { to: [{ type: 'server' }, { type: 'test' }, { type: 'contracts' }] } },
           // test helpers may import anything
           { from: { type: 'test' },    allow: { to: { type: ['app', 'views', 'widgets', 'feature', 'entity', 'shared', 'server', 'types', 'test', 'contracts'] } } },
           // Contracts are the platform-neutral leaf of the workspace graph.
@@ -175,7 +175,7 @@ export default defineConfig(
     },
   },
   {
-    files: ['src/server/**/*.ts'],
+    files: ['apps/api/src/**/*.ts'],
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [contractsDeepImportRestriction, serverClientIntegrationRestriction],
@@ -212,8 +212,8 @@ export default defineConfig(
     },
   },
   {
-    files: ['src/server/repositories/**/*.ts'],
-    ignores: ['src/server/repositories/**/*.test.ts', 'src/server/repositories/**/*.integration.test.ts'],
+    files: ['apps/api/src/repositories/**/*.ts'],
+    ignores: ['apps/api/src/repositories/**/*.test.ts', 'apps/api/src/repositories/**/*.integration.test.ts'],
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [
@@ -233,6 +233,11 @@ export default defineConfig(
     files: ['src/shared/lib/trpc.ts', 'src/shared/lib/trpcClient.ts'],
     rules: {
       'no-restricted-imports': ['error', {
+        paths: [{
+          name: '@wave-atlas/api/router',
+          allowTypeImports: true,
+          message: 'The browser may only type-import the approved @wave-atlas/api/router surface.',
+        }],
         patterns: [{
           group: ['server/*', 'server/**/*'],
           allowTypeImports: true,

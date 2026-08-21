@@ -786,7 +786,7 @@ const forbiddenPanelCollectionGridStyles = [
 ];
 
 const isServerNonTestFile = (file) => (
-  file.startsWith('src/server/')
+  file.startsWith('apps/api/src/')
   && !/\.test\.tsx?$/.test(file)
 );
 
@@ -1204,7 +1204,7 @@ const rules = [
     message: 'User.balance mutations and Transaction writes belong in LedgerRepository (single money write path, roadmap S1b).',
     pattern: /balance:\s*(\{\s*(increment|decrement)|-?\d)|\btransaction\.create(Many)?\(/,
     include: isServerNonTestFile,
-    exclude: file => file === 'src/server/repositories/LedgerRepository.ts',
+    exclude: file => file === 'apps/api/src/repositories/LedgerRepository.ts',
   },
   {
     id: 'surf-session-owns-lifecycle-invalidation',

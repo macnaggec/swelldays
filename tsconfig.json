@@ -23,8 +23,14 @@
       "vite/client"
     ],
     "paths": {
+      "@wave-atlas/api/router": [
+        "./apps/api/src/routerType.ts"
+      ],
       "@wave-atlas/contracts": [
         "./packages/contracts/src/index.ts"
+      ],
+      "server/*": [
+        "./apps/api/src/*"
       ],
       "*": [
         "./src/*"
