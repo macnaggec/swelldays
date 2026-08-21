@@ -41,12 +41,12 @@ export default defineConfig(
         // app layers so non-server tests are classified as test before their containing layer.
         { type: 'test',    pattern: ['src/test/**', 'apps/web/src/test/**', 'src/**/*.test.ts', 'src/**/*.test.tsx', 'apps/web/src/**/*.test.ts', 'apps/web/src/**/*.test.tsx', 'src/**/*.spec.ts', 'src/**/*.spec.tsx', 'apps/web/src/**/*.spec.ts', 'apps/web/src/**/*.spec.tsx'], mode: 'full' },
         { type: 'app',     pattern: 'src/app/**' },
-        { type: 'views',   pattern: 'src/views/**' },
+        { type: 'views',   pattern: 'apps/web/src/views/**' },
         // Each widget folder is its own element; cross-widget imports are forbidden
         // unless the caller is a higher layer using the widget's public index.
         {
           type: 'widgets',
-          pattern: 'src/widgets/*/**',
+          pattern: 'apps/web/src/widgets/*/**',
           capture: ['widgetName'],
         },
         // Each sub-folder of features/ is its own element; featureName is captured for
@@ -94,7 +94,7 @@ export default defineConfig(
             allow: {
               to: [
                 { type: 'views' },
-                { type: 'widgets', path: 'src/widgets/*/index.ts' },
+                { type: 'widgets', path: 'apps/web/src/widgets/*/index.ts' },
                 { type: 'feature', path: 'apps/web/src/features/*/index.ts' },
                 { type: 'entity', path: 'apps/web/src/entities/*/index.ts' },
                 { type: 'shared' }, { type: 'types' }, { type: 'contracts' },
@@ -106,7 +106,7 @@ export default defineConfig(
             from: { type: 'views' },
             allow: {
               to: [
-                { type: 'widgets', path: 'src/widgets/*/index.ts' },
+                { type: 'widgets', path: 'apps/web/src/widgets/*/index.ts' },
                 { type: 'feature', path: 'apps/web/src/features/*/index.ts' },
                 { type: 'entity', path: 'apps/web/src/entities/*/index.ts' },
                 { type: 'shared' }, { type: 'types' }, { type: 'contracts' },
@@ -183,7 +183,7 @@ export default defineConfig(
     },
   },
   {
-    files: ['src/widgets/GlobeMap/**/*.ts', 'src/widgets/GlobeMap/**/*.tsx'],
+    files: ['apps/web/src/widgets/GlobeMap/**/*.ts', 'apps/web/src/widgets/GlobeMap/**/*.tsx'],
     rules: {
       'no-restricted-imports': ['error', {
         paths: [

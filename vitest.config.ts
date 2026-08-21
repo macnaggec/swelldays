@@ -4,8 +4,8 @@ import { resolve } from 'path'
 
 const alias = {
   app: resolve(__dirname, './src/app'),
-  views: resolve(__dirname, './src/views'),
-  widgets: resolve(__dirname, './src/widgets'),
+  views: resolve(__dirname, './apps/web/src/views'),
+  widgets: resolve(__dirname, './apps/web/src/widgets'),
   features: resolve(__dirname, './apps/web/src/features'),
   entities: resolve(__dirname, './apps/web/src/entities'),
   shared: resolve(__dirname, './apps/web/src/shared'),

@@ -21,8 +21,8 @@
       "@wave-atlas/api/router": ["../api/src/routerType.ts"],
       "@wave-atlas/contracts": ["../../packages/contracts/src/index.ts"],
       "app/*": ["../../src/app/*"],
-      "views/*": ["../../src/views/*"],
-      "widgets/*": ["../../src/widgets/*"],
+      "views/*": ["src/views/*"],
+      "widgets/*": ["src/widgets/*"],
       "features/*": ["src/features/*"],
       "entities/*": ["src/entities/*"],
       "shared/*": ["src/shared/*"],
@@ -34,8 +34,6 @@
   "include": [
     "src",
     "../../src/app",
-    "../../src/views",
-    "../../src/widgets",
     "../../packages/contracts/src",
     "../../vitest.d.ts"
   ]

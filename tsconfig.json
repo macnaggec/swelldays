@@ -32,6 +32,12 @@
       "server/*": [
         "./apps/api/src/*"
       ],
+      "views/*": [
+        "./apps/web/src/views/*"
+      ],
+      "widgets/*": [
+        "./apps/web/src/widgets/*"
+      ],
       "features/*": [
         "./apps/web/src/features/*"
       ],

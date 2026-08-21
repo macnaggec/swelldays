@@ -47,14 +47,14 @@ const isMigratedMaterialSurface = (file) => (
   || file.startsWith('apps/web/src/shared/ui/CarouselLightbox/')
   || file.startsWith('apps/web/src/shared/ui/PanelGalleryLayout')
   || file.startsWith('apps/web/src/entities/SurfSession/ui/')
-  || file.startsWith('src/widgets/SidePanel/SessionFeed')
-  || file.startsWith('src/widgets/SidePanel/SidePanel')
-  || file.startsWith('src/widgets/AppNavigation/AppNavigation')
-  || file.startsWith('src/widgets/BrowseSectionBar/')
+  || file.startsWith('apps/web/src/widgets/SidePanel/SessionFeed')
+  || file.startsWith('apps/web/src/widgets/SidePanel/SidePanel')
+  || file.startsWith('apps/web/src/widgets/AppNavigation/AppNavigation')
+  || file.startsWith('apps/web/src/widgets/BrowseSectionBar/')
   || file.startsWith('apps/web/src/shared/ui/SectionSwitcher/')
-  || file === 'src/widgets/AppNavigation/CartControl.tsx'
-  || file.startsWith('src/views/GlobeScene/')
-  || file === 'src/widgets/GlobeMap/LocationPicker.module.css'
+  || file === 'apps/web/src/widgets/AppNavigation/CartControl.tsx'
+  || file.startsWith('apps/web/src/views/GlobeScene/')
+  || file === 'apps/web/src/widgets/GlobeMap/LocationPicker.module.css'
   || /^src\/app\/routes\/_panel.*\.tsx$/.test(file)
 );
 
@@ -122,7 +122,7 @@ const panelInsetConsumers = new Set([
   'apps/web/src/shared/ui/PanelRouteLayout.module.css',
   'apps/web/src/shared/ui/PanelScrollChrome.module.css',
   'apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css',
-  'src/widgets/SidePanel/SessionFeed.module.css',
+  'apps/web/src/widgets/SidePanel/SessionFeed.module.css',
 ]);
 
 const panelGridGapConsumers = new Set([
@@ -138,8 +138,8 @@ const panelGridSpacingPropConsumers = new Set([
 
 const ordinaryPanelCollectionCssConsumers = new Set([
   'apps/web/src/shared/ui/BaseGallery/BaseGallery.module.css',
-  'src/widgets/SidePanel/SessionDetail.module.css',
-  'src/widgets/SidePanel/SessionFeed.module.css',
+  'apps/web/src/widgets/SidePanel/SessionDetail.module.css',
+  'apps/web/src/widgets/SidePanel/SessionFeed.module.css',
 ]);
 
 const panelLocalResponsiveCssConsumers = new Set([
@@ -150,7 +150,7 @@ const panelLocalResponsiveCssConsumers = new Set([
 const sessionFeedLayoutConsumers = new Set([
   'src/app/routes/_panel.$spotId.index.tsx',
   'src/app/routes/_panel.index.tsx',
-  'src/widgets/SidePanel/SessionFeed.tsx',
+  'apps/web/src/widgets/SidePanel/SessionFeed.tsx',
 ]);
 
 const panelLoadingCollectionConsumers = new Set([
@@ -236,7 +236,7 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-text-on-accent',
     '--wa-accent-spot',
   ]],
-  ['src/widgets/AppNavigation/MenuControl.module.css', [
+  ['apps/web/src/widgets/AppNavigation/MenuControl.module.css', [
     '--wa-control-indicator',
     '--wa-radius-control-md',
   ]],
@@ -267,7 +267,7 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-motion-easing-standard',
     '--wa-z-panel-chrome',
   ]],
-  ['src/widgets/AppNavigation/AppNavigation.module.css', [
+  ['apps/web/src/widgets/AppNavigation/AppNavigation.module.css', [
     '--wa-shell-edge-clearance',
     '--wa-control-size-navigation',
     '--wa-control-size-navigation-compact',
@@ -275,7 +275,7 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-safe-area-left',
     '--wa-safe-area-right',
   ]],
-  ['src/widgets/BrowseSectionBar/BrowseSectionBar.module.css', [
+  ['apps/web/src/widgets/BrowseSectionBar/BrowseSectionBar.module.css', [
     '--wa-floating-chrome-bottom-offset',
     '--wa-z-floating-chrome',
   ]],
@@ -293,7 +293,7 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-motion-duration-control',
     '--wa-motion-easing-standard',
   ]],
-  ['src/widgets/SidePanel/SidePanel.module.css', [
+  ['apps/web/src/widgets/SidePanel/SidePanel.module.css', [
     '--wa-control-size-compact',
     '--wa-panel-content-inset',
     '--wa-motion-duration-control',
@@ -331,7 +331,7 @@ const requiredResponsiveTokensByFile = new Map([
     '--wa-radius-sheet',
     '--wa-accent-spot',
   ]],
-  ['src/widgets/SidePanel/FilterPills.module.css', [
+  ['apps/web/src/widgets/SidePanel/FilterPills.module.css', [
     '--wa-control-height-default',
     '--wa-panel-content-inset',
   ]],
@@ -905,8 +905,8 @@ const rules = [
       file === 'apps/web/src/shared/ui/DrawerShell/browseSurface.tsx'
       || file === 'apps/web/src/shared/ui/DrawerShell/index.ts'
       || file === 'src/app/routes/_panel.tsx'
-      || file === 'src/widgets/AppNavigation/AppNavigation.tsx'
-      || file === 'src/views/GlobeScene/GlobeScene.tsx'
+      || file === 'apps/web/src/widgets/AppNavigation/AppNavigation.tsx'
+      || file === 'apps/web/src/views/GlobeScene/GlobeScene.tsx'
     ),
   },
   {
@@ -925,7 +925,7 @@ const rules = [
     include: isRuntimeTypeScript,
     exclude: file => (
       file === 'src/app/AppShell.tsx'
-      || file.startsWith('src/widgets/AppNavigation/')
+      || file.startsWith('apps/web/src/widgets/AppNavigation/')
     ),
   },
   {
@@ -954,16 +954,16 @@ const rules = [
     id: 'globe-scene-consumes-drawer-owned-geometry',
     message: 'GlobeScene must consume DrawerShell geometry instead of reconstructing sheet-snap geometry.',
     pattern: /\b(?:useBrowseSheetNavigationPlacement|resolveSheetSnapHeights|SHEET_PEEK_HEIGHT_PX)\b/,
-    include: file => file === 'src/views/GlobeScene/GlobeScene.tsx',
+    include: file => file === 'apps/web/src/views/GlobeScene/GlobeScene.tsx',
   },
   {
     id: 'globe-camera-insets-use-measured-drawer',
     message: 'The map camera must consume four-sided insets derived from measured drawer bounds, not local panel-width or expansion heuristics.',
     pattern: /\b(?:PANEL_WIDTH_VW|isRenderedPanelExpanded)\b/,
     include: file => (
-      file === 'src/views/GlobeScene/GlobeScene.tsx'
-      || file === 'src/views/GlobeScene/model/mapCameraInsets.ts'
-      || file === 'src/widgets/GlobeMap/GlobeMapComponent.tsx'
+      file === 'apps/web/src/views/GlobeScene/GlobeScene.tsx'
+      || file === 'apps/web/src/views/GlobeScene/model/mapCameraInsets.ts'
+      || file === 'apps/web/src/widgets/GlobeMap/GlobeMapComponent.tsx'
     ),
   },
   {
@@ -991,13 +991,13 @@ const rules = [
     id: 'drawer-shell-owns-surface-runtime',
     message: 'Drawer animation and width application belong in shared/ui/DrawerShell.',
     pattern: /from\s+['"]framer-motion['"]|\bmotion\.|\b(?:PANEL_WIDTH_VW|SIDE_PANEL_TRANSITION)\b/,
-    include: file => file === 'src/widgets/SidePanel/SidePanel.tsx',
+    include: file => file === 'apps/web/src/widgets/SidePanel/SidePanel.tsx',
   },
   {
     id: 'drawer-shell-owns-surface-styles',
     message: 'Drawer positioning and the scroll container belong in shared/ui/DrawerShell.',
     pattern: /position:\s*fixed|overflow-y:\s*auto|overscroll-behavior|safe-area-inset|height:\s*100dvh/,
-    include: file => file === 'src/widgets/SidePanel/SidePanel.module.css',
+    include: file => file === 'apps/web/src/widgets/SidePanel/SidePanel.module.css',
   },
   {
     id: 'drawer-shell-owns-sheet-snap-geometry',
@@ -1012,8 +1012,8 @@ const rules = [
     include: file => (
       file === 'apps/web/src/shared/ui/DrawerShell/DrawerShell.tsx'
       || file === 'apps/web/src/shared/ui/DrawerShell/DrawerShell.module.css'
-      || file === 'src/widgets/SidePanel/SessionFeed.tsx'
-      || file === 'src/widgets/SidePanel/SessionFeed.module.css'
+      || file === 'apps/web/src/widgets/SidePanel/SessionFeed.tsx'
+      || file === 'apps/web/src/widgets/SidePanel/SessionFeed.module.css'
       || file === 'apps/web/src/shared/ui/PanelGalleryLayout.tsx'
       || file === 'apps/web/src/shared/ui/PanelGalleryLayout.module.css'
     ),
@@ -1125,7 +1125,7 @@ const rules = [
     id: 'no-local-shell-edge-clearance',
     message: 'Shell-external chrome must use --wa-shell-edge-clearance.',
     pattern: /\b(?:top|left):\s*12px/,
-    include: file => file === 'src/widgets/AppNavigation/AppNavigation.module.css',
+    include: file => file === 'apps/web/src/widgets/AppNavigation/AppNavigation.module.css',
   },
   {
     id: 'no-local-panel-chrome-layer',
@@ -1152,12 +1152,12 @@ const rules = [
     message: 'Responsive shell and panel controls must use semantic control-dimension tokens.',
     pattern: /(?:width|height):\s*(?:32px|36px|44px|2\.25rem)|--upload-control-height:\s*36px/,
     include: file => (
-      file === 'src/widgets/AppNavigation/AppNavigation.module.css'
-      || file === 'src/widgets/BrowseSectionBar/BrowseSectionBar.module.css'
-      || file === 'src/widgets/SidePanel/SidePanel.module.css'
+      file === 'apps/web/src/widgets/AppNavigation/AppNavigation.module.css'
+      || file === 'apps/web/src/widgets/BrowseSectionBar/BrowseSectionBar.module.css'
+      || file === 'apps/web/src/widgets/SidePanel/SidePanel.module.css'
       || file === 'apps/web/src/shared/ui/PanelRouteLayout.module.css'
       || file === 'apps/web/src/features/Upload/ui/UploadSidebar.module.css'
-      || file === 'src/widgets/SidePanel/FilterPills.module.css'
+      || file === 'apps/web/src/widgets/SidePanel/FilterPills.module.css'
       || file === 'apps/web/src/features/Collections/ui/CollectionsToolbar.module.css'
       || file === 'apps/web/src/features/PublicGallery/ui/GalleryDateJumpHeading.module.css'
     ),
@@ -1166,7 +1166,7 @@ const rules = [
     id: 'no-filter-pill-row-centering',
     message: 'The filter-pill row must stay left-aligned, flush with the card grid below it, not centered (user-confirmed 2026-08-07).',
     pattern: /justify-content:\s*(?:safe\s+)?center|margin-inline:\s*auto/,
-    include: file => file === 'src/widgets/SidePanel/FilterPills.module.css',
+    include: file => file === 'apps/web/src/widgets/SidePanel/FilterPills.module.css',
   },
   {
     id: 'mobile-gallery-large-text-uses-minimum-heights',
@@ -1191,15 +1191,15 @@ const rules = [
     id: 'no-local-panel-header-height',
     message: 'The panel header band must size itself from its content (the back button\'s own --wa-control-size-compact), not a hardcoded height.',
     pattern: /(?:min-)?height:\s*52px|padding:\s*10px\s+8px/,
-    include: file => file === 'src/widgets/SidePanel/SidePanel.module.css',
+    include: file => file === 'apps/web/src/widgets/SidePanel/SidePanel.module.css',
   },
   {
     id: 'no-local-responsive-control-motion',
     message: 'Shell controls must use the semantic control motion tokens.',
     pattern: /transition:[^;]*150ms\s+ease/,
     include: file => (
-      file === 'src/widgets/SidePanel/SidePanel.module.css'
-      || file === 'src/widgets/SidePanel/ModeSwitcher.module.css'
+      file === 'apps/web/src/widgets/SidePanel/SidePanel.module.css'
+      || file === 'apps/web/src/widgets/SidePanel/ModeSwitcher.module.css'
     ),
   },
   {
@@ -1337,13 +1337,13 @@ for (const [requirement, pattern] of requiredDrawerShellRuntime) {
 }
 
 const sidePanelStyles = readFileSync(
-  path.join(root, 'src/widgets/SidePanel/SidePanel.module.css'),
+  path.join(root, 'apps/web/src/widgets/SidePanel/SidePanel.module.css'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredSidePanelStyles) {
   if (pattern.test(sidePanelStyles)) continue;
   violations.push({
-    file: 'src/widgets/SidePanel/SidePanel.module.css',
+    file: 'apps/web/src/widgets/SidePanel/SidePanel.module.css',
     line: 1,
     rule: 'side-panel-required-styles',
     message: `SidePanel is missing ${requirement}.`,
@@ -1351,13 +1351,13 @@ for (const [requirement, pattern] of requiredSidePanelStyles) {
 }
 
 const compactBrowseNavigationRuntime = readFileSync(
-  path.join(root, 'src/widgets/AppNavigation/AppNavigation.tsx'),
+  path.join(root, 'apps/web/src/widgets/AppNavigation/AppNavigation.tsx'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredCompactBrowseNavigationRuntime) {
   if (pattern.test(compactBrowseNavigationRuntime)) continue;
   violations.push({
-    file: 'src/widgets/AppNavigation/AppNavigation.tsx',
+    file: 'apps/web/src/widgets/AppNavigation/AppNavigation.tsx',
     line: 1,
     rule: 'compact-browse-navigation-required-runtime',
     message: `Compact browse navigation is missing ${requirement}.`,
@@ -1365,13 +1365,13 @@ for (const [requirement, pattern] of requiredCompactBrowseNavigationRuntime) {
 }
 
 const compactBrowseNavigationStyles = readFileSync(
-  path.join(root, 'src/widgets/AppNavigation/AppNavigation.module.css'),
+  path.join(root, 'apps/web/src/widgets/AppNavigation/AppNavigation.module.css'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredCompactBrowseNavigationStyles) {
   if (pattern.test(compactBrowseNavigationStyles)) continue;
   violations.push({
-    file: 'src/widgets/AppNavigation/AppNavigation.module.css',
+    file: 'apps/web/src/widgets/AppNavigation/AppNavigation.module.css',
     line: 1,
     rule: 'compact-browse-navigation-required-styles',
     message: `Compact browse navigation is missing ${requirement}.`,
@@ -1381,7 +1381,7 @@ for (const [requirement, pattern] of requiredCompactBrowseNavigationStyles) {
 for (const [requirement, pattern] of forbiddenCompactBrowseNavigationStyles) {
   if (!pattern.test(compactBrowseNavigationStyles)) continue;
   violations.push({
-    file: 'src/widgets/AppNavigation/AppNavigation.module.css',
+    file: 'apps/web/src/widgets/AppNavigation/AppNavigation.module.css',
     line: 1,
     rule: 'compact-browse-navigation-forbidden-styles',
     message: `Compact browse navigation must not use ${requirement}.`,
@@ -1431,13 +1431,13 @@ for (const [requirement, pattern] of requiredCartCheckoutFooterStyles) {
 }
 
 const browseSectionBarRuntime = readFileSync(
-  path.join(root, 'src/widgets/BrowseSectionBar/BrowseSectionBar.tsx'),
+  path.join(root, 'apps/web/src/widgets/BrowseSectionBar/BrowseSectionBar.tsx'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredBrowseSectionBarRuntime) {
   if (pattern.test(browseSectionBarRuntime)) continue;
   violations.push({
-    file: 'src/widgets/BrowseSectionBar/BrowseSectionBar.tsx',
+    file: 'apps/web/src/widgets/BrowseSectionBar/BrowseSectionBar.tsx',
     line: 1,
     rule: 'browse-section-bar-required-runtime',
     message: `Browse section navigation is missing ${requirement}.`,
@@ -1445,13 +1445,13 @@ for (const [requirement, pattern] of requiredBrowseSectionBarRuntime) {
 }
 
 const browseSectionBarStyles = readFileSync(
-  path.join(root, 'src/widgets/BrowseSectionBar/BrowseSectionBar.module.css'),
+  path.join(root, 'apps/web/src/widgets/BrowseSectionBar/BrowseSectionBar.module.css'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredBrowseSectionBarStyles) {
   if (pattern.test(browseSectionBarStyles)) continue;
   violations.push({
-    file: 'src/widgets/BrowseSectionBar/BrowseSectionBar.module.css',
+    file: 'apps/web/src/widgets/BrowseSectionBar/BrowseSectionBar.module.css',
     line: 1,
     rule: 'browse-section-bar-required-styles',
     message: `Browse section navigation is missing ${requirement}.`,
@@ -1487,27 +1487,27 @@ for (const [requirement, pattern] of requiredCompactBrowseToolbarStyles) {
 }
 
 const sessionFeedStyles = readFileSync(
-  path.join(root, 'src/widgets/SidePanel/SessionFeed.module.css'),
+  path.join(root, 'apps/web/src/widgets/SidePanel/SessionFeed.module.css'),
   'utf8',
 );
 for (const [requirement, pattern] of requiredSessionFeedStyles) {
   if (pattern.test(sessionFeedStyles)) continue;
   violations.push({
-    file: 'src/widgets/SidePanel/SessionFeed.module.css',
+    file: 'apps/web/src/widgets/SidePanel/SessionFeed.module.css',
     line: 1,
     rule: 'session-feed-required-styles',
     message: `Session feed is missing ${requirement}.`,
   });
 }
 
-const filterPillStylesPath = path.join(root, 'src/widgets/SidePanel/FilterPills.module.css');
+const filterPillStylesPath = path.join(root, 'apps/web/src/widgets/SidePanel/FilterPills.module.css');
 const filterPillStyles = statSync(filterPillStylesPath, { throwIfNoEntry: false })?.isFile()
   ? readFileSync(filterPillStylesPath, 'utf8')
   : '';
 for (const [requirement, pattern] of requiredFilterPillStyles) {
   if (pattern.test(filterPillStyles)) continue;
   violations.push({
-    file: 'src/widgets/SidePanel/FilterPills.module.css',
+    file: 'apps/web/src/widgets/SidePanel/FilterPills.module.css',
     line: 1,
     rule: 'filter-pill-required-styles',
     message: `Filter pills are missing ${requirement}.`,
