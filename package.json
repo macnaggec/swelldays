@@ -25,7 +25,7 @@
     "test:client": "vitest --project client",
     "test:server": "vitest --project server",
     "test:integration": "vitest --project integration",
-    "lint": "eslint apps/api/src apps/api/prisma.config.ts apps/web/src apps/web/vite.config.ts src packages/contracts/src tests playwright.config.ts playwright.layout.config.ts",
+    "lint": "eslint apps/api/src apps/api/prisma.config.ts apps/web/src apps/web/vite.config.ts packages/contracts/src tests playwright.config.ts playwright.layout.config.ts",
     "check:style-boundaries": "node scripts/check-style-boundaries.mjs",
     "prisma:generate": "npm run prisma:generate --workspace @wave-atlas/api",
     "prisma:validate": "npm run prisma:validate --workspace @wave-atlas/api",

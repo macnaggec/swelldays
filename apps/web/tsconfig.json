@@ -27,7 +27,7 @@
       "entities/*": ["src/entities/*"],
       "shared/*": ["src/shared/*"],
       "server/*": ["../api/src/*"],
-      "test/*": ["src/test/*", "../../src/test/*"],
+      "test/*": ["src/test/*"],
       "types/*": ["src/types/*"]
     }
   },

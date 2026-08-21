@@ -19,7 +19,7 @@ const clientAlias = {
 
 const serverAlias = {
   ...alias,
-  test: resolve(__dirname, './src/test'),
+  test: resolve(__dirname, './apps/api/src/test'),
 }
 
 export default defineConfig({
@@ -37,7 +37,7 @@ export default defineConfig({
           globals: true,
           include: ['src/**/*.test.{ts,tsx}', 'apps/web/src/**/*.test.{ts,tsx}'],
           exclude: ['apps/api/src/**'],
-          setupFiles: ['./vitest.setup.client.ts'],
+          setupFiles: ['./apps/web/src/test/vitest.setup.ts'],
         },
         resolve: { alias: clientAlias },
       },
@@ -52,7 +52,7 @@ export default defineConfig({
           globals: true,
           include: ['apps/api/src/**/*.test.ts', 'packages/contracts/src/**/*.test.ts'],
           exclude: ['apps/api/src/**/*.integration.test.ts'],
-          setupFiles: ['./vitest.setup.server.ts'],
+          setupFiles: ['./apps/api/src/test/vitest.setup.ts'],
         },
         resolve: { alias: serverAlias },
       },
@@ -67,8 +67,8 @@ export default defineConfig({
           environment: 'node',
           globals: true,
           include: ['apps/api/src/**/*.integration.test.ts'],
-          setupFiles: ['./vitest.setup.integration.ts'],
-          globalSetup: ['./vitest.globalSetup.integration.ts'],
+          setupFiles: ['./apps/api/src/test/vitest.setup.integration.ts'],
+          globalSetup: ['./apps/api/src/test/vitest.globalSetup.integration.ts'],
           fileParallelism: false,
         },
         resolve: { alias: serverAlias },

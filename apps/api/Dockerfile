@@ -17,7 +17,6 @@ RUN --mount=type=cache,target=/root/.npm \
 
 COPY apps/api ./apps/api
 COPY packages/contracts ./packages/contracts
-COPY src/test/helpers/resetDb.ts ./src/test/helpers/resetDb.ts
 
 RUN npm run prisma:generate --workspace @wave-atlas/api
 RUN npm run build --workspace @wave-atlas/api

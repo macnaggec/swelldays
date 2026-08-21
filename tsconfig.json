@@ -51,8 +51,7 @@
         "./apps/web/src/shared/*"
       ],
       "test/*": [
-        "./apps/web/src/test/*",
-        "./src/test/*"
+        "./apps/web/src/test/*"
       ],
       "types/*": [
         "./apps/web/src/types/*"
@@ -72,7 +71,6 @@
   ],
   "exclude": [
     "node_modules",
-    "vitest.config.ts",
-    "vitest.setup.ts"
+    "vitest.config.ts"
   ]
 }

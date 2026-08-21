@@ -839,6 +839,7 @@ const rules = [
     exclude: file => (
       file === 'apps/web/src/shared/model/viewportCapabilities.ts'
       || file === 'apps/web/src/shared/model/viewportMetrics.ts'
+      || file === 'apps/web/src/test/vitest.setup.ts'
     ),
   },
   {

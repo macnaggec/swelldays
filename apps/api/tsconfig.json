@@ -17,13 +17,12 @@
     "paths": {
       "@wave-atlas/contracts": ["../../packages/contracts/src/index.ts"],
       "server/*": ["src/*"],
-      "test/*": ["../../src/test/*"]
+      "test/*": ["src/test/*"]
     }
   },
   "include": [
     "src",
     "prisma.config.ts",
-    "../../packages/contracts/src",
-    "../../src/test/helpers/resetDb.ts"
+    "../../packages/contracts/src"
   ]
 }

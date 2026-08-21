@@ -39,7 +39,7 @@ export default defineConfig(
         { type: 'server-test', pattern: ['apps/api/src/**/*.test.ts', 'apps/api/src/**/*.integration.test.ts'], mode: 'full' },
         // Test files are file-path matches, not folder elements. Keep this before
         // app layers so non-server tests are classified as test before their containing layer.
-        { type: 'test',    pattern: ['src/test/**', 'apps/web/src/test/**', 'src/**/*.test.ts', 'src/**/*.test.tsx', 'apps/web/src/**/*.test.ts', 'apps/web/src/**/*.test.tsx', 'src/**/*.spec.ts', 'src/**/*.spec.tsx', 'apps/web/src/**/*.spec.ts', 'apps/web/src/**/*.spec.tsx'], mode: 'full' },
+        { type: 'test',    pattern: ['src/test/**', 'apps/api/src/test/**', 'apps/web/src/test/**', 'src/**/*.test.ts', 'src/**/*.test.tsx', 'apps/web/src/**/*.test.ts', 'apps/web/src/**/*.test.tsx', 'src/**/*.spec.ts', 'src/**/*.spec.tsx', 'apps/web/src/**/*.spec.ts', 'apps/web/src/**/*.spec.tsx'], mode: 'full' },
         { type: 'app',     pattern: 'apps/web/src/app/**' },
         { type: 'views',   pattern: 'apps/web/src/views/**' },
         // Each widget folder is its own element; cross-widget imports are forbidden
