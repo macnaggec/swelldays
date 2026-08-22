@@ -33,9 +33,13 @@ export function generateDeliveryUrl(
  *
  * Sizing rule (both photo and video): portrait caps height at 800, landscape caps width at 1024.
  *
- *  swelldays_thumbnail                → c_fill,w_640,h_400,g_center,q_auto,f_auto
- *  swelldays_lightbox                 → if_ar_lt_1/c_limit,h_800/if_else/c_limit,w_1024/if_end/q_auto,f_auto
- *  swelldays_lightbox_watermark       → if_ar_lt_1/c_limit,h_800/if_else/c_limit,w_1024/if_end/q_auto/l_watermark_rs6dpl/c_scale,fl_relative,w_0.5,a_-45/o_30/fl_layer_apply,fl_tiled
+ * Verified 2026-08-22 against the live dashboard config (this block had drifted from it):
+ *
+ *  swelldays_thumbnail                → c_fill,h_400,w_640
+ *  swelldays_lightbox                 → if_ar_lt_1/c_limit,h_800/if_else/c_limit,w_1024/if_end/q_auto
+ *  swelldays_lightbox_watermark       → $isportrait_0/if_ar_lt_1.0/$isportrait_1/if_end/if_ar_lt_1/c_limit,h_800/if_else/c_limit,w_1024/if_end/q_auto/l_watermark_rs6dpl/if_$isportrait_eq_1/a_-45,c_scale,fl_relative,w_0.3/if_else/a_-45,c_scale,fl_relative,w_0.3/if_end/o_30/fl_layer_apply.tiled
+ *    (the $isportrait branches currently both resolve to w_0.3 — dashboard is set up for
+ *    portrait/landscape-specific watermark scale but doesn't differentiate them yet)
  *  swelldays_video_lightbox_watermark → if_ar_lt_1/c_limit,h_800/if_else/c_limit,w_1024/if_end/l_overlay/fl_layer_apply
  *
  * Named transformations are always permitted through Strict Transformations.
