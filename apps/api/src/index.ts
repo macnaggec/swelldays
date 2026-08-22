@@ -1,5 +1,6 @@
 import 'dotenv/config';
-import * as Sentry from '@sentry/node';
+import * as Sentry from '@sentry/hono/node';
+import { sentry } from '@sentry/hono/node';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -15,12 +16,18 @@ import { getClientIp } from 'server/lib/getClientIp';
 import { logger } from 'server/lib/logger';
 import { apiConfig } from 'server/config/env';
 
+// Initialized here rather than via Sentry's recommended preloaded instrument
+// file — that pattern exists to auto-instrument I/O (pg, http) for tracing
+// spans, which this app doesn't use. The Hono middleware below only needs
+// init() to have run before app.use(sentry(app)) is reached, which it has.
 Sentry.init({ dsn: apiConfig.sentryDsn ?? undefined, environment: apiConfig.nodeEnv });
 
 // 20 webhook requests per IP per minute — prevents replay-flood DoS
 const webhookLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
 
 const app = new Hono();
+
+app.use(sentry(app));
 
 app.use('/api/*', cors({
   origin: apiConfig.frontendOrigin,
@@ -40,8 +47,11 @@ app.use('/api/trpc/*', trpcServer({
 
 app.get('/api/health', (c) => c.json({ ok: true }));
 
+// Response shaping only — the sentry() middleware above already reports
+// unhandled errors on its own; calling logger.error here too would report
+// the same error to Sentry twice.
 app.onError((err, c) => {
-  logger.error('[api] unhandled error', { err });
+  console.error('[api] unhandled error', err);
   return c.json({ error: 'Internal server error' }, 500);
 });
 
