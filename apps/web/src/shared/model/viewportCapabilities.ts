@@ -109,3 +109,21 @@ export function useViewportCapabilities(): ViewportCapabilities {
     () => indeterminateViewportCapabilities,
   );
 }
+
+export type ModalWorkspacePresentation = 'dialog' | 'portraitWorkspace' | 'landscapeWorkspace';
+
+/**
+ * Where a standalone Mantine <Modal> should render: a centered dialog on
+ * desktop/tablet, but full-screen on a portrait phone or a landscape phone
+ * (short height), where a centered dialog would be cramped. Shared so every
+ * modal (auth, upload review, ...) full-screens on the same viewport bands
+ * instead of each picking its own threshold.
+ */
+export function resolveModalWorkspacePresentation(
+  sizeBand: ViewportCapabilities['sizeBand'],
+  heightBand: ViewportCapabilities['heightBand'],
+): ModalWorkspacePresentation {
+  if (sizeBand === 'compact' && heightBand === 'regular') return 'portraitWorkspace';
+  if (sizeBand !== 'wide' && heightBand === 'short') return 'landscapeWorkspace';
+  return 'dialog';
+}

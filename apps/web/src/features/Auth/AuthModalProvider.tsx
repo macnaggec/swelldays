@@ -10,27 +10,16 @@ import {
 } from 'react';
 import { Modal } from '@mantine/core';
 import { AuthModalContext, type AuthModalOpenOptions } from 'entities/Identity';
-import { useViewportCapabilities, type ViewportCapabilities } from 'shared/model/viewportCapabilities';
+import { resolveModalWorkspacePresentation, useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import { useViewportMetrics } from 'shared/model/viewportMetrics';
 import { AuthPage, type AuthMode } from './ui/AuthPage';
 import classes from './AuthModalProvider.module.css';
-
-type AuthWorkspacePresentation = 'dialog' | 'portraitWorkspace' | 'landscapeWorkspace';
 
 interface AuthModalViewportStyle extends CSSProperties {
   '--wa-auth-visual-viewport-width': string;
   '--wa-auth-visual-viewport-height': string;
   '--wa-auth-visual-viewport-left': string;
   '--wa-auth-visual-viewport-top': string;
-}
-
-function resolveAuthWorkspacePresentation(
-  sizeBand: ViewportCapabilities['sizeBand'],
-  heightBand: ViewportCapabilities['heightBand'],
-): AuthWorkspacePresentation {
-  if (sizeBand === 'compact' && heightBand === 'regular') return 'portraitWorkspace';
-  if (sizeBand !== 'wide' && heightBand === 'short') return 'landscapeWorkspace';
-  return 'dialog';
 }
 
 export function AuthModalProvider({ children }: { children: ReactNode }): ReactElement {
@@ -44,7 +33,7 @@ export function AuthModalProvider({ children }: { children: ReactNode }): ReactE
     visualViewportOffsetLeftPx,
     visualViewportOffsetTopPx,
   } = useViewportMetrics();
-  const presentation = resolveAuthWorkspacePresentation(sizeBand, heightBand);
+  const presentation = resolveModalWorkspacePresentation(sizeBand, heightBand);
   const viewportStyle: AuthModalViewportStyle = {
     '--wa-auth-visual-viewport-width': `${visualViewportWidthPx}px`,
     '--wa-auth-visual-viewport-height': `${visualViewportHeightPx}px`,

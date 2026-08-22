@@ -3,6 +3,7 @@ import { Box, Button, Divider, Group, Loader, Menu, Modal, rem, Text } from '@ma
 import { IconBrandGoogleDrive, IconFolderOpen } from '@tabler/icons-react';
 import { GalleryCard, getItemId, getUploadQueueStatus } from '../../model';
 import { BaseGallery } from 'shared/ui/BaseGallery';
+import { resolveModalWorkspacePresentation, useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import { UploadCardRenderer } from './UploadCardRenderer';
 import { handleFileSelection } from '../../lib/fileSelection';
 import materials from 'shared/ui/design-system/materials.module.css';
@@ -34,6 +35,9 @@ export const StepModeModal: FC<StepModeModalProps> = memo(({
 }) => {
   const queueStatus = useMemo(() => getUploadQueueStatus(items), [items]);
   const { errorCards, hasActiveUploads, uploadingCount } = queueStatus;
+
+  const { sizeBand, heightBand } = useViewportCapabilities();
+  const presentation = resolveModalWorkspacePresentation(sizeBand, heightBand);
 
   // ========================================================================
   // FILE HANDLING
@@ -92,8 +96,11 @@ export const StepModeModal: FC<StepModeModalProps> = memo(({
       closeOnEscape={false}
       size={1000}
       centered
+      fullScreen={presentation !== 'dialog'}
       title="Selected media"
+      data-upload-presentation={presentation}
       classNames={{
+        root: styles.root,
         body: styles.body,
         content: styles.content,
         header: styles.header,

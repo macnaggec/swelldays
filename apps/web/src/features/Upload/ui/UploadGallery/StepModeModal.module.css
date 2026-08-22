@@ -31,6 +31,26 @@
   min-height: 0;
 }
 
+/* Full screen on a phone (portrait or landscape) instead of a small centered
+   dialog, matching AuthModalProvider's presentation for the same viewport
+   bands. */
+.root[data-upload-presentation='portraitWorkspace'] .content,
+.root[data-upload-presentation='landscapeWorkspace'] .content {
+  height: 100dvh;
+}
+
+.root[data-upload-presentation='portraitWorkspace'] .header,
+.root[data-upload-presentation='landscapeWorkspace'] .header {
+  padding-block-start: calc(var(--mantine-spacing-sm) + var(--wa-safe-area-top));
+  padding-inline-end: calc(var(--mantine-spacing-md) + var(--wa-safe-area-right));
+  padding-inline-start: calc(var(--mantine-spacing-md) + var(--wa-safe-area-left));
+}
+
+.root[data-upload-presentation='portraitWorkspace'] .body,
+.root[data-upload-presentation='landscapeWorkspace'] .body {
+  padding-block-end: var(--wa-safe-area-bottom);
+}
+
 .scroller {
   flex: 1;
   min-height: 0;
