@@ -49,7 +49,7 @@ vi.mock('shared/lib/trpc', () => ({
 vi.mock('../model', async (importOriginal) => ({
   // Keep pure policy helpers (getUploadQueueStatus) real; mock only the hooks.
   ...(await importOriginal<typeof import('../model')>()),
-  useUploadQueue: () => ({ queue: mocks.queue, hasActiveUploads: false, selectableItems: [] }),
+  useUploadQueue: () => ({ queue: mocks.queue, hasActiveUploads: false }),
   useUploadManager: () => ({
     addFiles: vi.fn(),
     addDriveSelections: vi.fn(),

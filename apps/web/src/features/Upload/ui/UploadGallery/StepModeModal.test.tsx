@@ -6,7 +6,6 @@ import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { GalleryCard } from '../../model';
 import type { DraftMedia } from 'entities/Media';
-import type { UseGallerySelectionReturn } from 'shared/hooks/gallery';
 import { StepModeModal } from './StepModeModal';
 
 vi.mock('shared/ui/BaseGallery', () => ({
@@ -15,30 +14,11 @@ vi.mock('shared/ui/BaseGallery', () => ({
       {items.map((item) => <div key={item.id}>{item.id}</div>)}
     </div>
   ),
-  SelectionToolbar: () => null,
 }));
 
 vi.mock('./UploadCardRenderer', () => ({
   UploadCardRenderer: ({ item }: { item: GalleryCard }) => <div>{item.id}</div>,
 }));
-
-function selectionStub(): UseGallerySelectionReturn<GalleryCard> {
-  return {
-    selectedIds: [],
-    selectedCount: 0,
-    isAllSelected: false,
-    selectedItems: [],
-    isSelected: () => false,
-    toggle: vi.fn(),
-    selectAll: vi.fn(),
-    clearSelection: vi.fn(),
-    deselectItems: vi.fn(),
-    hasSelection: false,
-    isSelectionMode: false,
-    enableSelectionMode: vi.fn(),
-    disableSelectionMode: vi.fn(),
-  };
-}
 
 function renderModal(ui: ReactNode) {
   return render(<MantineProvider>{ui}</MantineProvider>);
@@ -82,7 +62,6 @@ describe('StepModeModal', () => {
         opened
         onClose={onClose}
         items={cards}
-        selection={selectionStub()}
         onDiscardAll={onDiscardAll}
         onRemove={onRemove}
       />,

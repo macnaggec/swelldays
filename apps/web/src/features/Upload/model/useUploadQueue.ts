@@ -78,9 +78,7 @@ export function useUploadQueue(workspaceState: UploadWorkspaceState | undefined)
     c => c.kind === 'attempt' && ['pending', 'READY', 'ACQUIRING', 'FINALIZING'].includes(c.status),
   );
 
-  const selectableItems = queue.filter(c => c.kind !== 'attempt');
-
-  return { queue, hasActiveUploads, selectableItems };
+  return { queue, hasActiveUploads };
 }
 
 function resourceType(type: 'PHOTO' | 'VIDEO'): 'image' | 'video' {

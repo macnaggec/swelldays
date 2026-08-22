@@ -3,11 +3,9 @@ import { Stack, Text } from '@mantine/core';
 import {
   useUploadWarning,
   GalleryCard,
-  getItemId,
   type UploadManagerHandlers,
 } from '../../model';
 import { useGooglePicker } from '../../model/useGooglePicker';
-import { useGallerySelection } from 'shared/hooks/gallery';
 import { StepModeModal } from '../UploadGallery/StepModeModal';
 import { UploadStatusLabel } from '../UploadGallery/UploadStatusLabel';
 import { UploadZone } from '../UploadGallery/UploadZone';
@@ -18,13 +16,11 @@ interface UploadStepProps extends Pick<
 > {
   queue: GalleryCard[];
   hasActiveUploads: boolean;
-  selectableItems: GalleryCard[];
 }
 
 export function UploadStep({
   queue,
   hasActiveUploads,
-  selectableItems,
   addFiles,
   addDriveSelections,
   remove,
@@ -47,8 +43,6 @@ export function UploadStep({
       setIsModalOpen(true);
     }, [addDriveSelections]),
   );
-
-  const selection = useGallerySelection<GalleryCard>({ items: selectableItems, getId: getItemId });
 
   return (
     <Stack gap={0}>
@@ -86,7 +80,6 @@ export function UploadStep({
         onRemove={remove}
         onAddFiles={handleFilesSelected}
         onRetry={retry}
-        selection={selection}
         onDiscardAll={discardAll}
         onDriveImport={openDrivePicker}
         driveLoading={isPickerLoading}

@@ -17,3 +17,35 @@
   border-color: var(--wa-glass-border-media-overlay-hover);
   color: var(--wa-text-inverse);
 }
+
+/* Failed-upload overlay: a small glass chip (same recipe as .actionBtn) so the
+   warning text and Retry button stay legible over any photo, instead of
+   floating unstyled on top of it. */
+.failedOverlay {
+  padding: 6px 8px;
+  border-radius: var(--wa-radius-control-sm);
+  background: var(--wa-surface-media-overlay);
+  backdrop-filter: var(--wa-glass-blur-sm);
+  -webkit-backdrop-filter: var(--wa-glass-blur-sm);
+  border: 1px solid var(--wa-glass-border-media-overlay);
+  box-shadow: var(--wa-glass-shadow-media-overlay);
+}
+
+.errorText {
+  color: var(--wa-status-danger);
+}
+
+/* Same accent-tinted pill recipe as UploadZone's driveButton: this is the
+   one emphasized action in the failed-upload chip. */
+.retryBtn {
+  border-radius: var(--wa-radius-pill);
+  background: color-mix(in srgb, var(--wa-accent-spot) 20%, var(--wa-surface-media-overlay));
+  border: 1px solid color-mix(in srgb, var(--wa-accent-spot) 55%, var(--wa-glass-border-media-overlay));
+  color: var(--wa-text-primary-action);
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.retryBtn:hover {
+  background: color-mix(in srgb, var(--wa-accent-spot) 28%, var(--wa-surface-media-overlay));
+  border-color: color-mix(in srgb, var(--wa-accent-spot) 70%, var(--wa-glass-border-media-overlay));
+}

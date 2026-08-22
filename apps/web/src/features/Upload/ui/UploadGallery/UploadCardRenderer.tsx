@@ -142,15 +142,15 @@ function renderUploadOverlay(
 ) {
   if (status === 'FAILED' || errorCode) {
     return (
-      <Stack gap={4} align="center">
+      <Stack gap={4} align="center" className={classes.failedOverlay}>
         <Tooltip label={errorCode ?? 'Upload failed'} multiline maw={200}>
-          <Text size="xs" c="red" lineClamp={1} ta="center">{errorCode ?? 'Upload failed'}</Text>
+          <Text size="xs" className={classes.errorText} lineClamp={1} ta="center">{errorCode ?? 'Upload failed'}</Text>
         </Tooltip>
         {onRetry && (
           <Button
             size="compact-xs"
-            variant="light"
-            color="blue"
+            variant="transparent"
+            className={classes.retryBtn}
             leftSection={<IconRefresh size={12} />}
             onClick={(e) => { e.stopPropagation(); onRetry(itemId); }}
           >

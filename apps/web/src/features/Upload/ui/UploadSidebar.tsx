@@ -90,7 +90,7 @@ function UploadSidebarContent({
   const pulseFrameRef = useRef<number | null>(null);
   const [flashingViolation, setFlashingViolation] = useState<UploadPublishViolation | null>(null);
 
-  const { queue, hasActiveUploads, selectableItems } = useUploadQueue(workspaceState);
+  const { queue, hasActiveUploads } = useUploadQueue(workspaceState);
 
   const saveWorkspaceFields = useCallback((changes: {
     spotId?: string | null;
@@ -288,7 +288,6 @@ function UploadSidebarContent({
         <UploadStep
           queue={queue}
           hasActiveUploads={hasActiveUploads}
-          selectableItems={selectableItems}
           addFiles={addFiles}
           addDriveSelections={addDriveSelections}
           remove={remove}

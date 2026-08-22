@@ -1,9 +1,8 @@
 import React, { FC, memo, useMemo, useCallback, useRef } from 'react';
 import { Box, Button, Divider, Group, Loader, Menu, Modal, rem, Text } from '@mantine/core';
-import { IconAlertCircle, IconBrandGoogleDrive, IconFolderOpen } from '@tabler/icons-react';
+import { IconBrandGoogleDrive, IconFolderOpen } from '@tabler/icons-react';
 import { GalleryCard, getItemId, getUploadQueueStatus } from '../../model';
-import { BaseGallery, SelectionToolbar } from 'shared/ui/BaseGallery';
-import { UseGallerySelectionReturn } from 'shared/hooks/gallery';
+import { BaseGallery } from 'shared/ui/BaseGallery';
 import { UploadCardRenderer } from './UploadCardRenderer';
 import { handleFileSelection } from '../../lib/fileSelection';
 import materials from 'shared/ui/design-system/materials.module.css';
@@ -13,7 +12,6 @@ export interface StepModeModalProps {
   opened: boolean;
   onClose: () => void;
   items: GalleryCard[];
-  selection: UseGallerySelectionReturn<GalleryCard>;
   /** Required — ensures Cloudinary cleanup path is never silently dropped. */
   onDiscardAll: () => Promise<void>;
   onRemove: (kind: GalleryCard['kind'], id: string) => Promise<void>;
@@ -27,7 +25,6 @@ export const StepModeModal: FC<StepModeModalProps> = memo(({
   opened,
   onClose,
   items,
-  selection,
   onDiscardAll,
   onRemove,
   onAddFiles,
@@ -43,9 +40,8 @@ export const StepModeModal: FC<StepModeModalProps> = memo(({
   // ========================================================================
 
   const handleAddFiles = useCallback((files: File[]) => {
-    selection.disableSelectionMode();
     onAddFiles?.(files);
-  }, [onAddFiles, selection]);
+  }, [onAddFiles]);
 
   const addMoreInputRef = useRef<HTMLInputElement>(null);
   const handleAddMoreChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,36 +63,15 @@ export const StepModeModal: FC<StepModeModalProps> = memo(({
     }
   }, [onDiscardAll, onClose]);
 
-  const handleBulkDelete = useCallback(
-    async (selectedCards: GalleryCard[]) => {
-      await Promise.all(selectedCards.map(card => onRemove(card.kind, card.id)));
-      selection.clearSelection();
-    },
-    [onRemove, selection]
-  );
-
-  const renderActions = useCallback(
-    (selectedCards: GalleryCard[]) => (
-      <Menu.Item
-        color="red"
-        leftSection={<IconAlertCircle style={{ width: rem(14), height: rem(14) }} />}
-        onClick={() => handleBulkDelete(selectedCards)}
-      >
-        Delete {selectedCards.length} {selectedCards.length === 1 ? 'item' : 'items'}
-      </Menu.Item>
-    ),
-    [handleBulkDelete]
-  );
-
   const renderCard = useCallback(
-    (card: GalleryCard, context: { isSelectionMode: boolean }) => {
+    (card: GalleryCard) => {
       const isSaving = card.kind === 'attempt' && card.status === 'FINALIZING';
       const hasDateError = card.kind !== 'attempt' && !card.result.capturedAt;
       return (
         <UploadCardRenderer
           item={card}
           onRetry={onRetry}
-          onRemove={context.isSelectionMode ? undefined : (kind, id) => onRemove(kind, id)}
+          onRemove={(kind, id) => onRemove(kind, id)}
           hideRemove={isSaving}
           hasDateError={hasDateError}
         />
@@ -139,28 +114,37 @@ export const StepModeModal: FC<StepModeModalProps> = memo(({
           <BaseGallery<GalleryCard>
             items={items}
             getId={getItemId}
-            selection={selection}
-            toolbar={
-              <SelectionToolbar
-                selection={selection}
-                renderActions={renderActions}
-              />
-            }
             renderCard={renderCard}
           />
         </Box>
       </div>
 
       <Divider className={materials.divider} />
-      <Group px="sm" py="xs" justify="space-between">
+      <div className={styles.footer}>
         <Button
           variant="transparent" size="xs" radius="xl"
-          className={styles.footerAction}
+          className={`${styles.footerAction} ${styles.footerStart}`}
           onClick={handleCancelAll}
         >
           Discard
         </Button>
-        <Group gap="xs">
+
+        <div className={styles.footerStatus}>
+          {hasActiveUploads ? (
+            <Group gap="xs" justify="center" wrap="nowrap">
+              <Loader size="xs" />
+              <Text size="xs" className={styles.footerText}>
+                {uploadingCount} of {items.length} uploading…
+              </Text>
+            </Group>
+          ) : errorCards.length > 0 ? (
+            <Text size="xs" c="orange.4">
+              Remove or retry failed uploads to continue
+            </Text>
+          ) : null}
+        </div>
+
+        <Group gap="xs" className={styles.footerEnd} wrap="nowrap">
           {onAddFiles && (
             <Menu position="top-end" zIndex={501}>
               <Menu.Target>
@@ -190,18 +174,6 @@ export const StepModeModal: FC<StepModeModalProps> = memo(({
               </Menu.Dropdown>
             </Menu>
           )}
-          {hasActiveUploads ? (
-            <Group gap="xs">
-              <Loader size="xs" />
-              <Text size="xs" className={styles.footerText}>
-                {uploadingCount} of {items.length} uploading…
-              </Text>
-            </Group>
-          ) : errorCards.length > 0 ? (
-            <Text size="xs" c="orange.4">
-              Remove or retry failed uploads to continue
-            </Text>
-          ) : null}
           <Button
             variant="transparent" size="xs" radius="xl"
             className={materials.controlButton}
@@ -210,7 +182,7 @@ export const StepModeModal: FC<StepModeModalProps> = memo(({
             Close
           </Button>
         </Group>
-      </Group>
+      </div>
     </Modal>
   );
 });
