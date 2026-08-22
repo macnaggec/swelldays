@@ -10,6 +10,7 @@ export type WebConfig = {
     apiKey: string;
   };
   isDevelopment: boolean;
+  sentryDsn: string;
 };
 
 const optionalValue = (
@@ -93,5 +94,6 @@ export function decodeWebEnvironment(
       apiKey: requiredProductionValue(raw, 'VITE_CLOUDINARY_API_KEY', production),
     },
     isDevelopment: mode === 'development',
+    sentryDsn: optionalValue(raw, 'VITE_SENTRY_DSN'),
   };
 }

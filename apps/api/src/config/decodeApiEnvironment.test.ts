@@ -84,6 +84,19 @@ describe('decodeApiEnvironment', () => {
     expect(config.google).toBeNull();
   });
 
+  it('defaults sentryDsn to null when SENTRY_DSN is absent', () => {
+    expect(decodeApiEnvironment(productionEnvironment()).sentryDsn).toBeNull();
+  });
+
+  it('passes through a configured SENTRY_DSN', () => {
+    const config = decodeApiEnvironment({
+      ...productionEnvironment(),
+      SENTRY_DSN: 'https://examplePublicKey@o0.ingest.sentry.io/0',
+    });
+
+    expect(config.sentryDsn).toBe('https://examplePublicKey@o0.ingest.sentry.io/0');
+  });
+
   it.each([
     ['FRONTEND_ORIGIN', 'wave.example.test', 'frontend'],
     ['FRONTEND_ORIGIN', 'https://wave.example.test/app', 'frontend'],

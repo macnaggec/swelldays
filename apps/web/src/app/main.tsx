@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import * as Sentry from '@sentry/react';
 import { RouterProvider } from '@tanstack/react-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MantineProvider } from '@mantine/core';
@@ -19,6 +20,12 @@ import { theme, cssVariablesResolver } from 'app/lib/theme';
 import { TRPCProvider } from 'shared/lib/trpc';
 import { queryClient } from 'shared/lib/queryClient';
 import { trpcClient } from 'shared/lib/trpcClient';
+import { webConfig } from 'config/env';
+
+Sentry.init({
+  dsn: webConfig.sentryDsn || undefined,
+  environment: webConfig.isDevelopment ? 'development' : 'production',
+});
 
 ReactDOM
   .createRoot(document.getElementById('root')!)

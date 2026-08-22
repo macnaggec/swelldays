@@ -53,6 +53,7 @@ services:
         VITE_GOOGLE_API_KEY: ${VITE_GOOGLE_API_KEY}
         VITE_CLOUDINARY_CLOUD_NAME: ${VITE_CLOUDINARY_CLOUD_NAME}
         VITE_CLOUDINARY_API_KEY: ${VITE_CLOUDINARY_API_KEY}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN}
     restart: unless-stopped
     networks:
       - web

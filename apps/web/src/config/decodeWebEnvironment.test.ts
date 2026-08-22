@@ -24,6 +24,7 @@ describe('decodeWebEnvironment', () => {
         apiKey: 'test-cloudinary-api-key',
       },
       isDevelopment: false,
+      sentryDsn: '',
     });
   });
 
@@ -68,6 +69,7 @@ describe('decodeWebEnvironment', () => {
       google: { clientId: '', apiKey: '' },
       cloudinary: { cloudName: '', apiKey: '' },
       isDevelopment: true,
+      sentryDsn: '',
     });
   });
 

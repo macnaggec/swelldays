@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import * as Sentry from '@sentry/node';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -13,6 +14,8 @@ import { createRateLimiter } from 'server/lib/rateLimiter';
 import { getClientIp } from 'server/lib/getClientIp';
 import { logger } from 'server/lib/logger';
 import { apiConfig } from 'server/config/env';
+
+Sentry.init({ dsn: apiConfig.sentryDsn ?? undefined, environment: apiConfig.nodeEnv });
 
 // 20 webhook requests per IP per minute — prevents replay-flood DoS
 const webhookLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
@@ -36,6 +39,11 @@ app.use('/api/trpc/*', trpcServer({
 }));
 
 app.get('/api/health', (c) => c.json({ ok: true }));
+
+app.onError((err, c) => {
+  logger.error('[api] unhandled error', { err });
+  return c.json({ error: 'Internal server error' }, 500);
+});
 
 // CryptoCloud webhook — raw body required for HMAC verification, must NOT go through tRPC
 app.post('/api/webhook/cryptocloud', async (c) => {

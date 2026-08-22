@@ -28,6 +28,7 @@ export type ApiConfig = {
     | { provider: 'mock' }
     | ({ provider: 'cryptocloud' } & CryptoCloudConfig);
   cryptoCloud: CryptoCloudConfig | null;
+  sentryDsn: string | null;
 };
 
 const DEVELOPMENT_FRONTEND_ORIGIN = 'http://localhost:3000';
@@ -201,5 +202,6 @@ export function decodeApiEnvironment(
       ? { provider: 'mock' }
       : { provider: 'cryptocloud', ...cryptoCloud! },
     cryptoCloud,
+    sentryDsn: optionalValue(raw, 'SENTRY_DSN') ?? null,
   };
 }

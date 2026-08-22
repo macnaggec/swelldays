@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import { apiConfig } from 'server/config/env';
 
 /**
@@ -51,6 +52,11 @@ class Logger {
 
   error(message: string, context?: LogContext) {
     this.log('error', message, context);
+    if (context?.err instanceof Error) {
+      Sentry.captureException(context.err, { extra: { message, ...context } });
+    } else {
+      Sentry.captureMessage(message, { level: 'error', extra: context });
+    }
   }
 
   debug(message: string, context?: LogContext) {

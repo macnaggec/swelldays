@@ -28,6 +28,7 @@ These values are embedded in downloadable JavaScript. They are not secrets, must
 | `VITE_GOOGLE_API_KEY` | Google Picker browser key; restrict it to the deployed web domains and Picker API. |
 | `VITE_CLOUDINARY_CLOUD_NAME` | Public Cloudinary account identifier. |
 | `VITE_CLOUDINARY_API_KEY` | Public Cloudinary API key. |
+| `VITE_SENTRY_DSN` | Optional. Enables browser error reporting; blank disables it entirely. Not a secret — Sentry DSNs are meant to ship in client code. |
 
 The web decoder rejects missing production values, invalid API origins, and server-secret names placed behind `VITE_*`.
 
@@ -45,6 +46,7 @@ Changing these values requires restarting the API, not rebuilding either image.
 | `CLOUDINARY_CLOUD_NAME` | Server-side copy of the public Cloudinary account identifier. |
 | `CLOUDINARY_API_KEY` | Server-side copy of the public Cloudinary API key. |
 | `PAYMENT_PROVIDER` | Explicitly `mock` or `cryptocloud`; production must never infer a real provider. |
+| `SENTRY_DSN` | Optional. Enables server-side error reporting; blank disables it entirely (the API still logs to stdout). |
 
 ### API and database secrets
 
@@ -81,6 +83,7 @@ docker build \
   --build-arg VITE_GOOGLE_API_KEY="$VITE_GOOGLE_API_KEY" \
   --build-arg VITE_CLOUDINARY_CLOUD_NAME="$VITE_CLOUDINARY_CLOUD_NAME" \
   --build-arg VITE_CLOUDINARY_API_KEY="$VITE_CLOUDINARY_API_KEY" \
+  --build-arg VITE_SENTRY_DSN="$VITE_SENTRY_DSN" \
   --tag "swelldays-web:$RELEASE_TAG" \
   .
 
