@@ -9,6 +9,7 @@ const baseParams = {
   apiKey: 'key',
   cloudName: CLOUD_NAME,
   publicId: 'swelldays/users/abc/test-uuid',
+  folder: 'swelldays/users/abc',
   eager: 't_swelldays_thumbnail|t_swelldays_lightbox_watermark',
 };
 
@@ -79,5 +80,25 @@ describe('uploadToCloudinary — XHR lifecycle', () => {
       lightboxUrl,
       resourceType: 'image',
     });
+  });
+
+  it('sends folder alongside public_id, so Cloudinary groups the upload under the photographer instead of at the console root', async () => {
+    const sendSpy = vi.spyOn(XMLHttpRequest.prototype, 'send').mockImplementation(function(this: XMLHttpRequest) {
+      const self = this as unknown as Record<string, unknown>;
+      setTimeout(() => {
+        Object.defineProperty(self, 'status', { value: 200, configurable: true });
+        Object.defineProperty(self, 'responseText', {
+          value: JSON.stringify({ public_id: 'swelldays/img', resource_type: 'image' }),
+          configurable: true,
+        });
+        (this.onload as ((e: ProgressEvent) => void) | null)?.(new ProgressEvent('load'));
+      }, 0);
+    });
+
+    const { promise } = uploadToCloudinary({ ...baseParams, file: testFile });
+    await promise.catch(() => {});
+
+    const sentBody = sendSpy.mock.calls[0]?.[0] as FormData;
+    expect(sentBody.get('folder')).toBe(baseParams.folder);
   });
 });

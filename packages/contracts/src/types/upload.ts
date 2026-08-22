@@ -45,6 +45,8 @@ export interface UploadAttemptProjection {
 export interface DirectUploadGrant {
   attemptId: string;
   cloudinaryPublicId: string;
+  /** Sets Cloudinary's asset_folder so the console groups uploads by photographer, independent of public_id. */
+  folder: string;
   signature: string;
   timestamp: number;
   cloudName: string;

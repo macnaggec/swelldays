@@ -58,6 +58,7 @@ export async function startLocalUpload(file: File, deps: CoordinatorDeps): Promi
       apiKey: grant.apiKey,
       cloudName: grant.cloudName,
       publicId: grant.cloudinaryPublicId,
+      folder: grant.folder,
       eager: grant.eager,
       onProgress: (progress) =>
         useUploadStore.getState().updateTransfer(clientRequestId, { progress }),

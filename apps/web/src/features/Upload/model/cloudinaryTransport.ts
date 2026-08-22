@@ -16,6 +16,8 @@ interface CloudinaryUploadParams {
   apiKey: string;
   cloudName: string;
   publicId: string;
+  /** Sets Cloudinary's asset_folder — must match the signed param */
+  folder: string;
   /** Eager transform string — must match the signed param */
   eager: string;
   onProgress?: (progress: number) => void;
@@ -79,6 +81,7 @@ function buildFormData(params: CloudinaryUploadParams): FormData {
   formData.append('timestamp', params.timestamp.toString());
   formData.append('signature', params.signature);
   formData.append('public_id', params.publicId);
+  formData.append('folder', params.folder);
   formData.append('type', 'authenticated');
   formData.append('eager', params.eager);
 
