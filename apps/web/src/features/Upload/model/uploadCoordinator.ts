@@ -57,7 +57,7 @@ export async function startLocalUpload(file: File, deps: CoordinatorDeps): Promi
       timestamp: grant.timestamp,
       apiKey: grant.apiKey,
       cloudName: grant.cloudName,
-      publicId: grant.cloudinaryPublicId,
+      publicId: grant.uploadPublicId,
       folder: grant.folder,
       eager: grant.eager,
       onProgress: (progress) =>

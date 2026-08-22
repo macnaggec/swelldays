@@ -44,9 +44,12 @@ export interface UploadAttemptProjection {
 /** Grant returned by beginLocal — all fields needed by the browser XHR. */
 export interface DirectUploadGrant {
   attemptId: string;
+  /** Full canonical id (folder + uploadPublicId) — what's stored, matched against the receipt, and used for delivery URLs. */
   cloudinaryPublicId: string;
   /** Sets Cloudinary's asset_folder so the console groups uploads by photographer, independent of public_id. */
   folder: string;
+  /** The relative public_id to actually send to Cloudinary — must be relative when folder is also sent, or Cloudinary doubles the path (folder + folder + id). */
+  uploadPublicId: string;
   signature: string;
   timestamp: number;
   cloudName: string;

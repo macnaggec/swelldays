@@ -64,6 +64,10 @@ export class CloudinaryService implements ICloudinaryService, DirectUploadPort, 
     // Explicit, independent of public_id's slashes — this Cloudinary account uses
     // Dynamic Folder Mode, where asset_folder is not inferred from public_id.
     const folder = `swelldays/users/${target.photographerId}`;
+    // Sending both `folder` and a full, already-folder-prefixed public_id makes
+    // Cloudinary double the path (folder + full public_id) — verified against the
+    // real account. When `folder` is present, public_id must be relative to it.
+    const uploadPublicId = publicId.slice(folder.length + 1);
     const resourceType = target.expectedMediaType === 'VIDEO' ? 'video' : 'image';
     const eager = [
       MEDIA_CLOUDINARY_TRANSFORMS.THUMBNAIL,
@@ -71,13 +75,14 @@ export class CloudinaryService implements ICloudinaryService, DirectUploadPort, 
     ].join('|');
     const type = 'authenticated' as const;
 
-    const paramsToSign = { timestamp, public_id: publicId, folder, eager, type };
+    const paramsToSign = { timestamp, public_id: uploadPublicId, folder, eager, type };
     const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret);
 
     return {
       attemptId: '',  // filled in by UploadService
       cloudinaryPublicId: publicId,
       folder,
+      uploadPublicId,
       signature,
       timestamp,
       cloudName,

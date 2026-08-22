@@ -8,7 +8,8 @@ const baseParams = {
   timestamp: 1234567890,
   apiKey: 'key',
   cloudName: CLOUD_NAME,
-  publicId: 'swelldays/users/abc/test-uuid',
+  // Relative to folder, matching real usage — Cloudinary combines the two.
+  publicId: 'test-uuid',
   folder: 'swelldays/users/abc',
   eager: 't_swelldays_thumbnail|t_swelldays_lightbox_watermark',
 };
