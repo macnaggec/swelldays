@@ -8,6 +8,8 @@ Swelldays remains one npm-workspace monorepo with one lockfile, but it produces 
 
 The root owns orchestration and CI. `apps/web`, `apps/api`, and `packages/contracts` own application code and direct dependencies.
 
+Neither `web` nor `api` publishes a host port. Both join an external Docker network named `web`, and a reverse proxy already attached to that network (Caddy, in production) terminates TLS and forwards to them by container name. That reverse proxy and its certificates are owned outside this repo — this compose file only assumes the `web` network already exists (`docker network create web` if it doesn't).
+
 ## Configuration ownership
 
 Never commit `apps/api/.env.production`, `apps/web/.env.production`, `deploy/.env.production`, or real credentials. Record each production value in the deployment platform's secret/configuration store.
@@ -134,21 +136,22 @@ Before touching a non-empty database, take and verify a backup. For the first em
 
    ```sh
    docker compose --env-file deploy/.env.production --file docker-compose.prod.yml up --detach --no-deps api
+   ```
+
+4. Start the web app the same way.
+
+   ```sh
+   docker compose --env-file deploy/.env.production --file docker-compose.prod.yml up --detach --no-deps web
+   ```
+
+5. Point the reverse proxy at both by container name (`web`, `api`) on the `web` network, then verify through it — this is the real end-to-end check, since neither container is reachable any other way:
+
+   ```sh
+   curl --fail --show-error --silent https://app.example.com/healthz
    curl --fail --show-error --silent https://api.example.com/api/health
    ```
 
-4. Deploy the web image behind the public reverse proxy or load balancer.
-
-   ```sh
-   docker run --detach \
-     --name swelldays-web \
-     --restart unless-stopped \
-     --publish 127.0.0.1:8080:8080 \
-     "swelldays-web:$RELEASE_TAG"
-   curl --fail --show-error --silent https://app.example.com/healthz
-   ```
-
-5. Configure DNS and TLS only after both health endpoints pass. Keep the web and API beneath the same parent domain when possible, for example `app.example.com` and `api.example.com`. This reduces credentialed-cookie and OAuth origin complexity; `FRONTEND_ORIGIN` must still exactly match the browser origin.
+   DNS and the reverse proxy's TLS certificate must already be in place before this step succeeds; keep the web and API beneath the same parent domain when possible, for example `app.example.com` and `api.example.com` — this reduces credentialed-cookie and OAuth origin complexity. `FRONTEND_ORIGIN` must still exactly match the browser origin.
 
 ## Health and smoke checks
 

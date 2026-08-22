@@ -8,8 +8,9 @@ services:
     restart: unless-stopped
     env_file:
       - apps/api/.env.production
-    ports:
-      - "127.0.0.1:3001:3001"
+    networks:
+      - default
+      - web
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -40,5 +41,25 @@ services:
       timeout: 5s
       retries: 10
 
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: runner
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_MAPBOX_ACCESS_TOKEN: ${VITE_MAPBOX_ACCESS_TOKEN}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+        VITE_GOOGLE_API_KEY: ${VITE_GOOGLE_API_KEY}
+        VITE_CLOUDINARY_CLOUD_NAME: ${VITE_CLOUDINARY_CLOUD_NAME}
+        VITE_CLOUDINARY_API_KEY: ${VITE_CLOUDINARY_API_KEY}
+    restart: unless-stopped
+    networks:
+      - web
+
 volumes:
   postgres_data:
+
+networks:
+  web:
+    external: true
