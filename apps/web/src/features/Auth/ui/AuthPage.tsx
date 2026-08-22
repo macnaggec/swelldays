@@ -25,8 +25,8 @@ export function AuthPage({ mode, onModeChange, onSuccess }: AuthPageProps): Reac
   const pointerGestureRef = useRef<AuthPointerGesture | null>(null);
 
   const handleRegistrationSuccess = useCallback(() => {
-    onModeChange('login');
-  }, [onModeChange]);
+    onSuccess?.();
+  }, [onSuccess]);
 
   const handlePointerDown = useCallback((event: PointerEvent<HTMLDivElement>) => {
     const target = event.target;
