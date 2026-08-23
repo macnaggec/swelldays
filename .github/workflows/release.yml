@@ -92,3 +92,4 @@ jobs:
             docker compose --env-file deploy/.env.production --file docker-compose.prod.yml run --rm migrate
             docker compose --env-file deploy/.env.production --file docker-compose.prod.yml up --detach --no-deps api
             docker compose --env-file deploy/.env.production --file docker-compose.prod.yml up --detach --no-deps web
+            docker image prune -af

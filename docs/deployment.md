@@ -76,6 +76,8 @@ Pushing a tag matching `v*` (e.g. `v1.2.0`) triggers [`.github/workflows/release
 
 The VPS never receives application source code, a Dockerfile, or a git clone of this repo — only the one orchestration file, since every container it runs comes pre-built from GHCR.
 
+After starting the new containers, the deploy step also runs `docker image prune -af`, removing every image no longer referenced by a running container. This keeps the VPS from accumulating one extra image per release; GHCR, not the VPS, is the durable copy of old versions — rollback re-pulls from there regardless (see Rollback below).
+
 Only tag a commit that has already merged to `main` and passed CI (`.github/workflows/ci.yml` runs on every push, tags included, but the release workflow does not itself gate on that run).
 
 One-time setup this pipeline depends on (see the deploy guide for exact steps): GitHub Actions secrets `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`, `DEPLOY_PATH`, and the six `VITE_*` build values; a deploy-only SSH key authorized on the VPS; a plain directory on the VPS at `DEPLOY_PATH` containing `apps/api/.env.production` and `deploy/.env.production` (created once, by hand); and `docker login ghcr.io` run once on the VPS so it can pull the (private) images.
