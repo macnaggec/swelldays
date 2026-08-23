@@ -14,7 +14,7 @@ Neither `web` nor `api` publishes a host port. Both join an external Docker netw
 
 Never commit `apps/api/.env.production`, `apps/web/.env.production`, `deploy/.env.production`, or real credentials. Record each production value in the deployment platform's secret/configuration store.
 
-Production runtime values are split by owner: `apps/api/.env.production` holds the API's own config and secrets (`DATABASE_URL`, `BETTER_AUTH_*`, Google/Cloudinary server credentials, payment config), `apps/web/.env.production` holds the `VITE_*` build-time values, and `deploy/.env.production` holds only `POSTGRES_PASSWORD` — the orchestration-level value Compose needs to interpolate `${POSTGRES_PASSWORD}` both in `docker-compose.prod.yml`'s `db` service and inside `apps/api/.env.production`'s `DATABASE_URL`.
+Production runtime values are split by owner: `apps/api/.env.production` holds the API's own config and secrets (`DATABASE_URL`, `BETTER_AUTH_*`, Google/Cloudinary server credentials, payment config) and lives on the VPS, and `deploy/.env.production` holds only `POSTGRES_PASSWORD` — the orchestration-level value Compose needs to interpolate `${POSTGRES_PASSWORD}` both in `docker-compose.prod.yml`'s `db` service and inside `apps/api/.env.production`'s `DATABASE_URL`. The `VITE_*` build-time values live as GitHub Actions secrets, since the web image is now built in CI (see "Automated release pipeline" below); `apps/web/.env.production` is only a fallback for a manual, break-glass build.
 
 ### Web build-time public values
 
@@ -67,46 +67,25 @@ Google server credentials are optional but must be provided as a pair — set bo
 
 Note: `apps/web/.env.production`'s `VITE_GOOGLE_CLIENT_ID`/`VITE_GOOGLE_API_KEY` are a separate, always-required pair — they power the "import from Google Drive" upload feature (Google Picker), independent of server-side sign-in. Deferring `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` above does not defer those.
 
-## Build immutable images
+## Automated release pipeline
 
-Run builds from the repository root at the release commit. Use immutable tags such as the Git commit SHA.
+Pushing a tag matching `v*` (e.g. `v1.2.0`) triggers [`.github/workflows/release.yml`](../.github/workflows/release.yml):
 
-Set `RELEASE_TAG` to that immutable identifier in the release environment before running these commands.
+1. **Build and push** — builds all three images at that commit and pushes them to GHCR as `ghcr.io/macnaggec/swelldays-{web,api,migrator}:<tag>`. The web build reads its `VITE_*` build args from GitHub Actions secrets, not from `apps/web/.env.production`.
+2. **Deploy** — copies `docker-compose.prod.yml` to the VPS over SCP, then SSHes in and runs the pull-and-restart sequence below with `RELEASE_TAG` set to that tag.
 
-```sh
-docker build \
-  --file apps/web/Dockerfile \
-  --target runner \
-  --build-arg VITE_API_URL="$VITE_API_URL" \
-  --build-arg VITE_MAPBOX_ACCESS_TOKEN="$VITE_MAPBOX_ACCESS_TOKEN" \
-  --build-arg VITE_GOOGLE_CLIENT_ID="$VITE_GOOGLE_CLIENT_ID" \
-  --build-arg VITE_GOOGLE_API_KEY="$VITE_GOOGLE_API_KEY" \
-  --build-arg VITE_CLOUDINARY_CLOUD_NAME="$VITE_CLOUDINARY_CLOUD_NAME" \
-  --build-arg VITE_CLOUDINARY_API_KEY="$VITE_CLOUDINARY_API_KEY" \
-  --build-arg VITE_SENTRY_DSN="$VITE_SENTRY_DSN" \
-  --tag "swelldays-web:$RELEASE_TAG" \
-  .
+The VPS never receives application source code, a Dockerfile, or a git clone of this repo — only the one orchestration file, since every container it runs comes pre-built from GHCR.
 
-docker build \
-  --file apps/api/Dockerfile \
-  --target runner \
-  --tag "swelldays-api:$RELEASE_TAG" \
-  .
+Only tag a commit that has already merged to `main` and passed CI (`.github/workflows/ci.yml` runs on every push, tags included, but the release workflow does not itself gate on that run).
 
-docker build \
-  --file apps/api/Dockerfile \
-  --target migrator \
-  --tag "swelldays-migrator:$RELEASE_TAG" \
-  .
-```
-
-The web image contains only Nginx configuration and compiled browser assets. The API runner excludes Prisma CLI and browser dependencies; the migrator deliberately includes Prisma CLI, schema, and `apps/api/prisma/migrations/0_init`.
+One-time setup this pipeline depends on (see the deploy guide for exact steps): GitHub Actions secrets `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`, `DEPLOY_PATH`, and the six `VITE_*` build values; a deploy-only SSH key authorized on the VPS; a plain directory on the VPS at `DEPLOY_PATH` containing `apps/api/.env.production` and `deploy/.env.production` (created once, by hand); and `docker login ghcr.io` run once on the VPS so it can pull the (private) images.
 
 ## Production Compose invocation
 
-`env_file:` passes values into containers, but it does not provide `${POSTGRES_PASSWORD}` interpolation while Compose parses the file. Always pass the production file to Compose itself:
+`docker-compose.prod.yml` pulls pre-built images — it does not build them. Every command needs both `RELEASE_TAG` (which image tag to pull/run) and `POSTGRES_PASSWORD` available for interpolation. The automated pipeline exports `RELEASE_TAG` itself; set it by hand for any manual command:
 
 ```sh
+export RELEASE_TAG=v1.2.0
 docker compose \
   --env-file deploy/.env.production \
   --file docker-compose.prod.yml \
@@ -121,7 +100,7 @@ docker compose --env-file deploy/.env.production --file docker-compose.prod.yml 
 
 ## First deployment order
 
-Before touching a non-empty database, take and verify a backup. For the first empty deployment, the only migration applied must be `0_init`.
+Before touching a non-empty database, take and verify a backup. For the first empty deployment, the only migration applied must be `0_init`. The automated pipeline runs steps 1–4 itself; this is also the manual sequence for a break-glass deploy.
 
 1. Start persistent PostgreSQL and wait for its health check.
 
@@ -129,13 +108,14 @@ Before touching a non-empty database, take and verify a backup. For the first em
    docker compose --env-file deploy/.env.production --file docker-compose.prod.yml up --detach --wait db
    ```
 
-2. Run the migrator once and require a zero exit status.
+2. Pull the release images and run the migrator once, requiring a zero exit status.
 
    ```sh
+   docker compose --env-file deploy/.env.production --file docker-compose.prod.yml pull
    docker compose --env-file deploy/.env.production --file docker-compose.prod.yml run --rm migrate
    ```
 
-3. Start the API from the same release commit, without rerunning dependencies.
+3. Start the API from the same release tag, without rerunning dependencies.
 
    ```sh
    docker compose --env-file deploy/.env.production --file docker-compose.prod.yml up --detach --no-deps api
@@ -223,8 +203,10 @@ Never overwrite the live database merely to test a restore.
 
 ## Rollback
 
-- Web-only rollback: redeploy the previous immutable web image. Its embedded API origin and provider identifiers return with that image.
-- API rollback: redeploy the previous immutable API image only if it is compatible with the current schema.
+Every previous release's images remain in GHCR under their tag, so rollback is re-running the deploy with an older `RELEASE_TAG` — no rebuild needed:
+
+- Web-only rollback: `export RELEASE_TAG=<previous tag>` on the VPS, then `pull` and `up --detach --no-deps web`. Its embedded API origin and provider identifiers return with that image. If `docker-compose.prod.yml` itself changed structure between the two releases, restore the version SCP'd for the previous release before running this.
+- API rollback: same, but only if the previous API image is compatible with the current schema.
 - Migration rollback: Prisma migrations are forward-only here; there is no automatic down migration. Stop writes, preserve the failed database, and restore the verified pre-release backup into a replacement database when schema rollback is required.
 - If the migrator fails, do not start the new API. Inspect migrator logs, correct configuration or migration compatibility, and rerun the same immutable migrator.
-- Keep the previous web, API, and migrator tags until post-deployment checks and a backup cycle have completed.
+- Keep previous web, API, and migrator tags in GHCR until post-deployment checks and a backup cycle have completed.

@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    name: Build and push images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push web image
+        run: |
+          docker build \
+            --file apps/web/Dockerfile \
+            --target runner \
+            --build-arg VITE_API_URL="${{ secrets.VITE_API_URL }}" \
+            --build-arg VITE_MAPBOX_ACCESS_TOKEN="${{ secrets.VITE_MAPBOX_ACCESS_TOKEN }}" \
+            --build-arg VITE_GOOGLE_CLIENT_ID="${{ secrets.VITE_GOOGLE_CLIENT_ID }}" \
+            --build-arg VITE_GOOGLE_API_KEY="${{ secrets.VITE_GOOGLE_API_KEY }}" \
+            --build-arg VITE_CLOUDINARY_CLOUD_NAME="${{ secrets.VITE_CLOUDINARY_CLOUD_NAME }}" \
+            --build-arg VITE_CLOUDINARY_API_KEY="${{ secrets.VITE_CLOUDINARY_API_KEY }}" \
+            --build-arg VITE_SENTRY_DSN="${{ secrets.VITE_SENTRY_DSN }}" \
+            --tag ghcr.io/${{ github.repository }}-web:${{ github.ref_name }} \
+            .
+          docker push ghcr.io/${{ github.repository }}-web:${{ github.ref_name }}
+
+      - name: Build and push API image
+        run: |
+          docker build \
+            --file apps/api/Dockerfile \
+            --target runner \
+            --tag ghcr.io/${{ github.repository }}-api:${{ github.ref_name }} \
+            .
+          docker push ghcr.io/${{ github.repository }}-api:${{ github.ref_name }}
+
+      - name: Build and push migrator image
+        run: |
+          docker build \
+            --file apps/api/Dockerfile \
+            --target migrator \
+            --tag ghcr.io/${{ github.repository }}-migrator:${{ github.ref_name }} \
+            .
+          docker push ghcr.io/${{ github.repository }}-migrator:${{ github.ref_name }}
+
+  deploy:
+    name: Deploy to VPS
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Copy compose file to VPS
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: docker-compose.prod.yml
+          target: ${{ secrets.DEPLOY_PATH }}
+
+      - name: Pull and restart on VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.DEPLOY_PATH }}"
+            export RELEASE_TAG="${{ github.ref_name }}"
+            docker compose --env-file deploy/.env.production --file docker-compose.prod.yml pull
+            docker compose --env-file deploy/.env.production --file docker-compose.prod.yml run --rm migrate
+            docker compose --env-file deploy/.env.production --file docker-compose.prod.yml up --detach --no-deps api
+            docker compose --env-file deploy/.env.production --file docker-compose.prod.yml up --detach --no-deps web

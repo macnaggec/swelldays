@@ -1,10 +1,7 @@
 services:
 
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-      target: runner
+    image: ghcr.io/macnaggec/swelldays-api:${RELEASE_TAG}
     restart: unless-stopped
     env_file:
       - apps/api/.env.production
@@ -16,10 +13,7 @@ services:
         condition: service_completed_successfully
 
   migrate:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-      target: migrator
+    image: ghcr.io/macnaggec/swelldays-migrator:${RELEASE_TAG}
     env_file:
       - apps/api/.env.production
     depends_on:
@@ -42,18 +36,7 @@ services:
       retries: 10
 
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      target: runner
-      args:
-        VITE_API_URL: ${VITE_API_URL}
-        VITE_MAPBOX_ACCESS_TOKEN: ${VITE_MAPBOX_ACCESS_TOKEN}
-        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
-        VITE_GOOGLE_API_KEY: ${VITE_GOOGLE_API_KEY}
-        VITE_CLOUDINARY_CLOUD_NAME: ${VITE_CLOUDINARY_CLOUD_NAME}
-        VITE_CLOUDINARY_API_KEY: ${VITE_CLOUDINARY_API_KEY}
-        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN}
+    image: ghcr.io/macnaggec/swelldays-web:${RELEASE_TAG}
     restart: unless-stopped
     networks:
       - web
