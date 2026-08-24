@@ -17,6 +17,8 @@ export type UploadPublishViolation = 'spot' | 'media' | 'price' | 'time';
 
 export type UsePublishUploadSessionOptions = {
   workspaceId: string | undefined;
+  /** Removing every remaining item is a session deletion, not a blocked save — but only when editing an existing session. */
+  isEditMode: boolean;
   spot: PublishSpot;
   queue: GalleryCard[];
   sessionDate: Date | null;
@@ -28,6 +30,7 @@ export type UsePublishUploadSessionOptions = {
 
 export function usePublishUploadSession({
   workspaceId,
+  isEditMode,
   spot,
   queue,
   sessionDate,
@@ -60,17 +63,24 @@ export function usePublishUploadSession({
   );
   const [hasTriedPublish, setHasTriedPublish] = useState(false);
   const queueStatus = useMemo(() => getUploadQueueStatus(queue), [queue]);
+  // Zero items is a violation for a brand-new session (nothing to publish), but for an
+  // existing one it means every item was removed with nothing to replace it — a valid
+  // session deletion, not a blocked save.
+  const wouldDeleteSession = isEditMode
+    && !queueStatus.hasActiveUploads
+    && queueStatus.errorCards.length === 0
+    && queueStatus.readyItems.length === 0;
 
   const violations = useMemo(() => {
     const nextViolations: UploadPublishViolation[] = [];
     if (!spot) nextViolations.push('spot');
-    if (!workspaceId || !queueStatus.canContinue) nextViolations.push('media');
+    if (!workspaceId || (!queueStatus.canContinue && !wouldDeleteSession)) nextViolations.push('media');
     if (photoPrice < MIN_MEDIA_PRICE_CENTS || videoPrice < MIN_MEDIA_PRICE_CENTS) {
       nextViolations.push('price');
     }
     if (!sessionDate || sessionRange[0] >= sessionRange[1]) nextViolations.push('time');
     return nextViolations;
-  }, [photoPrice, queueStatus.canContinue, sessionDate, sessionRange, spot, videoPrice, workspaceId]);
+  }, [photoPrice, queueStatus.canContinue, sessionDate, sessionRange, spot, videoPrice, workspaceId, wouldDeleteSession]);
 
   const canPublish = violations.length === 0;
 
@@ -104,5 +114,6 @@ export function usePublishUploadSession({
     isPending,
     publish,
     violations,
+    wouldDeleteSession,
   };
 }

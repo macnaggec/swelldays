@@ -113,6 +113,7 @@ describe('usePublishUploadSession', () => {
     const { result } = renderHook(() =>
       usePublishUploadSession({
         workspaceId: 'workspace-1',
+        isEditMode: false,
         spot: { id: 'spot-1' },
         queue: readyQueue(['media-1', 'media-2']),
         sessionDate,
@@ -136,6 +137,7 @@ describe('usePublishUploadSession', () => {
     const { result } = renderHook(() =>
       usePublishUploadSession({
         workspaceId: 'workspace-1',
+        isEditMode: false,
         spot: { id: 'spot-1' },
         queue: readyQueue(['media-1']),
         sessionDate,
@@ -168,6 +170,7 @@ describe('usePublishUploadSession', () => {
     const { result } = renderHook(() =>
       usePublishUploadSession({
         workspaceId: 'workspace-1',
+        isEditMode: false,
         spot: null,
         queue: [],
         sessionDate: null,
@@ -192,6 +195,7 @@ describe('usePublishUploadSession', () => {
     const { result } = renderHook(() =>
       usePublishUploadSession({
         workspaceId: 'workspace-1',
+        isEditMode: false,
         spot: { id: 'spot-1' },
         queue: readyQueue(['media-1']),
         sessionDate,
@@ -218,6 +222,7 @@ describe('usePublishUploadSession', () => {
     const { result } = renderHook(() =>
       usePublishUploadSession({
         workspaceId: 'workspace-1',
+        isEditMode: false,
         spot: { id: 'spot-1' },
         queue: readyQueue(['media-1']),
         sessionDate,
@@ -254,6 +259,7 @@ describe('usePublishUploadSession', () => {
     const { result } = renderHook(() =>
       usePublishUploadSession({
         workspaceId: 'workspace-1',
+        isEditMode: false,
         spot: { id: 'spot-1' },
         queue,
         sessionDate,
@@ -270,5 +276,49 @@ describe('usePublishUploadSession', () => {
 
     expect(result.current.hasTriedPublish).toBe(true);
     expect(mocks.saveWorkspace).not.toHaveBeenCalled();
+  });
+
+  it('allows an empty queue when editing an existing session — it would delete the session, not block the save', async () => {
+    const { result } = renderHook(() =>
+      usePublishUploadSession({
+        workspaceId: 'workspace-1',
+        isEditMode: true,
+        spot: { id: 'spot-1' },
+        queue: [],
+        sessionDate,
+        sessionRange: [360, 600],
+        photoPrice: 300,
+        videoPrice: 500,
+        onComplete: vi.fn(),
+      }),
+    );
+
+    expect(result.current.wouldDeleteSession).toBe(true);
+    expect(result.current.violations).toEqual([]);
+
+    await act(async () => {
+      await result.current.publish();
+    });
+
+    expect(mocks.saveWorkspace).toHaveBeenCalledWith({ workspaceId: 'workspace-1' });
+  });
+
+  it('still blocks an empty queue when publishing a brand-new session', () => {
+    const { result } = renderHook(() =>
+      usePublishUploadSession({
+        workspaceId: 'workspace-1',
+        isEditMode: false,
+        spot: { id: 'spot-1' },
+        queue: [],
+        sessionDate,
+        sessionRange: [360, 600],
+        photoPrice: 300,
+        videoPrice: 500,
+        onComplete: vi.fn(),
+      }),
+    );
+
+    expect(result.current.wouldDeleteSession).toBe(false);
+    expect(result.current.violations).toEqual(['media']);
   });
 });

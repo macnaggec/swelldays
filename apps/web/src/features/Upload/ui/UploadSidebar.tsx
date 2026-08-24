@@ -141,8 +141,9 @@ function UploadSidebarContent({
   const showPhotoPrice = queue.length === 0 || queue.some((card) => !isVideoItem(card));
   const showVideoPrice = queue.length === 0 || queue.some(isVideoItem);
 
-  const { canPublish, hasTriedPublish, isPending, publish, violations } = usePublishUploadSession({
+  const { canPublish, hasTriedPublish, isPending, publish, violations, wouldDeleteSession } = usePublishUploadSession({
     workspaceId,
+    isEditMode,
     spot: spotId ? { id: spotId } : null,
     queue,
     sessionDate,
@@ -154,6 +155,7 @@ function UploadSidebarContent({
 
   const [isDiscarding, setIsDiscarding] = useState(false);
   const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false);
+  const [isConfirmingSessionDelete, setIsConfirmingSessionDelete] = useState(false);
   const queueStatus = useMemo(() => getUploadQueueStatus(queue), [queue]);
 
   const handleDiscard = useCallback(async () => {
@@ -209,6 +211,23 @@ function UploadSidebarContent({
     });
   }, [saveWorkspaceFields]);
 
+  const finalizePublish = useCallback(async () => {
+    const saved = await saveWorkspaceFields({
+      spotId,
+      startsAt: sessionDate ? combineDateAndTime(sessionDate, minutesToTime(sessionRange[0])) : null,
+      endsAt: sessionDate ? combineDateAndTime(sessionDate, minutesToTime(sessionRange[1])) : null,
+      photoPrice,
+      videoPrice,
+    });
+    if (!saved) return;
+    await publish();
+  }, [photoPrice, publish, saveWorkspaceFields, sessionDate, sessionRange, spotId, videoPrice]);
+
+  const handleConfirmSessionDelete = useCallback(async () => {
+    setIsConfirmingSessionDelete(false);
+    await finalizePublish();
+  }, [finalizePublish]);
+
   const handlePublish = useCallback(async () => {
     if (!canPublish) {
       const firstViolation = violations[0];
@@ -240,16 +259,12 @@ function UploadSidebarContent({
       }
       return;
     }
-    const saved = await saveWorkspaceFields({
-      spotId,
-      startsAt: sessionDate ? combineDateAndTime(sessionDate, minutesToTime(sessionRange[0])) : null,
-      endsAt: sessionDate ? combineDateAndTime(sessionDate, minutesToTime(sessionRange[1])) : null,
-      photoPrice,
-      videoPrice,
-    });
-    if (!saved) return;
-    await publish();
-  }, [canPublish, photoPrice, publish, saveWorkspaceFields, sessionDate, sessionRange, spotId, videoPrice, violations]);
+    if (wouldDeleteSession) {
+      setIsConfirmingSessionDelete(true);
+      return;
+    }
+    await finalizePublish();
+  }, [canPublish, finalizePublish, publish, violations, wouldDeleteSession]);
 
   const validationProps = (violation: UploadPublishViolation) => {
     const isInvalid = hasTriedPublish && violations.includes(violation);
@@ -393,15 +408,54 @@ function UploadSidebarContent({
                 </Stack>
               </Popover.Dropdown>
             </Popover>
-            <Button
-              className={styles.publishButton}
-              variant="transparent"
-              disabled={isDiscarding}
-              loading={isPending}
-              onClick={() => { void handlePublish(); }}
+            <Popover
+              opened={isConfirmingSessionDelete}
+              onChange={setIsConfirmingSessionDelete}
+              position="top"
+              withArrow
+              shadow="md"
+              transitionProps={{ duration: 0 }}
             >
-              {isEditMode ? 'Save' : 'Publish'}
-            </Button>
+              <Popover.Target>
+                <Button
+                  className={styles.publishButton}
+                  variant="transparent"
+                  disabled={isDiscarding}
+                  loading={isPending}
+                  onClick={() => { void handlePublish(); }}
+                >
+                  {isEditMode ? 'Save' : 'Publish'}
+                </Button>
+              </Popover.Target>
+              <Popover.Dropdown>
+                <Stack gap="sm" maw={240}>
+                  <Text size="sm" fw={600}>Delete this session?</Text>
+                  <Text size="xs" c="dimmed">
+                    You&apos;ve removed every item — saving now deletes the session. Buyers who
+                    already purchased media from it keep access; only unsold media is removed.
+                  </Text>
+                  <Group gap="xs" grow>
+                    <Button
+                      size="xs"
+                      radius="xl"
+                      color="red"
+                      variant="light"
+                      onClick={() => { void handleConfirmSessionDelete(); }}
+                    >
+                      Delete session
+                    </Button>
+                    <Button
+                      size="xs"
+                      radius="xl"
+                      variant="subtle"
+                      onClick={() => setIsConfirmingSessionDelete(false)}
+                    >
+                      Keep editing
+                    </Button>
+                  </Group>
+                </Stack>
+              </Popover.Dropdown>
+            </Popover>
           </Group>
         </Box>
       </PanelLayoutFooter>
