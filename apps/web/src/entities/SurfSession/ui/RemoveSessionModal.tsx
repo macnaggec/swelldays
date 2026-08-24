@@ -3,6 +3,7 @@ import { notify } from 'shared/lib/notifications';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { useRetireSurfSession } from '../model/usePublishedSession';
 import type { SurfSessionItem } from '../types';
+import styles from './RemoveSessionModal.module.css';
 
 interface RemoveSessionModalProps {
   session: SurfSessionItem | null;
@@ -31,8 +32,12 @@ export function RemoveSessionModal({ session, onClose }: RemoveSessionModalProps
           videos from it keep access — only unsold media is removed from view.
         </Text>
         <Group justify="flex-end">
-          <Button variant="subtle" onClick={onClose}>Cancel</Button>
-          <Button color="red" onClick={() => { void handleConfirm(); }} loading={isPending}>
+          <Button className={styles.cancelButton} onClick={onClose}>Cancel</Button>
+          <Button
+            className={styles.removeButton}
+            onClick={() => { void handleConfirm(); }}
+            loading={isPending}
+          >
             Remove completely
           </Button>
         </Group>
