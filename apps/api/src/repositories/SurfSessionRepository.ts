@@ -2,13 +2,14 @@ import { MediaStatus, SurfSessionStatus } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
 import { BadRequestError } from 'server/errors';
+import type { StoredAssetIdentity } from 'server/ports/UploadAssetStorage';
 import type { SurfSessionItem, SurfSessionPage } from '@swelldays/contracts';
 
 export interface ISurfSessionRepository {
   listPublished(filter: { spotId?: string; cursor?: string; limit: number; dateFrom?: Date; dateTo?: Date; favoriteUserId?: string }): Promise<SurfSessionPage>;
   findByPhotographer(photographerId: string): Promise<SurfSessionItem[]>;
   findPublishedById(sessionId: string): Promise<SurfSessionItem | null>;
-  retire(sessionId: string, photographerId: string): Promise<{ id: string }>;
+  retire(sessionId: string, photographerId: string): Promise<{ id: string; hardDeletedAssets: StoredAssetIdentity[] }>;
 }
 
 type SessionProjectionRow = {
@@ -121,16 +122,36 @@ export class SurfSessionRepository implements ISurfSessionRepository {
     });
   }
 
-  /** Soft-deletes a published session and its media items; purchases keep referencing retained rows. */
-  retire(sessionId: string, photographerId: string): Promise<{ id: string }> {
+  /**
+   * Retires a published session: media never purchased is hard-deleted (caller cleans up
+   * Cloudinary for the returned identities), media that was purchased is soft-deleted so
+   * the buyer's download keeps working.
+   */
+  retire(sessionId: string, photographerId: string): Promise<{ id: string; hardDeletedAssets: StoredAssetIdentity[] }> {
     return runQuery(() =>
       prisma.$transaction(async (tx) => {
         const deletedAt = new Date();
 
-        await tx.mediaItem.updateMany({
+        const liveMedia = await tx.mediaItem.findMany({
           where: { sessionId, photographerId, deletedAt: null },
-          data: { status: MediaStatus.DELETED, deletedAt },
+          include: { purchases: { select: { id: true }, take: 1 } },
         });
+        const hardDelete = liveMedia.filter((item) => item.purchases.length === 0);
+        const softDeleteIds = liveMedia
+          .filter((item) => item.purchases.length > 0)
+          .map((item) => item.id);
+
+        if (hardDelete.length > 0) {
+          await tx.mediaItem.deleteMany({
+            where: { id: { in: hardDelete.map((item) => item.id) } },
+          });
+        }
+        if (softDeleteIds.length > 0) {
+          await tx.mediaItem.updateMany({
+            where: { id: { in: softDeleteIds } },
+            data: { status: MediaStatus.DELETED, deletedAt },
+          });
+        }
 
         const sessionUpdate = await tx.surfSession.updateMany({
           where: { id: sessionId, photographerId, status: SurfSessionStatus.PUBLISHED },
@@ -140,7 +161,11 @@ export class SurfSessionRepository implements ISurfSessionRepository {
           throw new BadRequestError('Session is not a removable published session');
         }
 
-        return { id: sessionId };
+        const hardDeletedAssets: StoredAssetIdentity[] = hardDelete.map((item) => ({
+          cloudinaryPublicId: item.cloudinaryPublicId,
+          resourceType: item.type,
+        }));
+        return { id: sessionId, hardDeletedAssets };
       }),
     );
   }

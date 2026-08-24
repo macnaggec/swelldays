@@ -10,6 +10,7 @@ async function clearTestData() {
   await prisma.uploadWorkspaceAsset.deleteMany();
   await prisma.uploadWorkspaceMediaChange.deleteMany();
   await prisma.uploadWorkspace.deleteMany();
+  await prisma.purchase.deleteMany();
   await prisma.mediaItem.deleteMany();
   await prisma.surfSession.deleteMany();
   await prisma.spot.deleteMany();
@@ -66,7 +67,7 @@ describe('SurfSession media ownership constraint', () => {
 });
 
 describe('SurfSessionRepository.retire', () => {
-  it('soft-deletes a published session and its media', async () => {
+  it('hard-deletes never-purchased media and reports it for Cloudinary cleanup', async () => {
     const photographer = await prisma.user.create({
       data: { email: 'retire-session@example.com' },
     });
@@ -97,14 +98,62 @@ describe('SurfSessionRepository.retire', () => {
       },
     });
 
-    await repository.retire(session.id, photographer.id);
+    const result = await repository.retire(session.id, photographer.id);
 
     expect(await prisma.surfSession.findUnique({ where: { id: session.id } })).toMatchObject({
       status: 'DELETED',
     });
+    expect(await prisma.mediaItem.findUnique({ where: { id: media.id } })).toBeNull();
+    expect(result.hardDeletedAssets).toEqual([
+      { cloudinaryPublicId: 'swelldays/users/test/retire', resourceType: 'PHOTO' },
+    ]);
+  });
+
+  it('soft-deletes already-purchased media instead of hard-deleting it', async () => {
+    const photographer = await prisma.user.create({
+      data: { email: 'retire-purchased-session@example.com' },
+    });
+    const spot = await prisma.spot.create({
+      data: { name: 'Pipeline', location: 'North Shore' },
+    });
+    const session = await prisma.surfSession.create({
+      data: {
+        photographerId: photographer.id,
+        spotId: spot.id,
+        startsAt: new Date('2026-01-01T06:00:00Z'),
+        endsAt: new Date('2026-01-01T08:00:00Z'),
+        status: 'PUBLISHED',
+      },
+    });
+    const media = await prisma.mediaItem.create({
+      data: {
+        sessionId: session.id,
+        photographerId: photographer.id,
+        spotId: spot.id,
+        type: 'PHOTO',
+        status: 'PUBLISHED',
+        price: 700,
+        capturedAt: new Date('2026-01-01T06:30:00Z'),
+        lightboxUrl: 'https://res.cloudinary.com/test/retire-purchased.jpg',
+        thumbnailUrl: 'https://res.cloudinary.com/test/retire-purchased-thumb.jpg',
+        cloudinaryPublicId: 'swelldays/users/test/retire-purchased',
+      },
+    });
+    await prisma.purchase.create({
+      data: {
+        mediaItemId: media.id,
+        amountPaid: 700,
+        platformFee: 70,
+        photographerEarned: 630,
+      },
+    });
+
+    const result = await repository.retire(session.id, photographer.id);
+
     expect(await prisma.mediaItem.findUnique({ where: { id: media.id } })).toMatchObject({
       status: 'DELETED',
     });
+    expect(result.hardDeletedAssets).toEqual([]);
   });
 });
 

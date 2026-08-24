@@ -89,18 +89,41 @@ describe('SurfSessionRepository.findPublishedById', () => {
 });
 
 describe('SurfSessionRepository.retire', () => {
-  it('soft-deletes the session and its media in one transaction', async () => {
+  it('hard-deletes never-purchased media and soft-deletes purchased media', async () => {
     const tx = {
-      mediaItem: { updateMany: vi.fn().mockResolvedValue({ count: 2 }) },
+      mediaItem: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'unpurchased-media',
+            cloudinaryPublicId: 'swelldays/users/user-1/unpurchased',
+            type: 'PHOTO',
+            purchases: [],
+          },
+          {
+            id: 'purchased-media',
+            cloudinaryPublicId: 'swelldays/users/user-1/purchased',
+            type: 'VIDEO',
+            purchases: [{ id: 'purchase-1' }],
+          },
+        ]),
+        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
       surfSession: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockTransaction.mockImplementation((fn: any) => fn(tx));
 
-    await expect(repo.retire('session-1', 'user-1')).resolves.toEqual({ id: 'session-1' });
+    await expect(repo.retire('session-1', 'user-1')).resolves.toEqual({
+      id: 'session-1',
+      hardDeletedAssets: [{ cloudinaryPublicId: 'swelldays/users/user-1/unpurchased', resourceType: 'PHOTO' }],
+    });
 
+    expect(tx.mediaItem.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['unpurchased-media'] } },
+    });
     expect(tx.mediaItem.updateMany).toHaveBeenCalledWith({
-      where: { sessionId: 'session-1', photographerId: 'user-1', deletedAt: null },
+      where: { id: { in: ['purchased-media'] } },
       data: { status: 'DELETED', deletedAt: expect.any(Date) },
     });
     expect(tx.surfSession.updateMany).toHaveBeenCalledWith({
@@ -111,7 +134,11 @@ describe('SurfSessionRepository.retire', () => {
 
   it('throws when the target session is not a removable published session', async () => {
     const tx = {
-      mediaItem: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      mediaItem: {
+        findMany: vi.fn().mockResolvedValue([]),
+        deleteMany: vi.fn(),
+        updateMany: vi.fn(),
+      },
       surfSession: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
