@@ -134,18 +134,41 @@ describe('UploadWorkspaceService session edits', () => {
     expect(mockCleanup.deleteStoredAsset).not.toHaveBeenCalled();
   });
 
-  it('blocks saving an edit that would leave the session with zero live media', async () => {
+  it('deletes the whole session when an edit removes the last unpurchased media item', async () => {
     const { photographer, session, original } = await seedPublishedSessionWithOnePhoto();
 
     const workspace = await service.startSessionEdit(photographer.id, session.id);
     await service.stageMediaRemoval(photographer.id, workspace.id, original.id);
 
-    await expect(service.saveWorkspace(photographer.id, workspace.id)).rejects.toThrow('at least one media');
+    const result = await service.saveWorkspace(photographer.id, workspace.id);
 
-    expect(await prisma.mediaItem.findUnique({ where: { id: original.id } })).toMatchObject({
-      status: 'PUBLISHED',
-      deletedAt: null,
+    expect(result.sessionDeleted).toBe(true);
+    expect(await prisma.surfSession.findUnique({ where: { id: session.id } })).toMatchObject({
+      status: 'DELETED',
     });
+    expect(await prisma.mediaItem.findUnique({ where: { id: original.id } })).toBeNull();
+    expect(mockCleanup.deleteStoredAsset).toHaveBeenCalledWith({
+      cloudinaryPublicId: original.cloudinaryPublicId,
+      resourceType: 'PHOTO',
+    });
+  });
+
+  it('deletes the session but soft-deletes the last item if it was already purchased', async () => {
+    const { photographer, session, original } = await seedPublishedSessionWithOnePhoto({ purchased: true });
+
+    const workspace = await service.startSessionEdit(photographer.id, session.id);
+    await service.stageMediaRemoval(photographer.id, workspace.id, original.id);
+
+    const result = await service.saveWorkspace(photographer.id, workspace.id);
+
+    expect(result.sessionDeleted).toBe(true);
+    expect(await prisma.surfSession.findUnique({ where: { id: session.id } })).toMatchObject({
+      status: 'DELETED',
+    });
+    expect(await prisma.mediaItem.findUnique({ where: { id: original.id } })).toMatchObject({
+      status: 'DELETED',
+    });
+    expect(mockCleanup.deleteStoredAsset).not.toHaveBeenCalled();
   });
 
   it('keeps the live session visible and unchanged when an edit is opened and cancelled', async () => {

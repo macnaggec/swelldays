@@ -1,4 +1,4 @@
-import { MediaType, Prisma, UploadWorkspaceKind, UploadWorkspaceStatus } from '@prisma/client';
+import { MediaType, Prisma, SurfSessionStatus, UploadWorkspaceKind, UploadWorkspaceStatus } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
 import { BadRequestError, ForbiddenError, NotFoundError } from 'server/errors';
@@ -246,7 +246,7 @@ export class UploadWorkspaceService {
     );
   }
 
-  async saveWorkspace(photographerId: string, workspaceId: string): Promise<{ id: string }> {
+  async saveWorkspace(photographerId: string, workspaceId: string): Promise<{ id: string; sessionDeleted: boolean }> {
     const result = await runQuery(async () =>
       prisma.$transaction(async (tx) => {
         const workspace = await tx.uploadWorkspace.findFirst({
@@ -296,7 +296,7 @@ export class UploadWorkspaceService {
             where: { id: workspaceId },
             data: { status: UploadWorkspaceStatus.SAVED },
           });
-          return { id: session.id, hardDeletedAssets: [] as StoredAssetIdentity[] };
+          return { id: session.id, hardDeletedAssets: [] as StoredAssetIdentity[], sessionDeleted: false };
         }
 
         if (!workspace.targetSessionId) {
@@ -313,20 +313,30 @@ export class UploadWorkspaceService {
             id: { notIn: stagedRemovalIds },
           },
         });
-        if (keptLiveMediaCount + workspace.assets.length < 1) {
-          throw new BadRequestError('Workspace must contain at least one media item');
-        }
+        // Removing everything with nothing to replace it is a session deletion, not an edit —
+        // handled the same way retire() does (below), instead of blocking the save.
+        const deletingWholeSession = keptLiveMediaCount + workspace.assets.length < 1;
 
-        await tx.surfSession.updateMany({
-          where: { id: workspace.targetSessionId, photographerId, status: 'PUBLISHED' },
-          data: {
-            spotId: workspace.spotId,
-            startsAt: workspace.startsAt,
-            endsAt: workspace.endsAt,
-            photoPrice: workspace.photoPrice,
-            videoPrice: workspace.videoPrice,
-          },
-        });
+        if (deletingWholeSession) {
+          const sessionUpdate = await tx.surfSession.updateMany({
+            where: { id: workspace.targetSessionId, photographerId, status: 'PUBLISHED' },
+            data: { status: SurfSessionStatus.DELETED },
+          });
+          if (sessionUpdate.count !== 1) {
+            throw new BadRequestError('Session is not a removable published session');
+          }
+        } else {
+          await tx.surfSession.updateMany({
+            where: { id: workspace.targetSessionId, photographerId, status: 'PUBLISHED' },
+            data: {
+              spotId: workspace.spotId,
+              startsAt: workspace.startsAt,
+              endsAt: workspace.endsAt,
+              photoPrice: workspace.photoPrice,
+              videoPrice: workspace.videoPrice,
+            },
+          });
+        }
 
         await tx.uploadWorkspaceMediaChange.deleteMany({ where: { workspaceId } });
         const hardDeleteChanges = workspace.mediaChanges
@@ -372,7 +382,7 @@ export class UploadWorkspaceService {
           data: { status: UploadWorkspaceStatus.SAVED },
         });
 
-        return { id: workspace.targetSessionId, hardDeletedAssets };
+        return { id: workspace.targetSessionId, hardDeletedAssets, sessionDeleted: deletingWholeSession };
       }),
     );
 
@@ -384,7 +394,7 @@ export class UploadWorkspaceService {
       }
     }
 
-    return { id: result.id };
+    return { id: result.id, sessionDeleted: result.sessionDeleted };
   }
 
   async cancelWorkspace(photographerId: string, workspaceId: string): Promise<{ id: string }> {
