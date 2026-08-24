@@ -2,6 +2,9 @@ import { MediaType, Prisma, UploadWorkspaceKind, UploadWorkspaceStatus } from '@
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
 import { BadRequestError, ForbiddenError, NotFoundError } from 'server/errors';
+import { logger } from 'server/lib/logger';
+import { cloudinaryService } from './CloudinaryService';
+import type { AssetCleanupPort, StoredAssetIdentity } from 'server/ports/UploadAssetStorage';
 import type { UploadWorkspaceState, UploadWorkspaceSummary } from '@swelldays/contracts';
 
 type WorkspaceSeed = {
@@ -16,6 +19,8 @@ const ATTEMPT_BLOCKING_STATUSES = ['READY', 'ACQUIRING', 'FINALIZING', 'FAILED']
 const ATTEMPT_CANCELLABLE_STATUSES = ['READY', 'ACQUIRING', 'FINALIZING', 'FAILED'] as const;
 
 export class UploadWorkspaceService {
+  constructor(private cleanup: AssetCleanupPort) {}
+
   getActiveWorkspace(photographerId: string): Promise<UploadWorkspaceSummary | null> {
     return runQuery(async () => {
       const workspace = await prisma.uploadWorkspace.findFirst({
@@ -242,7 +247,7 @@ export class UploadWorkspaceService {
   }
 
   async saveWorkspace(photographerId: string, workspaceId: string): Promise<{ id: string }> {
-    return runQuery(async () =>
+    const result = await runQuery(async () =>
       prisma.$transaction(async (tx) => {
         const workspace = await tx.uploadWorkspace.findFirst({
           where: { id: workspaceId, photographerId, status: UploadWorkspaceStatus.ACTIVE },
@@ -291,7 +296,7 @@ export class UploadWorkspaceService {
             where: { id: workspaceId },
             data: { status: UploadWorkspaceStatus.SAVED },
           });
-          return { id: session.id };
+          return { id: session.id, hardDeletedAssets: [] as StoredAssetIdentity[] };
         }
 
         if (!workspace.targetSessionId) {
@@ -324,9 +329,13 @@ export class UploadWorkspaceService {
         });
 
         await tx.uploadWorkspaceMediaChange.deleteMany({ where: { workspaceId } });
-        const hardDeleteIds = workspace.mediaChanges
-          .filter((change) => change.mediaItem.purchases.length === 0)
-          .map((change) => change.mediaItemId);
+        const hardDeleteChanges = workspace.mediaChanges
+          .filter((change) => change.mediaItem.purchases.length === 0);
+        const hardDeleteIds = hardDeleteChanges.map((change) => change.mediaItemId);
+        const hardDeletedAssets: StoredAssetIdentity[] = hardDeleteChanges.map((change) => ({
+          cloudinaryPublicId: change.mediaItem.cloudinaryPublicId,
+          resourceType: change.mediaItem.type,
+        }));
         const softDeleteIds = workspace.mediaChanges
           .filter((change) => change.mediaItem.purchases.length > 0)
           .map((change) => change.mediaItemId);
@@ -363,9 +372,19 @@ export class UploadWorkspaceService {
           data: { status: UploadWorkspaceStatus.SAVED },
         });
 
-        return { id: workspace.targetSessionId };
+        return { id: workspace.targetSessionId, hardDeletedAssets };
       }),
     );
+
+    for (const asset of result.hardDeletedAssets) {
+      try {
+        await this.cleanup.deleteStoredAsset(asset);
+      } catch (err) {
+        logger.error('[uploadWorkspace] Cloudinary cleanup failed for removed media', { asset, err });
+      }
+    }
+
+    return { id: result.id };
   }
 
   async cancelWorkspace(photographerId: string, workspaceId: string): Promise<{ id: string }> {
@@ -504,4 +523,4 @@ async function createPublishedMediaFromAssets(
   }
 }
 
-export const uploadWorkspaceService = new UploadWorkspaceService();
+export const uploadWorkspaceService = new UploadWorkspaceService(cloudinaryService);

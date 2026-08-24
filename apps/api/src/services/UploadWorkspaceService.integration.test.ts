@@ -1,8 +1,9 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from 'server/db';
 import { UploadWorkspaceService } from './UploadWorkspaceService';
 
-const service = new UploadWorkspaceService();
+const mockCleanup = { deleteStoredAsset: vi.fn().mockResolvedValue(undefined) };
+const service = new UploadWorkspaceService(mockCleanup);
 
 async function clearTestData() {
   await prisma.uploadWorkspaceMediaChange.deleteMany();
@@ -78,7 +79,10 @@ async function addReadyWorkspaceAsset(workspaceId: string, photographerId: strin
   });
 }
 
-beforeEach(clearTestData);
+beforeEach(async () => {
+  await clearTestData();
+  mockCleanup.deleteStoredAsset.mockClear();
+});
 afterAll(async () => {
   await clearTestData();
   await prisma.$disconnect();
@@ -107,6 +111,10 @@ describe('UploadWorkspaceService session edits', () => {
       price: 700,
       status: 'PUBLISHED',
     });
+    expect(mockCleanup.deleteStoredAsset).toHaveBeenCalledWith({
+      cloudinaryPublicId: original.cloudinaryPublicId,
+      resourceType: 'PHOTO',
+    });
   });
 
   it('soft-deletes a staged removal that has already been purchased', async () => {
@@ -121,6 +129,9 @@ describe('UploadWorkspaceService session edits', () => {
     expect(await prisma.mediaItem.findUnique({ where: { id: original.id } })).toMatchObject({
       status: 'DELETED',
     });
+    // Purchased media is soft-deleted, not removed — the asset must stay in Cloudinary
+    // so the buyer's download keeps working.
+    expect(mockCleanup.deleteStoredAsset).not.toHaveBeenCalled();
   });
 
   it('blocks saving an edit that would leave the session with zero live media', async () => {
