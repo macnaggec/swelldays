@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Center, Loader, Skeleton, Stack, Text } from '@mantine/core';
 import { IconPhoto, IconMapPin } from '@tabler/icons-react';
 import { useSessionFeed, type SurfSessionItem } from 'entities/SurfSession';
+import { GalleryEmptyState } from 'features/PublicGallery';
 import type { BrowseFilters } from 'shared/model/browseFilters';
 import { formatDateRange } from 'shared/lib/dateUtils';
 import { DRAWER_SHELL_TRANSITION } from 'shared/ui/DrawerShell';
@@ -88,6 +89,17 @@ export function SessionFeed({
 
   const sessions = data?.pages.flatMap((p) => p.items) ?? [];
 
+  const hasDateFilter = !!filters?.date;
+  const hasFavoriteFilter = !!filters?.favoriteSpotsOnly;
+  const hasActiveFilters = hasDateFilter || hasFavoriteFilter;
+  const emptyDescription = hasDateFilter && hasFavoriteFilter
+    ? 'Try another date or turn off Favorites to widen the feed.'
+    : hasDateFilter
+      ? 'Try another date to widen the feed.'
+      : hasFavoriteFilter
+        ? 'Turn off Favorites to widen the feed.'
+        : 'Published sessions will show up here. Use Upload above to add the first one.';
+
   useLayoutEffect(() => {
     if (isLoading) return;
     onLayoutReadyChange?.(true);
@@ -110,9 +122,10 @@ export function SessionFeed({
           ))}
         </PanelCollectionGrid>
       ) : sessions.length === 0 ? (
-        <Center h={200}>
-          <Text size="sm" c="dimmed">No sessions found</Text>
-        </Center>
+        <GalleryEmptyState
+          title={hasActiveFilters ? 'No sessions match this view' : 'No sessions here yet'}
+          description={emptyDescription}
+        />
       ) : (
         <>
           <PanelCollectionGrid className={styles.grid}>

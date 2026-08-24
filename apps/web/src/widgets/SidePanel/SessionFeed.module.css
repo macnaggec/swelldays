@@ -1,6 +1,8 @@
 .feed {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 :global([data-panel-layout][data-sheet-snap='peek']) .feed {
