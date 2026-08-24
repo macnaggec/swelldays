@@ -85,10 +85,12 @@
 
 .controlButton {
   height: var(--wa-control-height-default);
-  padding-inline: 12px;
-  border: 1px solid var(--wa-control-border);
-  border-radius: var(--wa-radius-control-md);
-  background: var(--wa-control-fill);
+  padding-inline: 16px;
+  border: 1px solid var(--wa-glass-border-media-overlay);
+  border-radius: var(--wa-radius-pill);
+  background: var(--wa-panel-control-background, var(--wa-control-fill));
+  backdrop-filter: var(--wa-glass-blur-sm);
+  -webkit-backdrop-filter: var(--wa-glass-blur-sm);
   color: var(--wa-text-primary);
   font-size: var(--wa-font-size-sm);
   font-weight: 600;
@@ -111,14 +113,18 @@
 }
 
 .primaryButton {
-  border-color: var(--wa-accent-spot);
-  background: var(--wa-accent-spot);
+  border-color: color-mix(in srgb, var(--wa-accent-spot) 75%, var(--wa-glass-border-media-overlay));
+  background: color-mix(in srgb, var(--wa-accent-spot) 46%, var(--wa-panel-control-background));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   color: var(--wa-text-on-accent);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--wa-accent-spot) 40%, transparent);
 }
 
 .primaryButton:hover {
-  border-color: var(--wa-accent-spot);
-  background: color-mix(in srgb, var(--wa-accent-spot) 88%, var(--wa-control-fill-hover));
+  border-color: color-mix(in srgb, var(--wa-accent-spot) 75%, var(--wa-glass-border-media-overlay));
+  background: color-mix(in srgb, var(--wa-accent-spot) 56%, var(--wa-panel-control-background));
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--wa-accent-spot) 48%, transparent);
 }
 
 .primaryButton:where([data-disabled], :disabled) {
@@ -126,6 +132,7 @@
   background: var(--wa-control-fill);
   color: var(--wa-text-muted);
   opacity: 1;
+  box-shadow: none;
 }
 
 .proximityAlert,
