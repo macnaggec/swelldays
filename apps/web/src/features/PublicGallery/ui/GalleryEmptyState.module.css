@@ -78,33 +78,3 @@
   line-height: 1.55;
   text-wrap: pretty;
 }
-
-.action {
-  min-height: 2.5rem;
-  margin-top: 1.5rem;
-  padding: 0.6rem 1rem;
-  border: 1px solid var(--wa-glass-border-media-overlay);
-  border-radius: var(--wa-radius-control-md);
-  background: var(--wa-control-fill);
-  color: var(--wa-text-strong);
-  font: inherit;
-  font-size: var(--wa-font-size-sm);
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
-}
-
-.action:hover {
-  border-color: var(--wa-glass-border-media-overlay-hover);
-  background: var(--wa-control-fill-hover);
-}
-
-.action:active {
-  transform: translateY(1px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .action {
-    transition: none;
-  }
-}

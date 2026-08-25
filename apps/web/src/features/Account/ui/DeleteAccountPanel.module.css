@@ -24,31 +24,6 @@
   line-height: 1.55;
 }
 
-.deleteAction {
-  color: var(--wa-text-strong);
-  background: rgba(255, 77, 109, 0.14);
-  border: 1px solid rgba(255, 77, 109, 0.34);
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    transform 160ms ease;
-}
-
-.deleteAction:hover:not(:disabled) {
-  background: rgba(255, 77, 109, 0.22);
-  border-color: rgba(255, 77, 109, 0.5);
-}
-
-.deleteAction:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.deleteAction:disabled {
-  color: var(--wa-text-dimmed);
-  background: var(--wa-control-fill-muted);
-  border-color: var(--wa-glass-border);
-}
-
 .modalBody {
   color: var(--wa-text-primary);
   font-size: var(--wa-font-size-base);
@@ -87,14 +62,4 @@
   color: var(--wa-text-strong);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .deleteAction {
-    transition: none;
-  }
-
-  .deleteAction:active:not(:disabled) {
-    transform: none;
-  }
 }

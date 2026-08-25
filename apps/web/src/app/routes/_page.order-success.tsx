@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { Button, Center, Group, Stack, Text, Title } from '@mantine/core';
+import { Center, Group, Stack, Text, Title } from '@mantine/core';
 import { IconCheck } from '@tabler/icons-react';
+import { AppButton } from 'shared/ui/AppButton';
 
 export const Route = createFileRoute('/_page/order-success')({
   component: OrderSuccessPage,
@@ -26,12 +27,15 @@ function OrderSuccessPage() {
         </Text>
 
         <Group gap="sm">
-          <Button component={Link} to="/me/collections/purchases">
+          <AppButton
+            tone="positive"
+            renderRoot={(props) => <Link {...props} to="/me/collections/purchases" />}
+          >
             Go to Purchases
-          </Button>
-          <Button component={Link} to="/" variant="subtle">
+          </AppButton>
+          <AppButton renderRoot={(props) => <Link {...props} to="/" />}>
             Back to home
-          </Button>
+          </AppButton>
         </Group>
       </Stack>
     </Center>

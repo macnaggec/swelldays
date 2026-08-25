@@ -1,6 +1,7 @@
-import { Alert, Button, Group, Stack, Text } from '@mantine/core';
+import { Alert, Group, Stack, Text } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import type { Spot } from 'entities/Spot';
+import { AppButton } from 'shared/ui/AppButton';
 import styles from '../AddSpotPanel.module.css';
 
 interface ProximityStepProps {
@@ -43,29 +44,26 @@ export function ProximityStep({
             <Text size="sm" fw={500}>{spot.name}</Text>
             <Text size="xs" c="dimmed">{spot.location}</Text>
           </Stack>
-          <Button
+          <AppButton
+            tone="highlight"
             onClick={() => onGoToExisting(spot)}
-            className={`${styles.controlButton} ${styles.primaryButton}`}
           >
             Go to this spot
-          </Button>
+          </AppButton>
         </Group>
       ))}
 
       <Group justify="space-between" mt={2}>
         <Group gap="xs">
-          <Button variant="default" onClick={onBack} className={styles.controlButton}>Back</Button>
-          <Button variant="default" onClick={onCancel} className={styles.controlButton}>Cancel</Button>
+          <AppButton onClick={onBack}>Back</AppButton>
+          <AppButton onClick={onCancel}>Cancel</AppButton>
         </Group>
-        <Button
-          variant="subtle"
-          color="gray"
+        <AppButton
           onClick={onConfirmCreate}
           loading={isCreating}
-          className={styles.controlButton}
         >
           Create new
-        </Button>
+        </AppButton>
       </Group>
     </Stack>
   );

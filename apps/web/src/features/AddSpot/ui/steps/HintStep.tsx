@@ -1,5 +1,6 @@
-import { Button, Group, Stack, Text } from '@mantine/core';
+import { Group, Stack, Text } from '@mantine/core';
 import { IconMapPin } from '@tabler/icons-react';
+import { AppButton } from 'shared/ui/AppButton';
 import styles from '../AddSpotPanel.module.css';
 
 interface HintStepProps {
@@ -14,7 +15,7 @@ export function HintStep({ onCancel }: HintStepProps) {
           <IconMapPin size={20} stroke={1.8} className={styles.hintIcon} />
           <Text fw={600} className={styles.hintTitle}>Click the globe to place a pin</Text>
         </Group>
-        <Button variant="default" onClick={onCancel} className={styles.controlButton}>Cancel</Button>
+        <AppButton onClick={onCancel}>Cancel</AppButton>
       </Group>
 
       <Text size="sm" className={styles.hintCopy}>

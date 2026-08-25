@@ -61,11 +61,6 @@
   color: var(--wa-text-dimmed);
 }
 
-.footerAction {
-  color: var(--wa-text-muted);
-  border: 1px solid var(--wa-control-fill);
-}
-
 /* Compact-first footer: Discard/status/Add-more+Close stack as their own row
    (status on top, spanning the width) since that's what fits a narrow modal
    without squeezing or overlapping. Once the modal is wide enough, the

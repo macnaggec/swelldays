@@ -4,7 +4,7 @@ import { render } from 'test/setup/render';
 import { CheckoutButton } from './CheckoutButton';
 
 describe('CheckoutButton', () => {
-  it('renders as a compact green glass panel action', () => {
+  it('renders through the shared positive button tone', () => {
     render(
       <CheckoutButton
         isPending={false}
@@ -12,13 +12,7 @@ describe('CheckoutButton', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: /checkout/i })).toHaveAttribute(
-      'data-panel-gallery-primary-action',
-      'glass-green',
-    );
-    expect(screen.getByRole('button', { name: /checkout/i })).toHaveAttribute(
-      'data-panel-gallery-primary-action-size',
-      'compact',
-    );
+    expect(screen.getByRole('button', { name: /checkout/i }))
+      .toHaveAttribute('data-app-button-tone', 'positive');
   });
 });

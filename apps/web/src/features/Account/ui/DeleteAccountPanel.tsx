@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Button, Checkbox, Group, Modal, Stack, Text } from '@mantine/core';
+import { Checkbox, Group, Modal, Stack, Text } from '@mantine/core';
 import { IconAlertTriangle, IconClockHour4 } from '@tabler/icons-react';
 import { formatPrice } from 'shared/lib/currency';
 import materials from 'shared/ui/design-system/materials.module.css';
+import { AppButton } from 'shared/ui/AppButton';
 import classes from './DeleteAccountPanel.module.css';
 
 export interface DeleteAccountPanelProps {
@@ -81,15 +82,13 @@ export function DeleteAccountPanel({
         </Text>
       </div>
 
-      <Button
-        className={classes.deleteAction}
-        variant="default"
-        radius="md"
+      <AppButton
+        tone="destructive"
         leftSection={<IconAlertTriangle size={17} stroke={1.8} />}
         onClick={() => setConfirmOpen(true)}
       >
         Delete account
-      </Button>
+      </AppButton>
 
       <Modal opened={isConfirmOpen} onClose={closeConfirm} title="Delete account" centered>
         <Stack gap="md">
@@ -138,27 +137,25 @@ export function DeleteAccountPanel({
           )}
 
           <Group justify="flex-end" gap="sm">
-            <Button variant="default" radius="md" onClick={closeConfirm}>
+            <AppButton onClick={closeConfirm}>
               Cancel
-            </Button>
+            </AppButton>
 
             {exitPath === 'payoutOrForfeit' && (
-              <Button variant="default" radius="md" onClick={onRequestPayout}>
+              <AppButton tone="positive" onClick={onRequestPayout}>
                 Request payout instead
-              </Button>
+              </AppButton>
             )}
 
             {exitPath !== 'blocked' && (
-              <Button
-                className={classes.deleteAction}
-                variant="default"
-                radius="md"
+              <AppButton
+                tone="destructive"
                 disabled={!canDelete || isDeleting}
                 loading={isDeleting}
                 onClick={onDelete}
               >
                 {forfeits ? 'Delete and forfeit' : 'Delete account'}
-              </Button>
+              </AppButton>
             )}
           </Group>
         </Stack>

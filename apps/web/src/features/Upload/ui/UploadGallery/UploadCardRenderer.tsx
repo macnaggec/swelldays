@@ -1,10 +1,11 @@
 import { memo } from 'react';
-import { Badge, Button, Group, ActionIcon, Loader, rem, Skeleton, Stack, Text, Tooltip } from '@mantine/core';
+import { Badge, Group, ActionIcon, Loader, rem, Skeleton, Stack, Text, Tooltip } from '@mantine/core';
 import classes from './UploadCardRenderer.module.css';
 import { IconRefresh, IconX } from '@tabler/icons-react';
 import { DraftMedia, MEDIA_STATUS } from 'entities/Media';
 import { formatPrice } from 'shared/lib/currency';
 import { formatDimensions } from 'shared/lib/formatDimensions';
+import { AppButton } from 'shared/ui/AppButton';
 import { GalleryCard, AttemptCardStatus } from '../../model';
 import DraftCard from '../cards/DraftCard';
 
@@ -147,15 +148,13 @@ function renderUploadOverlay(
           <Text size="xs" className={classes.errorText} lineClamp={1} ta="center">{errorCode ?? 'Upload failed'}</Text>
         </Tooltip>
         {onRetry && (
-          <Button
-            size="compact-xs"
-            variant="transparent"
-            className={classes.retryBtn}
+          <AppButton
+            tone="highlight"
             leftSection={<IconRefresh size={12} />}
             onClick={(e) => { e.stopPropagation(); onRetry(itemId); }}
           >
             Retry
-          </Button>
+          </AppButton>
         )}
       </Stack>
     );

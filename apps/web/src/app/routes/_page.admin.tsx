@@ -1,7 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
   Badge,
-  Button,
   Center,
   Group,
   Loader,
@@ -24,6 +23,7 @@ import { formatShortDate } from 'shared/lib/dateUtils';
 import { notify } from 'shared/lib/notifications';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { useTRPC } from 'shared/lib/trpc';
+import { AppButton } from 'shared/ui/AppButton';
 
 export const Route = createFileRoute('/_page/admin')({
   component: AdminPage,
@@ -260,11 +260,10 @@ function AdminPayoutsPanel() {
                       </Table.Td>
                       <Table.Td>
                         <Group gap="xs" wrap="nowrap">
-                          <Button
+                          <AppButton
+                            tone="highlight"
                             leftSection={<IconPlayerPlay size={16} />}
                             disabled={payout.status !== 'PENDING' || isMutating}
-                            size="xs"
-                            variant="light"
                             onClick={() => {
                               void handleAction(
                                 () => markProcessing.mutateAsync({ payoutRequestId: payout.id }),
@@ -273,12 +272,11 @@ function AdminPayoutsPanel() {
                             }}
                           >
                             Mark processing
-                          </Button>
-                          <Button
+                          </AppButton>
+                          <AppButton
+                            tone="positive"
                             leftSection={<IconCheck size={16} />}
                             disabled={!canComplete || isMutating}
-                            size="xs"
-                            variant="light"
                             onClick={() => {
                               void handleAction(
                                 () => complete.mutateAsync({
@@ -290,13 +288,11 @@ function AdminPayoutsPanel() {
                             }}
                           >
                             Complete
-                          </Button>
-                          <Button
-                            color="red"
+                          </AppButton>
+                          <AppButton
+                            tone="destructive"
                             leftSection={<IconX size={16} />}
                             disabled={!canReject || isMutating}
-                            size="xs"
-                            variant="light"
                             onClick={() => {
                               void handleAction(
                                 () => reject.mutateAsync({
@@ -308,7 +304,7 @@ function AdminPayoutsPanel() {
                             }}
                           >
                             Reject
-                          </Button>
+                          </AppButton>
                         </Group>
                       </Table.Td>
                     </Table.Tr>

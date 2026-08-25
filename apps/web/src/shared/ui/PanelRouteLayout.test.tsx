@@ -67,6 +67,7 @@ describe('PanelRouteLayout', () => {
     const action = screen.getByRole('button', { name: 'Upload' });
 
     expect(action.closest('[data-panel-toolbar-action]')).not.toBeNull();
+    expect(action).toHaveAttribute('data-app-button-tone', 'neutral');
     expect(screen.getByText('Filters').closest('[data-panel-toolbar-trailing]')).not.toBeNull();
     expect(action.querySelector('[data-panel-route-action-indicator]')).not.toBeNull();
     expect(

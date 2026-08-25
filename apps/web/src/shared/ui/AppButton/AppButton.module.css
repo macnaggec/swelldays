@@ -1,0 +1,97 @@
+.root {
+  position: relative;
+  min-width: var(--wa-control-height-default);
+  width: fit-content;
+  height: var(--wa-control-height-default);
+  min-height: var(--wa-control-height-default);
+  padding-inline: 10px;
+  border: 1px solid var(--wa-glass-border-media-overlay);
+  border-radius: var(--wa-radius-pill);
+  background: var(--wa-panel-control-background, var(--wa-control-fill));
+  backdrop-filter: var(--wa-panel-control-backdrop, var(--wa-glass-blur-sm));
+  -webkit-backdrop-filter: var(--wa-panel-control-backdrop, var(--wa-glass-blur-sm));
+  color: var(--wa-text-primary);
+  font-family: inherit;
+  font-size: var(--wa-font-size-xs);
+  font-weight: 400;
+  line-height: 1.4;
+  white-space: nowrap;
+  box-shadow: none;
+  transition:
+    color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    background-color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    border-color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    box-shadow var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    transform 120ms var(--wa-motion-easing-standard);
+}
+
+.root:hover:not(:disabled, [data-disabled]) {
+  background: var(--wa-control-fill-hover);
+  border-color: var(--wa-glass-border-media-overlay-hover);
+}
+
+.root:active:not(:disabled, [data-disabled]) {
+  transform: translateY(1px);
+}
+
+.root[data-app-button-tone='highlight'] {
+  color: var(--wa-text-primary-action);
+  background: color-mix(in srgb, var(--wa-accent-spot) 46%, var(--wa-panel-control-background));
+  border-color: color-mix(in srgb, var(--wa-accent-spot) 75%, var(--wa-glass-border-media-overlay));
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--wa-accent-spot) 12%, transparent);
+}
+
+.root[data-app-button-tone='highlight']:hover:not(:disabled, [data-disabled]) {
+  background: color-mix(in srgb, var(--wa-accent-spot) 56%, var(--wa-panel-control-background));
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--wa-accent-spot) 16%, transparent);
+}
+
+.root[data-app-button-tone='positive'] {
+  color: var(--wa-text-primary-action);
+  background: color-mix(in srgb, var(--wa-status-success) 46%, var(--wa-panel-control-background));
+  border-color: color-mix(in srgb, var(--wa-status-success) 75%, var(--wa-glass-border-media-overlay));
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--wa-status-success) 12%, transparent);
+}
+
+.root[data-app-button-tone='positive']:hover:not(:disabled, [data-disabled]) {
+  background: color-mix(in srgb, var(--wa-status-success) 56%, var(--wa-panel-control-background));
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--wa-status-success) 16%, transparent);
+}
+
+.root[data-app-button-tone='destructive'] {
+  color: var(--wa-text-primary-action);
+  background: color-mix(in srgb, var(--wa-status-danger) 46%, var(--wa-panel-control-background));
+  border-color: color-mix(in srgb, var(--wa-status-danger) 75%, var(--wa-glass-border-media-overlay));
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--wa-status-danger) 12%, transparent);
+}
+
+.root[data-app-button-tone='destructive']:hover:not(:disabled, [data-disabled]) {
+  background: color-mix(in srgb, var(--wa-status-danger) 56%, var(--wa-panel-control-background));
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--wa-status-danger) 16%, transparent);
+}
+
+.root:where(:disabled, [data-disabled]),
+.root[data-app-button-disabled='true'] {
+  color: var(--wa-text-muted);
+  background: var(--wa-control-fill-muted);
+  border-color: var(--wa-control-border);
+  box-shadow: none;
+  opacity: 1;
+  cursor: default;
+  transform: none;
+}
+
+.root[data-block] {
+  width: 100%;
+}
+
+.root[data-app-button-indicator='true'],
+.root[data-app-button-indicator='true'] .label {
+  overflow: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root {
+    transition: none;
+  }
+}

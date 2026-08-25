@@ -27,16 +27,6 @@
   inset-inline: 0;
 }
 
-.submit {
-  min-width: var(--wa-control-height-default);
-  height: var(--wa-control-height-default);
-  min-height: var(--wa-control-height-default);
-  border-radius: 20px;
-  padding-inline: 14px;
-  font-size: var(--wa-font-size-base);
-  line-height: 1.4;
-}
-
 :global([data-auth-presentation]) .input {
   color: var(--wa-text-primary);
   caret-color: var(--wa-text-primary);
@@ -88,23 +78,4 @@
 :global([data-auth-presentation]) .visibilityToggle:hover,
 :global([data-auth-presentation]) .visibilityToggle:focus-visible {
   color: var(--wa-text-primary);
-}
-
-:global([data-auth-presentation]) .submit {
-  color: var(--wa-text-on-accent);
-  background: var(--wa-accent-spot);
-  border: 1px solid var(--wa-accent-spot);
-}
-
-:global([data-auth-presentation]) .submit:hover {
-  color: var(--wa-text-on-accent);
-  background: color-mix(
-    in srgb,
-    var(--wa-accent-spot) 88%,
-    var(--wa-text-primary)
-  );
-}
-
-:global([data-auth-presentation]) .submit:active {
-  transform: scale(0.98);
 }

@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { useDrawerAdjacentInlineEndInset, useDrawerGeometry, useDrawerMoving } from 'shared/ui/DrawerShell';
 import { useNavigationRailGeometry } from 'shared/model/navigationRailGeometry';
 import { materialClasses } from 'shared/ui/design-system';
+import { AppButton } from 'shared/ui/AppButton';
 import styles from './PanelRouteLayout.module.css';
 
 const FLOATING_CONTROLS_EDGE_GAP_PX = 8;
@@ -111,16 +112,16 @@ export function PanelRouteActionButton({
   showIndicator = false,
 }: PanelRouteActionButtonProps) {
   return (
-    <button
-      type="button"
-      className={styles.actionButton}
+    <AppButton
       onClick={onClick}
       disabled={disabled}
       data-panel-toolbar-action
+      indicator={showIndicator
+        ? <span className={styles.actionIndicator} data-panel-route-action-indicator />
+        : undefined}
     >
       {children}
-      {showIndicator && <span className={styles.actionIndicator} data-panel-route-action-indicator />}
-    </button>
+    </AppButton>
   );
 }
 
@@ -174,14 +175,13 @@ export function PanelEmptyState({
       <div className={styles.emptyContent}>
         <h2 className={styles.emptyTitle}>{title}</h2>
         <p className={styles.emptyDescription}>{description}</p>
-        <button
-          type="button"
-          className={styles.emptyAction}
+        <AppButton
+          tone="highlight"
           onClick={onAction}
           disabled={isPending}
         >
           {isPending ? pendingLabel ?? actionLabel : actionLabel}
-        </button>
+        </AppButton>
       </div>
     </div>
   );

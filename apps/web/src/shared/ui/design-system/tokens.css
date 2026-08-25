@@ -84,8 +84,6 @@
   --wa-scrim-media-corner-bottom: radial-gradient(circle at bottom left, rgba(0, 0, 0, 0.55), transparent 72%);
   --wa-surface-upload-zone: rgba(255, 255, 255, 0.08);
   --wa-surface-upload-zone-hover: rgba(255, 255, 255, 0.12);
-  --wa-surface-primary-action: rgba(38, 166, 91, 0.42);
-  --wa-surface-primary-action-hover: rgba(42, 184, 104, 0.54);
 
   /* Glass effects */
   --wa-glass-blur-sm: blur(12px) saturate(140%);
@@ -96,13 +94,10 @@
   --wa-glass-border-status: rgba(255, 255, 255, 0.15);
   --wa-glass-border-media-overlay: rgba(255, 255, 255, 0.18);
   --wa-glass-border-media-overlay-hover: rgba(255, 255, 255, 0.28);
-  --wa-glass-border-primary-action: rgba(129, 230, 168, 0.34);
-  --wa-glass-border-primary-action-hover: rgba(157, 255, 194, 0.46);
   --wa-glass-shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.3);
   --wa-glass-shadow-chrome: 0 2px 12px rgba(0, 0, 0, 0.25);
   --wa-glass-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.45);
   --wa-glass-shadow-media-overlay: 0 8px 24px rgba(0, 0, 0, 0.22);
-  --wa-glass-shadow-primary-action: 0 12px 30px rgba(0, 0, 0, 0.26);
   --wa-media-text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
 
   /* Text on glass */

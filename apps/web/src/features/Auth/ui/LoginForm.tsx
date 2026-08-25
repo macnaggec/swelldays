@@ -1,7 +1,8 @@
 import { useCallback, useState, type ReactElement } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { Button, Group, Input, PasswordInput, Stack, TextInput } from '@mantine/core';
+import { Group, Input, PasswordInput, Stack, TextInput } from '@mantine/core';
 import { signIn } from 'shared/lib/auth';
+import { AppButton } from 'shared/ui/AppButton';
 import classes from './AuthForm.module.css';
 
 interface LoginFormProps {
@@ -73,7 +74,7 @@ export function LoginForm({ onSuccess }: LoginFormProps): ReactElement {
           </div>
         </div>
         <Group justify="center" mt="calc(var(--mantine-spacing-xl) + 1px)">
-          <Button type="submit" loading={isPending} className={classes.submit}>Sign in</Button>
+          <AppButton type="submit" tone="highlight" loading={isPending}>Sign in</AppButton>
         </Group>
       </Stack>
     </form>

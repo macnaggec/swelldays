@@ -1,12 +1,13 @@
 import { useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { Button, Text } from '@mantine/core';
+import { Text } from '@mantine/core';
 import { SpotSearch } from 'features/SpotSearch';
 import { useAddSpot } from 'features/AddSpot';
 import { useUser } from 'shared/hooks/useUser';
 import { useAuthModal } from 'features/Auth';
 import type { Spot } from 'entities/Spot';
+import { AppButton } from 'shared/ui/AppButton';
 
 interface FeedSearchProps {
   placeholder?: string;
@@ -36,9 +37,9 @@ export function FeedSearch({ placeholder, onSpotSelect, activeSpot: activeSpotOv
     (search: string): ReactNode => {
       if (isAuthenticated) {
         return (
-          <Button variant="subtle" size="sm" onClick={() => startAddSpot(search)}>
+          <AppButton tone="highlight" onClick={() => startAddSpot(search)}>
             Add as a new spot
-          </Button>
+          </AppButton>
         );
       }
       return (

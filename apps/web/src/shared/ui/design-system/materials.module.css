@@ -62,20 +62,6 @@
   border-color: var(--wa-control-fill-muted);
 }
 
-.primaryAction {
-  color: var(--wa-text-primary-action);
-  background: var(--wa-surface-primary-action);
-  border: 1px solid var(--wa-glass-border-primary-action);
-  box-shadow: var(--wa-glass-shadow-primary-action);
-  backdrop-filter: var(--wa-glass-blur-sm);
-  -webkit-backdrop-filter: var(--wa-glass-blur-sm);
-}
-
-.primaryAction:hover {
-  background: var(--wa-surface-primary-action-hover);
-  border-color: var(--wa-glass-border-primary-action-hover);
-}
-
 /* Pill controls on sticky surfaces (panel chrome rows, sticky footers,
    selection toolbars). Sticky gallery rows strengthen the effect via the
    --wa-panel-control-* vars set on PanelScrollChrome; elsewhere the token
@@ -85,17 +71,6 @@
   background: var(--wa-panel-control-background, var(--wa-control-fill));
   backdrop-filter: var(--wa-panel-control-backdrop, var(--wa-glass-blur-sm));
   -webkit-backdrop-filter: var(--wa-panel-control-backdrop, var(--wa-glass-blur-sm));
-}
-
-.controlButton {
-  color: var(--wa-text-primary);
-  background: var(--wa-control-fill);
-  border: 1px solid var(--wa-glass-border);
-}
-
-.controlButton:hover {
-  background: var(--wa-control-fill-hover);
-  border-color: var(--wa-control-border);
 }
 
 .mediaTextOverlay {

@@ -1,11 +1,10 @@
 
 
 import React, { ReactNode, memo } from 'react';
-import { Button, Group, Menu } from '@mantine/core';
+import { Group, Menu } from '@mantine/core';
 import { IconDots } from '@tabler/icons-react';
 import { UseGallerySelectionReturn } from 'shared/hooks/gallery';
-import materials from 'shared/ui/design-system/materials.module.css';
-import classes from './SelectionToolbar.module.css';
+import { AppButton } from 'shared/ui/AppButton';
 
 export interface SelectionToolbarProps<T> {
   selection: UseGallerySelectionReturn<T>;
@@ -27,16 +26,12 @@ const SelectionToolbar = memo(<T,>({
         {selection.isSelectionMode && renderActions && hasActions?.(selection.selectedItems) !== false && (
           <Menu position="bottom-start" withArrow>
             <Menu.Target>
-              <Button
-                variant="transparent"
-                size="xs"
+              <AppButton
                 leftSection={<IconDots size={14} />}
                 disabled={!selection.hasSelection}
-                className={`${classes.glassButton} ${materials.panelControl}`}
-                radius="xl"
               >
                 Actions
-              </Button>
+              </AppButton>
             </Menu.Target>
             <Menu.Dropdown>
               {renderActions(selection.selectedItems)}
@@ -49,25 +44,18 @@ const SelectionToolbar = memo(<T,>({
       {/* Right: select-all + select/done toggle */}
       <Group gap="xs">
         {selection.isSelectionMode && (
-          <Button
-            variant="transparent"
-            size="xs"
-            className={classes.ghostButton}
-            radius="xl"
+          <AppButton
             onClick={selection.isAllSelected ? selection.clearSelection : selection.selectAll}
           >
             {selection.isAllSelected ? 'Deselect all' : 'Select all'}
-          </Button>
+          </AppButton>
         )}
-        <Button
-          variant="transparent"
-          size="xs"
-          className={selection.isSelectionMode ? classes.ghostButton : `${classes.glassButton} ${materials.panelControl}`}
-          radius="xl"
+        <AppButton
+          tone={selection.isSelectionMode ? 'neutral' : 'highlight'}
           onClick={selection.isSelectionMode ? selection.disableSelectionMode : selection.enableSelectionMode}
         >
           {selection.isSelectionMode ? 'Done' : 'Select'}
-        </Button>
+        </AppButton>
       </Group>
     </Group>
   );

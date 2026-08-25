@@ -1,5 +1,5 @@
 import React, { FC, memo, useMemo, useCallback, useRef } from 'react';
-import { Box, Button, Divider, Group, Loader, Menu, Modal, rem, Text } from '@mantine/core';
+import { Box, Divider, Group, Loader, Menu, Modal, rem, Text } from '@mantine/core';
 import { IconBrandGoogleDrive, IconFolderOpen } from '@tabler/icons-react';
 import { GalleryCard, getItemId, getUploadQueueStatus } from '../../model';
 import { BaseGallery } from 'shared/ui/BaseGallery';
@@ -7,6 +7,7 @@ import { resolveModalWorkspacePresentation, useViewportCapabilities } from 'shar
 import { UploadCardRenderer } from './UploadCardRenderer';
 import { handleFileSelection } from '../../lib/fileSelection';
 import materials from 'shared/ui/design-system/materials.module.css';
+import { AppButton } from 'shared/ui/AppButton';
 import styles from './StepModeModal.module.css';
 
 export interface StepModeModalProps {
@@ -128,13 +129,13 @@ export const StepModeModal: FC<StepModeModalProps> = memo(({
 
       <Divider className={materials.divider} />
       <div className={styles.footer}>
-        <Button
-          variant="transparent" size="xs" radius="xl"
-          className={`${styles.footerAction} ${styles.footerStart}`}
+        <AppButton
+          tone="destructive"
+          className={styles.footerStart}
           onClick={handleCancelAll}
         >
           Discard
-        </Button>
+        </AppButton>
 
         <div className={styles.footerStatus}>
           {hasActiveUploads ? (
@@ -155,13 +156,11 @@ export const StepModeModal: FC<StepModeModalProps> = memo(({
           {onAddFiles && (
             <Menu position="top-end" zIndex={501}>
               <Menu.Target>
-                <Button
-                  variant="transparent" size="xs" radius="xl"
-                  className={styles.footerAction}
+                <AppButton
                   loading={driveLoading}
                 >
                   Add more
-                </Button>
+                </AppButton>
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Item
@@ -181,13 +180,11 @@ export const StepModeModal: FC<StepModeModalProps> = memo(({
               </Menu.Dropdown>
             </Menu>
           )}
-          <Button
-            variant="transparent" size="xs" radius="xl"
-            className={materials.controlButton}
+          <AppButton
             onClick={onClose}
           >
             Close
-          </Button>
+          </AppButton>
         </Group>
       </div>
     </Modal>

@@ -34,18 +34,3 @@
 .errorText {
   color: var(--wa-status-danger);
 }
-
-/* Same accent-tinted pill recipe as UploadZone's driveButton: this is the
-   one emphasized action in the failed-upload chip. */
-.retryBtn {
-  border-radius: var(--wa-radius-pill);
-  background: color-mix(in srgb, var(--wa-accent-spot) 20%, var(--wa-surface-media-overlay));
-  border: 1px solid color-mix(in srgb, var(--wa-accent-spot) 55%, var(--wa-glass-border-media-overlay));
-  color: var(--wa-text-primary-action);
-  transition: background 150ms ease, border-color 150ms ease;
-}
-
-.retryBtn:hover {
-  background: color-mix(in srgb, var(--wa-accent-spot) 28%, var(--wa-surface-media-overlay));
-  border-color: color-mix(in srgb, var(--wa-accent-spot) 70%, var(--wa-glass-border-media-overlay));
-}

@@ -1,9 +1,0 @@
-.glassButton {
-  color: var(--wa-text-primary);
-}
-
-.ghostButton {
-  background: transparent;
-  border: 1px solid var(--wa-control-upload-border);
-  color: var(--wa-text-dimmed);
-}

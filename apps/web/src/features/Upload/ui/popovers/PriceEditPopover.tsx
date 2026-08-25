@@ -1,8 +1,8 @@
 import { FC, useEffect, useState } from 'react';
-import { Popover, Button, Stack, NumberInput, Text, Box, Group, Tooltip } from '@mantine/core';
+import { Popover, Stack, NumberInput, Text, Box, Group, Tooltip } from '@mantine/core';
 import { IconCurrencyDollar, IconChevronDown } from '@tabler/icons-react';
 import { MIN_MEDIA_PRICE_CENTS } from 'entities/Media';
-import materials from 'shared/ui/design-system/materials.module.css';
+import { AppButton } from 'shared/ui/AppButton';
 
 const MIN_PRICE = MIN_MEDIA_PRICE_CENTS / 100;
 
@@ -106,18 +106,14 @@ export const PriceEditPopover: FC<PriceEditPopoverProps> = ({
       shadow="md"
     >
       <Popover.Target>
-        <Button
-          variant="transparent"
-          size="xs"
+        <AppButton
           leftSection={<IconCurrencyDollar size={13} />}
           rightSection={<IconChevronDown size={11} />}
           disabled={disabled}
-          radius="xl"
-          className={materials.controlButton}
           onClick={() => setOpened((o) => !o)}
         >
           {buttonLabel}
-        </Button>
+        </AppButton>
       </Popover.Target>
 
       <Popover.Dropdown>
@@ -142,12 +138,12 @@ export const PriceEditPopover: FC<PriceEditPopoverProps> = ({
           {footer}
 
           <Group gap="xs" grow>
-            <Button onClick={handleApply} disabled={!canApply} radius="xl">
+            <AppButton tone="highlight" onClick={handleApply} disabled={!canApply}>
               Apply
-            </Button>
-            <Button variant="subtle" onClick={handleCancel} radius="xl">
+            </AppButton>
+            <AppButton onClick={handleCancel}>
               Cancel
-            </Button>
+            </AppButton>
           </Group>
         </Stack>
       </Popover.Dropdown>

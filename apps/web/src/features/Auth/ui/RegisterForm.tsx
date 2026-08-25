@@ -1,6 +1,7 @@
 import { useCallback, useState, type ReactElement } from 'react';
-import { Button, Group, Input, PasswordInput, Stack, TextInput } from '@mantine/core';
+import { Group, Input, PasswordInput, Stack, TextInput } from '@mantine/core';
 import { signUp } from 'shared/lib/auth';
+import { AppButton } from 'shared/ui/AppButton';
 import classes from './AuthForm.module.css';
 
 interface RegisterFormProps {
@@ -103,7 +104,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps): ReactElement {
           </div>
         </div>
         <Group justify="center" mt="calc(var(--mantine-spacing-xl) + 1px)">
-          <Button type="submit" loading={isPending} className={classes.submit}>Register</Button>
+          <AppButton type="submit" tone="highlight" loading={isPending}>Register</AppButton>
         </Group>
       </Stack>
     </form>

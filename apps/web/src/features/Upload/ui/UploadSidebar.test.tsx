@@ -314,6 +314,7 @@ describe('UploadSidebar workspace behavior', () => {
 
     const publishButton = screen.getByRole('button', { name: 'Publish' });
     expect(publishButton.closest('footer')).toHaveAttribute('data-ready', 'false');
+    expect(publishButton).toHaveAttribute('data-app-button-tone', 'neutral');
 
     fireEvent.click(publishButton);
     expect(mocks.publish).toHaveBeenCalledTimes(1);
@@ -332,6 +333,7 @@ describe('UploadSidebar workspace behavior', () => {
 
     const publishButton = screen.getByRole('button', { name: 'Publish' });
     expect(publishButton.closest('footer')).toHaveAttribute('data-ready', 'true');
+    expect(publishButton).toHaveAttribute('data-app-button-tone', 'highlight');
   });
 
   it('keeps the projected footer transparent and gives the publish button its own borderless glass gradient', () => {

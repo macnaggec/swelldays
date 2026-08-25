@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Box, Button, Group, Popover, Stack, Text } from '@mantine/core';
+import { Box, Group, Popover, Stack, Text } from '@mantine/core';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { notify } from 'shared/lib/notifications';
 import { getViewportCapabilitiesSnapshot } from 'shared/model/viewportCapabilities';
@@ -23,6 +23,7 @@ import { PriceStep } from './steps/PriceStep';
 import { TimeStep } from './steps/TimeStep';
 import { combineDateAndTime, minutesToTime } from './steps/helpers';
 import { PanelLayoutFooter } from 'shared/ui/PanelLayout';
+import { AppButton } from 'shared/ui/AppButton';
 import styles from './UploadSidebar.module.css';
 import type { UploadWorkspaceState } from '@swelldays/contracts';
 
@@ -391,15 +392,13 @@ function UploadSidebarContent({
               transitionProps={{ duration: 0 }}
             >
               <Popover.Target>
-                <Button
-                  className={styles.cancelButton}
-                  variant="transparent"
+                <AppButton
                   disabled={isPending}
                   loading={isDiscarding}
                   onClick={handleCancelClick}
                 >
                   Cancel
-                </Button>
+                </AppButton>
               </Popover.Target>
               <Popover.Dropdown>
                 <Stack gap="sm" maw={240}>
@@ -419,23 +418,17 @@ function UploadSidebarContent({
                       ].filter(Boolean).join(' ')}
                   </Text>
                   <Group gap="xs" grow>
-                    <Button
-                      size="xs"
-                      radius="xl"
-                      color="red"
-                      variant="light"
+                    <AppButton
+                      tone="destructive"
                       onClick={() => { void handleDiscard(); }}
                     >
                       Discard
-                    </Button>
-                    <Button
-                      size="xs"
-                      radius="xl"
-                      variant="subtle"
+                    </AppButton>
+                    <AppButton
                       onClick={() => setIsConfirmingDiscard(false)}
                     >
                       Keep
-                    </Button>
+                    </AppButton>
                   </Group>
                 </Stack>
               </Popover.Dropdown>
@@ -454,15 +447,14 @@ function UploadSidebarContent({
               transitionProps={{ duration: 0 }}
             >
               <Popover.Target>
-                <Button
-                  className={styles.publishButton}
-                  variant="transparent"
+                <AppButton
+                  tone={canPublish ? 'highlight' : 'neutral'}
                   disabled={isDiscarding}
                   loading={isPending}
                   onClick={() => { void handlePublish(); }}
                 >
                   {isEditMode ? 'Save' : 'Publish'}
-                </Button>
+                </AppButton>
               </Popover.Target>
               <Popover.Dropdown>
                 {isConfirmingSessionDelete && (
@@ -473,23 +465,17 @@ function UploadSidebarContent({
                       already purchased media from it keep access; only unsold media is removed.
                     </Text>
                     <Group gap="xs" grow>
-                      <Button
-                        size="xs"
-                        radius="xl"
-                        color="red"
-                        variant="light"
+                      <AppButton
+                        tone="destructive"
                         onClick={() => { void handleConfirmSessionDelete(); }}
                       >
                         Delete session
-                      </Button>
-                      <Button
-                        size="xs"
-                        radius="xl"
-                        variant="subtle"
+                      </AppButton>
+                      <AppButton
                         onClick={() => setIsConfirmingSessionDelete(false)}
                       >
                         Keep editing
-                      </Button>
+                      </AppButton>
                     </Group>
                   </Stack>
                 )}
@@ -501,22 +487,17 @@ function UploadSidebarContent({
                       they may not be from the same session.
                     </Text>
                     <Group gap="xs" grow>
-                      <Button
-                        size="xs"
-                        radius="xl"
-                        variant="light"
+                      <AppButton
+                        tone="highlight"
                         onClick={() => { void handleConfirmDateMismatch(); }}
                       >
                         {isEditMode ? 'Save anyway' : 'Publish anyway'}
-                      </Button>
-                      <Button
-                        size="xs"
-                        radius="xl"
-                        variant="subtle"
+                      </AppButton>
+                      <AppButton
                         onClick={() => setIsConfirmingDateMismatch(false)}
                       >
                         Cancel
-                      </Button>
+                      </AppButton>
                     </Group>
                   </Stack>
                 )}

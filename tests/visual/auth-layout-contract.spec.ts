@@ -98,17 +98,6 @@ async function readControlShapeAndType(locator: Locator) {
   });
 }
 
-async function resolveColorToken(page: Page, token: string): Promise<string> {
-  return page.evaluate((tokenName) => {
-    const probe = document.createElement('span');
-    probe.style.color = `var(${tokenName})`;
-    document.body.appendChild(probe);
-    const resolvedColor = getComputedStyle(probe).color;
-    probe.remove();
-    return resolvedColor;
-  }, token);
-}
-
 async function dispatchDownwardTouchGesture(surface: Locator): Promise<void> {
   await surface.dispatchEvent('pointerdown', {
     bubbles: true,
@@ -197,19 +186,7 @@ test.describe('auth mobile workspace', () => {
     ]);
     expect(emailShapeAndType).toEqual(searchShapeAndType);
 
-    const [submitPaint, accentColor, onAccentColor] = await Promise.all([
-      submit.evaluate((element) => {
-        const computed = getComputedStyle(element);
-        return {
-          backgroundColor: computed.backgroundColor,
-          color: computed.color,
-        };
-      }),
-      resolveColorToken(page, '--wa-accent-spot'),
-      resolveColorToken(page, '--wa-text-on-accent'),
-    ]);
-    expect(submitPaint.backgroundColor).toBe(accentColor);
-    expect(submitPaint.color).toBe(onAccentColor);
+    await expect(submit).toHaveAttribute('data-app-button-tone', 'highlight');
 
     const question = dialog.getByText("Don't have an account?", { exact: true });
     const [emailBox, submitBox, questionBox, registerBox] = await Promise.all([
@@ -260,7 +237,7 @@ test.describe('auth mobile workspace', () => {
       .locator('[data-auth-upload-style-reference]')
       .locator('button');
 
-    const [submitShapeAndType, uploadShapeAndType, submitBox, emailBox, submitPadding, baseFontSize] =
+    const [submitShapeAndType, uploadShapeAndType, submitBox, emailBox, submitPadding, uploadPadding] =
       await Promise.all([
       readControlShapeAndType(submit),
       readControlShapeAndType(uploadReference),
@@ -273,16 +250,20 @@ test.describe('auth mobile workspace', () => {
           inlineEnd: computed.paddingInlineEnd,
         };
       }),
-      page.evaluate(() => (
-        getComputedStyle(document.documentElement).getPropertyValue('--wa-font-size-base').trim()
-      )),
+      uploadReference.evaluate((element) => {
+        const computed = getComputedStyle(element);
+        return {
+          inlineStart: computed.paddingInlineStart,
+          inlineEnd: computed.paddingInlineEnd,
+        };
+      }),
     ]);
 
     expect(submitShapeAndType.height).toBe(uploadShapeAndType.height);
     expect(submitShapeAndType.borderRadius).toBe(uploadShapeAndType.borderRadius);
-    expect(submitShapeAndType.fontSize).toBe(baseFontSize);
-    expect(submitShapeAndType.lineHeight).toBe('19.6px');
-    expect(submitPadding).toEqual({ inlineStart: '14px', inlineEnd: '14px' });
+    expect(submitShapeAndType.fontSize).toBe(uploadShapeAndType.fontSize);
+    expect(submitShapeAndType.lineHeight).toBe(uploadShapeAndType.lineHeight);
+    expect(submitPadding).toEqual(uploadPadding);
     expect(submitBox).not.toBeNull();
     expect(emailBox).not.toBeNull();
     expect(submitBox!.width).toBeLessThan(submitBox!.height * 2);

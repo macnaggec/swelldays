@@ -1,4 +1,4 @@
-import { Badge, Button, Skeleton, Text, ThemeIcon } from '@mantine/core';
+import { Badge, Skeleton, Text, ThemeIcon } from '@mantine/core';
 import {
   IconAlertCircle,
   IconCash,
@@ -9,6 +9,7 @@ import {
 } from '@tabler/icons-react';
 import { formatPrice } from 'shared/lib/currency';
 import materials from 'shared/ui/design-system/materials.module.css';
+import { AppButton } from 'shared/ui/AppButton';
 import PayoutRequestRow, { type PayoutRequestRowItem } from './PayoutRequestRow';
 import classes from './EarningsPanel.module.css';
 
@@ -59,16 +60,15 @@ export function EarningsPanel({
               : `Earn ${formatPrice(remainingToPayoutCents)} more to request a payout.`}
           </Text>
 
-          <Button
-            className={materials.primaryAction}
-            radius="md"
+          <AppButton
+            tone="positive"
             disabled={!canRequestPayout || isRequestingPayout}
             leftSection={<IconCash size={17} stroke={1.8} />}
             loading={isRequestingPayout}
             onClick={onRequestPayout}
           >
             Request payout
-          </Button>
+          </AppButton>
         </div>
 
         <div className={classes.supportingMetrics}>
@@ -206,15 +206,12 @@ export function EarningsPanelError({
         </Text>
         <Text className={classes.errorMessage}>{message}</Text>
       </div>
-      <Button
-        className={materials.controlButton}
-        variant="default"
-        radius="md"
+      <AppButton
         leftSection={<IconRefresh size={16} stroke={1.8} />}
         onClick={onRetry}
       >
         Try again
-      </Button>
+      </AppButton>
     </div>
   );
 }

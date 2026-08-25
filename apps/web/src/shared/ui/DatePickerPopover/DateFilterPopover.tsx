@@ -1,10 +1,11 @@
 
 
 import { FC, memo, useCallback, useState } from 'react';
-import { Popover, Button, Indicator, CloseButton, Group } from '@mantine/core';
+import { Popover, Indicator, CloseButton, Group } from '@mantine/core';
 import { DatePicker } from '@mantine/dates';
 import { IconCalendar, IconChevronDown } from '@tabler/icons-react';
 import { isSameCalendarDay } from 'shared/lib/dateUtils';
+import { AppButton } from 'shared/ui/AppButton';
 
 export interface DateFilterPopoverProps {
   /** Currently active filter date */
@@ -101,17 +102,15 @@ const DateFilterPopover: FC<DateFilterPopoverProps> = memo(({
         shadow="md"
       >
         <Popover.Target>
-          <Button
-            variant={value ? 'filled' : 'light'}
-            color={color}
+          <AppButton
+            tone={value ? 'highlight' : 'neutral'}
             leftSection={<IconCalendar size={16} />}
             rightSection={<IconChevronDown size={14} />}
             disabled={disabled}
             onClick={handleButtonClick}
-            radius="xl"
           >
             {formattedLabel}
-          </Button>
+          </AppButton>
         </Popover.Target>
 
         <Popover.Dropdown>

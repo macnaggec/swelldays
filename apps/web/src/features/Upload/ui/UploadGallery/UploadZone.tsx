@@ -1,9 +1,9 @@
 import { useRef } from 'react';
-import { Box, Button, Group, Stack, Text } from '@mantine/core';
+import { Box, Group, Stack, Text } from '@mantine/core';
 import { IconBrandGoogleDrive, IconFolderOpen, IconUpload } from '@tabler/icons-react';
 import { handleFileSelection } from '../../lib/fileSelection';
 import { materialClasses } from 'shared/ui/design-system';
-import classes from './UploadZone.module.css';
+import { AppButton } from 'shared/ui/AppButton';
 
 interface UploadZoneProps {
   onFilesSelected: (files: File[]) => void;
@@ -41,25 +41,22 @@ export function UploadZone({ onFilesSelected, onDriveImport, driveLoading, disab
         <IconUpload size={28} stroke={1.5} className={materialClasses.uploadZoneIcon} />
         <Text size="xs" className={materialClasses.uploadZoneText}>Images & videos · max 50MB per file</Text>
         <Group gap="xs">
-          <Button
+          <AppButton
+            tone="highlight"
             leftSection={<IconBrandGoogleDrive size={14} />}
-            variant="transparent"
-            className={`${classes.zoneButton} ${classes.driveButton}`}
             onClick={() => !disabled && onDriveImport?.()}
             loading={driveLoading}
             disabled={disabled}
           >
             Google Drive
-          </Button>
-          <Button
+          </AppButton>
+          <AppButton
             leftSection={<IconFolderOpen size={14} />}
-            variant="transparent"
-            className={`${classes.zoneButton} ${classes.localButton}`}
             onClick={() => !disabled && inputRef.current?.click()}
             disabled={disabled}
           >
             Local files
-          </Button>
+          </AppButton>
         </Group>
       </Stack>
     </Box>

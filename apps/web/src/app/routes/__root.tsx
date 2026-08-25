@@ -1,6 +1,6 @@
 import { createRootRouteWithContext, Outlet, useMatches, useNavigate } from '@tanstack/react-router';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { Button, Center, Stack, Text, Title } from '@mantine/core';
+import { Center, Stack, Text, Title } from '@mantine/core';
 import { useLayoutEffect, useRef } from 'react';
 import { AppShell } from 'app/AppShell';
 import { AuthModalProvider } from 'features/Auth';
@@ -13,6 +13,7 @@ import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation'
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { BrowseSurfaceProvider } from 'shared/ui/DrawerShell';
 import { useUser } from 'shared/hooks/useUser';
+import { AppButton } from 'shared/ui/AppButton';
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: RootLayout,
@@ -89,7 +90,7 @@ function RootError({ error }: { error: Error }) {
       <Stack align="center" gap="sm" maw={400} ta="center" p="xl">
         <Title order={3} c="white">Something went wrong</Title>
         <Text c="dimmed" size="sm">{getErrorMessage(error)}</Text>
-        <Button onClick={() => navigate({ to: '/' })}>Go home</Button>
+        <AppButton tone="highlight" onClick={() => navigate({ to: '/' })}>Go home</AppButton>
       </Stack>
     </Center>
   );
@@ -102,7 +103,7 @@ function RootNotFound() {
       <Stack align="center" gap="sm" maw={400} ta="center" p="xl">
         <Title order={3} c="white">Page not found</Title>
         <Text c="dimmed" size="sm">The page you're looking for doesn't exist.</Text>
-        <Button onClick={() => navigate({ to: '/' })}>Go home</Button>
+        <AppButton tone="highlight" onClick={() => navigate({ to: '/' })}>Go home</AppButton>
       </Stack>
     </Center>
   );

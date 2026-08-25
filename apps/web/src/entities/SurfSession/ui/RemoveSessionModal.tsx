@@ -1,9 +1,9 @@
-import { Button, Group, Modal, Stack, Text } from '@mantine/core';
+import { Group, Modal, Stack, Text } from '@mantine/core';
 import { notify } from 'shared/lib/notifications';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
+import { AppButton } from 'shared/ui/AppButton';
 import { useRetireSurfSession } from '../model/usePublishedSession';
 import type { SurfSessionItem } from '../types';
-import styles from './RemoveSessionModal.module.css';
 
 interface RemoveSessionModalProps {
   session: SurfSessionItem | null;
@@ -32,14 +32,14 @@ export function RemoveSessionModal({ session, onClose }: RemoveSessionModalProps
           videos from it keep access — only unsold media is removed from view.
         </Text>
         <Group justify="flex-end">
-          <Button className={styles.cancelButton} onClick={onClose}>Cancel</Button>
-          <Button
-            className={styles.removeButton}
+          <AppButton onClick={onClose}>Cancel</AppButton>
+          <AppButton
+            tone="destructive"
             onClick={() => { void handleConfirm(); }}
             loading={isPending}
           >
             Remove completely
-          </Button>
+          </AppButton>
         </Group>
       </Stack>
     </Modal>

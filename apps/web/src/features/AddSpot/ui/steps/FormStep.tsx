@@ -1,4 +1,5 @@
-import { Button, Group, Loader, Stack, TextInput } from '@mantine/core';
+import { Group, Loader, Stack, TextInput } from '@mantine/core';
+import { AppButton } from 'shared/ui/AppButton';
 import styles from '../AddSpotPanel.module.css';
 
 interface FormStepProps {
@@ -52,17 +53,17 @@ export function FormStep({
       />
       <Group justify="space-between" gap="sm" mt={4} wrap="nowrap" className={styles.actions}>
         <Group gap="xs">
-          <Button variant="default" onClick={onBack} className={styles.controlButton}>Back</Button>
-          <Button variant="default" onClick={onCancel} className={styles.controlButton}>Cancel</Button>
+          <AppButton onClick={onBack}>Back</AppButton>
+          <AppButton onClick={onCancel}>Cancel</AppButton>
         </Group>
-        <Button
+        <AppButton
+          tone="highlight"
           onClick={onSubmit}
           loading={isSubmitting}
           disabled={!name.trim() || !location.trim()}
-          className={`${styles.controlButton} ${styles.primaryButton}`}
         >
           Add
-        </Button>
+        </AppButton>
       </Group>
     </Stack>
   );

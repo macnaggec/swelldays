@@ -1,7 +1,8 @@
 import React, { FC, ReactNode, useState } from 'react';
-import { Popover, Button, Stack, Group } from '@mantine/core';
+import { Popover, Stack, Group } from '@mantine/core';
 import { DatePicker, TimeInput } from '@mantine/dates';
 import { IconCalendar, IconChevronDown, IconClock } from '@tabler/icons-react';
+import { AppButton } from 'shared/ui/AppButton';
 
 // Helper to get current time formatted as HH:MM
 const getCurrentTime = () => {
@@ -41,9 +42,6 @@ export interface DatePickerPopoverProps {
   /** Whether the popover is disabled */
   disabled?: boolean;
 
-  /** Button color */
-  color?: string;
-
   /** Optional footer content (e.g., "Applying to 5 items") */
   renderFooter?: () => ReactNode;
 
@@ -52,8 +50,6 @@ export interface DatePickerPopoverProps {
 
   /** Maximum selectable date (dates after this will be disabled) */
   maxDate?: Date;
-  /** Optional style overrides for the trigger button */
-  buttonClassName?: string;
 }
 
 /**
@@ -68,11 +64,9 @@ export const DatePickerPopover: FC<DatePickerPopoverProps> = ({
   onCancel,
   showTimeRange = false,
   disabled = false,
-  color = 'blue',
   renderFooter,
   buttonLabel,
   maxDate,
-  buttonClassName,
 }) => {
   const [opened, setOpened] = useState(false);
   const [draftDate, setDraftDate] = useState<Date>(value || new Date());
@@ -163,19 +157,14 @@ export const DatePickerPopover: FC<DatePickerPopoverProps> = ({
       shadow="md"
     >
       <Popover.Target>
-        <Button
-          variant="transparent"
-          color={color}
+        <AppButton
           leftSection={<IconCalendar size={13} />}
           rightSection={<IconChevronDown size={11} />}
           disabled={disabled}
           onClick={togglePopover}
-          radius="xl"
-          size="xs"
-          className={buttonClassName}
         >
           {formattedDate}
-        </Button>
+        </AppButton>
       </Popover.Target>
 
       <Popover.Dropdown>
@@ -218,13 +207,13 @@ export const DatePickerPopover: FC<DatePickerPopoverProps> = ({
 
           {/* Action buttons */}
           <Group gap="xs" grow>
-            <Button radius="xl" onClick={handleApply}>
+            <AppButton tone="highlight" onClick={handleApply}>
               Apply
-            </Button>
+            </AppButton>
 
-            <Button radius="xl" variant="subtle" onClick={handleCancel}>
+            <AppButton onClick={handleCancel}>
               Cancel
-            </Button>
+            </AppButton>
           </Group>
         </Stack>
       </Popover.Dropdown>

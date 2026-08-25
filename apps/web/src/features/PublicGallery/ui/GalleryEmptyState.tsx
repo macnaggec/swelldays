@@ -1,4 +1,5 @@
 import styles from './GalleryEmptyState.module.css';
+import { AppButton } from 'shared/ui/AppButton';
 
 interface GalleryEmptyStateProps {
   title: string;
@@ -29,9 +30,9 @@ export function GalleryEmptyState({
         <p className={styles.description}>{description}</p>
 
         {actionLabel && onAction && (
-          <button type="button" className={styles.action} onClick={onAction}>
+          <AppButton tone="highlight" onClick={onAction}>
             {actionLabel}
-          </button>
+          </AppButton>
         )}
       </div>
     </section>

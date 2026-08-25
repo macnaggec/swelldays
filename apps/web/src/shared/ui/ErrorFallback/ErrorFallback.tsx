@@ -1,5 +1,6 @@
-import { Container, Title, Text, Button, Stack, Paper, Group } from '@mantine/core';
+import { Container, Title, Text, Stack, Paper, Group } from '@mantine/core';
 import { materialClasses } from 'shared/ui/design-system';
+import { AppButton } from 'shared/ui/AppButton';
 import classes from './ErrorFallback.module.css';
 import { IconAlertTriangle, IconRefresh, IconHome } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
@@ -67,22 +68,21 @@ export const ErrorFallback = memo(({
           {/* Action buttons */}
           <Group>
             {reset && (
-              <Button
+              <AppButton
+                tone="highlight"
                 leftSection={<IconRefresh size={16} />}
                 onClick={reset}
-                variant="filled"
               >
                 Try Again
-              </Button>
+              </AppButton>
             )}
             {showHomeButton && (
-              <Button
+              <AppButton
                 leftSection={<IconHome size={16} />}
                 onClick={handleGoHome}
-                variant="light"
               >
                 Go Home
-              </Button>
+              </AppButton>
             )}
           </Group>
         </Stack>
