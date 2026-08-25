@@ -70,6 +70,11 @@ export function TimeStep({
       <Stack gap="var(--upload-nested-gap)">
         <Center className={styles.dateCalendarTouch}>
           <DatePicker
+            // Mantine only reads defaultDate once, at mount — remounting when the
+            // month actually changes is what makes the calendar jump to a date set
+            // programmatically (e.g. EXIF auto-fill) after the user's initial view.
+            key={date ? `${date.getFullYear()}-${date.getMonth()}` : 'unset'}
+            defaultDate={date ?? undefined}
             value={date}
             onChange={handleDateChange}
             maxDate={new Date()}

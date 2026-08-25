@@ -12,6 +12,7 @@ export type LocalTransfer = {
   previewUrl: string;
   resourceType: 'image' | 'video';
   progress: number;
+  capturedAt?: Date | null;   // undefined until EXIF extraction resolves
   abort?: () => void;
   error?: string;             // set when the XHR or server call fails
 };
@@ -43,6 +44,7 @@ export type AttemptCard = {
   previewUrl: string;
   resourceType: 'image' | 'video';
   progress?: number;       // local only
+  capturedAt?: Date | null; // local only; set once EXIF extraction resolves
   errorCode?: string;      // set when status is FAILED
 };
 

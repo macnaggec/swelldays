@@ -7,12 +7,17 @@ const mocks = vi.hoisted(() => ({
   uploadToCloudinary: vi.fn(),
   revokeObjectURL: vi.fn(),
   uuidCounter: { value: 0 },
+  extractExifData: vi.fn(),
 }));
 
 vi.mock('uuid', () => ({ v4: () => `client-request-${++mocks.uuidCounter.value}` }));
 
 vi.mock('./cloudinaryTransport', () => ({
   uploadToCloudinary: mocks.uploadToCloudinary,
+}));
+
+vi.mock('shared/lib/exifExtractor', () => ({
+  extractExifData: mocks.extractExifData,
 }));
 
 function deferred<T>() {
@@ -68,6 +73,7 @@ beforeEach(() => {
     }),
     abort: vi.fn(),
   });
+  mocks.extractExifData.mockResolvedValue({ capturedAt: null, source: 'fallback' });
 });
 
 describe('upload coordinator workspace handoff', () => {
@@ -113,6 +119,37 @@ describe('upload coordinator workspace handoff', () => {
     await upload;
 
     expect(useUploadStore.getState().getAll()).toHaveLength(0);
+  });
+});
+
+describe('upload coordinator EXIF capture date', () => {
+  it('passes the EXIF-derived capturedAt to finalizeLocal', async () => {
+    const capturedAt = new Date('2026-05-01T12:00:00.000Z');
+    mocks.extractExifData.mockResolvedValue({ capturedAt, source: 'exif' });
+    const commands = makeCommands();
+
+    await startLocalUpload(
+      new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+      { commands, workspaceId: 'workspace-1' },
+    );
+
+    expect(commands.finalizeLocal).toHaveBeenCalledWith(
+      expect.objectContaining({ capturedAt }),
+    );
+  });
+
+  it('omits capturedAt when EXIF extraction falls back to no date', async () => {
+    mocks.extractExifData.mockResolvedValue({ capturedAt: null, source: 'fallback' });
+    const commands = makeCommands();
+
+    await startLocalUpload(
+      new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+      { commands, workspaceId: 'workspace-1' },
+    );
+
+    expect(commands.finalizeLocal).toHaveBeenCalledWith(
+      expect.objectContaining({ capturedAt: undefined }),
+    );
   });
 });
 

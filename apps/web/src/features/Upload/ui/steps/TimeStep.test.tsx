@@ -57,4 +57,24 @@ describe('TimeStep', () => {
   it('grows the range-slider thumb under a coarse pointer as a small pill, not the base circle', () => {
     expect(coarsePointerRangeThumbRule()).toBe('width: 32px; height: 18px;');
   });
+
+  it('navigates the calendar to the month of a date set after mount (e.g. EXIF auto-fill)', () => {
+    const onChange = vi.fn();
+    const onCommit = vi.fn();
+    const { rerender } = renderTimeStep({ date: null, onChange, onCommit });
+
+    rerender(
+      <MantineProvider>
+        <TimeStep
+          date={new Date(2022, 11, 31)}
+          range={[360, 600]}
+          onChange={onChange}
+          onCommit={onCommit}
+        />
+      </MantineProvider>,
+    );
+
+    const selectedDay = document.querySelector('[data-selected]');
+    expect(selectedDay?.textContent).toBe('31');
+  });
 });

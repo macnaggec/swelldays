@@ -7,6 +7,7 @@ import {
   releaseBrowserTransferResources,
 } from './browserTransferResources';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
+import { extractExifData } from 'shared/lib/exifExtractor';
 import type { UploadCommands } from './useUploadCommands';
 
 // ── Deps injected from useUploadManager ──────────────────────────────────────
@@ -41,6 +42,13 @@ export async function startLocalUpload(file: File, deps: CoordinatorDeps): Promi
     progress: 0,
   });
 
+  // Runs concurrently with the upload rather than blocking it — awaited only
+  // once the upload itself has finished, right before finalizeLocal.
+  const exifDataPromise = extractExifData(file).then((exifData) => {
+    useUploadStore.getState().updateTransfer(clientRequestId, { capturedAt: exifData.capturedAt });
+    return exifData;
+  });
+
   try {
     const grant = await deps.commands.beginLocal({
       workspaceId: deps.workspaceId,
@@ -67,10 +75,12 @@ export async function startLocalUpload(file: File, deps: CoordinatorDeps): Promi
     useUploadStore.getState().updateTransfer(clientRequestId, { abort });
 
     const receipt = await promise;
+    const exifData = await exifDataPromise;
 
     await deps.commands.finalizeLocal({
       attemptId: grant.attemptId,
       providerReceipt: receipt,
+      capturedAt: exifData.capturedAt ?? undefined,
     });
 
     await deps.commands.invalidateWorkspaceState(deps.workspaceId);

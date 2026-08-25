@@ -31,6 +31,7 @@ export function useUploadQueue(workspaceState: UploadWorkspaceState | undefined)
         previewUrl: transfer?.previewUrl ?? '',
         resourceType: transfer?.resourceType ?? 'image',
         progress: transfer?.source === 'local' ? transfer.progress : undefined,
+        capturedAt: transfer?.source === 'local' ? transfer.capturedAt : undefined,
         errorCode: localError ?? attempt.errorCode ?? undefined,
       };
       cards.push(card);
@@ -47,6 +48,7 @@ export function useUploadQueue(workspaceState: UploadWorkspaceState | undefined)
         previewUrl: t.previewUrl,
         resourceType: t.resourceType,
         progress: t.source === 'local' ? t.progress : undefined,
+        capturedAt: t.source === 'local' ? t.capturedAt : undefined,
         errorCode: localError,
       };
       cards.push(card);

@@ -10,6 +10,9 @@ import {
   usePublishUploadSession,
   useUploadQueue,
   getUploadQueueStatus,
+  getKnownCapturedDates,
+  deriveSessionDateFromCaptures,
+  hasSessionDateMismatch,
   isVideoItem,
   type UploadPublishViolation,
   type UploadWorkspaceSeed,
@@ -77,10 +80,13 @@ function UploadSidebarContent({
   const [sessionDate, setSessionDate] = useState<Date | null>(
     workspace?.startsAt ? new Date(workspace.startsAt) : null,
   );
+  // Default is a broad daylight window (6:00-18:00) rather than a derived one — camera
+  // clocks are commonly left on the wrong timezone while traveling, so shoot time is
+  // always manual; only the date is auto-filled from EXIF.
   const [sessionRange, setSessionRange] = useState<[number, number]>(() => (
     workspace?.startsAt && workspace?.endsAt
       ? [dateToMinutes(new Date(workspace.startsAt)), dateToMinutes(new Date(workspace.endsAt))]
-      : [360, 600]
+      : [360, 1080]
   ));
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const spotSectionRef = useRef<HTMLElement | null>(null);
@@ -91,6 +97,18 @@ function UploadSidebarContent({
   const [flashingViolation, setFlashingViolation] = useState<UploadPublishViolation | null>(null);
 
   const { queue, hasActiveUploads } = useUploadQueue(workspaceState);
+  const knownCapturedDates = useMemo(() => getKnownCapturedDates(queue), [queue]);
+  // Derived only while the user hasn't chosen a date themselves — once they have
+  // (auto-filled or manual), sessionDate is no longer null and this stays inert.
+  const derivedDateFromCaptures = useMemo(
+    () => (sessionDate === null ? deriveSessionDateFromCaptures(knownCapturedDates) : null),
+    [sessionDate, knownCapturedDates],
+  );
+  const effectiveSessionDate = sessionDate ?? derivedDateFromCaptures ?? null;
+  const hasDateMismatch = useMemo(
+    () => hasSessionDateMismatch(effectiveSessionDate, knownCapturedDates),
+    [effectiveSessionDate, knownCapturedDates],
+  );
 
   const saveWorkspaceFields = useCallback((changes: {
     spotId?: string | null;
@@ -146,7 +164,7 @@ function UploadSidebarContent({
     isEditMode,
     spot: spotId ? { id: spotId } : null,
     queue,
-    sessionDate,
+    sessionDate: effectiveSessionDate,
     sessionRange,
     photoPrice,
     videoPrice,
@@ -156,6 +174,7 @@ function UploadSidebarContent({
   const [isDiscarding, setIsDiscarding] = useState(false);
   const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false);
   const [isConfirmingSessionDelete, setIsConfirmingSessionDelete] = useState(false);
+  const [isConfirmingDateMismatch, setIsConfirmingDateMismatch] = useState(false);
   const queueStatus = useMemo(() => getUploadQueueStatus(queue), [queue]);
 
   const handleDiscard = useCallback(async () => {
@@ -214,17 +233,26 @@ function UploadSidebarContent({
   const finalizePublish = useCallback(async () => {
     const saved = await saveWorkspaceFields({
       spotId,
-      startsAt: sessionDate ? combineDateAndTime(sessionDate, minutesToTime(sessionRange[0])) : null,
-      endsAt: sessionDate ? combineDateAndTime(sessionDate, minutesToTime(sessionRange[1])) : null,
+      startsAt: effectiveSessionDate
+        ? combineDateAndTime(effectiveSessionDate, minutesToTime(sessionRange[0]))
+        : null,
+      endsAt: effectiveSessionDate
+        ? combineDateAndTime(effectiveSessionDate, minutesToTime(sessionRange[1]))
+        : null,
       photoPrice,
       videoPrice,
     });
     if (!saved) return;
     await publish();
-  }, [photoPrice, publish, saveWorkspaceFields, sessionDate, sessionRange, spotId, videoPrice]);
+  }, [effectiveSessionDate, sessionRange, photoPrice, publish, saveWorkspaceFields, spotId, videoPrice]);
 
   const handleConfirmSessionDelete = useCallback(async () => {
     setIsConfirmingSessionDelete(false);
+    await finalizePublish();
+  }, [finalizePublish]);
+
+  const handleConfirmDateMismatch = useCallback(async () => {
+    setIsConfirmingDateMismatch(false);
     await finalizePublish();
   }, [finalizePublish]);
 
@@ -263,8 +291,12 @@ function UploadSidebarContent({
       setIsConfirmingSessionDelete(true);
       return;
     }
+    if (hasDateMismatch) {
+      setIsConfirmingDateMismatch(true);
+      return;
+    }
     await finalizePublish();
-  }, [canPublish, finalizePublish, publish, violations, wouldDeleteSession]);
+  }, [canPublish, finalizePublish, hasDateMismatch, publish, violations, wouldDeleteSession]);
 
   const validationProps = (violation: UploadPublishViolation) => {
     const isInvalid = hasTriedPublish && violations.includes(violation);
@@ -330,7 +362,7 @@ function UploadSidebarContent({
       {/* Date / Time */}
       <Box component="section" ref={timeSectionRef} aria-label="Shoot time" {...validationProps('time')}>
         <TimeStep
-          date={sessionDate}
+          date={effectiveSessionDate}
           range={sessionRange}
           onChange={handleTimeChange}
           onCommit={handleTimeCommit}
@@ -409,8 +441,13 @@ function UploadSidebarContent({
               </Popover.Dropdown>
             </Popover>
             <Popover
-              opened={isConfirmingSessionDelete}
-              onChange={setIsConfirmingSessionDelete}
+              opened={isConfirmingSessionDelete || isConfirmingDateMismatch}
+              onChange={(opened) => {
+                if (!opened) {
+                  setIsConfirmingSessionDelete(false);
+                  setIsConfirmingDateMismatch(false);
+                }
+              }}
               position="top"
               withArrow
               shadow="md"
@@ -428,32 +465,61 @@ function UploadSidebarContent({
                 </Button>
               </Popover.Target>
               <Popover.Dropdown>
-                <Stack gap="sm" maw={240}>
-                  <Text size="sm" fw={600}>Delete this session?</Text>
-                  <Text size="xs" c="dimmed">
-                    You&apos;ve removed every item — saving now deletes the session. Buyers who
-                    already purchased media from it keep access; only unsold media is removed.
-                  </Text>
-                  <Group gap="xs" grow>
-                    <Button
-                      size="xs"
-                      radius="xl"
-                      color="red"
-                      variant="light"
-                      onClick={() => { void handleConfirmSessionDelete(); }}
-                    >
-                      Delete session
-                    </Button>
-                    <Button
-                      size="xs"
-                      radius="xl"
-                      variant="subtle"
-                      onClick={() => setIsConfirmingSessionDelete(false)}
-                    >
-                      Keep editing
-                    </Button>
-                  </Group>
-                </Stack>
+                {isConfirmingSessionDelete && (
+                  <Stack gap="sm" maw={240}>
+                    <Text size="sm" fw={600}>Delete this session?</Text>
+                    <Text size="xs" c="dimmed">
+                      You&apos;ve removed every item — saving now deletes the session. Buyers who
+                      already purchased media from it keep access; only unsold media is removed.
+                    </Text>
+                    <Group gap="xs" grow>
+                      <Button
+                        size="xs"
+                        radius="xl"
+                        color="red"
+                        variant="light"
+                        onClick={() => { void handleConfirmSessionDelete(); }}
+                      >
+                        Delete session
+                      </Button>
+                      <Button
+                        size="xs"
+                        radius="xl"
+                        variant="subtle"
+                        onClick={() => setIsConfirmingSessionDelete(false)}
+                      >
+                        Keep editing
+                      </Button>
+                    </Group>
+                  </Stack>
+                )}
+                {isConfirmingDateMismatch && (
+                  <Stack gap="sm" maw={240}>
+                    <Text size="sm" fw={600}>Photos aren&apos;t all from the same day</Text>
+                    <Text size="xs" c="dimmed">
+                      Some files&apos; capture dates don&apos;t match the selected shoot date —
+                      they may not be from the same session.
+                    </Text>
+                    <Group gap="xs" grow>
+                      <Button
+                        size="xs"
+                        radius="xl"
+                        variant="light"
+                        onClick={() => { void handleConfirmDateMismatch(); }}
+                      >
+                        {isEditMode ? 'Save anyway' : 'Publish anyway'}
+                      </Button>
+                      <Button
+                        size="xs"
+                        radius="xl"
+                        variant="subtle"
+                        onClick={() => setIsConfirmingDateMismatch(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </Group>
+                  </Stack>
+                )}
               </Popover.Dropdown>
             </Popover>
           </Group>

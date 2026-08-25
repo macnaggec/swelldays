@@ -5,7 +5,31 @@ import { render as renderWithProviders } from 'test/setup/render';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PanelLayout } from 'shared/ui/PanelLayout';
 import { UploadSidebar } from './UploadSidebar';
+import type { DraftMedia } from 'entities/Media';
+import type { GalleryCard } from '../model';
 import type { UploadWorkspaceState } from '@swelldays/contracts';
+
+function mediaItem(id: string): DraftMedia {
+  return {
+    id,
+    sessionId: 'session-1',
+    photographerId: 'photographer-1',
+    type: 'PHOTO',
+    spotId: null,
+    capturedAt: new Date('2026-01-01T06:00:00Z'),
+    price: null,
+    lightboxUrl: `https://cdn.example.com/${id}.jpg`,
+    thumbnailUrl: `https://cdn.example.com/${id}-thumb.jpg`,
+    cloudinaryPublicId: id,
+    status: 'DRAFT',
+    createdAt: new Date('2026-01-01T06:00:00Z'),
+    resource: {
+      resourceType: 'image',
+      url: `https://cdn.example.com/${id}.jpg`,
+      assetId: `asset-${id}`,
+    },
+  };
+}
 
 const uploadSidebarCss = readFileSync('apps/web/src/features/Upload/ui/UploadSidebar.module.css', 'utf8');
 
@@ -28,7 +52,7 @@ const mocks = vi.hoisted(() => ({
   canPublish: true,
   hasTriedPublish: false,
   violations: [] as Array<'spot' | 'media' | 'price' | 'time'>,
-  queue: [] as Array<{ kind: string; status?: string }>,
+  queue: [] as GalleryCard[],
   scrollIntoView: vi.fn(),
 }));
 
@@ -188,7 +212,10 @@ describe('UploadSidebar workspace behavior', () => {
   });
 
   it('asks for confirmation before discarding uploaded media', async () => {
-    mocks.queue = [{ kind: 'existing' }, { kind: 'existing' }];
+    mocks.queue = [
+      { kind: 'existing', id: 'media-1', result: mediaItem('media-1') },
+      { kind: 'existing', id: 'media-2', result: mediaItem('media-2') },
+    ];
     const onClose = vi.fn();
 
     render(

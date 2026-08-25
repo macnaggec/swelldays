@@ -14,6 +14,11 @@ export { useGooglePicker } from './useGooglePicker';
 export { usePublishUploadSession, type UploadPublishViolation } from './usePublishUploadSession';
 export { useUploadStore } from './uploadStore';
 export { getPublishableMediaIds, getSelectableUploadCards, getUploadQueueStatus } from './uploadQueuePolicy';
+export {
+  getKnownCapturedDates,
+  deriveSessionDateFromCaptures,
+  hasSessionDateMismatch,
+} from './sessionDateFromCaptures';
 
 // Types
 export type {

@@ -11,44 +11,29 @@ export interface ExifData {
 }
 
 /**
- * EXIF DateTimeOriginal is a naive string — no timezone.
- * exifr parses it using the browser's local timezone, which corrupts the camera hour
- * when sending over the network (UTC serialization bakes in the uploader's offset).
+ * capturedAt's UTC-labelled fields hold the camera's local wall-clock time (see
+ * getCapturedMediaCalendarDayKey) — every capturedAt in the app follows this
+ * convention, so this re-expresses ANY local Date (an EXIF DateTimeOriginal, or
+ * the file.lastModified fallback) the same way, regardless of the uploader's
+ * own timezone. Without it, a fallback value's real UTC instant would read as a
+ * different hour/day than what the uploader's OS shows for that file.
  *
- * This function normalises the Date so that getUTCHours() == camera hour:
- *
- * - No offset tag: exifr returned a browser-local Date; extract its local components
- *   and re-express as UTC.
- * - OffsetTimeOriginal present (smartphones): exifr produced a proper UTC Date;
- *   add the offset back to recover camera local time, store that as UTC.
+ * EXIF DateTimeOriginal is a naive string — no timezone. exifr's own tag reviver
+ * (reviveDate) always parses it as a browser-local Date via `new Date(y, m, d)` +
+ * setHours/setMinutes/setSeconds — it never reads OffsetTimeOriginal itself, so
+ * there is no "exifr already applied the offset" case to undo.
  */
-function toCameraLocalAsUTC(d: Date, offsetStr: string | undefined): Date {
-  if (!offsetStr) {
-    // Naive datetime — browser local = camera local
-    return new Date(Date.UTC(
-      d.getFullYear(), d.getMonth(), d.getDate(),
-      d.getHours(), d.getMinutes(), d.getSeconds(),
-    ));
-  }
-
-  const m = /^([+-])(\d{2}):(\d{2})$/.exec(offsetStr);
-  if (!m) {
-    return new Date(Date.UTC(
-      d.getFullYear(), d.getMonth(), d.getDate(),
-      d.getHours(), d.getMinutes(), d.getSeconds(),
-    ));
-  }
-
-  // exifr already applied the offset → d is true UTC; camera local = UTC + offset
-  const sign = m[1] === '+' ? 1 : -1;
-  const offsetMs = sign * (parseInt(m[2]!) * 60 + parseInt(m[3]!)) * 60_000;
-  return new Date(d.getTime() + offsetMs);
+function toCameraLocalAsUTC(d: Date): Date {
+  return new Date(Date.UTC(
+    d.getFullYear(), d.getMonth(), d.getDate(),
+    d.getHours(), d.getMinutes(), d.getSeconds(),
+  ));
 }
 
 export async function extractExifData(file: File): Promise<ExifData> {
   try {
     if (!file.type.startsWith('image/')) {
-      return { capturedAt: new Date(file.lastModified), source: 'fallback' };
+      return { capturedAt: toCameraLocalAsUTC(new Date(file.lastModified)), source: 'fallback' };
     }
 
     const exif = await exifr.parse(file, {
@@ -59,8 +44,6 @@ export async function extractExifData(file: File): Promise<ExifData> {
         'DateTimeOriginal',
         'CreateDate',
         'ModifyDate',
-        'OffsetTimeOriginal',
-        'OffsetTimeDigitized',
         'GPSLatitude',
         'GPSLongitude',
         'Make',
@@ -70,18 +53,13 @@ export async function extractExifData(file: File): Promise<ExifData> {
     });
 
     if (!exif) {
-      return { capturedAt: new Date(file.lastModified), source: 'fallback' };
+      return { capturedAt: toCameraLocalAsUTC(new Date(file.lastModified)), source: 'fallback' };
     }
 
     const rawDate: Date | undefined =
       exif.DateTimeOriginal ?? exif.CreateDate ?? exif.ModifyDate;
 
-    const offsetStr: string | undefined =
-      exif.OffsetTimeOriginal ?? exif.OffsetTimeDigitized;
-
-    const capturedAt = rawDate
-      ? toCameraLocalAsUTC(rawDate, offsetStr)
-      : new Date(file.lastModified);
+    const capturedAt = toCameraLocalAsUTC(rawDate ?? new Date(file.lastModified));
 
     const source = exif.DateTimeOriginal ?? exif.CreateDate ? 'exif' : 'fallback';
 
@@ -103,7 +81,7 @@ export async function extractExifData(file: File): Promise<ExifData> {
       fileType: file.type,
       fileSize: file.size,
     });
-    return { capturedAt: new Date(file.lastModified), source: 'fallback' };
+    return { capturedAt: toCameraLocalAsUTC(new Date(file.lastModified)), source: 'fallback' };
   }
 }
 
