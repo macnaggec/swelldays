@@ -105,7 +105,10 @@ export function useUploadManager(
   const remove = useCallback(async (kind: GalleryCard['kind'], id: string) => {
     try {
       if (kind === 'attempt') {
-        if (workspaceIdRef.current) await discardAttempt(id, { commands, workspaceId: workspaceIdRef.current });
+        if (workspaceIdRef.current) {
+          await discardAttempt(id, { commands, workspaceId: workspaceIdRef.current });
+          notify.info('Upload cancelled');
+        }
       } else if (kind === 'existing' && workspaceIdRef.current) {
         await commands.stageMediaRemoval({ workspaceId: workspaceIdRef.current, mediaItemId: id });
       } else if (kind === 'asset' && workspaceIdRef.current) {
@@ -120,10 +123,12 @@ export function useUploadManager(
   const discardAll = useCallback(async () => {
     if (!workspaceIdRef.current) {
       abortAllLocalTransfers();
+      notify.info('Upload cancelled');
       return;
     }
     try {
       await discardAllWorkspace({ commands, workspaceId: workspaceIdRef.current });
+      notify.info('Upload cancelled');
     } catch (err) {
       notify.error(getErrorMessage(err), 'Discard Failed');
       throw err;
@@ -141,6 +146,7 @@ export function useUploadManager(
 
   const abortAllTransfers = useCallback(() => {
     abortAllLocalTransfers();
+    notify.info('Upload cancelled');
   }, []);
 
   return { addFiles, addDriveSelections, remove, discardAll, abortAllTransfers, retry };

@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   deleteWorkspaceAsset: vi.fn(),
   discardAttempt: vi.fn(),
   notifyError: vi.fn(),
+  notifyInfo: vi.fn(),
   revokeBlobUrl: vi.fn(),
   stageMediaRemoval: vi.fn(),
   startNewWorkspace: vi.fn(),
@@ -50,7 +51,7 @@ vi.mock('./useGooglePicker', () => ({
 }));
 
 vi.mock('shared/lib/notifications', () => ({
-  notify: { error: mocks.notifyError },
+  notify: { error: mocks.notifyError, info: mocks.notifyInfo },
 }));
 
 const seed: UploadWorkspaceSeed = {
@@ -193,6 +194,7 @@ describe('useUploadManager removal dispatch', () => {
     expect(mocks.revokeBlobUrl).toHaveBeenCalledWith('blob:preview-1');
     expect(mocks.discardAttempt).toHaveBeenCalledWith({ attemptId: 'attempt-1' });
     expect(useUploadStore.getState().getAll()).toEqual([]);
+    expect(mocks.notifyInfo).toHaveBeenCalledWith('Upload cancelled');
   });
 
   it('notifies and keeps the card when server discard fails', async () => {
@@ -218,11 +220,28 @@ describe('useUploadManager removal dispatch', () => {
     expect(mocks.revokeBlobUrl).not.toHaveBeenCalled();
     expect(useUploadStore.getState().getAll()).toHaveLength(1);
     expect(mocks.notifyError).toHaveBeenCalledWith('network down', 'Delete Failed');
+    expect(mocks.notifyInfo).not.toHaveBeenCalled();
   });
 });
 
 describe('useUploadManager cancel', () => {
-  it('cancels the active workspace', async () => {
+  it('cancels the active workspace with a single "Upload cancelled" toast, regardless of how many files were in flight', async () => {
+    useUploadStore.getState().addTransfer({
+      source: 'local',
+      clientRequestId: 'request-1',
+      file: new File(['a'], 'a.jpg', { type: 'image/jpeg' }),
+      previewUrl: 'blob:preview-1',
+      resourceType: 'image',
+      progress: 20,
+    });
+    useUploadStore.getState().addTransfer({
+      source: 'local',
+      clientRequestId: 'request-2',
+      file: new File(['b'], 'b.jpg', { type: 'image/jpeg' }),
+      previewUrl: 'blob:preview-2',
+      resourceType: 'image',
+      progress: 40,
+    });
     const { result } = renderHook(() => useUploadManager('workspace-1', seed));
 
     await act(async () => {
@@ -230,5 +249,7 @@ describe('useUploadManager cancel', () => {
     });
 
     expect(mocks.cancelWorkspace).toHaveBeenCalledWith({ workspaceId: 'workspace-1' });
+    expect(mocks.notifyInfo).toHaveBeenCalledOnce();
+    expect(mocks.notifyInfo).toHaveBeenCalledWith('Upload cancelled');
   });
 });

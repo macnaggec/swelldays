@@ -63,7 +63,7 @@ export function uploadToCloudinary(params: CloudinaryUploadParams): CloudinaryUp
     };
 
     xhr.onerror = () => reject(new UploadError('NETWORK_ERROR', 'Network error during upload'));
-    xhr.onabort = () => reject(new UploadError('NETWORK_ERROR', 'Upload cancelled'));
+    xhr.onabort = () => reject(new UploadError('ABORTED', 'Upload cancelled'));
     xhr.ontimeout = () => reject(new UploadError('NETWORK_ERROR', 'Upload timed out — try again'));
 
     xhr.timeout = 5 * 60 * 1000; // 5 minutes: covers slow connections + Cloudinary eager transform processing

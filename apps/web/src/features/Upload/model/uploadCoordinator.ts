@@ -8,6 +8,7 @@ import {
 } from './browserTransferResources';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { extractExifData } from 'shared/lib/exifExtractor';
+import { UploadError } from './UploadError';
 import type { UploadCommands } from './useUploadCommands';
 
 // ── Deps injected from useUploadManager ──────────────────────────────────────
@@ -92,6 +93,10 @@ export async function startLocalUpload(file: File, deps: CoordinatorDeps): Promi
   } catch (err) {
     const transfer = useUploadStore.getState().transfers.get(clientRequestId);
     if (!transfer) return; // already removed (discard during upload)
+    // Aborted by discardAttempt/discardAllWorkspace, which is already tearing this
+    // transfer down — a deliberate cancel, not a failure. Don't show an error state
+    // or propagate to the "Upload Failed" notification.
+    if (err instanceof UploadError && err.code === 'ABORTED') return;
     // Mark the transfer as failed so the UI can show the error and a retry button.
     useUploadStore.getState().updateTransfer(clientRequestId, {
       progress: 0,

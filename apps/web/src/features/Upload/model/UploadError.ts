@@ -3,6 +3,7 @@ export type UploadErrorCode =
   | 'CLOUDINARY_REJECTED'     // 4xx response — invalid params or policy rejection
   | 'CLOUDINARY_UNAVAILABLE'  // 5xx response — Cloudinary service error
   | 'NETWORK_ERROR'           // XHR onerror — no response received
+  | 'ABORTED'                 // XHR onabort — user cancelled, not a failure
   | 'INVALID_RESPONSE';       // 2xx but response body is not valid JSON, or eager missing
 
 export class UploadError extends Error {

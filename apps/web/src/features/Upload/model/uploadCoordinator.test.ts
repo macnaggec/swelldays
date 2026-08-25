@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UploadCommands } from './useUploadCommands';
 import { retryAttempt, startDriveUpload, startLocalUpload } from './uploadCoordinator';
 import { useUploadStore } from './uploadStore';
+import { UploadError } from './UploadError';
 
 const mocks = vi.hoisted(() => ({
   uploadToCloudinary: vi.fn(),
@@ -150,6 +151,31 @@ describe('upload coordinator EXIF capture date', () => {
     expect(commands.finalizeLocal).toHaveBeenCalledWith(
       expect.objectContaining({ capturedAt: undefined }),
     );
+  });
+});
+
+describe('upload coordinator cancellation', () => {
+  it('does not mark the transfer failed when the XHR is aborted mid-upload', async () => {
+    // Mirrors discardAttempt calling xhr.abort() on an in-flight card: the
+    // cloudinary promise rejects with ABORTED before the transfer is removed
+    // from the store.
+    mocks.uploadToCloudinary.mockReturnValueOnce({
+      promise: Promise.reject(new UploadError('ABORTED', 'Upload cancelled')),
+      abort: vi.fn(),
+    });
+    const commands = makeCommands();
+
+    await expect(
+      startLocalUpload(
+        new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }),
+        { commands, workspaceId: 'workspace-1' },
+      ),
+    ).resolves.toBeUndefined();
+
+    const transfer = useUploadStore.getState().getAll()[0];
+    if (transfer?.source !== 'local') throw new Error('expected a local transfer to remain');
+    expect(transfer.error).toBeUndefined();
+    expect(commands.finalizeLocal).not.toHaveBeenCalled();
   });
 });
 

@@ -35,10 +35,10 @@ function simulateLoad(status: number, body: string) {
 }
 
 describe('uploadToCloudinary — XHR lifecycle', () => {
-  it('rejects with NETWORK_ERROR when aborted before load', async () => {
+  it('rejects with ABORTED when aborted before load', async () => {
     const { promise, abort } = uploadToCloudinary({ ...baseParams, file: testFile });
     abort();
-    await expect(promise).rejects.toMatchObject({ code: 'NETWORK_ERROR' });
+    await expect(promise).rejects.toMatchObject({ code: 'ABORTED' });
   });
 
   it('rejects with CLOUDINARY_REJECTED on 4xx, forwarding the Cloudinary error message', async () => {
