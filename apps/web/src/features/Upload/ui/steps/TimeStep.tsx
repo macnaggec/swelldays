@@ -39,11 +39,7 @@ export function TimeStep({
   }, [date, onChange]);
 
   const dateError = hasError ?? (hasTriedPublish && !date);
-  const validityRail = dateError
-    ? 'inset 3px 0 0 var(--wa-status-danger)'
-    : isReady
-      ? 'inset 3px 0 0 var(--wa-accent-spot)'
-      : 'none';
+  const validityState = dateError ? 'error' : isReady ? 'ready' : 'none';
 
   return (
     <Stack gap={0} data-upload-block>
@@ -52,7 +48,8 @@ export function TimeStep({
         size="sm"
         fw={500}
         ta="center"
-        className={dateError && isFlashing ? styles.titlePulse : undefined}
+        className={dateError && isFlashing ? `${styles.title} ${styles.titlePulse}` : styles.title}
+        data-validity={validityState}
         data-validation-pulse={dateError && isFlashing ? 'true' : undefined}
         style={{
           alignSelf: 'center',
@@ -60,8 +57,6 @@ export function TimeStep({
           letterSpacing: '0.07em',
           textTransform: 'uppercase',
           color: 'rgba(255,255,255,0.4)',
-          boxShadow: validityRail,
-          transition: 'box-shadow 120ms ease',
         }}
       >
         When did you shoot?
@@ -91,6 +86,7 @@ export function TimeStep({
 
         <Stack gap="var(--upload-micro-gap)">
           <Text
+            data-time-range-readout
             ta="center"
             style={{
               lineHeight: '22px',

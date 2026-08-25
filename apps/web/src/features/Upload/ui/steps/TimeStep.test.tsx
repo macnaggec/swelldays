@@ -12,6 +12,11 @@ function coarsePointerRangeThumbRule() {
   return match?.[1]?.replace(/\s+/g, ' ').trim() ?? '';
 }
 
+function titleIndicatorRule() {
+  const match = timeStepCss.match(/\.title::before\s*\{([^}]*)\}/);
+  return match?.[1]?.replace(/\s+/g, ' ').trim() ?? '';
+}
+
 function renderTimeStep(overrides: Partial<ComponentProps<typeof TimeStep>> = {}) {
   return render(
     <MantineProvider>
@@ -33,10 +38,17 @@ describe('TimeStep', () => {
       isReady: true,
     });
 
-    expect(screen.getByText('When did you shoot?')).toHaveStyle({
-      color: 'rgba(255,255,255,0.4)',
-      boxShadow: 'inset 3px 0 0 var(--wa-accent-spot)',
-    });
+    const title = screen.getByText('When did you shoot?');
+    expect(title).toHaveStyle({ color: 'rgba(255,255,255,0.4)' });
+    expect(title).toHaveAttribute('data-validity', 'ready');
+  });
+
+  it('owns a control-height input-style validity indicator without resizing the title', () => {
+    const indicatorRule = titleIndicatorRule();
+    expect(indicatorRule).toContain('position: absolute');
+    expect(indicatorRule).toContain('height: var(--wa-control-height-default)');
+    expect(indicatorRule).toContain('border-start-start-radius: var(--wa-radius-chrome)');
+    expect(indicatorRule).toContain('border-end-start-radius: var(--wa-radius-chrome)');
   });
 
   it('marks an invalid shoot time with the spot-style danger rail and title pulse', () => {
@@ -47,10 +59,8 @@ describe('TimeStep', () => {
     });
 
     const title = screen.getByText('When did you shoot?');
-    expect(title).toHaveStyle({
-      color: 'rgba(255,255,255,0.4)',
-      boxShadow: 'inset 3px 0 0 var(--wa-status-danger)',
-    });
+    expect(title).toHaveStyle({ color: 'rgba(255,255,255,0.4)' });
+    expect(title).toHaveAttribute('data-validity', 'error');
     expect(title).toHaveAttribute('data-validation-pulse', 'true');
   });
 

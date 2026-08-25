@@ -29,6 +29,8 @@ import virtualGalleryStyles from 'shared/ui/VirtualGallery/VirtualGallery.module
 import { BrowseSectionBar } from 'widgets/BrowseSectionBar';
 import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import uploadStyles from 'features/Upload/ui/UploadSidebar.module.css';
+import { UploadStatusLabel } from 'features/Upload/ui/UploadGallery/UploadStatusLabel';
+import { PriceStep } from 'features/Upload/ui/steps/PriceStep';
 import { TimeStep } from 'features/Upload/ui/steps/TimeStep';
 import { AuthModalProvider, useAuthModal } from 'features/Auth';
 import spotSearchClasses from 'features/SpotSearch/SpotSearch.module.css';
@@ -106,9 +108,45 @@ function ContractTimeStep() {
 
   return (
     <div className={uploadStyles.sidebar} data-contract-time-step>
+      <div
+        data-contract-upload-height-references
+        style={{ position: 'fixed', insetInlineStart: -10_000, insetBlockStart: 0, width: 320 }}
+      >
+        <Input
+          data-contract-height-spot
+          classNames={{ input: spotSearchClasses.input }}
+        />
+        <div data-contract-height-media>
+          <UploadStatusLabel
+            items={[{
+              kind: 'attempt',
+              id: 'contract-upload',
+              source: 'DRIVE',
+              status: 'ACQUIRING',
+              previewUrl: 'drive:contract-upload',
+              resourceType: 'image',
+            }]}
+            hasActiveUploads
+            onOpen={() => { }}
+          />
+        </div>
+        <div data-contract-height-price>
+          <PriceStep
+            hasTriedPublish={false}
+            photoPrice={300}
+            videoPrice={500}
+            showVideoPrice={false}
+            onPhotoPriceChange={() => { }}
+            onVideoPriceChange={() => { }}
+            onPhotoPriceCommit={() => { }}
+            onVideoPriceCommit={() => { }}
+          />
+        </div>
+      </div>
       <TimeStep
         date={date}
         range={range}
+        isReady
         onChange={(nextDate, nextRange) => {
           setDate(nextDate);
           setRange(nextRange);

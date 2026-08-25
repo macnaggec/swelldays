@@ -1,8 +1,11 @@
+import { readFileSync } from 'node:fs';
 import type { ComponentProps } from 'react';
 import { render, screen } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
 import { describe, expect, it, vi } from 'vitest';
 import { PriceStep } from './PriceStep';
+
+const priceStepCss = readFileSync('apps/web/src/features/Upload/ui/steps/PriceStep.module.css', 'utf8');
 
 function renderPriceStep(overrides: Partial<ComponentProps<typeof PriceStep>> = {}) {
   return render(
@@ -22,6 +25,13 @@ function renderPriceStep(overrides: Partial<ComponentProps<typeof PriceStep>> = 
 }
 
 describe('PriceStep', () => {
+  it('owns the reference upload-control height in every pointer mode', () => {
+    const defaultRules = priceStepCss.split('@media (pointer: coarse)')[0];
+    expect(defaultRules).toMatch(
+      /\.priceInputTouch\s*\{[^}]*--input-height-sm:\s*var\(--wa-control-height-default\)/,
+    );
+  });
+
   it('shows both price controls by default', () => {
     renderPriceStep();
 

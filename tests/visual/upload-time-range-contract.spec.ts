@@ -1,5 +1,45 @@
 import { expect, test, type Locator } from '@playwright/test';
 
+test('matches location, media, and calendar heights to the price-input reference', async ({ page }) => {
+  await page.goto('/__mobile-layout-contract.html?displayMode=browser&surface=timeStep');
+  const title = page.getByText('When did you shoot?');
+  const spotInput = page.locator('[data-contract-height-spot]');
+  const mediaStatus = page.locator('[data-contract-height-media] [data-upload-status]');
+  const priceInput = page.locator('[data-contract-height-price] input').first();
+
+  const [titleMetrics, indicatorMetrics, spotHeight, mediaHeight, priceMetrics] = await Promise.all([
+    title.evaluate((element) => {
+      return {
+        height: element.getBoundingClientRect().height,
+      };
+    }),
+    title.evaluate((element) => {
+      const style = getComputedStyle(element, '::before');
+      return {
+        content: style.content,
+        height: Number.parseFloat(style.height),
+        radius: Number.parseFloat(style.borderStartStartRadius),
+      };
+    }),
+    spotInput.evaluate((element) => element.getBoundingClientRect().height),
+    mediaStatus.evaluate((element) => element.getBoundingClientRect().height),
+    priceInput.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        height: element.getBoundingClientRect().height,
+        radius: Number.parseFloat(style.borderStartStartRadius),
+      };
+    }),
+  ]);
+
+  expect(indicatorMetrics.content).not.toBe('none');
+  expect(spotHeight).toBe(priceMetrics.height);
+  expect(mediaHeight).toBe(priceMetrics.height);
+  expect(indicatorMetrics.height).toBe(priceMetrics.height);
+  expect(indicatorMetrics.height).toBeGreaterThan(titleMetrics.height);
+  expect(indicatorMetrics.radius).toBe(priceMetrics.radius);
+});
+
 async function waitForStableBox(locator: Locator): Promise<void> {
   await locator.evaluate(async (element) => {
     const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -21,7 +61,7 @@ async function waitForStableBox(locator: Locator): Promise<void> {
 test('grows the time-range readout around a stable center without changing font metrics', async ({ page }) => {
   await page.goto('/__mobile-layout-contract.html?displayMode=browser&surface=timeStep');
   const contract = page.locator('[data-contract-time-step]');
-  const readout = contract.locator('p').nth(1);
+  const readout = contract.locator('[data-time-range-readout]');
   const thumb = contract.getByRole('slider').first();
   await expect(readout).toBeVisible();
   await thumb.scrollIntoViewIfNeeded();
