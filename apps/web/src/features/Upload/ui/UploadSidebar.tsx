@@ -419,15 +419,15 @@ function UploadSidebarContent({
                   </Text>
                   <Group gap="xs" grow>
                     <AppButton
+                      onClick={() => setIsConfirmingDiscard(false)}
+                    >
+                      Keep
+                    </AppButton>
+                    <AppButton
                       tone="destructive"
                       onClick={() => { void handleDiscard(); }}
                     >
                       Discard
-                    </AppButton>
-                    <AppButton
-                      onClick={() => setIsConfirmingDiscard(false)}
-                    >
-                      Keep
                     </AppButton>
                   </Group>
                 </Stack>
@@ -466,15 +466,15 @@ function UploadSidebarContent({
                     </Text>
                     <Group gap="xs" grow>
                       <AppButton
+                        onClick={() => setIsConfirmingSessionDelete(false)}
+                      >
+                        Keep editing
+                      </AppButton>
+                      <AppButton
                         tone="destructive"
                         onClick={() => { void handleConfirmSessionDelete(); }}
                       >
                         Delete session
-                      </AppButton>
-                      <AppButton
-                        onClick={() => setIsConfirmingSessionDelete(false)}
-                      >
-                        Keep editing
                       </AppButton>
                     </Group>
                   </Stack>
@@ -488,15 +488,15 @@ function UploadSidebarContent({
                     </Text>
                     <Group gap="xs" grow>
                       <AppButton
+                        onClick={() => setIsConfirmingDateMismatch(false)}
+                      >
+                        Cancel
+                      </AppButton>
+                      <AppButton
                         tone="highlight"
                         onClick={() => { void handleConfirmDateMismatch(); }}
                       >
                         {isEditMode ? 'Save anyway' : 'Publish anyway'}
-                      </AppButton>
-                      <AppButton
-                        onClick={() => setIsConfirmingDateMismatch(false)}
-                      >
-                        Cancel
                       </AppButton>
                     </Group>
                   </Stack>

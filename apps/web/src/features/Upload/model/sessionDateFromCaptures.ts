@@ -38,8 +38,13 @@ export function sessionDateMatchesCapturedAt(sessionDate: Date, capturedAt: Date
     && sessionDate.getDate() === capturedAt.getUTCDate();
 }
 
-/** True when the chosen session date doesn't cover every known capture's day. */
+/**
+ * True when the chosen session date doesn't cover every known capture's day.
+ * Requires at least two captures to compare — a single item has nothing to
+ * disagree with, regardless of what the session date happens to be set to.
+ */
 export function hasSessionDateMismatch(sessionDate: Date | null, capturedDates: Date[]): boolean {
   if (!sessionDate) return false;
+  if (capturedDates.length < 2) return false;
   return capturedDates.some((d) => !sessionDateMatchesCapturedAt(sessionDate, d));
 }

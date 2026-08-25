@@ -94,4 +94,9 @@ describe('hasSessionDateMismatch', () => {
     const sessionDate = new Date(2026, 4, 1);
     expect(hasSessionDateMismatch(sessionDate, [capturedAt(8, 0, 1), capturedAt(9, 0, 2)])).toBe(true);
   });
+
+  it('is false with a single capture, even if it disagrees with the session date — nothing to compare it against', () => {
+    const sessionDate = new Date(2026, 4, 1);
+    expect(hasSessionDateMismatch(sessionDate, [capturedAt(8, 0, 15)])).toBe(false);
+  });
 });
