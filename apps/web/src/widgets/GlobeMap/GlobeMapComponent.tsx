@@ -357,7 +357,7 @@ export function GlobeMapComponent({
 
       <Map
         ref={mapRef}
-        cursor={isCoordinatePickerActive ? 'crosshair' : (selectedSpotId || !acceptsCameraGestures ? 'default' : cursor)}
+        cursor={isCoordinatePickerActive ? 'crosshair' : (!acceptsCameraGestures ? 'default' : cursor)}
         interactive={true}
         mapboxAccessToken={MAPBOX_TOKEN}
         initialViewState={resolvedInitialView}
