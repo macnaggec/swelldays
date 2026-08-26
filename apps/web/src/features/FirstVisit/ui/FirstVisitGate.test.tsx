@@ -38,8 +38,8 @@ const markMapReady = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole('button', { name: 'Mark map ready', hidden: true }));
 };
 
-/** Half the screen is the commit line, so both sides of it are worth naming. */
-const halfScreenPx = () => window.innerHeight / 2;
+/** A third of the screen is the commit line, so both sides of it are worth naming. */
+const commitLinePx = () => window.innerHeight / 3;
 
 /**
  * Drags upward by `distancePx` of effective travel, then lifts the finger. The
@@ -110,24 +110,24 @@ describe('FirstVisitGate', () => {
     });
   });
 
-  it('enters when the finger lifts past half the screen', async () => {
+  it('enters when the finger lifts past a third of the screen', async () => {
     const user = userEvent.setup();
     renderGate();
 
     await markMapReady(user);
-    dragUpBy(screen.getByRole('dialog'), halfScreenPx() + 40);
+    dragUpBy(screen.getByRole('dialog'), commitLinePx() + 40);
 
     await waitFor(() => {
       expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
     });
   });
 
-  it('returns to the introduction when the finger lifts just short of half the screen', async () => {
+  it('returns to the introduction when the finger lifts just short of a third of the screen', async () => {
     const user = userEvent.setup();
     renderGate();
 
     await markMapReady(user);
-    dragUpBy(screen.getByRole('dialog'), halfScreenPx() - 40);
+    dragUpBy(screen.getByRole('dialog'), commitLinePx() - 40);
 
     await wait(PAST_WHEEL_IDLE_MS);
 

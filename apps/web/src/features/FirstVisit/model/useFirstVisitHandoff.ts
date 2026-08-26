@@ -3,10 +3,12 @@ import { useViewportCapabilities } from 'shared/model/viewportCapabilities';
 import { getViewportInnerSize } from 'shared/model/viewportMetrics';
 
 /**
- * Half the travel decides it: less returns to the introduction, more goes
- * through. Nothing in between is a resting place.
+ * A third of the travel decides it: less returns to the introduction, more goes
+ * through. Nothing in between is a resting place. Half a screen asked more of a
+ * thumb than a phone comfortably allows, so the line sits lower for everyone
+ * rather than differing by device.
  */
-const COMMIT_THRESHOLD = 0.5;
+const COMMIT_THRESHOLD = 1 / 3;
 /**
  * A trackpad never reports that the fingers lifted, so a pause between wheel
  * events stands in for the release. It must outlast the gaps inside a slow
