@@ -14,12 +14,13 @@ const SHEET_FULL_TOP_INSET_PX = 24;
 /**
  * Browse Peek's physical standalone height. On an iPhone it is the exact bottom-up
  * sequence approved for this surface: 8px screen-edge gap + 5px iOS home indicator +
- * 8px gap + 44px search row + 8px gap + 5px sheet grabber + 8px top-edge gap = 86px.
+ * 8px gap + 44px search row + 16px Full-reference gap + 5px sheet grabber +
+ * 8px top-edge gap = 94px.
  * The bottom three segments mirror --wa-floating-chrome-bottom-offset's own
  * standalone value in tokens.css — every bottom-based plate clears the true
  * edge the same way, whether it is a floating footer or a sheet's own Peek row.
  */
-export const SHEET_PEEK_HEIGHT_PX = 86;
+export const SHEET_PEEK_HEIGHT_PX = 94;
 /**
  * What a browser tab removes from each sheet's own standalone peek-height
  * constant: the 5px iOS indicator plus one of its two flanking 8px gaps,

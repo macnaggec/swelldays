@@ -123,6 +123,24 @@
   padding-block-start: 0;
 }
 
+/* Browse sheets clip search chrome at the scroll owner's own top edge, the same
+   line that clips list items. Internal top padding keeps the row itself at the
+   approved mid-scroll position, including enough room for Upload's intentional
+   status-dot overhang. Header-bearing sheets retain the header-owned boundary. */
+.root:is([data-sheet-snap='half'], [data-sheet-snap='full']):not(
+  :has(> [data-panel-layout-header])
+)
+  .chromeViewport {
+  inset-block-start: 0;
+  padding-block-start: var(--wa-grabber-gap);
+}
+
+.root:is([data-sheet-snap='half'], [data-sheet-snap='full']):not(
+  :has(> [data-panel-layout-header])
+) {
+  --wa-panel-chrome-top-offset: var(--wa-grabber-gap);
+}
+
 .stickyChrome {
   /* The viewport's negative inset and equal padding preserve this row's exact
      position while giving its effects paint-only room around every edge. */
@@ -137,13 +155,7 @@
      between them never moves the card grid below. */
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  /* Two separate motions on two separate properties, deliberately: `transform`
-     is the hide/reveal slide, `translate` is the sheet's 8px offset below. They
-     used to share `transform`, where the more specific rule simply won and the
-     row jumped by the other one's distance part-way through its own slide. */
-  transition:
-    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    translate 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .stickyChrome [data-panel-scroll-chrome-primary],
@@ -199,11 +211,10 @@
    here ends the slide the moment the list lands rather than letting it run on:
    the row is in place exactly when the list is, at any scroll speed.
 
-   Only transform is dropped. The sheet's own 8px offset below travels on the
-   separate `translate` property and keeps easing, which is why the two live on
-   different properties at all. */
+   The sheet clipping line is fixed, so there is no second position to ease into
+   after the list settles. */
 .stickyChrome:not([data-hidden]):not([data-scrolled-from-top]) {
-  transition: translate 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -267,15 +278,19 @@
 
 .root[data-sheet-snap='peek'] .stickyChrome {
   /* The compact toolbar contributes a fixed 4px margin on each side. This
-     padding tops that up to the full --wa-browse-sheet-leading-gap above
-     (the space after the sheet grabber) and to the flat
+     padding combines the handle's ordinary leading gap with the same fixed
+     chrome offset Half and Full use, then subtracts the toolbar's own 4px top
+     margin. The result is the Full reference gap after the sheet grabber, and
+     the flat
      --wa-floating-chrome-edge-gap below, the same distance every
      bottom-based plate clears the true edge by. Standalone below replaces
      the bottom padding with the rest of the shared
      --wa-floating-chrome-bottom-offset on top of that same 4px margin, the
      same explicit gap-grabber-gap structure every other floating plate uses,
      rather than leaving it to an invisible sheet-height reserve. */
-  padding-block: calc(var(--wa-browse-sheet-leading-gap) - 4px) calc(var(--wa-floating-chrome-edge-gap) - 4px);
+  padding-block:
+    calc(var(--wa-browse-sheet-leading-gap) + var(--wa-grabber-gap) - 4px)
+    calc(var(--wa-floating-chrome-edge-gap) - 4px);
 }
 
 :global([data-app-display-mode='standalone']) .root[data-sheet-snap='peek'] .stickyChrome {
@@ -334,25 +349,6 @@
   /* The flowing handle already owns the 12px before search. The sticky row
      owns the 12px after the filter pills, immediately before the first card. */
   padding-block: 0 var(--wa-panel-stack-gap);
-}
-
-.root[data-sheet-snap='half'] .stickyChrome[data-scrolled-from-top],
-.root[data-sheet-snap='full'] .stickyChrome[data-scrolled-from-top] {
-  /* Once content has left its initial position, the handle no longer precedes
-     returning sticky chrome, so the chrome paints 8px below the sheet top.
-     Keep that distance out of the row's box geometry: when the list returns to
-     its initial position, this eases the final 8px instead of an unanimated
-     padding change resizing and jumping the whole row.
-
-     On `translate`, not `transform`, and keyed on scroll position alone. It
-     used to be a `transform` that had to exclude a hidden replacement-less row
-     (`:is(:not([data-hidden]), :has(...replacement))`), because that row's own
-     -100% hide slide lives on `transform` too and whichever rule was more
-     specific simply replaced the other — the row jumping 8px part-way through
-     its own hide or reveal. Separate properties compose instead of competing,
-     so the two motions can now both be true at once and the guard is gone with
-     the conflict. */
-  translate: 0 var(--wa-grabber-gap);
 }
 
 .root[data-sheet-snap='half'] .stickyChrome:has([data-panel-scroll-chrome-replacement]),

@@ -17,7 +17,7 @@ describe('resolveSheetSnapHeights', () => {
     });
 
     expect(heights).toEqual({
-      peek: 86,
+      peek: 94,
       half: 287,
       full: 820,
     });
@@ -26,7 +26,7 @@ describe('resolveSheetSnapHeights', () => {
       half: viewportHeightPx - heights.half,
       full: viewportHeightPx - heights.full,
     }).toEqual({
-      peek: 758,
+      peek: 750,
       half: 557,
       full: 24,
     });
@@ -34,21 +34,21 @@ describe('resolveSheetSnapHeights', () => {
 
   it('resolves the three snap heights at 430x932', () => {
     expect(resolveSheetSnapHeights({ viewportHeightPx: 932, peekHeightPx: SHEET_PEEK_HEIGHT_PX })).toEqual({
-      peek: 86,
+      peek: 94,
       half: 317,
       full: 908,
     });
   });
 
-  it('keeps Browse Peek 86px tall in standalone after the bottom safe area is repainted', () => {
-    expect(resolveBrowseSheetPeekHeightPx({ safeAreaBottomPx: 0, isStandalone: true })).toBe(86);
-    expect(resolveBrowseSheetPeekHeightPx({ safeAreaBottomPx: 21, isStandalone: true })).toBe(65);
-    expect(resolveBrowseSheetPeekHeightPx({ safeAreaBottomPx: 34, isStandalone: true })).toBe(52);
+  it('keeps Browse Peek 94px tall in standalone after the bottom safe area is repainted', () => {
+    expect(resolveBrowseSheetPeekHeightPx({ safeAreaBottomPx: 0, isStandalone: true })).toBe(94);
+    expect(resolveBrowseSheetPeekHeightPx({ safeAreaBottomPx: 21, isStandalone: true })).toBe(73);
+    expect(resolveBrowseSheetPeekHeightPx({ safeAreaBottomPx: 34, isStandalone: true })).toBe(60);
   });
 
   it('removes the standalone home-indicator reserve from Browse Peek in a browser tab', () => {
-    expect(resolveBrowseSheetPeekHeightPx({ safeAreaBottomPx: 0, isStandalone: false })).toBe(73);
-    expect(resolveBrowseSheetPeekHeightPx({ safeAreaBottomPx: 34, isStandalone: false })).toBe(73);
+    expect(resolveBrowseSheetPeekHeightPx({ safeAreaBottomPx: 0, isStandalone: false })).toBe(81);
+    expect(resolveBrowseSheetPeekHeightPx({ safeAreaBottomPx: 34, isStandalone: false })).toBe(81);
   });
 
   it('keeps the complete 0px Upload stack 138px tall in standalone after the bottom safe area is repainted', () => {
@@ -74,7 +74,7 @@ describe('resolveSheetSnapHeights', () => {
 
 describe('nearestSheetSnap', () => {
   const heights = resolveSheetSnapHeights({ viewportHeightPx: 844, peekHeightPx: SHEET_PEEK_HEIGHT_PX });
-  // heights: { peek: 86, half: 287, full: 820 }
+  // heights: { peek: 94, half: 287, full: 820 }
 
   it('lands on peek when at rest exactly at the peek height', () => {
     expect(nearestSheetSnap({ heightPx: heights.peek, velocityPx: 0, heights })).toBe('peek');
@@ -89,7 +89,7 @@ describe('nearestSheetSnap', () => {
   });
 
   it('lands on the nearer neighbour at a midpoint biased toward half', () => {
-    // 230 is 144px from peek (86) and 57px from half (287): half is nearer.
+    // 230 is 136px from peek (94) and 57px from half (287): half is nearer.
     expect(nearestSheetSnap({ heightPx: 230, velocityPx: 0, heights })).toBe('half');
   });
 
@@ -99,8 +99,8 @@ describe('nearestSheetSnap', () => {
   });
 
   it('resolves an exact tie between peek and half to the shorter snap', () => {
-    // 186.5 is exactly 100.5px from both peek (86) and half (287).
-    expect(nearestSheetSnap({ heightPx: 186.5, velocityPx: 0, heights })).toBe('peek');
+    // 190.5 is exactly 96.5px from both peek (94) and half (287).
+    expect(nearestSheetSnap({ heightPx: 190.5, velocityPx: 0, heights })).toBe('peek');
   });
 
   it('lands on half on an upward flick from just above peek', () => {
@@ -122,7 +122,7 @@ describe('nearestSheetSnap', () => {
 
 describe('resolveBrowseSheetNavigationOpacity', () => {
   const heights = resolveSheetSnapHeights({ viewportHeightPx: 844, peekHeightPx: SHEET_PEEK_HEIGHT_PX });
-  // heights: { peek: 86, half: 287, full: 820 }
+  // heights: { peek: 94, half: 287, full: 820 }
 
   it('is fully opaque and not hidden at or below the half height', () => {
     expect(resolveBrowseSheetNavigationOpacity({ visibleHeightPx: heights.half, heights })).toEqual({

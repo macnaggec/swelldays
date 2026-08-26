@@ -51,12 +51,10 @@ async function expectVerticalGap(
   expect(lowerBox!.y - (upperBox!.y + upperBox!.height), label).toBeCloseTo(expected, 1);
 }
 
-async function expectGrabberGap(
+async function readGrabberGap(
   handle: Locator,
   lower: Locator,
-  expected: number,
-  label: string,
-): Promise<void> {
+): Promise<number> {
   const [handleGeometry, lowerBox] = await Promise.all([
     handle.evaluate((element) => {
       const box = element.getBoundingClientRect();
@@ -70,11 +68,20 @@ async function expectGrabberGap(
     }),
     lower.boundingBox(),
   ]);
-  expect(lowerBox, `${label}: lower element must be measurable`).not.toBeNull();
+  expect(lowerBox, 'grabber-gap lower element must be measurable').not.toBeNull();
   const grabberBottom = handleGeometry.top
     + handleGeometry.paddingTop
     + handleGeometry.grabberHeight;
-  expect(lowerBox!.y - grabberBottom, label).toBeCloseTo(expected, 1);
+  return lowerBox!.y - grabberBottom;
+}
+
+async function expectGrabberGap(
+  handle: Locator,
+  lower: Locator,
+  expected: number,
+  label: string,
+): Promise<void> {
+  expect(await readGrabberGap(handle, lower), label).toBeCloseTo(expected, 1);
 }
 
 function expectPhysicalGap(actual: number, expected: number, label: string): void {
@@ -157,17 +164,25 @@ test.describe('approved mobile spacing rhythm', () => {
     await expectToken(page, '--wa-browse-sheet-leading-gap', EXPECTED_PX.sheetLeadingGap);
   });
 
-  test('keeps Peek geometry and browser-tab bottom clearance', async ({ page }) => {
+  test('gives Peek the Full grabber gap while preserving browser-tab bottom clearance', async ({ page }) => {
     await openContract(page, 'browser');
-    await page.getByRole('button', { name: 'Peek' }).click();
 
     const sheet = page.getByRole('complementary', { name: 'Content drawer' });
     const handle = sheet.locator('[data-drawer-sheet-handle]');
     const searchRow = sheet.locator('[data-panel-toolbar-primary]');
+
+    await page.getByRole('button', { name: 'Full' }).click();
+    await waitForStableBox(sheet);
+    const fullGrabberGap = await readGrabberGap(handle, searchRow);
+
+    await page.getByRole('button', { name: 'Peek' }).click();
     await expect(sheet).toHaveAttribute('data-drawer-snap', 'peek');
     await expect(page.getByRole('navigation', { name: 'Browse sections' })).toHaveCount(0);
     await waitForStableBox(sheet);
-    await expectGrabberGap(handle, searchRow, EXPECTED_PX.sheetLeadingGap, 'Peek grabber to search');
+    expect(
+      await readGrabberGap(handle, searchRow),
+      'Peek grabber to search must match Full',
+    ).toBeCloseTo(fullGrabberGap, 1);
 
     const searchBox = await searchRow.boundingBox();
     expect(searchBox).not.toBeNull();
@@ -180,7 +195,7 @@ test.describe('approved mobile spacing rhythm', () => {
     ).toBeCloseTo(EXPECTED_PX.browserBottomOffset, 1);
   });
 
-  test('keeps initial Half and Full stacks at 8/12/12px', async ({ page }) => {
+  test('keeps initial Half and Full chrome on the returned-search level with 12px content gaps', async ({ page }) => {
     await openContract(page, 'browser');
 
     for (const snap of ['Half', 'Full'] as const) {
@@ -193,7 +208,12 @@ test.describe('approved mobile spacing rhythm', () => {
 
       await expect(sheet).toHaveAttribute('data-drawer-snap', snap.toLowerCase());
       await waitForStableBox(sheet);
-      await expectGrabberGap(handle, searchRow, EXPECTED_PX.sheetLeadingGap, `${snap} grabber to search`);
+      await expectGrabberGap(
+        handle,
+        searchRow,
+        EXPECTED_PX.sheetLeadingGap + EXPECTED_PX.grabberGap,
+        `${snap} grabber to fixed search line`,
+      );
       await expectVerticalGap(searchRow, pills, EXPECTED_PX.stackGap, `${snap} search to pills`);
       await expectVerticalGap(pills, firstCard, EXPECTED_PX.stackGap, `${snap} pills to first card`);
     }
@@ -264,44 +284,51 @@ test.describe('approved mobile spacing rhythm', () => {
     );
   });
 
-  test('eases Feed chrome through its final return without changing layout height', async ({ page }) => {
+  test('clips Feed chrome and list items at one line while keeping every search state aligned', async ({ page }) => {
     await openContract(page, 'browser');
     await page.getByRole('button', { name: 'Full' }).click();
 
     const stickyChrome = page.locator('[data-panel-scroll-chrome]');
+    const primary = stickyChrome.locator('[data-panel-scroll-chrome-primary]');
+    const chromeViewport = stickyChrome.locator('..');
     const scrollOwner = page.locator('[data-panel-scroll-owner]');
+    await waitForStableBox(stickyChrome);
+    const initialPrimaryTop = (await primary.boundingBox())?.y ?? Number.NaN;
 
     await page.getByRole('button', { name: 'Scroll down' }).click();
     await expect(stickyChrome).toHaveAttribute('data-hidden', 'true');
+    const hiddenClipTop = (await chromeViewport.boundingBox())?.y ?? Number.NaN;
+    const listClipTop = (await scrollOwner.boundingBox())?.y ?? Number.NaN;
+
     await page.getByRole('button', { name: 'Scroll up' }).click();
     await expect(stickyChrome).not.toHaveAttribute('data-hidden');
     await expect(stickyChrome).toHaveAttribute('data-scrolled-from-top', 'true');
     await waitForStableBox(stickyChrome);
+    const midListPrimaryTop = (await primary.boundingBox())?.y ?? Number.NaN;
 
-    const returningHeight = await stickyChrome.evaluate((element) => {
-      if (!(element instanceof HTMLElement)) throw new Error('Panel chrome must be an HTML element.');
-      return element.offsetHeight;
-    });
+    expectPhysicalGap(
+      hiddenClipTop - listClipTop,
+      0,
+      'hidden chrome clipping line to item-list clipping line',
+    );
+    expectPhysicalGap(
+      initialPrimaryTop - midListPrimaryTop,
+      0,
+      'initial search line to mid-list search line',
+    );
+
     await scrollOwner.evaluate((element) => {
       element.scrollTop = 0;
       element.dispatchEvent(new Event('scroll', { bubbles: true }));
     });
     await expect(stickyChrome).not.toHaveAttribute('data-scrolled-from-top');
-
-    const finalReturn = await stickyChrome.evaluate((element) => {
-      if (!(element instanceof HTMLElement)) throw new Error('Panel chrome must be an HTML element.');
-      return {
-        height: element.offsetHeight,
-        hasRunningTranslateTransition: element.getAnimations().some((animation) => (
-          animation instanceof CSSTransition
-          && animation.transitionProperty === 'translate'
-          && animation.playState === 'running'
-        )),
-      };
-    });
-    expect(finalReturn.height, 'final return must not resize the chrome row').toBe(returningHeight);
-    expect(finalReturn.hasRunningTranslateTransition, 'final 8px return must use the chrome motion')
-      .toBe(true);
+    await waitForStableBox(stickyChrome);
+    const settledPrimaryTop = (await primary.boundingBox())?.y ?? Number.NaN;
+    expectPhysicalGap(
+      settledPrimaryTop - midListPrimaryTop,
+      0,
+      'settled-at-top search line to mid-list search line',
+    );
   });
 
   test('keeps the full-screen Collections selector at one top position when returning from below', async ({ page }) => {

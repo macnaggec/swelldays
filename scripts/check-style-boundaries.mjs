@@ -640,7 +640,7 @@ const requiredPanelLayoutStyles = [
     // duration and the scroll-back that triggers it can be shorter, so the
     // transition has to end on arrival rather than run on past it.
     'a row that stops sliding the moment its list reaches the top',
-    /\.stickyChrome:not\(\[data-hidden\]\):not\(\[data-scrolled-from-top\]\)\s*\{[^}]*transition:\s*translate\s/s,
+    /\.stickyChrome:not\(\[data-hidden\]\):not\(\[data-scrolled-from-top\]\)\s*\{[^}]*transition:\s*none/s,
   ],
   [
     'reduced motion swaps chrome instantly instead of animating',
@@ -651,11 +651,11 @@ const requiredPanelLayoutStyles = [
     /^\.scroller\s*\{[^}]*overflow-anchor:\s*none/ms,
   ],
   [
-    // The compact toolbar already contributes 4px margin-block, the flat
-    // bottom-plate edge gap, so this row adds nothing below it — only 16px
-    // above it, after the sheet grabber.
-    'peek search row uses 16px above and the flat edge gap below',
-    /\.root\[data-sheet-snap='peek'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*calc\(var\(--wa-browse-sheet-leading-gap\)\s*-\s*4px\)\s+calc\(var\(--wa-floating-chrome-edge-gap\)\s*-\s*4px\)/s,
+    // The compact toolbar contributes 4px margin-block. Peek combines the
+    // handle's ordinary leading gap with Full's fixed chrome offset above it,
+    // and leaves the toolbar plus row to form the flat bottom-plate edge gap.
+    'peek search row matches the Full grabber gap and keeps the flat edge gap below',
+    /\.root\[data-sheet-snap='peek'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*calc\(var\(--wa-browse-sheet-leading-gap\)\s*\+\s*var\(--wa-grabber-gap\)\s*-\s*4px\)\s+calc\(var\(--wa-floating-chrome-edge-gap\)\s*-\s*4px\)/s,
   ],
   [
     'peek search row in standalone taking the full shared gap-grabber-gap offset below',
@@ -677,10 +677,12 @@ const requiredPanelLayoutStyles = [
     /\.root\[data-sheet-snap='half'\]\s+\.stickyChrome,\s*\.root\[data-sheet-snap='full'\]\s+\.stickyChrome\s*\{[^}]*padding-block:\s*0\s+var\(--wa-panel-stack-gap\)/s,
   ],
   [
-    // On `translate`, so it composes with the hide/reveal slide on `transform`
-    // instead of one rule replacing the other and jerking the row mid-motion.
-    'scrolled half and full chrome paints 8px below the sheet top without resizing its layout box',
-    /\.root\[data-sheet-snap='half'\]\s+\.stickyChrome\[data-scrolled-from-top\],\s*\.root\[data-sheet-snap='full'\]\s+\.stickyChrome\[data-scrolled-from-top\]\s*\{[^}]*translate:\s*0\s+var\(--wa-grabber-gap\)/s,
+    'headerless half and full chrome clips at the list edge while retaining the fixed search-row offset as internal padding',
+    /\.root:is\(\[data-sheet-snap='half'\],\s*\[data-sheet-snap='full'\]\):not\(\s*:has\(>\s*\[data-panel-layout-header\]\)\s*\)\s+\.chromeViewport\s*\{[^}]*inset-block-start:\s*0[^}]*padding-block-start:\s*var\(--wa-grabber-gap\)/s,
+  ],
+  [
+    'fixed half and full chrome line included in the scroll owner occupied-height reservation',
+    /\.root:is\(\[data-sheet-snap='half'\],\s*\[data-sheet-snap='full'\]\):not\(\s*:has\(>\s*\[data-panel-layout-header\]\)\s*\)\s*\{[^}]*--wa-panel-chrome-top-offset:\s*var\(--wa-grabber-gap\)/s,
   ],
   [
     'compact Gallery delegates its first 12px content gap to the first date divider',
@@ -721,6 +723,10 @@ const requiredPanelLayoutStyles = [
 ];
 
 const forbiddenPanelLayoutStyles = [
+  [
+    'a scroll-state-dependent half/full sheet chrome offset that reintroduces multiple clipping levels',
+    /\.root\[data-sheet-snap='(?:half|full)'\]\s+\.stickyChrome\[data-scrolled-from-top\][^{]*\{[^}]*(?:translate|transform|inset-block-start|top):/s,
+  ],
   [
     'scroll-state-dependent positioning for full-screen flush route chrome',
     /\.root\[data-drawer-presentation='fullScreen'\]\s+\.stickyChrome\[data-scrolled-from-top\][^{]*:has\(\[data-panel-scroll-chrome-spacing='flush'\]\)\s*\{/s,

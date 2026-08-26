@@ -110,8 +110,12 @@ export function PanelLayout({
     if (!scrollOwner || !stickyChrome) return;
 
     const height = stickyChrome.offsetHeight;
-    scrollOwner.style.setProperty('--wa-panel-chrome-height', `${height}px`);
-    scrollOwner.dataset.panelChromeHeight = String(hidden ? 0 : height);
+    const topOffset = Number.parseFloat(
+      getComputedStyle(scrollOwner).getPropertyValue('--wa-panel-chrome-top-offset'),
+    ) || 0;
+    const occupiedHeight = height + topOffset;
+    scrollOwner.style.setProperty('--wa-panel-chrome-height', `${occupiedHeight}px`);
+    scrollOwner.dataset.panelChromeHeight = String(hidden ? 0 : occupiedHeight);
   }, [stickyChromeTarget, hidden]);
 
   useLayoutEffect(() => {
@@ -121,7 +125,7 @@ export function PanelLayout({
     const observer = new ResizeObserver(publishChromeHeight);
     observer.observe(stickyChromeTarget, { box: 'border-box' });
     return () => observer.disconnect();
-  }, [publishChromeHeight, scrolledFromTop, stickyChromeTarget, contentWidth]);
+  }, [publishChromeHeight, scrolledFromTop, stickyChromeTarget, contentWidth, sheetSnap, header]);
 
   // The floating footer's own height, so the sheet-scoped `.content` can reserve exactly
   // that much bottom clearance and the footer never overlaps the last field it floats
