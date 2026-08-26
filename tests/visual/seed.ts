@@ -146,7 +146,6 @@ async function createFeedFixtures(photographerId: string): Promise<void> {
         lng: fixture.lng,
         status: 'verified',
         creatorId: photographerId,
-        aliases: [],
       },
     });
 
@@ -209,7 +208,6 @@ async function seed(): Promise<void> {
       lng: '115.13700000',
       status: 'verified',
       creatorId: photographerId,
-      aliases: ['Echo Beach', 'Batu Bolong'],
     },
   });
 

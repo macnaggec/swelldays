@@ -58,7 +58,7 @@ export {
   mediaUpdateSchema,
   registerDriveImportSchema,
 } from './validation/mediaSchemas';
-export { spotAliasSchema, spotLocationSchema, spotNameSchema } from './validation/spotSchemas';
+export { spotLocationSchema, spotNameSchema } from './validation/spotSchemas';
 export {
   beginDriveSchema,
   beginLocalSchema,

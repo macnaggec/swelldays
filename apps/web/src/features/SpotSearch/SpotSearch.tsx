@@ -12,10 +12,8 @@ import {
 import classes from './SpotSearch.module.css';
 import { IconSearch, IconMapPin } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
-import { notifications } from '@mantine/notifications';
 import { useState, useCallback, useDeferredValue, useMemo } from 'react';
 import { useSpots, Spot } from 'entities/Spot';
-import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { useViewportMetrics } from 'shared/model/viewportMetrics';
 import { SpotResultOption } from './ui/SpotResultOption';
 
@@ -90,14 +88,6 @@ export default function SpotSearch({
 
   const { data: spots = null, isFetching } = useSpots(deferredSearch, { enabled: isQueryEnabled });
 
-  const handleAliasError = useCallback((error: unknown) => {
-    notifications.show({
-      title: 'Failed to save alias',
-      message: getErrorMessage(error) || 'Unable to save alias. Please try again.',
-      color: 'red',
-    });
-  }, []);
-
   const handleSelect = useCallback((spotId: string) => {
     const spot = (spots ?? []).find(s => s.id === spotId);
     if (spot) {
@@ -143,7 +133,7 @@ export default function SpotSearch({
 
   const hasFetched = isQueryEnabled && spots !== null;
   const options = (spots ?? []).map((spot) => (
-    <SpotResultOption key={spot.id} spot={spot} onAliasError={handleAliasError} />
+    <SpotResultOption key={spot.id} spot={spot} />
   ));
 
   const renderRightSection = () => {

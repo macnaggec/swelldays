@@ -135,7 +135,6 @@ vi.mock('entities/Spot', () => ({
   }),
   useSpotPreview: () => ({ data: null }),
   useSpots: () => ({ data: mocks.spotResults, isFetching: false }),
-  useAddSpotAlias: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 vi.mock('entities/SurfSession', () => ({}));

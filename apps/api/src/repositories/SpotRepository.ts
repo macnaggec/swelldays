@@ -28,9 +28,6 @@ export interface SpotCreateInput {
   creatorId: string;
 }
 
-/** Spot with its `aliases` array — needed for the addAlias route. */
-export type SpotRow = Spot & { aliases: string[] };
-
 export type SpotCard = {
   id: string;
   name: string;
@@ -43,9 +40,8 @@ export interface ISpotRepository {
   findSpotList(filter: SpotSearchFilter): Promise<Spot[]>;
   findSpotsByBounds(swLat: number, swLng: number, neLat: number, neLng: number): Promise<Spot[]>;
   findSpotsNearby(lat: number, lng: number, radiusM: number): Promise<Spot[]>;
-  findSpotById(id: string): Promise<SpotRow | null>;
+  findSpotById(id: string): Promise<Spot | null>;
   createSpot(data: SpotCreateInput): Promise<Spot>;
-  pushSpotAlias(id: string, alias: string): Promise<void>;
   findSpotCard(id: string): Promise<SpotCard | null>;
   isSpotFavorited(spotId: string, userId: string): Promise<boolean>;
   toggleSpotFavorite(spotId: string, userId: string): Promise<boolean>;
@@ -64,7 +60,6 @@ export class SpotRepository implements ISpotRepository {
                 OR: [
                   { name: { contains: filter.search, mode: 'insensitive' } },
                   { location: { contains: filter.search, mode: 'insensitive' } },
-                  { aliases: { hasSome: [filter.search] } },
                 ],
               }
               : {},
@@ -116,11 +111,11 @@ export class SpotRepository implements ISpotRepository {
     });
   }
 
-  findSpotById(id: string): Promise<SpotRow | null> {
+  findSpotById(id: string): Promise<Spot | null> {
     return runQuery(async () => {
       const spot = await prisma.spot.findUnique({ where: { id } });
       if (!spot) return null;
-      return { ...mapToSpot(spot), aliases: spot.aliases };
+      return mapToSpot(spot);
     });
   }
 
@@ -128,15 +123,6 @@ export class SpotRepository implements ISpotRepository {
     return runQuery(async () => {
       const spot = await prisma.spot.create({ data });
       return mapToSpot(spot);
-    });
-  }
-
-  pushSpotAlias(id: string, alias: string): Promise<void> {
-    return runQuery(async () => {
-      await prisma.spot.update({
-        where: { id },
-        data: { aliases: { push: alias } },
-      });
     });
   }
 

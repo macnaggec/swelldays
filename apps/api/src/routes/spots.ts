@@ -6,8 +6,7 @@ import { mediaService } from 'server/services/MediaService';
 import { spotRepository } from 'server/repositories/SpotRepository';
 import { SPOT_STATUS } from '@swelldays/contracts';
 import type { Spot } from '@swelldays/contracts';
-import { spotNameSchema, spotLocationSchema, spotAliasSchema } from '@swelldays/contracts';
-import { NotFoundError } from 'server/errors';
+import { spotNameSchema, spotLocationSchema } from '@swelldays/contracts';
 
 export const spotsRouter = router({
   list: publicProcedure
@@ -64,19 +63,6 @@ export const spotsRouter = router({
         creatorId: ctx.user.id,
       })
     ),
-
-  /** Appends an alias to an existing spot (instant, no moderation). */
-  addAlias: protectedProcedure
-    .input(z.object({ spotId: z.string(), alias: spotAliasSchema }))
-    .mutation(async ({ input }) => {
-      const spot = await spotRepository.findSpotById(input.spotId);
-      if (!spot) throw new NotFoundError('Spot');
-      if (spot.aliases.includes(input.alias)) return { ok: true }; // idempotent
-
-      await spotRepository.pushSpotAlias(input.spotId, input.alias);
-
-      return { ok: true };
-    }),
 
   /**
    * Published media, optionally scoped to a single spot; unfiltered lists across all spots.

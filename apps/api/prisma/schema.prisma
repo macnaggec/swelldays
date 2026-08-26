@@ -130,7 +130,6 @@ model Spot {
   status           SpotStatus         @default(verified)
   creatorId        String?            @map("creator_id")
   createdAt        DateTime           @default(now()) @map("created_at")
-  aliases          String[]
   coverUrl         String?            @map("cover_url")
   mediaItems       MediaItem[]
   surfSessions     SurfSession[]

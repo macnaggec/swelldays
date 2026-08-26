@@ -5,7 +5,6 @@ import { render } from 'test/setup/render';
 import SpotSearch from './SpotSearch';
 
 const mocks = vi.hoisted(() => ({
-  addAlias: vi.fn(),
   spots: Array.from({ length: 12 }, (_, index) => ({
     id: `spot-${index}`,
     name: `Bali Spot ${index}`,
@@ -16,7 +15,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('entities/Spot', async (importOriginal) => ({
   ...await importOriginal<typeof import('entities/Spot')>(),
-  useAddSpotAlias: () => ({ isPending: false, mutateAsync: mocks.addAlias }),
   useSpots: () => ({ data: mocks.spots, isFetching: false }),
 }));
 

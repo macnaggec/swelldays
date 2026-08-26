@@ -46,7 +46,6 @@ describe('SpotRepository.findSpotsByBounds', () => {
       status: 'verified',
       creatorId: null,
       createdAt: new Date('2024-01-01'),
-      aliases: [],
       coverUrl: null,
       searchRadius: null,
     };

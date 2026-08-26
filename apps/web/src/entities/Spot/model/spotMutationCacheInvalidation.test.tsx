@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useAddSpotAlias } from './useAddSpotAlias';
 import { useCreateSpot } from './useCreateSpot';
 
 const createdSpot = {
@@ -36,12 +35,6 @@ vi.mock('shared/lib/trpc', () => ({
       create: {
         mutationOptions: (options?: object) => ({
           mutationFn: async () => createdSpot,
-          ...options,
-        }),
-      },
-      addAlias: {
-        mutationOptions: (options?: object) => ({
-          mutationFn: async () => ({ ok: true }),
           ...options,
         }),
       },
@@ -86,10 +79,6 @@ function expectInvalidated(queryClient: QueryClient, queryKey: unknown[]) {
   expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true);
 }
 
-function expectFresh(queryClient: QueryClient, queryKey: unknown[]) {
-  expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(false);
-}
-
 describe('Spot mutation cache invalidation', () => {
   let queryClient: QueryClient;
 
@@ -118,21 +107,5 @@ describe('Spot mutation cache invalidation', () => {
     expectInvalidated(queryClient, keys.search);
     expectInvalidated(queryClient, keys.worldMap);
     expectInvalidated(queryClient, keys.localMap);
-  });
-
-  it('invalidates every list and search projection after adding an alias without refreshing maps', async () => {
-    const keys = seedSpotCollections(queryClient);
-    const { result } = renderHook(() => useAddSpotAlias(), {
-      wrapper: createWrapper(queryClient),
-    });
-
-    await act(async () => {
-      await result.current.mutateAsync({ spotId: createdSpot.id, alias: 'Pipe' });
-    });
-
-    expectInvalidated(queryClient, keys.list);
-    expectInvalidated(queryClient, keys.search);
-    expectFresh(queryClient, keys.worldMap);
-    expectFresh(queryClient, keys.localMap);
   });
 });
