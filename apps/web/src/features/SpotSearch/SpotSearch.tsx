@@ -141,7 +141,7 @@ export default function SpotSearch({
     onClear?.();
   }, [handleClear, onClear]);
 
-  const hasFetched = isQueryEnabled && !isFetching && spots !== null;
+  const hasFetched = isQueryEnabled && spots !== null;
   const options = (spots ?? []).map((spot) => (
     <SpotResultOption key={spot.id} spot={spot} onAliasError={handleAliasError} />
   ));
