@@ -201,6 +201,22 @@ describe('FirstVisitGate', () => {
     expect(screen.getByRole('heading', { name: TITLE })).not.toBeNull();
   });
 
+  it('hands the app back after entering in review mode', async () => {
+    window.localStorage.setItem(FIRST_VISIT_STORAGE_KEY, 'seen');
+    window.history.replaceState({}, '', '/?firstVisitReview=1');
+
+    const user = userEvent.setup();
+    const { container } = renderGate();
+
+    await markMapReady(user);
+    await user.click(screen.getByRole('button', { name: 'Enter the map' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
+    });
+    expect(container.querySelector('[data-first-visit-app]')).not.toHaveAttribute('inert');
+  });
+
   it('lets an authenticated returning visitor explicitly reopen review mode', () => {
     window.localStorage.setItem(FIRST_VISIT_STORAGE_KEY, 'seen');
     window.history.replaceState({}, '', '/?firstVisitReview=1');

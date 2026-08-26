@@ -22,20 +22,29 @@ export function FirstVisitGate({
   isSessionLoading,
   isAuthenticated,
 }: FirstVisitGateProps) {
-  const overlayRef = useRef<HTMLElement | null>(null);
-  const [hasVisited, setHasVisited] = useState(readFirstVisitAcknowledgement);
-  const [isMapReady, setIsMapReady] = useState(false);
-  const [entryRequested, setEntryRequested] = useState(false);
+  /*
+   * Review mode decides only where the introduction starts, never that it stays.
+   * Overriding the acknowledgement on every render held the introduction open
+   * after the visitor had entered, which left the app underneath inert: visible,
+   * but with nothing clickable or draggable.
+   */
   const isReviewMode = useMemo(
     () => new URLSearchParams(window.location.search).get('firstVisitReview') === '1',
     [],
   );
 
+  const overlayRef = useRef<HTMLElement | null>(null);
+  const [hasVisited, setHasVisited] = useState(
+    () => (isReviewMode ? false : readFirstVisitAcknowledgement()),
+  );
+  const [isMapReady, setIsMapReady] = useState(false);
+  const [entryRequested, setEntryRequested] = useState(false);
+
   const presentation = resolveFirstVisitPresentation({
     isEligibleRoute,
     isSessionLoading: isReviewMode ? false : isSessionLoading,
     isAuthenticated: isReviewMode ? false : isAuthenticated,
-    hasVisited: isReviewMode ? false : hasVisited,
+    hasVisited,
   });
   const isCoveringApp = presentation !== 'hidden';
 
@@ -60,13 +69,15 @@ export function FirstVisitGate({
   });
 
   useEffect(() => {
-    if (isSessionLoading || !isAuthenticated || hasVisited) return;
+    // Review mode is an explicit request to watch the introduction, so the
+    // signed-in bypass must not close it before it has been seen.
+    if (isReviewMode || isSessionLoading || !isAuthenticated || hasVisited) return;
     writeFirstVisitAcknowledgement();
     // Authenticated people already know the product. Remembering the bypass
     // prevents the introduction appearing if they later sign out here.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- session resolution owns this persistent gate transition
     setHasVisited(true);
-  }, [hasVisited, isAuthenticated, isSessionLoading]);
+  }, [hasVisited, isAuthenticated, isReviewMode, isSessionLoading]);
 
   useEffect(() => {
     if (!entryRequested) return;

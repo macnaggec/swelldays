@@ -17,8 +17,16 @@ const WHEEL_IDLE_MS = 200;
 const TOUCH_SLOP_PX = 10;
 const LINE_HEIGHT_PX = 16;
 
-const SETTLE_BASE_MS = 260;
-const SETTLE_SPAN_MS = 460;
+/** Returning to the introduction is a cancellation, so it can take its time. */
+const RETURN_BASE_MS = 260;
+const RETURN_SPAN_MS = 460;
+/**
+ * The reveal plays after the decision is already made, so it should land rather
+ * than drift. Both the duration and the curve are shorter than the return's,
+ * whose long tail spent its final stretch creeping the last few pixels.
+ */
+const REVEAL_BASE_MS = 190;
+const REVEAL_SPAN_MS = 250;
 
 const clampProgress = (value: number) => Math.min(1, Math.max(0, value));
 
@@ -104,13 +112,16 @@ export function useFirstVisitHandoff({
       return;
     }
 
-    const duration = SETTLE_BASE_MS + Math.abs(span) * SETTLE_SPAN_MS;
+    const isReveal = target === 1;
+    const duration = isReveal
+      ? REVEAL_BASE_MS + Math.abs(span) * REVEAL_SPAN_MS
+      : RETURN_BASE_MS + Math.abs(span) * RETURN_SPAN_MS;
     let startedAt: number | null = null;
 
     const step = (now: number) => {
       if (startedAt === null) startedAt = now;
       const elapsed = Math.min(1, (now - startedAt) / duration);
-      const eased = 1 - (1 - elapsed) ** 3;
+      const eased = isReveal ? 1 - (1 - elapsed) ** 2 : 1 - (1 - elapsed) ** 3;
       write(from + span * eased);
 
       if (elapsed < 1) {
