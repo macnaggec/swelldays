@@ -6,6 +6,7 @@ import { AppShell } from 'app/AppShell';
 import { AuthModalProvider } from 'features/Auth';
 import { AddSpotProvider, useAddSpotStore } from 'features/AddSpot';
 import { useCartSessionSync } from 'features/Cart';
+import { FirstVisitGate } from 'features/FirstVisit';
 import classes from './__root.module.css';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
@@ -24,9 +25,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootLayout() {
   useQueryCacheSessionSync();
   useCartSessionSync();
+  const { isAuthenticated, isLoading: isSessionLoading } = useUser();
 
   const isAddSpotActive = useAddSpotStore((s) => s.isActive);
   const matches = useMatches();
+  const isFirstVisitEligibleRoute = matches.some((match) => match.routeId === '/_panel/');
   const routeIntent = resolveAppRouteIntent(
     matches,
     isAddSpotActive ? 'immersiveMapInput' : undefined,
@@ -54,9 +57,15 @@ function RootLayout() {
             preferredExpanded={sheetPreferredExpanded}
             onPreferredExpandedChange={setSheetPreferredExpanded}
           >
-            <AppShell>
-              <Outlet />
-            </AppShell>
+            <FirstVisitGate
+              isEligibleRoute={isFirstVisitEligibleRoute}
+              isSessionLoading={isSessionLoading}
+              isAuthenticated={isAuthenticated}
+            >
+              <AppShell>
+                <Outlet />
+              </AppShell>
+            </FirstVisitGate>
           </BrowseSurfaceProvider>
         </AppShellLayoutPolicyProvider>
       </AddSpotProvider>

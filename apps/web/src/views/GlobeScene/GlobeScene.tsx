@@ -2,6 +2,7 @@ import { GlobeMap, type MapSpotProjection } from 'widgets/GlobeMap';
 import { useMapSpots } from 'entities/Spot';
 import { AddSpotPanel, useAddSpotStore } from 'features/AddSpot';
 import { FavoriteSpotButton } from 'features/FavoriteSpot';
+import { useFirstVisitMapReadiness } from 'features/FirstVisit';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMatches, useNavigate } from '@tanstack/react-router';
 import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
@@ -56,6 +57,7 @@ function useDocumentHidden() {
  */
 export function GlobeScene() {
   const { data: spots = [] } = useMapSpots(getOverviewMapBounds());
+  const { markMapReady } = useFirstVisitMapReadiness();
   const mapSpots = useMemo<MapSpotProjection[]>(
     () => spots.map(({ id, name, coords, status }) => ({ id, name, coords, status })),
     [spots],
@@ -228,6 +230,7 @@ export function GlobeScene() {
         onMapCoordinateClick={handleMapCoordinateClick}
         onUserExploreStart={() => setIsUserExploring(true)}
         onUserExploreEnd={() => setIsUserExploring(false)}
+        onMapReady={markMapReady}
         onCameraGestureStart={handleCameraGestureStart}
         renderSelectedSpotContent={(spot) => <FavoriteSpotButton spotId={spot.id} />}
       />

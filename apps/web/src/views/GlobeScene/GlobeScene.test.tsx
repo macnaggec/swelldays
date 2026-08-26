@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   browseSurfaceMode: 'results' as 'map' | 'results',
   showBrowseResults: vi.fn(),
   notifyError: vi.fn(),
+  markMapReady: vi.fn(),
   addSpotState: {
     isActive: false,
     tempPin: null as LngLat | null,
@@ -43,6 +44,7 @@ vi.mock('widgets/GlobeMap', () => ({
     onMapCoordinateClick,
     onSpotSelect,
     onCameraGestureStart,
+    onMapReady,
     selectedSpotId,
     selectedSpotFocusEnabled,
     tempPin,
@@ -52,6 +54,7 @@ vi.mock('widgets/GlobeMap', () => ({
     onMapCoordinateClick?: (coords: LngLat) => void;
     onSpotSelect: (spot: { id: string }) => void;
     onCameraGestureStart?: () => void;
+    onMapReady?: () => void;
     selectedSpotId?: string | null;
     selectedSpotFocusEnabled?: boolean;
     tempPin?: LngLat | null;
@@ -72,6 +75,7 @@ vi.mock('widgets/GlobeMap', () => ({
       <button onClick={() => onSpotSelect({ id: 'spot-1' })}>Select Pipeline</button>
       <button onClick={() => onCameraGestureStart?.()}>Explore map</button>
       <button onClick={() => onMapCoordinateClick?.([151.2, -33.85])}>Place pin</button>
+      <button onClick={() => onMapReady?.()}>Complete map load</button>
     </div>
   ),
   NO_MAP_CAMERA_INSETS: { top: 0, right: 0, bottom: 0, left: 0 },
@@ -85,6 +89,13 @@ vi.mock('features/AddSpot', () => ({
   AddSpotPanel: () => <div>Add spot panel</div>,
   useAddSpotStore: (selector: (state: typeof mocks.addSpotState) => unknown) =>
     selector(mocks.addSpotState),
+}));
+
+vi.mock('features/FirstVisit', () => ({
+  useFirstVisitMapReadiness: () => ({
+    isMapReady: false,
+    markMapReady: mocks.markMapReady,
+  }),
 }));
 
 vi.mock('shared/model/panelExpansionStore', () => ({
@@ -184,6 +195,16 @@ function globeSceneTree() {
 function renderGlobeScene() {
   return render(globeSceneTree());
 }
+
+describe('GlobeScene first-visit readiness', () => {
+  it('forwards Mapbox readiness to the first-visit gate', () => {
+    renderGlobeScene();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Complete map load' }));
+
+    expect(mocks.markMapReady).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('GlobeScene upload spot selection', () => {
   beforeEach(() => {

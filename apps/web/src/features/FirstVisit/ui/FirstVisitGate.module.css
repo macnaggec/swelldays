@@ -1,0 +1,403 @@
+.app {
+  display: contents;
+}
+
+/*
+ * --first-visit-progress is the handoff position, written by the gesture:
+ * 0 is the introduction at rest, 1 is the map fully uncovered. Every layer
+ * below derives its motion from that one number, so the drag, the spring-back
+ * and the final reveal all stay in step.
+ *
+ * The app renders behind this overlay, so the map cannot literally slide over
+ * it. Clipping the overlay away from its bottom edge uncovers the live map in
+ * the same direction and never transforms the app — a transform there would
+ * become the containing block for every fixed-position element inside it.
+ */
+.overlay {
+  --first-visit-progress: 0;
+  /* How long one wave takes to travel from the horizon to past the viewer.
+     Shorter is faster; the half-cycle offset below follows it automatically. */
+  --first-visit-swell-duration: 18s;
+
+  position: fixed;
+  inset: 0;
+  z-index: var(--wa-z-first-visit);
+  min-height: 100dvh;
+  overflow: hidden;
+  color: rgba(244, 249, 250, 0.96);
+  background: var(--wa-globe-bg);
+  container-type: size;
+  isolation: isolate;
+  overscroll-behavior: contain;
+  touch-action: none;
+  clip-path: inset(0 0 calc(var(--first-visit-progress) * 100%) 0);
+}
+
+/* The leading edge of the arriving map, so the reveal reads as a surface
+   rising rather than as the introduction being erased. */
+.overlay[data-first-visit-state='intro']::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: calc(var(--first-visit-progress) * 100%);
+  left: 0;
+  z-index: 5;
+  height: 1px;
+  background: rgba(244, 249, 250, 0.34);
+  box-shadow: 0 -14px 44px rgba(3, 12, 20, 0.62);
+  opacity: clamp(0, calc(var(--first-visit-progress) * 6), 1);
+  pointer-events: none;
+}
+
+/*
+ * Two identical plates run the same slow advance, offset by half a cycle and
+ * cross-faded, so the water keeps coming forward without a seam. Scaling about
+ * the horizon keeps the horizon planted while the foreground water grows and
+ * travels down past the viewer.
+ */
+.artwork {
+  position: absolute;
+  inset: -4%;
+  z-index: 0;
+  opacity: 0;
+  transform: translate3d(0, calc(var(--first-visit-progress) * -40px), 0);
+  transition: opacity 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.overlay[data-first-visit-state='intro'] .artwork {
+  opacity: 1;
+}
+
+/*
+ * The half-cycle offset rides in a custom property rather than in its own
+ * `animation-delay` declaration. The `animation` shorthand below resets every
+ * longhand it does not name, so a separate delay on the trailing plate was
+ * being zeroed: both plates then ran in lockstep, reached opacity 0 together,
+ * and let the dark ground through at every cycle boundary. Carried inside the
+ * shorthand, the offset cannot be orphaned by declaration order.
+ */
+.plate {
+  --first-visit-plate-offset: 0s;
+
+  position: absolute;
+  inset: 0;
+  background-image: url('/first-visit-waves-portrait.webp');
+  background-repeat: no-repeat;
+  background-position: center 56%;
+  background-size: cover;
+  transform-origin: 50% 43%;
+}
+
+.plateTrailing {
+  --first-visit-plate-offset: calc(var(--first-visit-swell-duration) / -2);
+}
+
+.veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(118% 82% at 50% 46%, rgba(6, 20, 30, 0) 38%, rgba(6, 20, 30, 0.52) 100%),
+    linear-gradient(
+      to bottom,
+      rgba(6, 20, 30, 0.46) 0%,
+      rgba(6, 20, 30, 0.06) 34%,
+      rgba(6, 20, 30, 0.1) 62%,
+      rgba(6, 20, 30, 0.62) 100%
+    );
+  pointer-events: none;
+}
+
+/*
+ * The logo and the prompt are docked to the edges, so the message sits in the
+ * true centre of the screen instead of being pushed off it by their heights.
+ */
+.content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding:
+    calc(var(--wa-safe-area-top) + clamp(150px, 22cqh, 210px))
+    26px
+    calc(var(--wa-safe-area-bottom) + clamp(104px, 15cqh, 150px));
+  color: inherit;
+  text-align: center;
+  opacity: clamp(0, calc(1 - var(--first-visit-progress) * 0.8), 1);
+}
+
+/*
+ * The entrance runs on these inner wrappers, never on the elements carrying the
+ * progress transform. A CSS animation outranks a stylesheet declaration, so
+ * animating the same element would freeze the handoff motion outright.
+ */
+.rise {
+  display: block;
+  text-wrap: balance;
+}
+
+.logo {
+  position: absolute;
+  top: calc(var(--wa-safe-area-top) + clamp(26px, 4cqh, 46px));
+  right: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  transform: translate3d(0, calc(var(--first-visit-progress) * -52px), 0);
+}
+
+.logoImage {
+  display: block;
+  width: clamp(198px, 55cqw, 300px);
+  height: auto;
+  opacity: 0.8;
+  filter: drop-shadow(0 2px 18px rgba(4, 16, 22, 0.38));
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(18px, 3cqh, 34px);
+  max-width: 72ch;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: clamp(10px, 2.7cqw, 12px);
+  font-weight: 500;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: rgba(244, 249, 250, 0.72);
+  text-shadow: 0 1px 10px rgba(4, 16, 22, 0.6);
+  transform: translate3d(0, calc(var(--first-visit-progress) * -75px), 0);
+}
+
+.title {
+  margin: 0;
+  font-family: 'Cormorant Garamond Variable', 'Times New Roman', serif;
+  font-size: clamp(42px, 11.8cqw, 72px);
+  font-weight: 300;
+  line-height: 1.02;
+  letter-spacing: 0.006em;
+  color: rgba(244, 249, 250, 0.96);
+  text-shadow: 0 2px 26px rgba(4, 16, 22, 0.42);
+  transform: translate3d(0, calc(var(--first-visit-progress) * -150px), 0);
+}
+
+.tagline {
+  max-width: 28ch;
+  margin: 0;
+  font-size: clamp(15px, 3.8cqw, 17px);
+  font-weight: 300;
+  line-height: 1.62;
+  color: rgba(244, 249, 250, 0.72);
+  text-shadow: 0 1px 12px rgba(4, 16, 22, 0.62);
+  transform: translate3d(0, calc(var(--first-visit-progress) * -105px), 0);
+}
+
+.dock {
+  position: absolute;
+  right: 0;
+  bottom: calc(var(--wa-safe-area-bottom) + clamp(12px, 2.4cqh, 24px));
+  left: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  opacity: clamp(0, calc(1 - var(--first-visit-progress) * 2.6), 1);
+}
+
+/* The prompt is a hairline, not a pill, so the shared control's own box is
+   cleared back to nothing and only its behaviour and semantics are kept. */
+.enterButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: auto;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  padding: 0 26px;
+  color: inherit;
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.enterButton:focus-visible {
+  outline: 2px solid rgba(244, 249, 250, 0.98);
+  outline-offset: 8px;
+}
+
+.enterButton:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.thread {
+  position: relative;
+  width: 1px;
+  height: clamp(40px, 7cqh, 78px);
+  overflow: hidden;
+  background: linear-gradient(to bottom, transparent, rgba(244, 249, 250, 0.22));
+}
+
+@container (min-width: 48em) {
+  /* Matches the media condition on the preload in index.html — a different
+     boundary here would fetch one crop and then paint the other. */
+  .plate {
+    background-image: url('/first-visit-waves-landscape.webp');
+  }
+
+  .content {
+    padding:
+      calc(var(--wa-safe-area-top) + clamp(160px, 22cqh, 240px))
+      clamp(34px, 5cqw, 76px)
+      calc(var(--wa-safe-area-bottom) + clamp(110px, 15cqh, 170px));
+  }
+
+  .logo {
+    top: calc(var(--wa-safe-area-top) + clamp(34px, 5.5cqh, 66px));
+  }
+
+  .logoImage {
+    width: clamp(168px, 19cqw, 268px);
+  }
+
+  .eyebrow {
+    font-size: clamp(9px, 0.85cqw, 11px);
+    letter-spacing: 0.52em;
+  }
+
+  .title {
+    font-size: clamp(34px, 5.6cqw, 82px);
+  }
+
+  .tagline {
+    max-width: 40ch;
+    font-size: clamp(12px, 1.15cqw, 15px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .plate {
+    animation:
+      first-visit-swell
+      var(--first-visit-swell-duration)
+      linear
+      var(--first-visit-plate-offset)
+      infinite;
+  }
+
+  .overlay[data-first-visit-state='intro'] .rise,
+  .overlay[data-first-visit-state='intro'] .thread {
+    animation: first-visit-rise 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .overlay[data-first-visit-state='intro'] .eyebrow .rise {
+    animation-delay: 220ms;
+  }
+
+  .overlay[data-first-visit-state='intro'] .title .rise {
+    animation-duration: 1000ms;
+    animation-delay: 320ms;
+  }
+
+  .overlay[data-first-visit-state='intro'] .tagline .rise {
+    animation-delay: 460ms;
+  }
+
+  .overlay[data-first-visit-state='intro'] .thread {
+    animation-delay: 620ms;
+  }
+
+  .thread::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: -40%;
+    height: 40%;
+    background: linear-gradient(to bottom, transparent, rgba(244, 249, 250, 0.96));
+    animation: first-visit-drip 2.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .artwork {
+    transition: none;
+  }
+
+  .plate {
+    transform: scale(1.06);
+  }
+
+  .plateTrailing {
+    display: none;
+  }
+}
+
+/*
+ * The seam is a cross-fade between two zoom levels of the same photograph. The
+ * wider the zoom span, the more different those two frames look while they
+ * overlap, which reads as a dip in the middle of the loop. A narrow span keeps
+ * the pair nearly identical, so the handover disappears. The fade windows are
+ * sized against the half-cycle offset so the two plates are never both partly
+ * transparent at once; otherwise the dark ground shows through between them.
+ */
+@keyframes first-visit-swell {
+  0% {
+    opacity: 0;
+    transform: scale(1.03) translateY(-1%);
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  78% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.16) translateY(2.8%);
+  }
+}
+
+@keyframes first-visit-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 22px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes first-visit-drip {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+
+  22% {
+    opacity: 1;
+  }
+
+  72% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(350%);
+  }
+}

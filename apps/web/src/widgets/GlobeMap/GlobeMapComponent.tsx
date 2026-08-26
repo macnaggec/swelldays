@@ -73,6 +73,8 @@ export interface GlobeMapProps {
   onMapCoordinateClick?: (coords: LngLat) => void;
   onUserExploreStart?: () => void;
   onUserExploreEnd?: () => void;
+  /** Reports that Mapbox has completed its initial visual load. */
+  onMapReady?: () => void;
   /** Reports the start of genuine camera movement, excluding clicks and pointer-down alone. */
   onCameraGestureStart?: () => void;
   /** Feature-owned content (e.g. a favorite toggle) rendered in the selected-spot popup — GlobeMap stays feature-agnostic. */
@@ -93,6 +95,7 @@ export function GlobeMapComponent({
   onMapCoordinateClick,
   onUserExploreStart,
   onUserExploreEnd,
+  onMapReady,
   onCameraGestureStart,
   renderSelectedSpotContent,
 }: GlobeMapProps) {
@@ -317,12 +320,13 @@ export function GlobeMapComponent({
     mapInstanceRef.current = e.target as mapboxgl.Map;
     setIsLoaded(true);
     loadImages();
+    onMapReady?.();
 
     const pendingFocus = pendingFocusRef.current;
     if (pendingFocus) {
       focusSpotById(pendingFocus.spotId);
     }
-  }, [focusSpotById, loadImages]);
+  }, [focusSpotById, loadImages, onMapReady]);
 
   const handleCoordinateClick = useCallback((e: MapMouseEvent) => {
     onMapCoordinateClick?.([e.lngLat.lng, e.lngLat.lat]);

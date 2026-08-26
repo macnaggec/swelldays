@@ -229,6 +229,23 @@ describe('GlobeMapComponent motion policy', () => {
     });
   });
 
+  it('reports when Mapbox has completed its initial load', () => {
+    const onMapReady = vi.fn();
+    render(
+      <GlobeMapComponent
+        spots={spots}
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        onMapReady={onMapReady}
+      />,
+    );
+
+    expect(onMapReady).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /load map/i }));
+
+    expect(onMapReady).toHaveBeenCalledTimes(1);
+  });
+
   it.each(['paused', 'disabled'] as const)('does not start ambient spin on load when motion is %s', (motionPolicy) => {
     render(<GlobeMapComponent spots={spots} onSpotSelect={vi.fn()} motionPolicy={motionPolicy} />);
 

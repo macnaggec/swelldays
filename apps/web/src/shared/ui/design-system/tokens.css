@@ -12,6 +12,7 @@
      always paints above the content surface (lightbox) that triggered it. */
   --wa-z-modal-content: 500;
   --wa-z-modal-interrupt: 600;
+  --wa-z-first-visit: 700;
   --wa-z-panel-chrome: 10;
 
   /* Responsive layout */
