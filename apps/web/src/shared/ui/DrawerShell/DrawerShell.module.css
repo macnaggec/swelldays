@@ -25,6 +25,16 @@
   padding-block: 0;
   border-radius: var(--wa-radius-sheet) var(--wa-radius-sheet) 0 0;
   overflow: hidden;
+  /* framer-motion applies these itself, but only while it owns the surface's
+     pointer-down listener. The sheet now starts its own drags (DrawerShell.tsx) so the
+     list inside can keep native touch scrolling, so they move here unchanged: without
+     them a mouse drag down the sheet selects the search placeholder and the upload
+     label on the way, and a long press raises iOS's callout mid-drag. Deliberately not
+     `touch-action` — that one must stay off the surface, or it would be intersected
+     down onto the list and freeze it. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Single-placement map workflows size to their actual controls instead of
@@ -59,6 +69,28 @@
      strip. Interactive footer chrome owns its own indicator clearance below. */
   padding-block-end: var(--wa-keyboard-inset-bottom, 0px);
   border-radius: 0;
+}
+
+/* framer-motion stamps `touch-action` on a surface only while it owns that surface's
+   pointer-down listener. The sheet starts its own drags instead (DrawerShell.tsx), so
+   nothing reserves vertical touch any more — and an unreserved vertical touch is one the
+   browser may claim for panning at any moment. When it does, it cancels the pointer, and
+   framer-motion treats a cancelled pointer exactly like a released finger: the drag ends
+   mid-gesture and the sheet commits to the next snap while the finger is still down.
+
+   These two rules reserve vertical touch for precisely the areas the sheet drags, and no
+   more, mirroring handleSurfacePointerDown's own rule. Below `full` that is the whole
+   surface, since the list is frozen there. At `full` it is only the band above the list —
+   grabber, header row, search row with its upload button — so the list itself keeps
+   native touch scrolling. `pan-x` rather than `none`: the filter pills and the date strip
+   must still swipe sideways.
+
+   This half covers everything below `full`, keyed on `data-drawer-snap` so the
+   content-sized sheet (AddSpot), which carries no snap, keeps scrolling its own content.
+   The band above the list is reserved by PanelLayout, which owns those rows — see
+   `.root[data-sheet-snap]` in PanelLayout.module.css. */
+.surface[data-drawer-presentation='bottomSheet'][data-drawer-snap]:not([data-drawer-snap='full']) {
+  touch-action: pan-x;
 }
 
 .surface[data-drawer-presentation='bottomSheet'][data-drawer-snap='peek'] .dragHandle {

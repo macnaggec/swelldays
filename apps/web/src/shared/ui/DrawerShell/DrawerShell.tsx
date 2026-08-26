@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type RefObject,
 } from 'react';
@@ -101,7 +102,13 @@ type DrawerShellPositionKey = DrawerShellState | SheetSnap | 'content';
 // Small because dragConstraints already bounds the travel between full and peek; this
 // only softens the stop at either end rather than allowing real overshoot.
 const SHEET_DRAG_ELASTIC = 0.08;
-const SHEET_KEYBOARD_DISMISS_DRAG_THRESHOLD_PX = 12;
+/**
+ * Finger travel, in px, past which a gesture on the sheet reads as a swipe rather than a
+ * tap. One number for both consequences of that single judgement: an already-open
+ * keyboard is dismissed, and the tap the browser still delivers afterwards — which would
+ * focus the search field or press the upload button — is swallowed.
+ */
+const SHEET_SWIPE_SLOP_PX = 12;
 const SIDE_OVERLAY_WIDTH_VW = 45;
 const FULL_SCREEN_WIDTH_VW = 100;
 // mapbox-gl's own default LogoControl is 88px wide (mapbox-gl.css:
@@ -418,26 +425,68 @@ export function DrawerShell(props: DrawerShellProps) {
     [destinationWidth, panelOpen, transitioning, props.presentation],
   );
 
-  // The panel scroll owner the sheet arbitrates with (step 8): registered by PanelLayout
-  // through SheetScrollOwnerContext, never queried by attribute.
-  const removeScrollOwnerListenerRef = useRef<() => void>(() => { });
-  const [contentScrolledFromTop, setContentScrolledFromTop] = useState(false);
-
+  // The panel's scrolling list, registered by PanelLayout through
+  // SheetScrollOwnerContext rather than queried by attribute. The sheet needs it to
+  // answer one question per gesture: did the finger land inside the list, or on the
+  // chrome above it — grabber, search row, upload button? Its scroll offset is
+  // deliberately not tracked and never reset: a collapse from `full` keeps the reader's
+  // place in the list, which is the whole point of leaving the list alone.
+  const scrollOwnerRef = useRef<HTMLElement | null>(null);
   const registerScrollOwner = useCallback((element: HTMLElement | null) => {
-    removeScrollOwnerListenerRef.current();
-    removeScrollOwnerListenerRef.current = () => { };
-    if (!element) return;
+    scrollOwnerRef.current = element;
+  }, []);
 
-    if (snap !== undefined && snap !== 'full') element.scrollTop = 0;
-    const handleScroll = () => {
-      setContentScrolledFromTop(snap === 'full' && element.scrollTop > 0);
+  // Armed by a release that travelled far enough to be a swipe; disarmed by the tap it
+  // then swallows, or by the next pointer-down, whichever comes first.
+  const suppressTapRef = useRef(false);
+
+  /**
+   * Who owns this gesture, decided from where the finger landed — the only fact
+   * available at pointer-down, and under this sheet's rules the only one needed.
+   *
+   * A gesture that starts anywhere above the list is the sheet's, at every snap and in
+   * either direction. A gesture that starts inside the list is the list's, but only at
+   * `full` — the one snap where the list scrolls at all (SheetContentScrollContext
+   * below). Below `full` the list is frozen, so a finger on a card still moves the sheet.
+   *
+   * Pulling down while the list already sits at its top stays the list's, and rubber-bands
+   * as the browser normally would; the enlarged chrome band above is what the sheet is
+   * dragged down by instead.
+   */
+  const handleSurfacePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+    suppressTapRef.current = false;
+    const scrollOwner = scrollOwnerRef.current;
+    const startedInList = snap === 'full'
+      && scrollOwner !== null
+      && event.target instanceof Node
+      && scrollOwner.contains(event.target);
+    if (startedInList) return;
+    dragControls.start(event);
+  };
+
+  // framer-motion's drag neither calls preventDefault nor captures the pointer, so once
+  // the finger lifts the browser still delivers the tap it queued at pointer-down: the
+  // search field would focus and raise the keyboard, and the upload button would fire.
+  // `mousedown` is where focus is decided, so preventing that is what keeps the keyboard
+  // shut; `click` is what would start the upload. Both are taken in the capture phase, so
+  // they are stopped before reaching the control. With a mouse, `mousedown` arrives before
+  // the drag has ended and is correctly left alone — only the trailing click is swallowed.
+  useEffect(() => {
+    const surface = surfaceRef.current;
+    if (!isSheetDraggable || !surface) return;
+    const swallowTapAfterSwipe = (event: MouseEvent) => {
+      if (!suppressTapRef.current) return;
+      if (event.type === 'click') suppressTapRef.current = false;
+      event.preventDefault();
+      event.stopPropagation();
     };
-    handleScroll();
-    element.addEventListener('scroll', handleScroll);
-    removeScrollOwnerListenerRef.current = () => {
-      element.removeEventListener('scroll', handleScroll);
+    surface.addEventListener('mousedown', swallowTapAfterSwipe, true);
+    surface.addEventListener('click', swallowTapAfterSwipe, true);
+    return () => {
+      surface.removeEventListener('mousedown', swallowTapAfterSwipe, true);
+      surface.removeEventListener('click', swallowTapAfterSwipe, true);
     };
-  }, [snap]);
+  }, [isSheetDraggable]);
 
   const handleSheetDrag: DragHandler = () => {
     const surface = surfaceRef.current;
@@ -446,14 +495,24 @@ export function DrawerShell(props: DrawerShellProps) {
     publishDrawerGeometry(surface.getBoundingClientRect());
   };
 
-  const handleSheetDragEnd: DragHandler = (_event, info) => {
+  const handleSheetDragEnd: DragHandler = (event, info) => {
     publishDrawerDragging(false);
     const surface = surfaceRef.current;
     if (!surface || snap === undefined || !onSnapChange) return;
     const heightPx = sheetRestPx - surface.getBoundingClientRect().top;
-    const nextSnap = nearestSheetSnap({ heightPx, velocityPx: info.velocity.y, heights, availableSnaps });
-    if (Math.abs(info.offset.y) >= SHEET_KEYBOARD_DISMISS_DRAG_THRESHOLD_PX) {
+    // Only a real release may carry the sheet on to a different snap. The browser cancels
+    // the pointer the moment it takes a gesture over for its own panning, and
+    // framer-motion ends a drag on pointercancel through the very same handler as
+    // pointerup (PanSession), so without this the sheet would settle on the next snap
+    // while the finger was still down. A cancelled gesture settles back where it started.
+    const nextSnap = event.type === 'pointercancel'
+      ? snap
+      : nearestSheetSnap({ heightPx, velocityPx: info.velocity.y, heights, availableSnaps });
+    if (Math.abs(info.offset.y) >= SHEET_SWIPE_SLOP_PX) {
+      // Closes a keyboard that was already up before the swipe; the capture-phase
+      // listener above is what stops a new one from opening after it.
       dismissActiveTextEntry();
+      suppressTapRef.current = true;
     }
     if (nextSnap === snap) {
       // The resolved snap did not change, so nothing re-renders and the declarative
@@ -534,7 +593,13 @@ export function DrawerShell(props: DrawerShellProps) {
         transition={transition}
         drag={isSheetDraggable ? 'y' : false}
         dragControls={isSheetDraggable ? dragControls : undefined}
-        dragListener={isSheetDraggable ? !contentScrolledFromTop : undefined}
+        // Never framer-motion's own whole-surface listener: it would also stamp
+        // `touch-action: pan-x` on the surface, and touch-action is intersected down the
+        // tree, so the list inside could never be scrolled by touch at any snap.
+        // handleSurfacePointerDown starts the drag instead, for every part of the sheet
+        // the list does not own.
+        dragListener={false}
+        onPointerDown={isSheetDraggable ? handleSurfacePointerDown : undefined}
         dragConstraints={isSheetDraggable ? dragConstraints : undefined}
         dragElastic={isSheetDraggable ? SHEET_DRAG_ELASTIC : undefined}
         dragMomentum={false}
@@ -551,7 +616,6 @@ export function DrawerShell(props: DrawerShellProps) {
           <div
             className={styles.dragHandle}
             data-drawer-sheet-handle
-            onPointerDown={isSheetDraggable ? (event) => dragControls.start(event) : undefined}
           />
         )}
         {/*

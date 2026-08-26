@@ -153,7 +153,7 @@ describe('SidePanel bottom sheet', () => {
     expect(stickyChrome).not.toHaveAttribute('data-scrolled-from-top');
   });
 
-  it('restores pinned chrome and the list top when the sheet lowers from full to half', () => {
+  it('restores pinned chrome but keeps the reader\'s place in the list when the sheet lowers from full to half', () => {
     const renderSheet = (sheetSnap: 'half' | 'full') => (
       <SidePanel
         drawerPresentation="bottomSheet"
@@ -178,7 +178,11 @@ describe('SidePanel bottom sheet', () => {
 
     rerender(renderSheet('half'));
 
-    expect(scrollOwner).toHaveProperty('scrollTop', 0);
+    // The search row comes back pinned, but the list is left exactly where it was: at
+    // `full` the sheet is now dragged down by the chrome band above the list
+    // (DrawerShell's handleSurfacePointerDown), so lowering it is no longer an implicit
+    // instruction to give up the reader's place in the cards.
+    expect(scrollOwner).toHaveProperty('scrollTop', 24);
     expect(stickyChrome).not.toHaveAttribute('data-hidden');
   });
 

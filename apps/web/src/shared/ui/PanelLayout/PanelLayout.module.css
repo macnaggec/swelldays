@@ -282,6 +282,23 @@
   padding-block-end: calc(var(--wa-floating-chrome-bottom-offset) - 4px);
 }
 
+/* Everything in a sheet drags the sheet except the two boxes that scroll themselves —
+   the card list and the date rail. Vertical touch has to be reserved for all of it, or
+   the browser may claim a gesture for its own panning part-way through and cancel the
+   pointer, which framer-motion treats exactly like a released finger.
+
+   touch-action is intersected down the tree, so this cannot be written once on the
+   surface: that would sit above the list and freeze it. It is instead written on the
+   list's siblings at each level between the surface and the list, which is the same
+   set — everything but the list's own box — expressed the only way CSS allows.
+   `pan-x`, not `none`: the filter pills and the gallery's day strip still swipe
+   sideways. Keyed on `data-sheet-snap`, so only a bottom sheet is affected. */
+.root[data-sheet-snap] > *:not(.body),
+.root[data-sheet-snap] .body > *:not(.scrollRegion):not(.rail),
+.root[data-sheet-snap] .scrollRegion > *:not(.scroller) {
+  touch-action: pan-x;
+}
+
 .root[data-sheet-snap] {
   /* DrawerShell's sheet surface (.surface) is always 100dvh tall and only ever
      translates — it never shrinks with snap. .root sits inside .surface's own flex

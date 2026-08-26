@@ -1,4 +1,5 @@
-import { act, fireEvent, screen } from '@testing-library/react';
+import { act, createEvent, fireEvent, screen } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
 import { createRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
@@ -11,6 +12,7 @@ import {
   useDrawerTargetGeometry,
   useRegisterSheetScrollOwner,
   useSheetContentScrollable,
+  type SheetSnap,
 } from './index';
 import { DRAWER_SHELL_TRANSITION } from './motion';
 import { usePanelSettledWidth } from './panelSettledWidth';
@@ -1592,5 +1594,231 @@ describe('DrawerShell reduced motion', () => {
     });
 
     expect(onSnapChange).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * A sheet whose chrome and list are separately addressable: the upload button stands for
+ * everything above the list (grabber, search row, upload), and the card stands for the
+ * list itself. Which of the two the finger lands on is the whole of the sheet's gesture
+ * rule, so these two targets are all the tests below need.
+ */
+function SheetGestureProbe({ onUpload }: { onUpload?: () => void }) {
+  const registerScrollOwner = useRegisterSheetScrollOwner();
+
+  return (
+    <>
+      <button type="button" data-testid="upload" onClick={onUpload}>Upload</button>
+      <div data-testid="list" ref={registerScrollOwner}>
+        <button type="button" data-testid="card">Card</button>
+      </div>
+    </>
+  );
+}
+
+describe('DrawerShell sheet gesture ownership', () => {
+  /** Drives one full press-move-release through framer-motion's pan session. */
+  async function swipe(target: Element, { pointerId, deltaY }: { pointerId: number; deltaY: number }) {
+    act(() => {
+      fireEvent.pointerDown(target, { pointerId, isPrimary: true, clientX: 195, clientY: 500 });
+    });
+    act(() => {
+      fireEvent.pointerMove(target, { pointerId, isPrimary: true, clientX: 195, clientY: 500 + deltaY });
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    act(() => {
+      fireEvent.pointerUp(target, { pointerId, isPrimary: true, clientX: 195, clientY: 500 + deltaY });
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+  }
+
+  function renderGestureSheet(snap: SheetSnap, onUpload?: () => void) {
+    nearestSheetSnapMock.mockClear();
+    render(
+      <DrawerShell
+        presentation="bottomSheet"
+        modality="nonmodal"
+        snap={snap}
+        onSnapChange={() => { }}
+      >
+        <SheetGestureProbe onUpload={onUpload} />
+      </DrawerShell>,
+    );
+  }
+
+  it.each(['peek', 'half'] as const)(
+    'moves the sheet from a press on the list itself at %s, where the list is frozen anyway',
+    async (snap) => {
+      renderGestureSheet(snap);
+
+      await swipe(screen.getByTestId('card'), { pointerId: 41, deltaY: -80 });
+
+      expect(nearestSheetSnapMock).toHaveBeenCalled();
+    },
+  );
+
+  it('leaves a press that lands inside the list to the list at full, so it can scroll', async () => {
+    renderGestureSheet('full');
+
+    await swipe(screen.getByTestId('card'), { pointerId: 42, deltaY: 80 });
+
+    expect(nearestSheetSnapMock).not.toHaveBeenCalled();
+  });
+
+  it('moves the sheet from a press on the chrome above the list at full', async () => {
+    renderGestureSheet('full');
+
+    await swipe(screen.getByTestId('upload'), { pointerId: 43, deltaY: 80 });
+
+    expect(nearestSheetSnapMock).toHaveBeenCalled();
+  });
+
+  it('moves the sheet from a press on the grabber at full', async () => {
+    renderGestureSheet('full');
+    const sheet = screen.getByRole('complementary', { name: 'Content drawer' });
+    const handle = sheet.querySelector('[data-drawer-sheet-handle]');
+    if (!handle) throw new Error('Expected the drag handle to be rendered.');
+
+    await swipe(handle, { pointerId: 44, deltaY: 80 });
+
+    expect(nearestSheetSnapMock).toHaveBeenCalled();
+  });
+
+  it('settles back instead of moving on when the browser cancels the touch mid-drag', async () => {
+    const onSnapChange = vi.fn();
+    nearestSheetSnapMock.mockClear();
+    animateMock.mockClear();
+    render(
+      <DrawerShell
+        presentation="bottomSheet"
+        modality="nonmodal"
+        snap="half"
+        onSnapChange={onSnapChange}
+      >
+        <SheetGestureProbe />
+      </DrawerShell>,
+    );
+    const upload = screen.getByTestId('upload');
+
+    act(() => {
+      fireEvent.pointerDown(upload, { pointerId: 49, isPrimary: true, clientX: 195, clientY: 500 });
+    });
+    act(() => {
+      fireEvent.pointerMove(upload, { pointerId: 49, isPrimary: true, clientX: 195, clientY: 300 });
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    // What the browser sends when it takes the gesture over for its own panning. Far
+    // enough to clear every snap threshold, so a release here would certainly have
+    // advanced the sheet.
+    act(() => {
+      fireEvent.pointerCancel(upload, { pointerId: 49, isPrimary: true, clientX: 195, clientY: 300 });
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(nearestSheetSnapMock).not.toHaveBeenCalled();
+    expect(onSnapChange).not.toHaveBeenCalled();
+    expect(animateMock).toHaveBeenCalled();
+  });
+
+  it('swallows the tap the browser still delivers after a swipe', async () => {
+    const onUpload = vi.fn();
+    renderGestureSheet('full', onUpload);
+    const upload = screen.getByTestId('upload');
+
+    await swipe(upload, { pointerId: 45, deltaY: 80 });
+
+    // The browser queues these at pointer-down and only delivers them once the finger
+    // lifts. Preventing the mousedown is what keeps the keyboard shut on the search
+    // field; stopping the click is what keeps the upload from starting.
+    const mouseDown = createEvent.mouseDown(upload);
+    act(() => {
+      fireEvent(upload, mouseDown);
+      fireEvent.click(upload);
+    });
+
+    expect(mouseDown.defaultPrevented).toBe(true);
+    expect(onUpload).not.toHaveBeenCalled();
+  });
+
+  it('lets the tap through when the finger barely moved', async () => {
+    const onUpload = vi.fn();
+    renderGestureSheet('full', onUpload);
+    const upload = screen.getByTestId('upload');
+
+    await swipe(upload, { pointerId: 46, deltaY: 4 });
+
+    const mouseDown = createEvent.mouseDown(upload);
+    act(() => {
+      fireEvent(upload, mouseDown);
+      fireEvent.click(upload);
+    });
+
+    expect(mouseDown.defaultPrevented).toBe(false);
+    expect(onUpload).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-arms a swallowed tap only until the next press, so a later genuine tap survives', async () => {
+    const onUpload = vi.fn();
+    renderGestureSheet('full', onUpload);
+    const upload = screen.getByTestId('upload');
+
+    // A browser that suppressed the tap itself leaves the swallower armed with nothing
+    // to swallow; the next press must disarm it rather than eating that press's own tap.
+    await swipe(upload, { pointerId: 47, deltaY: 80 });
+    await swipe(upload, { pointerId: 48, deltaY: 2 });
+
+    act(() => {
+      fireEvent.click(upload);
+    });
+
+    expect(onUpload).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('DrawerShell sheet touch reservation', () => {
+  const drawerShellCss = readFileSync(
+    'apps/web/src/shared/ui/DrawerShell/DrawerShell.module.css',
+    'utf8',
+  );
+
+  function cssRule(selector: string) {
+    const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = drawerShellCss.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`));
+
+    return match?.[1]?.replace(/\s+/g, ' ').trim() ?? '';
+  }
+
+  // Without these the browser can claim a vertical touch for panning part-way through a
+  // drag. It cancels the pointer when it does, and framer-motion ends a drag on
+  // pointercancel exactly as it does on pointerup (PanSession wires both to the same
+  // handler) — so the sheet would settle on the next snap while the finger is still down.
+  it('reserves vertical touch across the whole surface below full, where the list is frozen', () => {
+    expect(
+      cssRule(".surface[data-drawer-presentation='bottomSheet'][data-drawer-snap]:not([data-drawer-snap='full'])"),
+    ).toContain('touch-action: pan-x');
+  });
+
+  it('never reserves vertical touch on the surface at full, so the list can scroll', () => {
+    const withoutComments = drawerShellCss.replace(/\/\*[\s\S]*?\*\//g, '');
+    const surfaceRules = [...withoutComments.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter((match) => match[2]?.includes('touch-action'))
+      .map((match) => (match[1] ?? '').replace(/\s+/g, ' ').trim());
+    expect(surfaceRules.length).toBeGreaterThan(0);
+
+    for (const selector of surfaceRules) {
+      const reservesWholeSurface = selector.includes("[data-drawer-presentation='bottomSheet']")
+        && !selector.includes('[data-panel-')
+        && !selector.includes('.dragHandle');
+      if (!reservesWholeSurface) continue;
+      expect(selector).toContain(":not([data-drawer-snap='full'])");
+    }
   });
 });

@@ -465,3 +465,20 @@ describe('PanelLayoutMetadata', () => {
     expect(screen.queryByText('Session metadata')).toBeNull();
   });
 });
+
+describe('PanelLayout sheet touch reservation', () => {
+  // The header row and the search row are the band a finger drags the sheet by at every
+  // snap, `full` included (DrawerShell's handleSurfacePointerDown). Without reserving
+  // vertical touch there, the browser can claim the gesture for panning mid-drag and
+  // cancel the pointer; framer-motion ends a drag on pointercancel exactly as on
+  // pointerup, so the sheet would settle on the next snap before the finger lifted.
+  it('reserves vertical touch everywhere in a sheet except the boxes that scroll themselves', () => {
+    const rule = cssRule(
+      '.root[data-sheet-snap] > *:not(.body),\n'
+      + '.root[data-sheet-snap] .body > *:not(.scrollRegion):not(.rail),\n'
+      + '.root[data-sheet-snap] .scrollRegion > *:not(.scroller)',
+    );
+
+    expect(rule).toContain('touch-action: pan-x');
+  });
+});
