@@ -1,7 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const readWorkspaceFile = (path: string) => readFileSync(path, 'utf8');
+const routeDirectory = 'apps/web/src/app/routes';
+const routeModuleFiles = readdirSync(routeDirectory)
+  .filter((file) => file.endsWith('.tsx') && !file.startsWith('-'))
+  .sort();
 
 describe('startup performance contracts', () => {
   it('automatically code-splits route components', () => {
@@ -10,10 +14,37 @@ describe('startup performance contracts', () => {
     expect(viteConfig).toContain('autoCodeSplitting: true');
   });
 
-  it('renders a branded shell before React downloads', () => {
+  it('keeps shared support imports outside lazily split route modules', () => {
+    const routeModuleNames = new Set(routeModuleFiles.map((file) => file.replace(/\.tsx$/, '')));
+
+    for (const file of routeModuleFiles) {
+      const path = `${routeDirectory}/${file}`;
+      const routeImports = Array.from(
+        readWorkspaceFile(path).matchAll(/from\s+['"](\.\/[^'"]+)['"]/g),
+        (match) => match[1],
+      ).filter((specifier) => specifier && routeModuleNames.has(specifier.slice(2)));
+
+      expect(routeImports, path).toEqual([]);
+    }
+  });
+
+  it('exports only Route from lazily split route modules', () => {
+    for (const file of routeModuleFiles) {
+      const path = `${routeDirectory}/${file}`;
+      const unsupportedExports = readWorkspaceFile(path)
+        .split('\n')
+        .filter((line) => line.startsWith('export ') && !line.startsWith('export const Route ='));
+
+      expect(unsupportedExports, path).toEqual([]);
+    }
+  });
+
+  it('renders the branded logo shell before React downloads', () => {
     const indexHtml = readWorkspaceFile('apps/web/index.html');
 
     expect(indexHtml).toContain('data-bootstrap-shell');
+    expect(indexHtml).toContain('src="/swelldays-logo-white.png"');
+    expect(indexHtml).not.toContain('<span>SWELLDAYS</span>');
   });
 
   it('loads Google APIs only from the Drive feature', () => {

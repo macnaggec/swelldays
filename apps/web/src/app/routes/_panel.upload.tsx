@@ -12,7 +12,7 @@ import type { Spot } from 'entities/Spot';
 import { useSpotPreview } from 'entities/Spot';
 import { useAuthModal } from 'entities/Identity';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
-import { useSetPanelRouteBackAction } from './_panel';
+import { useSetPanelRouteBackAction } from '../lib/panelContexts';
 
 export const Route = createFileRoute('/_panel/upload')({
   validateSearch: (search): { workspaceId?: string; spotId?: string } => ({

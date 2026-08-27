@@ -8,7 +8,7 @@ import { PanelGalleryLayout } from 'shared/ui/PanelGalleryLayout';
 import { PanelEmptyState } from 'shared/ui/PanelRouteLayout';
 import { BaseGallery } from 'shared/ui/BaseGallery';
 import { PanelCollectionGrid } from 'shared/ui/PanelCollectionGrid';
-import { useCollectionsContext } from './_panel.me.collections';
+import { useCollectionsContext } from '../lib/collectionsContext';
 
 export const Route = createFileRoute('/_panel/me/collections/')({
   component: UploadsTab,

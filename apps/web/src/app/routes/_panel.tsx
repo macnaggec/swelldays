@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, useMatches, useNavigate, useParams, useRouter } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useSelectedSpot, useSpotPreview } from 'entities/Spot';
-import { createContext, useCallback, useContext, useLayoutEffect, useState, type ReactNode } from 'react';
+import { useCallback, useLayoutEffect, useState, type ReactNode } from 'react';
 import { useTRPC } from 'shared/lib/trpc';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { Loader, Skeleton, Text, Title } from '@mantine/core';
@@ -35,49 +35,16 @@ import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import { waitForKeyboardViewportToSettle } from 'shared/model/viewportMetrics';
 import { deriveRenderedPanelState } from 'shared/model/panelLayoutPolicy';
 import { BrowseSectionBar, type BrowseSection } from 'widgets/BrowseSectionBar';
+import {
+  PanelExpandedContext,
+  PanelFeedLayoutReadyContext,
+  PanelFilterContext,
+  PanelRouteBackActionContext,
+  type PanelRouteBackAction,
+  usePanelFilter,
+} from '../lib/panelContexts';
 
 // ─── Contexts — shared with child routes ─────────────────────────────────────
-
-interface PanelFilterCtx {
-  filters: BrowseFilters;
-  setDateFilter: (date: BrowseDateFilter) => void;
-  setFavoriteSpotsOnly: (value: boolean) => void;
-  clearFilters: () => void;
-}
-
-interface PanelRouteBackAction {
-  /** Omitted for a chevron-only back control. */
-  label?: string;
-  onBack: () => void;
-  disabled?: boolean;
-}
-
-const PanelFilterContext = createContext<PanelFilterCtx>({
-  filters: EMPTY_BROWSE_FILTERS,
-  setDateFilter: () => { },
-  setFavoriteSpotsOnly: () => { },
-  clearFilters: () => { },
-});
-
-const PanelExpandedContext = createContext(false);
-const PanelFeedLayoutReadyContext = createContext<(ready: boolean) => void>(() => { });
-const PanelRouteBackActionContext = createContext<(action: PanelRouteBackAction | null) => void>(() => { });
-
-export function usePanelFilter() {
-  return useContext(PanelFilterContext);
-}
-
-export function usePanelExpanded() {
-  return useContext(PanelExpandedContext);
-}
-
-export function usePanelFeedLayoutReadyChange() {
-  return useContext(PanelFeedLayoutReadyContext);
-}
-
-export function useSetPanelRouteBackAction() {
-  return useContext(PanelRouteBackActionContext);
-}
 
 // ─── Route ────────────────────────────────────────────────────────────────────
 

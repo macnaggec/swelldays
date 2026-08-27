@@ -16,7 +16,7 @@ export const Route = createFileRoute('/_panel/me/earnings')({
   component: EarningsRoute,
 });
 
-export function EarningsRoute() {
+function EarningsRoute() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const {

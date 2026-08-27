@@ -8,7 +8,7 @@ vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => options,
 }));
 
-vi.mock('./_panel.me.collections', () => ({
+vi.mock('../lib/collectionsContext', () => ({
   useCollectionsContext: () => ({
     favorites: [],
     visibleFavorites: [],

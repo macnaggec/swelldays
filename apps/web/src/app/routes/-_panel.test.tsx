@@ -10,7 +10,8 @@ import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { resolveAppRouteIntent, type DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { BrowseSurfaceProvider, type SheetSnap } from 'shared/ui/DrawerShell';
-import { Route, usePanelFeedLayoutReadyChange, useSetPanelRouteBackAction } from './_panel';
+import { Route } from './_panel';
+import { usePanelFeedLayoutReadyChange, useSetPanelRouteBackAction } from '../lib/panelContexts';
 
 // Mirrors the two-input derivation __root.tsx performs for the real app: PanelFrame
 // no longer assembles policy inputs itself, so tests rendering it directly must supply

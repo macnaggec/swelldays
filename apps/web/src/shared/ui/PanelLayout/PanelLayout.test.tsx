@@ -399,6 +399,28 @@ describe('PanelLayout sheet-bound visible height and floating footer', () => {
 
     expect(rule).toContain('flex: 0 0 auto');
   });
+
+  it('returns a header-bearing sheet to its top for Peek, then restores its Full scroll position', () => {
+    const layout = (sheetSnap: 'peek' | 'full') => (
+      <PanelScrollChromeStateProvider value={{ hidden: false, drawerPresentation: 'bottomSheet', sheetSnap }}>
+        <PanelLayout header={<div>Upload</div>}>
+          <div>Upload fields</div>
+        </PanelLayout>
+      </PanelScrollChromeStateProvider>
+    );
+    const { container, rerender } = render(layout('full'));
+    const scrollOwner = container.querySelector<HTMLElement>('[data-panel-scroll-owner]');
+    if (!scrollOwner) throw new Error('Panel scroll owner must render.');
+
+    scrollOwner.scrollTop = 240;
+    rerender(layout('peek'));
+
+    expect(scrollOwner.scrollTop).toBe(0);
+
+    rerender(layout('full'));
+
+    expect(scrollOwner.scrollTop).toBe(240);
+  });
 });
 
 describe('PanelLayout sideWorkspace footer', () => {

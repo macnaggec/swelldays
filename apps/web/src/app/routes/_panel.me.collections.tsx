@@ -1,10 +1,8 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useTabNavigation } from 'shared/hooks';
 import { useTRPC } from 'shared/lib/trpc';
-import type { SurfSessionItem } from 'entities/SurfSession';
-import type { PublicMedia } from '@swelldays/contracts';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import {
   COLLECTION_TAB_ROUTES,
@@ -16,26 +14,7 @@ import {
 import { SidePanelHeaderTrailing } from 'widgets/SidePanel';
 import { AppNavigationFloating, AppNavigationSupplement } from 'widgets/AppNavigation';
 import { PanelLayoutStickyChrome } from 'shared/ui/PanelLayout';
-
-type CollectionsContextValue = {
-  sessions: SurfSessionItem[];
-  visibleUploads: SurfSessionItem[];
-  isLoadingUploads: boolean;
-  favorites: PublicMedia[];
-  visibleFavorites: PublicMedia[];
-  isLoadingFavorites: boolean;
-};
-
-const CollectionsContext = createContext<CollectionsContextValue | null>(null);
-
-export function useCollectionsContext() {
-  const context = useContext(CollectionsContext);
-  if (!context) {
-    throw new Error('useCollectionsContext must be used inside CollectionsLayout');
-  }
-
-  return context;
-}
+import { CollectionsContext } from '../lib/collectionsContext';
 
 export const Route = createFileRoute('/_panel/me/collections')({
   staticData: { panelHeader: 'My Collections' },

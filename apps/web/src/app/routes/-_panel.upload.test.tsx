@@ -98,7 +98,7 @@ vi.mock('entities/Spot', () => ({
   useSpotPreview: () => mocks.spotPreview,
 }));
 
-vi.mock('./_panel', () => ({
+vi.mock('../lib/panelContexts', () => ({
   useSetPanelRouteBackAction: () => mocks.setPanelRouteBackAction,
 }));
 

@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { SessionFeed } from 'widgets/SidePanel';
-import { usePanelFeedLayoutReadyChange, usePanelFilter } from './_panel';
+import { usePanelFeedLayoutReadyChange, usePanelFilter } from '../lib/panelContexts';
 
 export const Route = createFileRoute('/_panel/$spotId/')({
   component: SpotFeed,

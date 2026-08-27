@@ -14,7 +14,7 @@ export const Route = createFileRoute('/_panel/me/')({
   component: AccountRoute,
 });
 
-export function AccountRoute() {
+function AccountRoute() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const { user, isLoading: isLoadingUser } = useUser();

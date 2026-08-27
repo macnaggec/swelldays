@@ -118,6 +118,32 @@ export function PanelLayout({
     scrollOwner.dataset.panelChromeHeight = String(hidden ? 0 : occupiedHeight);
   }, [stickyChromeTarget, hidden]);
 
+  // A header-bearing sheet uses Peek as a compact view of the first form row. Unlike
+  // Browse's pinned search chrome, that row lives inside this scroll owner, so retaining
+  // Full's scrollTop would leave it above Peek's visible slice. Park Full's position,
+  // show the top before the compact snap paints, then restore the form position when
+  // Full returns. Headerless Browse sheets deliberately keep their list position.
+  const previousSheetSnapRef = useRef(sheetSnap);
+  const headerSheetFullScrollTopRef = useRef(0);
+  useLayoutEffect(() => {
+    const scrollOwner = scrollOwnerRef.current;
+    const previousSheetSnap = previousSheetSnapRef.current;
+    previousSheetSnapRef.current = sheetSnap;
+
+    const isHeaderBearingSheet = drawerPresentation === 'bottomSheet' && header != null;
+    if (!scrollOwner || !isHeaderBearingSheet || previousSheetSnap === sheetSnap) return;
+
+    if (previousSheetSnap === 'full' && sheetSnap !== undefined && sheetSnap !== 'full') {
+      headerSheetFullScrollTopRef.current = scrollOwner.scrollTop;
+      scrollOwner.scrollTop = 0;
+      return;
+    }
+
+    if (sheetSnap === 'full' && previousSheetSnap !== undefined && previousSheetSnap !== 'full') {
+      scrollOwner.scrollTop = headerSheetFullScrollTopRef.current;
+    }
+  }, [drawerPresentation, header, sheetSnap]);
+
   useLayoutEffect(() => {
     if (!scrollOwnerRef.current || !stickyChromeTarget) return;
     publishChromeHeight();

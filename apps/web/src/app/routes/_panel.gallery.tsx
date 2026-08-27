@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { PublicGallery } from 'features/PublicGallery';
-import { usePanelExpanded, usePanelFilter } from './_panel';
+import { usePanelExpanded, usePanelFilter } from '../lib/panelContexts';
 
 export const Route = createFileRoute('/_panel/gallery')({
   staticData: { appRouteIntent: 'galleryWorkspace' },

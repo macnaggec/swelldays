@@ -8,7 +8,7 @@ import { PanelGalleryLayout } from 'shared/ui/PanelGalleryLayout';
 import { useCartToggle } from 'entities/Commerce';
 import { useMediaFavorites } from 'entities/Media';
 import { MediaLightbox, PublicCard } from 'features/PublicGallery';
-import { useCollectionsContext } from './_panel.me.collections';
+import { useCollectionsContext } from '../lib/collectionsContext';
 
 export const Route = createFileRoute('/_panel/me/collections/favorites')({ component: FavoritesTab });
 

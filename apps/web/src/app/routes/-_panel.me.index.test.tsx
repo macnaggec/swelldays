@@ -37,7 +37,7 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mocks.navigate,
 }));
 
-vi.mock('./_panel.me.collections', () => ({
+vi.mock('../lib/collectionsContext', () => ({
   useCollectionsContext: () => ({
     sessions: mocks.sessions,
     visibleUploads: mocks.sessions,

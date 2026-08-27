@@ -1,8 +1,11 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ComponentType } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
-import { EarningsRoute } from './_panel.me.earnings';
+import { Route } from './_panel.me.earnings';
+
+const EarningsRoute = (Route as unknown as { component: ComponentType }).component;
 
 const mocks = vi.hoisted(() => {
   const createSummary = () => ({

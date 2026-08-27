@@ -15,6 +15,7 @@
     media="(min-width: 768px)" />
   <link rel="preload" as="image" type="image/webp" href="/first-visit-waves-portrait.webp"
     media="(max-width: 767px)" />
+  <link rel="preload" as="image" type="image/png" href="/swelldays-logo-white.png" />
   <meta name="theme-color" content="#0a1628" />
   <meta name="description"
     content="Swelldays is an interactive map for finding, buying, and selling surf-spot photos and videos, searchable by date." />
@@ -37,10 +38,9 @@
         #0a1628;
     }
 
-    [data-bootstrap-shell] span {
-      font: 500 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      letter-spacing: 0.42em;
-      text-indent: 0.42em;
+    [data-bootstrap-shell] img {
+      width: min(180px, 46vw);
+      height: auto;
     }
 
     [data-bootstrap-shell]::after {
@@ -56,7 +56,9 @@
 
 <body>
   <div id="root">
-    <div data-bootstrap-shell aria-hidden="true"><span>SWELLDAYS</span></div>
+    <div data-bootstrap-shell aria-hidden="true">
+      <img src="/swelldays-logo-white.png" alt="" width="600" height="272" fetchpriority="high" />
+    </div>
   </div>
   <script type="module" src="/src/app/main.tsx"></script>
   <!-- Cloudflare Web Analytics -->
