@@ -1105,7 +1105,7 @@ describe('GlobeMapComponent camera inset changes', () => {
     expect(mocks.easeTo).toHaveBeenCalledWith(expect.objectContaining({ duration: 0 }));
   });
 
-  it('does not move the camera when insets change with no spot selected', () => {
+  it('does not ease the camera but does update padding when insets change with no spot selected', () => {
     const { rerender } = render(
       <GlobeMapComponent
         spots={spots}
@@ -1131,6 +1131,22 @@ describe('GlobeMapComponent camera inset changes', () => {
     );
 
     expect(mocks.easeTo).not.toHaveBeenCalled();
-    expect(mocks.setPadding).not.toHaveBeenCalled();
+    expect(mocks.setPadding).toHaveBeenCalledWith({ top: 0, right: 750, bottom: 0, left: 0 });
+  });
+
+  it('applies the current insets as padding once the map loads with no spot selected, so the globe centers in the free space beside the panel', () => {
+    render(
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId={null}
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        cameraInsetsPx={{ top: 0, right: 480, bottom: 0, left: 0 }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /load map/i }));
+
+    expect(mocks.setPadding).toHaveBeenCalledWith({ top: 0, right: 480, bottom: 0, left: 0 });
   });
 });

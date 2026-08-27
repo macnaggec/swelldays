@@ -279,6 +279,30 @@ export function GlobeMapComponent({
     selectedSpotFocusEnabled,
   ]);
 
+  // With no spot focused, the map has no other reason to reserve the chrome's
+  // covered edge as camera padding — without this, the globe centers on the
+  // full canvas and renders visually off-center within the space actually
+  // left free by the side panel.
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (selectedSpotId && selectedSpotFocusEnabled) return;
+
+    mapInstanceRef.current?.setPadding({
+      top: insetTopPx,
+      right: insetRightPx,
+      bottom: insetBottomPx,
+      left: insetLeftPx,
+    });
+  }, [
+    isLoaded,
+    insetTopPx,
+    insetRightPx,
+    insetBottomPx,
+    insetLeftPx,
+    selectedSpotId,
+    selectedSpotFocusEnabled,
+  ]);
+
   useEffect(() => {
     return () => {
       mapInstanceRef.current = null;
