@@ -118,6 +118,7 @@ function makeWorkspaceState(kind: 'NEW_SESSION' | 'SESSION_EDIT' = 'NEW_SESSION'
       videoPrice: 500,
       createdAt: new Date('2026-01-01T05:00:00Z'),
       updatedAt: new Date('2026-01-01T05:00:00Z'),
+      hasAssets: false,
     },
     existingMedia: [],
     assets: [],

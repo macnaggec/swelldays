@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Center, Loader, Text } from '@mantine/core';
+import { Center, Skeleton, Text } from '@mantine/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useTRPC } from 'shared/lib/trpc';
@@ -7,6 +7,7 @@ import { useCartStore } from 'entities/Commerce';
 import { PurchaseCard, PurchaseLightbox, usePurchaseDownload } from 'features/Purchases';
 import { PanelGalleryLayout } from 'shared/ui/PanelGalleryLayout';
 import { BaseGallery } from 'shared/ui/BaseGallery';
+import { PanelCollectionGrid } from 'shared/ui/PanelCollectionGrid';
 
 export const Route = createFileRoute('/_panel/me/collections/purchases')({
   validateSearch: (search): { order?: string } => ({
@@ -41,11 +42,15 @@ function PurchasesTab() {
   }, [isLoading, order, purchases, removeFromCart]);
 
   if (isLoading) {
+    // Same grid PanelCollectionGrid gives BaseGallery below, so the column count matches
+    // once real cards load; each tile mirrors PurchaseCard/BaseCard's aspect-ratio: 16/10.
     return (
       <PanelGalleryLayout>
-        <Center mih={200}>
-          <Loader size="sm" />
-        </Center>
+        <PanelCollectionGrid preview>
+          {Array.from({ length: 9 }).map((_, i) => (
+            <Skeleton key={i} height={0} style={{ aspectRatio: '16 / 10', borderRadius: 'var(--wa-radius-control-md)' }} />
+          ))}
+        </PanelCollectionGrid>
       </PanelGalleryLayout>
     );
   }

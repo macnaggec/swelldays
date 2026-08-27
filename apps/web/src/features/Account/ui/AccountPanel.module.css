@@ -54,6 +54,14 @@
   background: var(--wa-surface-dialog);
 }
 
+/* Tighter gap than .dangerSkeleton's own — these two bars stand in for wrapped lines of one
+   paragraph (DeleteAccountPanel's description), not separate elements. */
+.dangerDescriptionSkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .screenReaderOnly {
   position: absolute;
   width: 1px;

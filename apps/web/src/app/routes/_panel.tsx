@@ -127,7 +127,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
     ...trpc.uploads.getActiveWorkspace.queryOptions(),
     enabled: isAuthenticated,
   });
-  const hasUnfinishedUpload = activeWorkspace?.kind === 'NEW_SESSION';
+  const hasUnfinishedUpload = activeWorkspace?.kind === 'NEW_SESSION' && activeWorkspace.hasAssets;
   const hasActiveTransfers = useUploadStore((s) => s.transfers.size > 0);
   const isAddSpotActive = useAddSpotStore((s) => s.isActive);
   const appRouteIntent = resolveAppRouteIntent(

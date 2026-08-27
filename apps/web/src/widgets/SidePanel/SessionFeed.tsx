@@ -117,7 +117,8 @@ export function SessionFeed({
             <div key={i}>
               <Skeleton height={0} className={styles.skeletonMedia} />
               <Skeleton height={14} mb={4} radius="sm" />
-              <Skeleton height={11} width="60%" radius="sm" />
+              <Skeleton height={11} width="70%" mb={4} radius="sm" />
+              <Skeleton height={11} width="45%" radius="sm" />
             </div>
           ))}
         </PanelCollectionGrid>

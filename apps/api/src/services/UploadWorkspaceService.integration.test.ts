@@ -231,6 +231,58 @@ describe('UploadWorkspaceService session edits', () => {
   });
 });
 
+describe('UploadWorkspaceService discard actions', () => {
+  it('deletes the Cloudinary asset immediately when a workspace asset is discarded', async () => {
+    const { photographer } = await seedPublishedSessionWithOnePhoto();
+    const workspace = await service.startNewWorkspace(photographer.id, {});
+    const asset = await addReadyWorkspaceAsset(workspace.id, photographer.id);
+
+    await service.deleteWorkspaceAsset(photographer.id, workspace.id, asset.id);
+
+    expect(mockCleanup.deleteStoredAsset).toHaveBeenCalledWith({
+      cloudinaryPublicId: asset.cloudinaryPublicId,
+      resourceType: 'PHOTO',
+    });
+  });
+
+  it('deletes the Cloudinary asset immediately for every ready asset when the workspace is cancelled', async () => {
+    const { photographer } = await seedPublishedSessionWithOnePhoto();
+    const workspace = await service.startNewWorkspace(photographer.id, {});
+    const asset = await addReadyWorkspaceAsset(workspace.id, photographer.id);
+
+    await service.cancelWorkspace(photographer.id, workspace.id);
+
+    expect(mockCleanup.deleteStoredAsset).toHaveBeenCalledWith({
+      cloudinaryPublicId: asset.cloudinaryPublicId,
+      resourceType: 'PHOTO',
+    });
+  });
+});
+
+describe('UploadWorkspaceService hasAssets', () => {
+  it('is false for a freshly started workspace with only form fields filled in', async () => {
+    const { photographer } = await seedPublishedSessionWithOnePhoto();
+    const workspace = await service.startNewWorkspace(photographer.id, {});
+
+    await service.updateWorkspace(photographer.id, workspace.id, { photoPrice: 700, videoPrice: 1200 });
+    const active = await service.getActiveWorkspace(photographer.id);
+
+    expect(active?.hasAssets).toBe(false);
+  });
+
+  it('becomes true once a file has been uploaded into the workspace', async () => {
+    const { photographer } = await seedPublishedSessionWithOnePhoto();
+    const workspace = await service.startNewWorkspace(photographer.id, {});
+    await addReadyWorkspaceAsset(workspace.id, photographer.id);
+
+    const active = await service.getActiveWorkspace(photographer.id);
+    const updated = await service.updateWorkspace(photographer.id, workspace.id, { photoPrice: 700, videoPrice: 1200 });
+
+    expect(active?.hasAssets).toBe(true);
+    expect(updated.hasAssets).toBe(true);
+  });
+});
+
 describe('Upload workspace occupancy constraint', () => {
   it('rejects a second active workspace even when it has a different kind', async () => {
     const { photographer, session } = await seedPublishedSessionWithOnePhoto();

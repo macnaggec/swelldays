@@ -1,0 +1,7 @@
+/* Loading-skeleton tile: mirrors the real PublicCard/BaseCard media block
+   (aspect-ratio: 16 / 10, --wa-radius-control-md) so the placeholder grid
+   doesn't jump in shape once real tiles mount. */
+.skeletonTile {
+  padding-bottom: 62.5%;
+  border-radius: var(--wa-radius-control-md);
+}

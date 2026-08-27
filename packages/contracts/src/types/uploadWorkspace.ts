@@ -16,6 +16,8 @@ export interface UploadWorkspaceSummary {
   videoPrice: number;
   createdAt: Date;
   updatedAt: Date;
+  /** True once the workspace has an uploaded/uploading file — not just form fields filled in. */
+  hasAssets: boolean;
 }
 
 export interface UploadWorkspaceExistingMedia {

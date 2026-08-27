@@ -14,6 +14,7 @@ const mockRepo: IUploadAttemptRepository = {
   cancelAttemptsForWorkspace: vi.fn(),
   findByIdForPhotographer: vi.fn(),
   findDriveDetails: vi.fn(),
+  findCleanupDetails: vi.fn(),
   listForWorkspace: vi.fn(),
   hasBlockingAttempts: vi.fn(),
   findExpiredForReconciliation: vi.fn(),
@@ -168,9 +169,9 @@ describe('processDrive', () => {
 describe('discardAttempt', () => {
   it('keeps attempt cancellation successful when provider cleanup fails', async () => {
     vi.mocked(mockRepo.cancelAttempt).mockResolvedValue();
-    vi.mocked(mockRepo.findByIdForPhotographer).mockResolvedValue({
-      id: attemptId,
+    vi.mocked(mockRepo.findCleanupDetails).mockResolvedValue({
       cloudinaryPublicId: 'test/photo',
+      expectedMediaType: 'PHOTO',
       status: 'CANCEL_REQUESTED',
     } as never);
     vi.mocked(mockCleanup.deleteStoredAsset).mockRejectedValue(new Error('provider down'));
@@ -181,6 +182,23 @@ describe('discardAttempt', () => {
     expect(mockCleanup.deleteStoredAsset).toHaveBeenCalledWith({
       cloudinaryPublicId: 'test/photo',
       resourceType: 'PHOTO',
+    });
+  });
+
+  it('deletes a discarded video with the correct resource type', async () => {
+    vi.mocked(mockRepo.cancelAttempt).mockResolvedValue();
+    vi.mocked(mockRepo.findCleanupDetails).mockResolvedValue({
+      cloudinaryPublicId: 'test/video',
+      expectedMediaType: 'VIDEO',
+      status: 'CANCEL_REQUESTED',
+    } as never);
+    vi.mocked(mockCleanup.deleteStoredAsset).mockResolvedValue(undefined);
+
+    await service.discardAttempt(photographerId, attemptId);
+
+    expect(mockCleanup.deleteStoredAsset).toHaveBeenCalledWith({
+      cloudinaryPublicId: 'test/video',
+      resourceType: 'VIDEO',
     });
   });
 });

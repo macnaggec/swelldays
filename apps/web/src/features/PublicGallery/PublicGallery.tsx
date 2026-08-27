@@ -1,5 +1,6 @@
 import React, { FC, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SimpleGrid, Skeleton } from '@mantine/core';
+import classes from './PublicGallery.module.css';
 import { useMediaFavorites, type PublicMedia } from 'entities/Media';
 import { useSpotMediaFeed, useSpotPreview } from 'entities/Spot';
 import { buildGalleryRows } from 'shared/lib/buildGalleryRows';
@@ -26,9 +27,6 @@ import {
 import { usePublicGalleryActions } from './model/usePublicGalleryActions';
 import { EMPTY_BROWSE_FILTERS, type BrowseFilters } from 'shared/model/browseFilters';
 import { GalleryEmptyState } from './ui/GalleryEmptyState';
-
-/** Neutral placeholder count for the loading skeleton, rendered before the gallery is mounted and measured. */
-const LOADING_SKELETON_COLUMNS = 3;
 
 const TABLET_SIDE_OVERLAY_MIN_COLUMNS = 2;
 const TABLET_SIDE_OVERLAY_MAX_COLUMNS = 4;
@@ -240,15 +238,19 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   // ========================================================================
 
   if (isLoading) {
+    // Uses the same `columns` the real VirtualGallery grid below will render at this width/
+    // density, and mirrors PublicCard/BaseCard's aspect-ratio (via the padding-bottom trick,
+    // Skeleton has no native aspect-ratio support) so the placeholder doesn't change shape
+    // once real tiles mount.
     return (
       <SimpleGrid
-        cols={LOADING_SKELETON_COLUMNS}
+        cols={columns}
         spacing="var(--wa-panel-grid-gap)"
         px="var(--wa-panel-content-inset)"
         mt="md"
       >
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} height={120} radius="sm" />
+        {Array.from({ length: columns * 2 }).map((_, i) => (
+          <Skeleton key={i} height={0} className={classes.skeletonTile} />
         ))}
       </SimpleGrid>
     );

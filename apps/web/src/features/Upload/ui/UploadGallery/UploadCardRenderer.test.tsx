@@ -70,3 +70,45 @@ describe('UploadCardRenderer — draft cards', () => {
     expect(img!.getAttribute('src')).toBe(thumbUrl);
   });
 });
+
+describe('UploadCardRenderer — in-progress upload cards', () => {
+  it('shows the local blob as a <video> cover for a video attempt with no poster frame yet', () => {
+    const blobUrl = 'blob:local-video-preview';
+    const item: GalleryCard = {
+      kind: 'attempt',
+      id: 'attempt-1',
+      source: 'LOCAL',
+      status: 'READY',
+      previewUrl: blobUrl,
+      resourceType: 'video',
+      progress: 42,
+    };
+
+    const { container } = wrap(<UploadCardRenderer item={item} />);
+
+    expect(container.querySelector('img')).toBeNull();
+    const video = container.querySelector('video');
+    expect(video).not.toBeNull();
+    expect(video!.getAttribute('src')).toBe(blobUrl);
+  });
+
+  it('uses the local blob directly as <img> src for an image attempt with no server thumbnail yet', () => {
+    const blobUrl = 'blob:local-image-preview';
+    const item: GalleryCard = {
+      kind: 'attempt',
+      id: 'attempt-2',
+      source: 'LOCAL',
+      status: 'READY',
+      previewUrl: blobUrl,
+      resourceType: 'image',
+      progress: 42,
+    };
+
+    const { container } = wrap(<UploadCardRenderer item={item} />);
+
+    const img = container.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img!.getAttribute('src')).toBe(blobUrl);
+    expect(container.querySelector('video')).toBeNull();
+  });
+});

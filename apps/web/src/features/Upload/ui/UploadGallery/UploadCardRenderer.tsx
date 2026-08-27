@@ -43,12 +43,17 @@ export const UploadCardRenderer = memo<UploadCardRendererProps>(({
 
   const mediaItem = item.kind !== 'attempt' ? item.result : null;
 
-  // Use thumbnailUrl (JPEG poster frame) for both image and video drafts.
-  // Video attempts use previewUrl which is a blob URL — renders fine as <img>
-  // only for images; video attempts show an empty card with the progress overlay.
+  // Use thumbnailUrl (JPEG poster frame) for both image and video drafts once ready.
+  // Local image attempts use previewUrl (a blob URL) directly — renders fine as <img>.
   const imageUrl = mediaItem
     ? mediaItem.thumbnailUrl
-    : item.kind === 'attempt' ? (item.resourceType === 'image' ? item.previewUrl : '') : '';
+    : item.kind === 'attempt' && item.resourceType === 'image' ? item.previewUrl : '';
+
+  // Local video attempts have no poster frame yet, so hand their blob URL to BaseCard as a
+  // <video> cover instead — an <img> can't decode a raw video file's blob URL.
+  const videoPreviewUrl = !mediaItem && item.kind === 'attempt' && item.resourceType === 'video'
+    ? item.previewUrl
+    : undefined;
 
   const resourceType = (mediaItem
     ? mediaItem.resource.resourceType
@@ -87,6 +92,7 @@ export const UploadCardRenderer = memo<UploadCardRendererProps>(({
   return (
     <DraftCard
       imageUrl={imageUrl}
+      videoPreviewUrl={videoPreviewUrl}
       resourceType={resourceType}
       alt={alt}
       overlays={overlays}

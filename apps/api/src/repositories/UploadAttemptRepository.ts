@@ -41,6 +41,8 @@ export interface IUploadAttemptRepository {
   findByIdForPhotographer(attemptId: string, photographerId: string): Promise<UploadAttemptProjection | null>;
   /** Returns the internal Drive fields needed by processDrive — never exposed to the client. */
   findDriveDetails(attemptId: string, photographerId: string): Promise<{ remoteFileId: string; cloudinaryPublicId: string; expectedMediaType: MediaType } | null>;
+  /** Returns the internal fields needed for provider cleanup after cancellation — never exposed to the client. */
+  findCleanupDetails(attemptId: string, photographerId: string): Promise<{ cloudinaryPublicId: string; expectedMediaType: MediaType; status: UploadAttemptStatus } | null>;
   listForWorkspace(workspaceId: string, photographerId: string): Promise<UploadAttemptProjection[]>;
   hasBlockingAttempts(workspaceId: string): Promise<boolean>;
   findExpiredForReconciliation(): Promise<Array<{
@@ -201,6 +203,17 @@ export class UploadAttemptRepository implements IUploadAttemptRepository {
       });
       if (!row || row.photographerId !== photographerId || !row.remoteFileId) return null;
       return { remoteFileId: row.remoteFileId, cloudinaryPublicId: row.cloudinaryPublicId, expectedMediaType: row.expectedMediaType };
+    });
+  }
+
+  findCleanupDetails(attemptId: string, photographerId: string): Promise<{ cloudinaryPublicId: string; expectedMediaType: MediaType; status: UploadAttemptStatus } | null> {
+    return runQuery(async () => {
+      const row = await prisma.uploadAttempt.findUnique({
+        where: { id: attemptId },
+        select: { photographerId: true, cloudinaryPublicId: true, expectedMediaType: true, status: true },
+      });
+      if (!row || row.photographerId !== photographerId) return null;
+      return { cloudinaryPublicId: row.cloudinaryPublicId, expectedMediaType: row.expectedMediaType, status: row.status };
     });
   }
 

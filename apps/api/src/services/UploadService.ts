@@ -160,9 +160,9 @@ export class UploadService {
     logger.info('[upload] discardAttempt', { photographerId, attemptId });
     await this.repo.cancelAttempt(attemptId, photographerId);
     // Best-effort provider cleanup for asset that was already uploaded.
-    const attempt = await this.repo.findByIdForPhotographer(attemptId, photographerId);
+    const attempt = await this.repo.findCleanupDetails(attemptId, photographerId);
     if (attempt?.status === 'CANCEL_REQUESTED' && attempt.cloudinaryPublicId) {
-      void this.cleanup.deleteStoredAsset({ cloudinaryPublicId: attempt.cloudinaryPublicId, resourceType: 'PHOTO' })
+      void this.cleanup.deleteStoredAsset({ cloudinaryPublicId: attempt.cloudinaryPublicId, resourceType: attempt.expectedMediaType })
         .catch((err) => logger.warn('[upload] discardAttempt — provider cleanup failed (reconciler will retry)', { attemptId, err }));
     }
   }

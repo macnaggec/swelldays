@@ -18,6 +18,7 @@ const activeWorkspace: UploadWorkspaceSummary = {
   videoPrice: 500,
   createdAt: new Date('2026-01-01T05:00:00Z'),
   updatedAt: new Date('2026-01-01T05:00:00Z'),
+  hasAssets: false,
 };
 
 const workspaceState: UploadWorkspaceState = {

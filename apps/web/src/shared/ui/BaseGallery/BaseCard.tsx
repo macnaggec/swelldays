@@ -12,6 +12,14 @@ export interface BaseCardProps {
   /** Image URL (JPEG poster frame for videos, thumbnail for images) */
   imageUrl: string;
 
+  /**
+   * Local video source to paint as the cover while imageUrl is still empty (e.g. a video
+   * mid-upload, before the server has produced a poster frame). Rendered as a muted <video> —
+   * browsers paint a video element's first frame without playing it, so no separate thumbnail
+   * generation is needed. Ignored once imageUrl is set.
+   */
+  videoPreviewUrl?: string;
+
   /** Resource type - image or video */
   resourceType: 'image' | 'video';
 
@@ -57,11 +65,13 @@ export interface BaseCardProps {
 /**
  * BaseCard - Foundation card component for all gallery cards
  *
- * Renders a static thumbnail (always an <img>) with optional overlays, actions,
- * and a play indicator for video cards. Video playback belongs in the lightbox.
+ * Renders a static thumbnail (an <img>, or a muted <video> as a stand-in cover while a
+ * video's poster frame isn't ready yet) with optional overlays, actions, and a play
+ * indicator for video cards. Video playback belongs in the lightbox.
  */
 const BaseCard: FC<BaseCardProps> = memo(({
   imageUrl,
+  videoPreviewUrl,
   resourceType,
   alt = 'Media',
   overlays,
@@ -99,7 +109,7 @@ const BaseCard: FC<BaseCardProps> = memo(({
       // card stays clickable, and the lightbox shows its own placeholder if that fails too.
       onClick={onClick}
     >
-      {imageUrl && (
+      {imageUrl ? (
         imageFailed ? (
           <div className={classes.mediaFallback} role="img" aria-label={`${alt} — image unavailable`}>
             <IconPhotoOff size={28} stroke={1.5} />
@@ -111,6 +121,17 @@ const BaseCard: FC<BaseCardProps> = memo(({
             className={classes.nativeMedia}
             onLoad={onLoad}
             onError={handleImageError}
+          />
+        )
+      ) : (
+        resourceType === 'video' && videoPreviewUrl && (
+          <video
+            src={videoPreviewUrl}
+            className={classes.nativeMedia}
+            muted
+            playsInline
+            preload="metadata"
+            aria-label={alt}
           />
         )
       )}

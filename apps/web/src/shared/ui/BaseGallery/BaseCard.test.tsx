@@ -30,6 +30,27 @@ describe('BaseCard', () => {
     expect(container.querySelector('video')).toBeNull();
   });
 
+  it('renders a muted <video> from videoPreviewUrl when imageUrl is still empty (video mid-upload)', () => {
+    const blobUrl = 'blob:local-video-preview';
+    const { container } = wrap(
+      <BaseCard imageUrl="" videoPreviewUrl={blobUrl} resourceType="video" alt="Test video" />,
+    );
+    expect(container.querySelector('img')).toBeNull();
+    const video = container.querySelector('video');
+    expect(video).not.toBeNull();
+    expect(video!.getAttribute('src')).toBe(blobUrl);
+    expect(video!.muted).toBe(true);
+  });
+
+  it('ignores videoPreviewUrl once imageUrl is set', () => {
+    const posterUrl = 'https://cdn.example.com/poster.jpg';
+    const { container } = wrap(
+      <BaseCard imageUrl={posterUrl} videoPreviewUrl="blob:stale" resourceType="video" alt="Test video" />,
+    );
+    expect(container.querySelector('video')).toBeNull();
+    expect(container.querySelector('img')!.getAttribute('src')).toBe(posterUrl);
+  });
+
   it('shows a play indicator for video resources', () => {
     const { container } = wrap(
       <BaseCard imageUrl="https://cdn.example.com/poster.jpg" resourceType="video" />,

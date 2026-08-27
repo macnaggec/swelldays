@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
-import { Center, Loader, Text } from '@mantine/core';
+import { Center, Skeleton, Text } from '@mantine/core';
 import { useUser } from 'shared/hooks/useUser';
 import { BaseGallery } from 'shared/ui/BaseGallery';
+import { PanelCollectionGrid } from 'shared/ui/PanelCollectionGrid';
 import { PanelGalleryLayout } from 'shared/ui/PanelGalleryLayout';
 import { useCartToggle } from 'entities/Commerce';
 import { useMediaFavorites } from 'entities/Media';
@@ -21,7 +22,19 @@ function FavoritesTab() {
   const purchasedItemIds = useMemo(() => new Set(favorites.filter((item) => item.viewerEntitlement.purchaseState === 'purchased').map((item) => item.id)), [favorites]);
   const lightboxItems = useMemo(() => visibleFavorites.map((item) => ({ ...item, type: item.type === 'VIDEO' ? 'video' as const : 'image' as const })), [visibleFavorites]);
 
-  if (isLoadingFavorites) return <PanelGalleryLayout><Center mih={200}><Loader size="sm" /></Center></PanelGalleryLayout>;
+  if (isLoadingFavorites) {
+    // Same grid PanelCollectionGrid gives BaseGallery below, so the column count matches
+    // once real cards load; each tile mirrors PublicCard/BaseCard's aspect-ratio: 16/10.
+    return (
+      <PanelGalleryLayout>
+        <PanelCollectionGrid preview>
+          {Array.from({ length: 9 }).map((_, i) => (
+            <Skeleton key={i} height={0} style={{ aspectRatio: '16 / 10', borderRadius: 'var(--wa-radius-control-md)' }} />
+          ))}
+        </PanelCollectionGrid>
+      </PanelGalleryLayout>
+    );
+  }
   if (favorites.length === 0) return <PanelGalleryLayout><Center mih={200}><Text c="dimmed" size="sm">Your favorites will appear here.</Text></Center></PanelGalleryLayout>;
 
   return (

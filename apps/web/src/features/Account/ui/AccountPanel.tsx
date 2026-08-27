@@ -59,7 +59,10 @@ export function AccountPanelSkeleton() {
 
       <div className={classes.dangerSkeleton}>
         <Skeleton height={16} width={124} radius="sm" />
-        <Skeleton height={12} width="78%" radius="sm" />
+        <div className={classes.dangerDescriptionSkeleton}>
+          <Skeleton height={12} width="100%" radius="sm" />
+          <Skeleton height={12} width="65%" radius="sm" />
+        </div>
         <Skeleton height={34} width={152} radius="md" />
       </div>
     </section>

@@ -199,6 +199,41 @@
   background: var(--wa-control-fill-hover);
 }
 
+/* Skeleton loading placeholders: Mantine's default is a flat gray opacity-pulse, a plain
+   box unrelated to this app's own glass palette. Swap it for a soft light band that sweeps
+   across, tinted from the app's own translucent-white-on-dark control-fill scale so every
+   placeholder (there's no single Skeleton wrapper component; each call site renders
+   Mantine's directly) reads as part of the UI instead of a generic gray box. */
+.mantine-Skeleton-root::before,
+.mantine-Skeleton-root::after {
+  background-color: transparent;
+}
+
+.mantine-Skeleton-root::after {
+  background-image: linear-gradient(
+    100deg,
+    var(--wa-control-fill-muted) 35%,
+    var(--wa-control-fill-active-hover) 50%,
+    var(--wa-control-fill-muted) 65%
+  );
+  background-size: 250% 100%;
+  background-position: 120% 0;
+  animation: wa-skeleton-shimmer 1600ms ease-in-out infinite;
+}
+
+@keyframes wa-skeleton-shimmer {
+  to {
+    background-position: -30% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mantine-Skeleton-root::after {
+    animation: none;
+    background-position: 50% 0;
+  }
+}
+
 /* Global keyboard focus indicator: visible only for keyboard/programmatic focus, not mouse clicks. */
 :focus-visible {
   outline: 2px solid var(--wa-accent-spot);

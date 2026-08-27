@@ -59,7 +59,7 @@ const mocks = vi.hoisted(() => ({
   historyBack: vi.fn(),
   uploadBack: vi.fn(),
   canGoBack: true,
-  activeWorkspace: null as null | { id: string; kind: 'NEW_SESSION' | 'SESSION_EDIT' },
+  activeWorkspace: null as null | { id: string; kind: 'NEW_SESSION' | 'SESSION_EDIT'; hasAssets?: boolean },
   matches: [{ routeId: '/_panel/', staticData: {} }] as Array<{
     routeId: string;
     staticData: { panelHeader?: string; appRouteIntent?: DeclaredAppRouteIntent };
@@ -732,6 +732,24 @@ describe('Panel upload entry', () => {
     rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
     expect(screen.getByText('Edit session')).not.toBeNull();
+  });
+
+  it('hides the unfinished-upload indicator until the draft has an actual file, not just form fields', () => {
+    mocks.matches = [{ routeId: '/_panel/', staticData: {} }];
+    mocks.activeWorkspace = { id: 'workspace-1', kind: 'NEW_SESSION', hasAssets: false };
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    const { rerender } = render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(
+      screen.getByRole('button', { name: 'Upload' }).querySelector('[data-panel-route-action-indicator]'),
+    ).toBeNull();
+
+    mocks.activeWorkspace = { id: 'workspace-1', kind: 'NEW_SESSION', hasAssets: true };
+    rerender(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    expect(
+      screen.getByRole('button', { name: 'Upload' }).querySelector('[data-panel-route-action-indicator]'),
+    ).not.toBeNull();
   });
 
   it('compacts upload after expanded browsing even when feed layout is not ready', async () => {

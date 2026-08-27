@@ -20,6 +20,9 @@ export interface DraftCardProps {
   /** Image URL (JPEG poster frame for videos, thumbnail for images) */
   imageUrl: string;
 
+  /** Local video blob to show as the cover while imageUrl is still empty (video mid-upload) */
+  videoPreviewUrl?: string;
+
   /** Resource type */
   resourceType: 'image' | 'video';
 
@@ -55,6 +58,7 @@ export interface DraftCardProps {
  */
 const DraftCard: FC<DraftCardProps> = memo(({
   imageUrl,
+  videoPreviewUrl,
   resourceType,
   alt,
   overlays,
@@ -65,6 +69,7 @@ const DraftCard: FC<DraftCardProps> = memo(({
     <Box className={validation?.hasError ? classes.error : undefined}>
       <BaseCard
         imageUrl={imageUrl}
+        videoPreviewUrl={videoPreviewUrl}
         resourceType={resourceType}
         alt={alt}
         overlays={overlays}

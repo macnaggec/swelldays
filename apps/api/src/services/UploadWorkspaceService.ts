@@ -25,8 +25,13 @@ export class UploadWorkspaceService {
     return runQuery(async () => {
       const workspace = await prisma.uploadWorkspace.findFirst({
         where: { photographerId, status: UploadWorkspaceStatus.ACTIVE },
+        include: {
+          assets: { where: { status: 'READY' }, take: 1, select: { id: true } },
+          attempts: { where: { status: { in: [...ATTEMPT_BLOCKING_STATUSES] } }, take: 1, select: { id: true } },
+        },
       });
-      return workspace ? toWorkspaceSummary(workspace) : null;
+      if (!workspace) return null;
+      return toWorkspaceSummary(workspace, workspace.assets.length > 0 || workspace.attempts.length > 0);
     });
   }
 
@@ -120,7 +125,7 @@ export class UploadWorkspaceService {
         : [];
 
       return {
-        workspace: toWorkspaceSummary(workspace),
+        workspace: toWorkspaceSummary(workspace, workspace.assets.length > 0 || workspace.attempts.length > 0),
         existingMedia: existingMedia.map((media) => ({
           id: media.id,
           type: media.type,
@@ -175,8 +180,12 @@ export class UploadWorkspaceService {
           photoPrice: changes.photoPrice,
           videoPrice: changes.videoPrice,
         },
+        include: {
+          assets: { where: { status: 'READY' }, take: 1, select: { id: true } },
+          attempts: { where: { status: { in: [...ATTEMPT_BLOCKING_STATUSES] } }, take: 1, select: { id: true } },
+        },
       });
-      return toWorkspaceSummary(workspace);
+      return toWorkspaceSummary(workspace, workspace.assets.length > 0 || workspace.attempts.length > 0);
     });
   }
 
@@ -219,7 +228,7 @@ export class UploadWorkspaceService {
   }
 
   async deleteWorkspaceAsset(photographerId: string, workspaceId: string, assetId: string): Promise<{ id: string }> {
-    return runQuery(async () =>
+    const result = await runQuery(async () =>
       prisma.$transaction(async (tx) => {
         const workspace = await tx.uploadWorkspace.findFirst({
           where: { id: workspaceId, photographerId, status: UploadWorkspaceStatus.ACTIVE },
@@ -241,9 +250,17 @@ export class UploadWorkspaceService {
             data: { status: 'CLEANUP_PENDING' },
           });
         }
-        return { id: assetId };
+        return { id: assetId, cloudinaryPublicId: asset.cloudinaryPublicId, resourceType: asset.type };
       }),
     );
+
+    try {
+      await this.cleanup.deleteStoredAsset({ cloudinaryPublicId: result.cloudinaryPublicId, resourceType: result.resourceType });
+    } catch (err) {
+      logger.error('[uploadWorkspace] Cloudinary cleanup failed for discarded asset', { assetId, err });
+    }
+
+    return { id: result.id };
   }
 
   async saveWorkspace(photographerId: string, workspaceId: string): Promise<{ id: string; sessionDeleted: boolean }> {
@@ -398,12 +415,17 @@ export class UploadWorkspaceService {
   }
 
   async cancelWorkspace(photographerId: string, workspaceId: string): Promise<{ id: string }> {
-    return runQuery(async () =>
+    const result = await runQuery(async () =>
       prisma.$transaction(async (tx) => {
         const workspace = await tx.uploadWorkspace.findFirst({
           where: { id: workspaceId, photographerId, status: UploadWorkspaceStatus.ACTIVE },
         });
         if (!workspace) throw new NotFoundError('Upload Workspace');
+
+        const assets = await tx.uploadWorkspaceAsset.findMany({
+          where: { workspaceId, status: 'READY' },
+          select: { cloudinaryPublicId: true, type: true },
+        });
 
         await tx.uploadAttempt.updateMany({
           where: { workspaceId, photographerId, status: { in: [...ATTEMPT_CANCELLABLE_STATUSES] } },
@@ -418,9 +440,19 @@ export class UploadWorkspaceService {
           where: { id: workspaceId },
           data: { status: UploadWorkspaceStatus.CANCELLED },
         });
-        return { id: workspaceId };
+        return { id: workspaceId, deletedAssets: assets };
       }),
     );
+
+    for (const asset of result.deletedAssets) {
+      try {
+        await this.cleanup.deleteStoredAsset({ cloudinaryPublicId: asset.cloudinaryPublicId, resourceType: asset.type });
+      } catch (err) {
+        logger.error('[uploadWorkspace] Cloudinary cleanup failed for cancelled workspace asset', { asset, err });
+      }
+    }
+
+    return { id: result.id };
   }
 
   async ensureUploadableWorkspace(photographerId: string, workspaceId: string): Promise<{ id: string }> {
@@ -453,7 +485,7 @@ function toWorkspaceSummary(workspace: {
   videoPrice: number;
   createdAt: Date;
   updatedAt: Date;
-}): UploadWorkspaceSummary {
+}, hasAssets: boolean): UploadWorkspaceSummary {
   return {
     id: workspace.id,
     kind: workspace.kind,
@@ -466,6 +498,7 @@ function toWorkspaceSummary(workspace: {
     videoPrice: workspace.videoPrice,
     createdAt: workspace.createdAt,
     updatedAt: workspace.updatedAt,
+    hasAssets,
   };
 }
 
