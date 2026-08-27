@@ -1,6 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import * as Sentry from '@sentry/react';
 import { RouterProvider } from '@tanstack/react-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MantineProvider } from '@mantine/core';
@@ -24,10 +23,39 @@ import { queryClient } from 'shared/lib/queryClient';
 import { trpcClient } from 'shared/lib/trpcClient';
 import { webConfig } from 'config/env';
 
-Sentry.init({
-  dsn: webConfig.sentryDsn || undefined,
-  environment: webConfig.isDevelopment ? 'development' : 'production',
-});
+const SENTRY_STARTUP_DELAY_MS = 1_000;
+
+function initializeSentryAfterFirstPaint() {
+  if (!webConfig.sentryDsn) return;
+
+  const initialize = () => {
+    void import('@sentry/react').then((Sentry) => {
+      Sentry.init({
+        dsn: webConfig.sentryDsn,
+        environment: webConfig.isDevelopment ? 'development' : 'production',
+      });
+    });
+  };
+
+  const scheduleWhenIdle = () => {
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(initialize, { timeout: 2_000 });
+    } else {
+      initialize();
+    }
+  };
+
+  const scheduleAfterStartup = () => {
+    window.setTimeout(scheduleWhenIdle, SENTRY_STARTUP_DELAY_MS);
+  };
+
+  if (document.visibilityState === 'hidden') {
+    scheduleAfterStartup();
+    return;
+  }
+
+  window.requestAnimationFrame(scheduleAfterStartup);
+}
 
 ReactDOM
   .createRoot(document.getElementById('root')!)
@@ -52,3 +80,5 @@ ReactDOM
       </QueryClientProvider>
     </React.StrictMode>,
   );
+
+initializeSentryAfterFirstPaint();

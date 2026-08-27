@@ -4,15 +4,62 @@ import type { DriveSelection } from './uploadCoordinator';
 import { webConfig } from 'config/env';
 
 const DRIVE_READONLY_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+const GOOGLE_API_SRC = 'https://apis.google.com/js/api.js';
+const GOOGLE_IDENTITY_SRC = 'https://accounts.google.com/gsi/client';
 const PICKER_MIME_TYPES = [
   'image/jpeg','image/png','image/gif','image/webp',
   'image/tiff','image/heic','image/heif',
   'video/mp4','video/quicktime','video/x-msvideo','video/webm','video/mpeg',
 ].join(',');
 
+function loadGoogleScript(src: string, isReady: () => boolean): Promise<void> {
+  if (isReady()) return Promise.resolve();
+
+  const selector = `script[data-google-drive-api][src="${src}"]`;
+  let script = document.querySelector<HTMLScriptElement>(selector);
+  const isNewScript = !script;
+
+  if (!script) {
+    script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleDriveApi = '';
+  }
+
+  return new Promise((resolve, reject) => {
+    const handleLoad = () => {
+      if (isReady()) {
+        resolve();
+      } else {
+        reject(new Error('Google Drive API did not initialize.'));
+      }
+    };
+    const handleError = () => {
+      script?.remove();
+      reject(new Error('Google Drive API could not be loaded.'));
+    };
+
+    script.addEventListener('load', handleLoad, { once: true });
+    script.addEventListener('error', handleError, { once: true });
+    if (isNewScript) document.head.append(script);
+  });
+}
+
+const loadGoogleApi = () => loadGoogleScript(GOOGLE_API_SRC, () => Boolean(window.gapi));
+const loadGoogleIdentity = () => loadGoogleScript(
+  GOOGLE_IDENTITY_SRC,
+  () => Boolean(window.google?.accounts?.oauth2),
+);
+
+export async function loadGoogleDriveApis(): Promise<void> {
+  await Promise.all([loadGoogleApi(), loadGoogleIdentity()]);
+}
+
 export async function requestDriveAccessToken(): Promise<string> {
+  await loadGoogleIdentity();
   if (!window.google?.accounts?.oauth2) {
-    throw new Error('Google Sign-in is not available yet. Please try again.');
+    throw new Error('Google Sign-in is unavailable. Please try again.');
   }
   return new Promise((resolve, reject) => {
     const client = google.accounts.oauth2.initTokenClient({
@@ -28,7 +75,8 @@ export async function requestDriveAccessToken(): Promise<string> {
 }
 
 async function loadGooglePicker(): Promise<void> {
-  if (!window.gapi) throw new Error('Google Picker is not loaded yet.');
+  await loadGoogleApi();
+  if (!window.gapi) throw new Error('Google Picker is unavailable. Please try again.');
   await Promise.race([
     new Promise<void>(resolve => gapi.load('picker', resolve)),
     new Promise<never>((_, r) => setTimeout(() => r(new Error('Picker timed out.')), 10_000)),
@@ -43,6 +91,7 @@ export function useGooglePicker(
   const trigger = useCallback(async () => {
     setIsLoading(true);
     try {
+      await loadGoogleDriveApis();
       const accessToken = await requestDriveAccessToken();
       await loadGooglePicker();
 
