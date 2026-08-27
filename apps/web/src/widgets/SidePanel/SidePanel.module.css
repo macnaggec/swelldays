@@ -68,15 +68,6 @@
     color var(--wa-motion-duration-control) var(--wa-motion-easing-standard);
 }
 
-.topBtnLabeled {
-  width: auto;
-  max-width: 100%;
-  padding: 0 8px 0 6px;
-  font: inherit;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
 .topBtn:hover {
   background: var(--wa-control-fill);
   color: var(--wa-text-inverse);

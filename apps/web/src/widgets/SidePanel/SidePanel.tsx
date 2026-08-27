@@ -264,16 +264,13 @@ export function SidePanel({
           {!headerFullWidth && (
             onBack || showExpandToggle ? (
               <button
-                className={`${styles.topBtn} ${backLabel ? styles.topBtnLabeled : ''}`}
+                className={styles.topBtn}
                 onClick={onBack ?? onExpandToggle}
                 disabled={backDisabled}
                 aria-label={onBack ? backLabel ?? 'Back' : expanded ? 'Collapse panel' : 'Expand panel'}
               >
                 {onBack ? (
-                  <>
-                    <IconChevronLeft size={16} />
-                    {backLabel && <span>{backLabel}</span>}
-                  </>
+                  <IconChevronLeft size={16} />
                 ) : expanded ? (
                   <IconMinimize size={16} />
                 ) : (

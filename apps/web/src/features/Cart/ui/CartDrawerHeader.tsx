@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Anchor, Group, Text } from '@mantine/core';
+import { ActionIcon, Text } from '@mantine/core';
 import { IconChevronLeft } from '@tabler/icons-react';
 import styles from './CartDrawerHeader.module.css';
 
@@ -25,17 +25,15 @@ export const CartDrawerHeader = memo(function CartDrawerHeader({
     <div className={styles.header}>
       <div className={styles.headerStart}>
         {onBack && (
-          <Anchor
-            component="button"
-            size="xs"
-            c="dimmed"
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="md"
+            aria-label={backLabel}
             onClick={onBack}
           >
-            <Group gap={2} align="center">
-              <IconChevronLeft size={12} />
-              {backLabel}
-            </Group>
-          </Anchor>
+            <IconChevronLeft size={16} />
+          </ActionIcon>
         )}
       </div>
       <Text className={styles.headerTitle} fw={600} size="lg" ta="center">
