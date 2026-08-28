@@ -280,6 +280,7 @@ model Purchase {
   mediaItem          MediaItem @relation(fields: [mediaItemId], references: [id])
   order              Order?    @relation(fields: [orderId], references: [id])
 
+  @@unique([buyerId, mediaItemId], map: "purchases_buyer_media_key")
   @@map("purchases")
 }
 

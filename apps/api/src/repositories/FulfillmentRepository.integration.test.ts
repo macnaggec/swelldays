@@ -45,7 +45,7 @@ async function createOrderFixture() {
     },
   });
 
-  return { photographer, buyer, mediaItem, order };
+  return { photographer, buyer, session, mediaItem, order };
 }
 
 describe('FulfillmentRepository.commitFulfillment', () => {
@@ -131,5 +131,78 @@ describe('FulfillmentRepository.commitFulfillment', () => {
 
     expect(purchases).toHaveLength(1);
     expect(transactions).toHaveLength(1);
+  });
+
+  it('skips a colliding Purchase row but still completes the order and delivers the other items', async () => {
+    const { photographer, buyer, session, mediaItem, order } = await createOrderFixture();
+    const secondMediaItem = await prisma.mediaItem.create({
+      data: {
+        sessionId: session.id,
+        photographerId: photographer.id,
+        status: 'PUBLISHED',
+        price: 1000,
+        capturedAt: new Date('2026-01-01T06:30:00Z'),
+        lightboxUrl: 'https://res.cloudinary.com/test/fulfillment-2.jpg',
+        thumbnailUrl: 'https://res.cloudinary.com/test/fulfillment-2-thumb.jpg',
+        cloudinaryPublicId: 'swelldays/test/fulfillment-2',
+      },
+    });
+    await prisma.orderItem.create({ data: { orderId: order.id, mediaItemId: secondMediaItem.id } });
+
+    // Pre-seed a Purchase the buyer already holds for `mediaItem` from an earlier order —
+    // this is the collision commitFulfillment must skip, not error on.
+    await prisma.purchase.create({
+      data: {
+        buyerId: buyer.id,
+        mediaItemId: mediaItem.id,
+        amountPaid: 1000,
+        platformFee: 200,
+        photographerEarned: 800,
+        downloadToken: randomUUID(),
+      },
+    });
+
+    const externalOrderId = `CC-${randomUUID()}`;
+    const result = await repo.commitFulfillment({
+      orderId: order.id,
+      externalOrderId,
+      purchases: [
+        {
+          orderId: order.id,
+          mediaItemId: mediaItem.id,
+          buyerId: buyer.id,
+          guestEmail: null,
+          downloadToken: randomUUID(),
+          amountPaid: 1000,
+          platformFee: 200,
+          photographerEarned: 800,
+          previewUrl: 'https://res.cloudinary.com/test/fulfillment-preview.jpg',
+        },
+        {
+          orderId: order.id,
+          mediaItemId: secondMediaItem.id,
+          buyerId: buyer.id,
+          guestEmail: null,
+          downloadToken: randomUUID(),
+          amountPaid: 1000,
+          platformFee: 200,
+          photographerEarned: 800,
+          previewUrl: 'https://res.cloudinary.com/test/fulfillment-preview-2.jpg',
+        },
+      ],
+      earnings: [{ photographerId: photographer.id, amount: 1600 }],
+    });
+
+    expect(result).toEqual({ applied: true, skippedMediaItemIds: [mediaItem.id] });
+
+    const [updatedOrder, purchasesForMediaItem, purchasesForSecondItem] = await Promise.all([
+      prisma.order.findUniqueOrThrow({ where: { id: order.id } }),
+      prisma.purchase.findMany({ where: { buyerId: buyer.id, mediaItemId: mediaItem.id } }),
+      prisma.purchase.findMany({ where: { buyerId: buyer.id, mediaItemId: secondMediaItem.id } }),
+    ]);
+
+    expect(updatedOrder.status).toBe(OrderStatus.COMPLETED);
+    expect(purchasesForMediaItem).toHaveLength(1); // still just the pre-seeded one — the duplicate was skipped
+    expect(purchasesForSecondItem).toHaveLength(1); // the non-colliding item still delivered
   });
 });

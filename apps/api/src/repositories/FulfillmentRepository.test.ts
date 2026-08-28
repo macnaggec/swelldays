@@ -50,18 +50,47 @@ describe('FulfillmentRepository.commitFulfillment', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockTransaction.mockImplementation((fn: any) => fn(tx));
 
-    await expect(repo.commitFulfillment(payload)).resolves.toEqual({ applied: true });
+    await expect(repo.commitFulfillment(payload)).resolves.toEqual({ applied: true, skippedMediaItemIds: [] });
 
     expect(tx.order.updateMany).toHaveBeenCalledWith({
       where: { id: payload.orderId, status: OrderStatus.PENDING },
       data: { status: OrderStatus.COMPLETED, externalOrderId: payload.externalOrderId },
     });
-    expect(tx.purchase.createMany).toHaveBeenCalledWith({ data: payload.purchases });
+    expect(tx.purchase.createMany).toHaveBeenCalledWith({ data: payload.purchases, skipDuplicates: true });
     expect(mockRecordSale).toHaveBeenCalledTimes(1);
     expect(mockRecordSale).toHaveBeenCalledWith(tx, {
       photographerId: 'photographer-1',
       amount: 800,
       externalOrderId: payload.externalOrderId,
+    });
+  });
+
+  it('reports skipped media item ids when a Purchase insert collides on (buyerId, mediaItemId)', async () => {
+    const twoItemPayload: FulfillmentPayload = {
+      ...payload,
+      purchases: [
+        payload.purchases[0]!,
+        { ...payload.purchases[0]!, mediaItemId: 'media-2', downloadToken: 'b'.repeat(64) },
+      ],
+    };
+    const tx = {
+      order: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      purchase: {
+        createMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findMany: vi.fn().mockResolvedValue([{ mediaItemId: 'media-2' }]),
+      },
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockTransaction.mockImplementation((fn: any) => fn(tx));
+
+    await expect(repo.commitFulfillment(twoItemPayload)).resolves.toEqual({
+      applied: true,
+      skippedMediaItemIds: ['media-1'],
+    });
+
+    expect(tx.purchase.findMany).toHaveBeenCalledWith({
+      where: { orderId: twoItemPayload.orderId },
+      select: { mediaItemId: true },
     });
   });
 

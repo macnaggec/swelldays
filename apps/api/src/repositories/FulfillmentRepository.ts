@@ -28,7 +28,9 @@ export type FulfillmentPayload = {
   earnings: EarningsEntry[];
 };
 
-export type CommitFulfillmentResult = { applied: boolean };
+export type CommitFulfillmentResult =
+  | { applied: false }
+  | { applied: true; skippedMediaItemIds: string[] };
 
 export interface IFulfillmentRepository {
   commitFulfillment(payload: FulfillmentPayload): Promise<CommitFulfillmentResult>;
@@ -50,7 +52,22 @@ export class FulfillmentRepository implements IFulfillmentRepository {
           return { applied: false };
         }
 
-        await tx.purchase.createMany({ data: payload.purchases });
+        const { count: insertedCount } = await tx.purchase.createMany({
+          data: payload.purchases,
+          skipDuplicates: true,
+        });
+
+        let skippedMediaItemIds: string[] = [];
+        if (insertedCount < payload.purchases.length) {
+          const inserted = await tx.purchase.findMany({
+            where: { orderId: payload.orderId },
+            select: { mediaItemId: true },
+          });
+          const insertedIds = new Set(inserted.map((p) => p.mediaItemId));
+          skippedMediaItemIds = payload.purchases
+            .map((p) => p.mediaItemId)
+            .filter((mediaItemId) => !insertedIds.has(mediaItemId));
+        }
 
         await Promise.all(
           payload.earnings.map(({ photographerId, amount }) =>
@@ -62,7 +79,7 @@ export class FulfillmentRepository implements IFulfillmentRepository {
           )
         );
 
-        return { applied: true };
+        return { applied: true, skippedMediaItemIds };
       })
     );
   }

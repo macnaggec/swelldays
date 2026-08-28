@@ -8,6 +8,7 @@ import { fulfillmentRepository } from 'server/repositories/FulfillmentRepository
 import type { ICloudinaryService } from 'server/services/CloudinaryService';
 import { cloudinaryService } from 'server/services/CloudinaryService';
 import { ConflictError } from 'server/errors';
+import { logger } from 'server/lib/logger';
 
 const PLATFORM_FEE_RATE = 0.20;
 const PHOTOGRAPHER_RATE = 0.80;
@@ -72,6 +73,12 @@ export class PurchaseFulfillmentService {
         earnings: Array.from(earningsMap, ([photographerId, amount]) => ({ photographerId, amount })),
       });
       if (!result.applied) return; // order already left PENDING — idempotent no-op, same as the ConflictError branch below
+      if (result.skippedMediaItemIds.length > 0) {
+        logger.warn('[PurchaseFulfillmentService] Skipped duplicate Purchase insert(s) on (buyerId, mediaItemId)', {
+          orderId,
+          mediaItemIds: result.skippedMediaItemIds,
+        });
+      }
     } catch (err) {
       // P2002 on externalOrderId unique constraint — concurrent webhook delivered the same event
       if (err instanceof ConflictError) return;

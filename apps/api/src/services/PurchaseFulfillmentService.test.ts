@@ -3,13 +3,14 @@ import { PurchaseFulfillmentService } from 'server/services/PurchaseFulfillmentS
 import type { OrderWithItems } from 'server/repositories/OrderRepository';
 import type { MediaFulfillmentItem } from 'server/repositories/MediaRepository';
 import type { FulfillPurchaseData, FulfillmentPayload } from 'server/repositories/FulfillmentRepository';
+import { logger } from 'server/lib/logger';
 
 // ---------------------------------------------------------------------------
 // Inline mocks — no vi.mock() needed with constructor injection
 // ---------------------------------------------------------------------------
 
 const mockFulfillment = {
-  commitFulfillment: vi.fn().mockResolvedValue({ applied: true }),
+  commitFulfillment: vi.fn().mockResolvedValue({ applied: true, skippedMediaItemIds: [] }),
 };
 
 const mockOrders = {
@@ -42,7 +43,7 @@ const service = new PurchaseFulfillmentService(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockFulfillment.commitFulfillment.mockResolvedValue({ applied: true });
+  mockFulfillment.commitFulfillment.mockResolvedValue({ applied: true, skippedMediaItemIds: [] });
   mockCloudinary.tryGeneratePermanentPreviewUrl.mockReturnValue('https://res.cloudinary.com/preview');
 });
 
@@ -249,6 +250,33 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
     mockFulfillment.commitFulfillment.mockRejectedValue(boom);
 
     await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).rejects.toThrow('DB connection lost');
+  });
+
+  it('logs a warning naming the skipped media items when commitFulfillment reports a collision', async () => {
+    setupHappyPath();
+    mockFulfillment.commitFulfillment.mockResolvedValue({
+      applied: true,
+      skippedMediaItemIds: ['media-1'],
+    });
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Skipped duplicate Purchase'),
+      { orderId: ORDER_ID, mediaItemIds: ['media-1'] },
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('does not log when commitFulfillment reports no skipped items', async () => {
+    setupHappyPath();
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 });
 
