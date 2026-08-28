@@ -100,4 +100,36 @@ describe('FulfillmentRepository.commitFulfillment', () => {
       externalOrderId,
     });
   });
+
+  it('does not double-insert Purchase/Transaction rows when called twice for the same order', async () => {
+    const { photographer, buyer, mediaItem, order } = await createOrderFixture();
+    const externalOrderId = `CC-${randomUUID()}`;
+    const fulfillmentPayload = {
+      orderId: order.id,
+      externalOrderId,
+      purchases: [{
+        orderId: order.id,
+        mediaItemId: mediaItem.id,
+        buyerId: buyer.id,
+        guestEmail: null,
+        downloadToken: randomUUID(),
+        amountPaid: 1000,
+        platformFee: 200,
+        photographerEarned: 800,
+        previewUrl: 'https://res.cloudinary.com/test/fulfillment-preview.jpg',
+      }],
+      earnings: [{ photographerId: photographer.id, amount: 800 }],
+    };
+
+    await repo.commitFulfillment(fulfillmentPayload);
+    await expect(repo.commitFulfillment(fulfillmentPayload)).resolves.toEqual({ applied: false });
+
+    const [purchases, transactions] = await Promise.all([
+      prisma.purchase.findMany({ where: { orderId: order.id } }),
+      prisma.transaction.findMany({ where: { userId: photographer.id } }),
+    ]);
+
+    expect(purchases).toHaveLength(1);
+    expect(transactions).toHaveLength(1);
+  });
 });

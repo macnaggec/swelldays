@@ -87,7 +87,11 @@ export class OrderRepository implements IOrderRepository {
 
   markOrderFailed(orderId: string): Promise<void> {
     return runQuery(async () => {
-      await prisma.order.update({ where: { id: orderId }, data: { status: OrderStatus.FAILED } });
+      // updateMany with status: PENDING guard — a terminal order (COMPLETED/FAILED) is never overwritten
+      await prisma.order.updateMany({
+        where: { id: orderId, status: OrderStatus.PENDING },
+        data: { status: OrderStatus.FAILED },
+      });
     });
   }
 

@@ -9,7 +9,7 @@ import type { FulfillPurchaseData, FulfillmentPayload } from 'server/repositorie
 // ---------------------------------------------------------------------------
 
 const mockFulfillment = {
-  commitFulfillment: vi.fn().mockResolvedValue(undefined),
+  commitFulfillment: vi.fn().mockResolvedValue({ applied: true }),
 };
 
 const mockOrders = {
@@ -42,7 +42,7 @@ const service = new PurchaseFulfillmentService(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockFulfillment.commitFulfillment.mockResolvedValue(undefined);
+  mockFulfillment.commitFulfillment.mockResolvedValue({ applied: true });
   mockCloudinary.tryGeneratePermanentPreviewUrl.mockReturnValue('https://res.cloudinary.com/preview');
 });
 
@@ -232,6 +232,13 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
     mockFulfillment.commitFulfillment.mockRejectedValue(
       new ConflictError('external_order_id already exists'),
     );
+
+    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toBeUndefined();
+  });
+
+  it('treats commitFulfillment resolving { applied: false } as idempotent success', async () => {
+    setupHappyPath();
+    mockFulfillment.commitFulfillment.mockResolvedValue({ applied: false });
 
     await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toBeUndefined();
   });

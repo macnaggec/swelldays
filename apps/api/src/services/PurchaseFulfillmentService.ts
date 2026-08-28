@@ -65,12 +65,13 @@ export class PurchaseFulfillmentService {
     }
 
     try {
-      await this.fulfillment.commitFulfillment({
+      const result = await this.fulfillment.commitFulfillment({
         orderId,
         externalOrderId,
         purchases: purchaseData,
         earnings: Array.from(earningsMap, ([photographerId, amount]) => ({ photographerId, amount })),
       });
+      if (!result.applied) return; // order already left PENDING — idempotent no-op, same as the ConflictError branch below
     } catch (err) {
       // P2002 on externalOrderId unique constraint — concurrent webhook delivered the same event
       if (err instanceof ConflictError) return;

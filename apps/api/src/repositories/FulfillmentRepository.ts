@@ -28,18 +28,27 @@ export type FulfillmentPayload = {
   earnings: EarningsEntry[];
 };
 
+export type CommitFulfillmentResult = { applied: boolean };
+
 export interface IFulfillmentRepository {
-  commitFulfillment(payload: FulfillmentPayload): Promise<void>;
+  commitFulfillment(payload: FulfillmentPayload): Promise<CommitFulfillmentResult>;
 }
 
 export class FulfillmentRepository implements IFulfillmentRepository {
-  commitFulfillment(payload: FulfillmentPayload): Promise<void> {
+  commitFulfillment(payload: FulfillmentPayload): Promise<CommitFulfillmentResult> {
     return runQuery(() =>
       prisma.$transaction(async (tx) => {
-        await tx.order.update({
-          where: { id: payload.orderId },
+        const { count } = await tx.order.updateMany({
+          where: { id: payload.orderId, status: OrderStatus.PENDING },
           data: { status: OrderStatus.COMPLETED, externalOrderId: payload.externalOrderId },
         });
+        if (count === 0) {
+          // Order already left PENDING — a concurrent commitFulfillment for the
+          // same orderId/externalOrderId won this race. Skip the rest of the
+          // transaction: writing Purchase/ledger rows again would double them,
+          // since Purchase has no uniqueness constraint yet (see roadmap P02b).
+          return { applied: false };
+        }
 
         await tx.purchase.createMany({ data: payload.purchases });
 
@@ -52,6 +61,8 @@ export class FulfillmentRepository implements IFulfillmentRepository {
             })
           )
         );
+
+        return { applied: true };
       })
     );
   }
