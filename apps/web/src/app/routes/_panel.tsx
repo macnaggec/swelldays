@@ -151,6 +151,15 @@ function PanelFrame({ children }: { children: ReactNode }) {
     submit();
   }, [activeWorkspace, isAuthenticated, layoutPolicy.drawer.presentation, navigate, openAuthModal, spotId]);
 
+  const handleUploadIntent = useCallback(() => {
+    void router.preloadRoute({
+      to: '/upload',
+      search: activeWorkspace
+        ? { workspaceId: activeWorkspace.id }
+        : { spotId: spotId ?? undefined },
+    }).catch(() => {});
+  }, [activeWorkspace, router, spotId]);
+
   const { spot: activeSpot } = useSelectedSpot();
   const { data: cartFromSpot } = useSpotPreview(cartFrom ?? '', { enabled: !!cartFrom });
 
@@ -270,6 +279,26 @@ function PanelFrame({ children }: { children: ReactNode }) {
     spotId,
   ]);
 
+  const handleBrowseSectionIntent = useCallback((scope: BrowseSection) => {
+    if (
+      (scope === 'sessions' && !galleryMatch)
+      || (scope === 'gallery' && Boolean(galleryMatch))
+    ) return;
+
+    if (scope === 'gallery') {
+      void (spotMatch
+        ? router.preloadRoute({ to: '/$spotId/gallery', params: { spotId: spotId! } })
+        : router.preloadRoute({ to: '/gallery' })
+      ).catch(() => {});
+      return;
+    }
+
+    void (spotMatch
+      ? router.preloadRoute({ to: '/$spotId', params: { spotId: spotId! } })
+      : router.preloadRoute({ to: '/' })
+    ).catch(() => {});
+  }, [galleryMatch, router, spotId, spotMatch]);
+
   const header: ReactNode = (() => {
     if (cartMatch) {
       return (
@@ -301,6 +330,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
         <ScopeSwitcher
           scope={galleryMatch ? 'gallery' : 'sessions'}
           onChange={handleBrowseSectionChange}
+          onIntent={handleBrowseSectionIntent}
         />
       );
     }
@@ -363,6 +393,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
         action={(
           <PanelRouteActionButton
             onClick={handleUpload}
+            onIntent={handleUploadIntent}
             showIndicator={hasUnfinishedUpload}
           >
             {hasActiveTransfers ? (
@@ -455,6 +486,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
                   avoidDrawer={isBrowseMapExclusive && browseSurfaceMode !== 'map'}
                   onMap={showBrowseMap}
                   onSectionChange={handleBrowseSectionChange}
+                  onSectionIntent={handleBrowseSectionIntent}
                 />
                   ) : undefined
               }

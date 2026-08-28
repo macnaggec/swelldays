@@ -1,5 +1,5 @@
 import { fireEvent, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import {
@@ -60,6 +60,41 @@ function renderBrowseSheetWithSectionBar() {
 }
 
 describe('SidePanel bottom sheet', () => {
+  it('reports intent before activating a Browse section route', () => {
+    const onSectionIntent = vi.fn();
+    const onSectionChange = vi.fn();
+    const onMap = vi.fn();
+    render(
+      <BrowseSectionBar
+        active="sessions"
+        onMap={onMap}
+        onSectionChange={onSectionChange}
+        onSectionIntent={onSectionIntent}
+      />,
+    );
+
+    const gallery = screen.getByRole('button', { name: 'Gallery' });
+    fireEvent.pointerEnter(gallery);
+    fireEvent.pointerDown(gallery, { pointerType: 'touch' });
+    fireEvent.touchStart(gallery);
+    fireEvent.focus(gallery);
+
+    expect(onSectionIntent).toHaveBeenCalledTimes(4);
+    expect(onSectionIntent).toHaveBeenNthCalledWith(1, 'gallery');
+    expect(onSectionIntent).toHaveBeenNthCalledWith(2, 'gallery');
+    expect(onSectionIntent).toHaveBeenNthCalledWith(3, 'gallery');
+    expect(onSectionIntent).toHaveBeenNthCalledWith(4, 'gallery');
+    expect(onSectionChange).not.toHaveBeenCalled();
+
+    const map = screen.getByRole('button', { name: 'Map' });
+    fireEvent.pointerEnter(map);
+    fireEvent.click(map);
+
+    expect(onSectionIntent).toHaveBeenCalledTimes(4);
+    expect(onMap).toHaveBeenCalledOnce();
+    expect(onSectionChange).not.toHaveBeenCalled();
+  });
+
   it('reports the snap it was given and a new one when the prop changes', () => {
     const { rerender } = render(
       <SidePanel drawerPresentation="bottomSheet" sheetSnap="half" onSheetSnapChange={() => { }}>

@@ -1,4 +1,4 @@
-import { act, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { publishNavigationRailGeometry } from 'shared/model/navigationRailGeometry';
@@ -73,6 +73,25 @@ describe('PanelRouteLayout', () => {
     expect(
       screen.getByText('Search').closest('[data-panel-search-toolbar]')?.hasAttribute('data-expanded'),
     ).toBe(true);
+  });
+
+  it('reports pointer, touch, and keyboard intent from a route action', () => {
+    const onIntent = vi.fn();
+    const onClick = vi.fn();
+    render(
+      <PanelRouteActionButton onClick={onClick} onIntent={onIntent}>
+        Upload
+      </PanelRouteActionButton>,
+    );
+
+    const action = screen.getByRole('button', { name: 'Upload' });
+    fireEvent.pointerEnter(action);
+    fireEvent.pointerDown(action, { pointerType: 'touch' });
+    fireEvent.touchStart(action);
+    fireEvent.focus(action);
+
+    expect(onIntent).toHaveBeenCalledTimes(4);
+    expect(onClick).not.toHaveBeenCalled();
   });
 
   it('renders floating controls outside panel content flow', () => {

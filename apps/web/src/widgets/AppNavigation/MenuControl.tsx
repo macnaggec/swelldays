@@ -10,7 +10,7 @@ import {
   IconWallet,
   IconX,
 } from '@tabler/icons-react';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useRouter } from '@tanstack/react-router';
 import { signOut } from 'shared/lib/auth';
 import { useUser } from 'shared/hooks/useUser';
 import { useAuthModal } from 'features/Auth';
@@ -33,6 +33,7 @@ const ITEM_ICON_STYLE = { color: 'var(--wa-text-muted)' } as const;
 export function MenuControl() {
   const { user, isAuthenticated, isLoading } = useUser();
   const navigate = useNavigate();
+  const router = useRouter();
   const { open: openAuthModal } = useAuthModal();
   const [opened, setOpened] = useState(false);
 
@@ -59,6 +60,18 @@ export function MenuControl() {
   const handleGoToEarnings = useCallback(() => navigate({ to: '/me/earnings' }), [navigate]);
   const handleOpenAccount = useCallback(() => navigate({ to: '/me' }), [navigate]);
   const handleGoToAbout = useCallback(() => navigate({ to: '/about' }), [navigate]);
+  const preloadMenuRoutes = useCallback(() => {
+    const requests = [router.preloadRoute({ to: '/about' })];
+    if (isAuthenticated) {
+      requests.push(
+        router.preloadRoute({ to: '/me/collections' }),
+        router.preloadRoute({ to: '/me/earnings' }),
+        router.preloadRoute({ to: '/me' }),
+      );
+    }
+
+    void Promise.allSettled(requests);
+  }, [isAuthenticated, router]);
 
   if (isLoading) return null;
 
@@ -72,6 +85,9 @@ export function MenuControl() {
           color="gray"
           size="lg"
           aria-label={opened ? 'Close menu' : 'Open menu'}
+          onPointerEnter={preloadMenuRoutes}
+          onPointerDown={preloadMenuRoutes}
+          onFocus={preloadMenuRoutes}
           data-opened={opened || undefined}
           className={classes.trigger}
         >

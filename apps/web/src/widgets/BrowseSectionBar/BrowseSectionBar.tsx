@@ -16,12 +16,14 @@ interface BrowseSectionBarProps {
   avoidDrawer?: boolean;
   onMap: () => void;
   onSectionChange: (section: BrowseSection) => void;
+  onSectionIntent?: (section: BrowseSection) => void;
 }
 
 function BrowseSectionNavigation({
   active,
   onMap,
   onSectionChange,
+  onSectionIntent,
   drawerInset,
 }: BrowseSectionBarProps & { drawerInset?: number }) {
   const style: BrowseSectionBarStyle | undefined = drawerInset !== undefined
@@ -48,6 +50,7 @@ function BrowseSectionNavigation({
           icon: <IconStack2 size={20} aria-hidden="true" />,
           active: active === 'sessions',
           onClick: () => onSectionChange('sessions'),
+          onIntent: () => onSectionIntent?.('sessions'),
         },
         {
           key: 'gallery',
@@ -55,6 +58,7 @@ function BrowseSectionNavigation({
           icon: <IconPhoto size={20} aria-hidden="true" />,
           active: active === 'gallery',
           onClick: () => onSectionChange('gallery'),
+          onIntent: () => onSectionIntent?.('gallery'),
         },
       ]}
     />

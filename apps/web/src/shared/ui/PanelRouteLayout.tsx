@@ -33,6 +33,7 @@ interface PanelSearchToolbarProps {
 interface PanelRouteActionButtonProps {
   children: ReactNode;
   onClick: () => void;
+  onIntent?: () => void;
   disabled?: boolean;
   showIndicator?: boolean;
 }
@@ -108,12 +109,17 @@ export function FloatingPanelSearchToolbar({ children }: { children: ReactNode }
 export function PanelRouteActionButton({
   children,
   onClick,
+  onIntent,
   disabled = false,
   showIndicator = false,
 }: PanelRouteActionButtonProps) {
   return (
     <AppButton
       onClick={onClick}
+      onPointerEnter={onIntent}
+      onPointerDown={onIntent}
+      onTouchStart={onIntent}
+      onFocus={onIntent}
       disabled={disabled}
       data-panel-toolbar-action
       indicator={showIndicator

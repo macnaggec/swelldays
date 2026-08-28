@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   notifyError: vi.fn(),
   openAuthModal: vi.fn(),
+  preloadRoute: vi.fn(),
   signOut: vi.fn(),
   user: {
     email: 'photographer@example.com',
@@ -21,6 +22,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mocks.navigate,
+  useRouter: () => ({ preloadRoute: mocks.preloadRoute }),
 }));
 
 vi.mock('@mantine/core', async (importOriginal) => {
@@ -80,7 +82,53 @@ describe('MenuControl', () => {
     vi.clearAllMocks();
     mocks.isAuthenticated = true;
     mocks.isLoading = false;
+    mocks.preloadRoute.mockResolvedValue(undefined);
     mocks.signOut.mockResolvedValue({ data: { success: true }, error: null });
+  });
+
+  it('preloads authenticated menu destinations from pointer, touch-pointer, and focus intent', () => {
+    render(<MenuControl />);
+
+    const trigger = screen.getByRole('button', { name: 'Open menu' });
+    fireEvent.pointerEnter(trigger);
+    fireEvent.pointerDown(trigger, { pointerType: 'touch' });
+    fireEvent.focus(trigger);
+
+    expect(mocks.preloadRoute.mock.calls).toEqual([
+      [{ to: '/about' }],
+      [{ to: '/me/collections' }],
+      [{ to: '/me/earnings' }],
+      [{ to: '/me' }],
+      [{ to: '/about' }],
+      [{ to: '/me/collections' }],
+      [{ to: '/me/earnings' }],
+      [{ to: '/me' }],
+      [{ to: '/about' }],
+      [{ to: '/me/collections' }],
+      [{ to: '/me/earnings' }],
+      [{ to: '/me' }],
+    ]);
+  });
+
+  it('preloads only About for a signed-out visitor', () => {
+    mocks.isAuthenticated = false;
+    render(<MenuControl />);
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }));
+
+    expect(mocks.preloadRoute).toHaveBeenCalledOnce();
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({ to: '/about' });
+  });
+
+  it('settles rejected menu preloads and still navigates from the menu', async () => {
+    mocks.preloadRoute.mockRejectedValue(new Error('Route preload failed'));
+    render(<MenuControl />);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Open menu' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'My Collections' }));
+
+    expect(mocks.preloadRoute).toHaveBeenCalledTimes(4);
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/me/collections' });
   });
 
   it('opens sign in from the signed-out menu', async () => {

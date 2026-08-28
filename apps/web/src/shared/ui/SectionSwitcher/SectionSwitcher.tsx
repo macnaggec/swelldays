@@ -9,6 +9,7 @@ export interface SectionSwitcherItem {
   icon: ReactNode;
   active: boolean;
   onClick: () => void;
+  onIntent?: () => void;
 }
 
 interface SectionSwitcherProps extends ComponentPropsWithoutRef<'nav'> {
@@ -49,6 +50,10 @@ export function SectionSwitcher({ items, className, labelsHidden: labelsHiddenOv
           aria-label={item.label}
           aria-current={item.active ? 'page' : undefined}
           onClick={item.onClick}
+          onPointerEnter={item.onIntent}
+          onPointerDown={item.onIntent}
+          onTouchStart={item.onIntent}
+          onFocus={item.onIntent}
         >
           {item.icon}
           {!labelsHidden && <span>{item.label}</span>}

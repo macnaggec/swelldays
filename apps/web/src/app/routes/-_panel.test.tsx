@@ -55,6 +55,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   notifyError: vi.fn(),
   openAuth: vi.fn(),
+  preloadRoute: vi.fn(),
   startAddSpot: vi.fn(),
   isAuthenticated: false,
   historyBack: vi.fn(),
@@ -122,7 +123,10 @@ vi.mock('@tanstack/react-router', () => ({
   useMatches: () => mocks.matches,
   useNavigate: () => mocks.navigate,
   useParams: () => mocks.params,
-  useRouter: () => ({ history: { back: mocks.historyBack, canGoBack: () => mocks.canGoBack } }),
+  useRouter: () => ({
+    history: { back: mocks.historyBack, canGoBack: () => mocks.canGoBack },
+    preloadRoute: mocks.preloadRoute,
+  }),
   useRouterState: () => mocks.collectionsActiveTab,
 }));
 
@@ -239,20 +243,24 @@ vi.mock('widgets/SidePanel', () => ({
   ScopeSwitcher: ({
     scope,
     onChange,
+    onIntent,
   }: {
     scope: 'sessions' | 'gallery';
     onChange: (scope: 'sessions' | 'gallery') => void;
+    onIntent?: (scope: 'sessions' | 'gallery') => void;
   }) => (
     <div role="group" aria-label="Content scope">
       <button
         aria-pressed={scope === 'sessions'}
         onClick={scope === 'sessions' ? undefined : () => onChange('sessions')}
+        onPointerEnter={() => onIntent?.('sessions')}
       >
         Feed
       </button>
       <button
         aria-pressed={scope === 'gallery'}
         onClick={scope === 'gallery' ? undefined : () => onChange('gallery')}
+        onPointerEnter={() => onIntent?.('gallery')}
       >
         Gallery
       </button>
@@ -391,6 +399,7 @@ vi.mock('features/Cart', () => ({
 describe('Panel upload entry', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.preloadRoute.mockResolvedValue(undefined);
     mocks.isAuthenticated = false;
     mocks.matches = [{ routeId: '/_panel/', staticData: {} }];
     mocks.params = {};
@@ -417,6 +426,154 @@ describe('Panel upload entry', () => {
 
     expect(mocks.openAuth).toHaveBeenCalledOnce();
     expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('preloads Upload with the selected spot when the user approaches its control', () => {
+    mocks.params = { spotId: 'spot-current' };
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Upload' }));
+
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({
+      to: '/upload',
+      search: { spotId: 'spot-current' },
+    });
+  });
+
+  it('preloads Upload with the active workspace instead of the selected spot', () => {
+    mocks.activeWorkspace = { id: 'workspace-current', kind: 'NEW_SESSION' };
+    mocks.params = { spotId: 'spot-current' };
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Upload' }));
+
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({
+      to: '/upload',
+      search: { workspaceId: 'workspace-current' },
+    });
+  });
+
+  it('preloads Upload with an undefined spot when no spot or workspace is selected', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Upload' }));
+
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({
+      to: '/upload',
+      search: { spotId: undefined },
+    });
+  });
+
+  it('preloads Gallery when the user approaches the inactive browse scope', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Gallery' }));
+
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({ to: '/gallery' });
+  });
+
+  it('preloads the selected spot Gallery from that spot Feed', () => {
+    mocks.params = { spotId: 'spot-current' };
+    mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {} }];
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Gallery' }));
+
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({
+      to: '/$spotId/gallery',
+      params: { spotId: 'spot-current' },
+    });
+  });
+
+  it('preloads the selected spot Feed from that spot Gallery', () => {
+    mocks.params = { spotId: 'spot-current' };
+    mocks.matches = [
+      { routeId: '/_panel/$spotId', staticData: {} },
+      { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
+    ];
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Feed' }));
+
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({
+      to: '/$spotId',
+      params: { spotId: 'spot-current' },
+    });
+  });
+
+  it('preloads the all-spots Feed from the all-spots Gallery', () => {
+    mocks.matches = [{
+      routeId: '/_panel/gallery',
+      staticData: { appRouteIntent: 'galleryWorkspace' },
+    }];
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Feed' }));
+
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({ to: '/' });
+  });
+
+  it('does not preload the already-active Feed destination', () => {
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Feed' }));
+
+    expect(mocks.preloadRoute).not.toHaveBeenCalled();
+  });
+
+  it('does not preload the already-active Gallery destination', () => {
+    mocks.matches = [{
+      routeId: '/_panel/gallery',
+      staticData: { appRouteIntent: 'galleryWorkspace' },
+    }];
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Gallery' }));
+
+    expect(mocks.preloadRoute).not.toHaveBeenCalled();
+  });
+
+  it('continues to Upload with the same search after its preload is rejected', async () => {
+    mocks.isAuthenticated = true;
+    mocks.params = { spotId: 'spot-current' };
+    mocks.preloadRoute.mockRejectedValueOnce(new Error('Route preload failed'));
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Upload' }));
+    await act(async () => Promise.resolve());
+    fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: '/upload',
+      search: { spotId: 'spot-current' },
+    });
+  });
+
+  it('continues to the selected spot Gallery with the same params after preload rejection', async () => {
+    mocks.params = { spotId: 'spot-current' };
+    mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {} }];
+    mocks.preloadRoute.mockRejectedValueOnce(new Error('Route preload failed'));
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Gallery' }));
+    await act(async () => Promise.resolve());
+    fireEvent.click(screen.getByRole('button', { name: 'Gallery' }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: '/$spotId/gallery',
+      params: { spotId: 'spot-current' },
+    });
   });
 
   it('carries the visitor through to upload once they sign in', () => {
