@@ -91,6 +91,18 @@ export default defineConfig({
         },
         resolve: { alias: serverAlias },
       },
+      // -----------------------------------------------------------------------
+      // Scripts — build tooling and repository checks.
+      // Runs in Node without client or server setup side effects.
+      // -----------------------------------------------------------------------
+      {
+        test: {
+          name: 'scripts',
+          environment: 'node',
+          globals: true,
+          include: ['apps/web/scripts/**/*.test.ts'],
+        },
+      },
     ],
   },
 })

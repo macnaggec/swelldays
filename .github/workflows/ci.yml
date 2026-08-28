@@ -41,8 +41,8 @@ jobs:
       - name: Check style boundaries
         run: npm run check:style-boundaries
 
-      - name: Run client and server tests
-        run: npx vitest run --project client --project server
+      - name: Run client, server, and scripts tests
+        run: npx vitest run --project client --project server --project scripts
 
       - name: Start integration-test database
         run: npm run test:db:up

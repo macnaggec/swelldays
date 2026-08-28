@@ -2,6 +2,7 @@
   "extends": "./apps/web/tsconfig.json",
   "include": [
     "apps/web/src",
+    "apps/web/scripts",
     "packages/contracts/src",
     "vitest.d.ts",
     "tests",
