@@ -15,6 +15,7 @@ const mockOrders = {
   createOrder: vi.fn(),
   markOrderFailed: vi.fn(),
   findOrderByBuyerAndClientRequestId: vi.fn(),
+  findPendingMediaItemIds: vi.fn(),
   saveCheckoutSessionUrl: vi.fn(),
 };
 
@@ -54,6 +55,7 @@ const service = new CheckoutService(
 beforeEach(() => {
   vi.clearAllMocks();
   mockOrders.findOrderByBuyerAndClientRequestId.mockResolvedValue(null);
+  mockOrders.findPendingMediaItemIds.mockResolvedValue([]);
 });
 
 // ---------------------------------------------------------------------------
@@ -109,6 +111,7 @@ describe('CheckoutService.createCheckoutSession', () => {
     mockPurchases.findPurchasedItemIds.mockResolvedValue([]);
     mockOrders.createOrder.mockResolvedValue(makeOrder());
     mockOrders.findOrderByBuyerAndClientRequestId.mockResolvedValue(null);
+    mockOrders.findPendingMediaItemIds.mockResolvedValue([]);
     mockOrders.saveCheckoutSessionUrl.mockResolvedValue(undefined);
     mockPayment.createCheckoutSession.mockResolvedValue({
       checkoutUrl: 'https://pay.cryptocloud.plus/mock-invoice',
@@ -164,6 +167,7 @@ describe('CheckoutService.createCheckoutSession', () => {
     await service.createCheckoutSession(null, 'guest@example.com', ITEM_IDS, CLIENT_REQUEST_ID);
 
     expect(mockPurchases.findPurchasedItemIds).not.toHaveBeenCalled();
+    expect(mockOrders.findPendingMediaItemIds).not.toHaveBeenCalled();
   });
 
   // ---
@@ -262,6 +266,16 @@ describe('CheckoutService.createCheckoutSession', () => {
 
     await expect(service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID)).rejects.toThrow(
       'Some items already purchased',
+    );
+  });
+
+  it('throws BadRequestError when buyer already has a pending order for an item', async () => {
+    mockMedia.findByIds.mockResolvedValue([makeMediaItem()]);
+    mockPurchases.findPurchasedItemIds.mockResolvedValue([]);
+    mockOrders.findPendingMediaItemIds.mockResolvedValue(['media-1']);
+
+    await expect(service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID)).rejects.toThrow(
+      'Some items already have a pending order',
     );
   });
 

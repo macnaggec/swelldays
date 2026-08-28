@@ -14,6 +14,14 @@ import { logger } from 'server/lib/logger';
 import { MEDIA_STATUS } from '@swelldays/contracts';
 import { apiConfig } from 'server/config/env';
 
+// A buyer plausibly needs up to this long to complete a CryptoCloud payment.
+// Order has no expiresAt column to derive this from structurally, so the
+// window is picked explicitly here. A PENDING order older than the window
+// is not expired or transitioned — it simply stops being considered by the
+// pending-order check below (see roadmap Non-goals: no reservation/expiry
+// system).
+const PENDING_ORDER_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
 export class CheckoutService {
   constructor(
     private orders: IOrderRepository,
@@ -147,6 +155,15 @@ export class CheckoutService {
       if (purchasedIds.length > 0) {
         throw new BadRequestError(
           `Some items already purchased: ${purchasedIds.join(', ')}`,
+        );
+      }
+
+      const sinceCreatedAt = new Date(Date.now() - PENDING_ORDER_WINDOW_MS);
+      const pendingIds = await this.orders.findPendingMediaItemIds(buyerId, itemIds, sinceCreatedAt);
+
+      if (pendingIds.length > 0) {
+        throw new BadRequestError(
+          `Some items already have a pending order: ${pendingIds.join(', ')}`,
         );
       }
     }

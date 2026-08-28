@@ -29,6 +29,11 @@ export interface IOrderRepository {
     buyerId: string | null,
     clientRequestId: string,
   ): Promise<OrderWithItems | null>;
+  findPendingMediaItemIds(
+    buyerId: string,
+    mediaItemIds: string[],
+    sinceCreatedAt: Date,
+  ): Promise<string[]>;
   markOrderFailed(orderId: string): Promise<void>;
   saveGuestEmail(orderId: string, email: string): Promise<void>;
   saveCheckoutSessionUrl(orderId: string, checkoutUrl: string): Promise<void>;
@@ -83,6 +88,27 @@ export class OrderRepository implements IOrderRepository {
         include: ORDER_ITEMS_INCLUDE,
       })
     );
+  }
+
+  findPendingMediaItemIds(
+    buyerId: string,
+    mediaItemIds: string[],
+    sinceCreatedAt: Date,
+  ): Promise<string[]> {
+    return runQuery(async () => {
+      const rows = await prisma.orderItem.findMany({
+        where: {
+          mediaItemId: { in: mediaItemIds },
+          order: {
+            buyerId,
+            status: OrderStatus.PENDING,
+            createdAt: { gte: sinceCreatedAt },
+          },
+        },
+        select: { mediaItemId: true },
+      });
+      return rows.map((r) => r.mediaItemId);
+    });
   }
 
   markOrderFailed(orderId: string): Promise<void> {
