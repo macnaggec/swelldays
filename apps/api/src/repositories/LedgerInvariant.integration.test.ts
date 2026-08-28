@@ -43,6 +43,7 @@ async function recordSale(photographerId: string, amount: number) {
   const order = await prisma.order.create({
     data: {
       buyerId: buyer.id,
+      clientRequestId: randomUUID(),
       totalAmount: amount,
       status: OrderStatus.PENDING,
       items: { create: [{ mediaItemId: mediaItem.id }] },

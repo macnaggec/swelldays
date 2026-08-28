@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const createCheckoutSchema = z.object({
   itemIds: z.array(z.uuid()).min(1),
+  clientRequestId: z.uuid(),
   guestEmail: z.string().email().optional(),
 });
 

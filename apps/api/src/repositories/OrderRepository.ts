@@ -9,6 +9,7 @@ export type OrderWithItems = {
   externalOrderId: string | null;
   totalAmount: number;
   status: OrderStatus;
+  checkoutSessionUrl: string | null;
   items: { id: string; mediaItemId: string }[];
 };
 
@@ -17,14 +18,20 @@ export type CreateOrderData = {
   guestEmail?: string;
   totalAmount: number;
   itemIds: string[];
+  clientRequestId: string;
 };
 
 export interface IOrderRepository {
   createOrder(data: CreateOrderData): Promise<OrderWithItems>;
   findOrderById(id: string): Promise<OrderWithItems | null>;
   findOrderByExternalId(externalOrderId: string): Promise<{ id: string } | null>;
+  findOrderByBuyerAndClientRequestId(
+    buyerId: string | null,
+    clientRequestId: string,
+  ): Promise<OrderWithItems | null>;
   markOrderFailed(orderId: string): Promise<void>;
   saveGuestEmail(orderId: string, email: string): Promise<void>;
+  saveCheckoutSessionUrl(orderId: string, checkoutUrl: string): Promise<void>;
 }
 
 const ORDER_ITEMS_INCLUDE = {
@@ -39,6 +46,7 @@ export class OrderRepository implements IOrderRepository {
           buyerId: data.buyerId,
           guestEmail: data.guestEmail,
           totalAmount: data.totalAmount,
+          clientRequestId: data.clientRequestId,
           items: {
             createMany: {
               data: data.itemIds.map((mediaItemId) => ({ mediaItemId })),
@@ -65,6 +73,18 @@ export class OrderRepository implements IOrderRepository {
     );
   }
 
+  findOrderByBuyerAndClientRequestId(
+    buyerId: string | null,
+    clientRequestId: string,
+  ): Promise<OrderWithItems | null> {
+    return runQuery(() =>
+      prisma.order.findFirst({
+        where: { buyerId, clientRequestId },
+        include: ORDER_ITEMS_INCLUDE,
+      })
+    );
+  }
+
   markOrderFailed(orderId: string): Promise<void> {
     return runQuery(async () => {
       await prisma.order.update({ where: { id: orderId }, data: { status: OrderStatus.FAILED } });
@@ -77,6 +97,15 @@ export class OrderRepository implements IOrderRepository {
       await prisma.order.updateMany({
         where: { id: orderId, guestEmail: null },
         data: { guestEmail: email },
+      });
+    });
+  }
+
+  saveCheckoutSessionUrl(orderId: string, checkoutUrl: string): Promise<void> {
+    return runQuery(async () => {
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { checkoutSessionUrl: checkoutUrl },
       });
     });
   }

@@ -15,13 +15,14 @@ export const checkoutRouter = router({
   create: protectedProcedure
     .input(z.object({
       itemIds: createCheckoutSchema.shape.itemIds,
+      clientRequestId: createCheckoutSchema.shape.clientRequestId,
     }))
     .use(({ ctx, next }) => {
       createCheckoutLimiter(ctx.user.id);
       return next();
     })
     .mutation(async ({ input, ctx }) => {
-      return checkoutService.createCheckoutSession(ctx.user.id, undefined, input.itemIds);
+      return checkoutService.createCheckoutSession(ctx.user.id, undefined, input.itemIds, input.clientRequestId);
     }),
 
   /**

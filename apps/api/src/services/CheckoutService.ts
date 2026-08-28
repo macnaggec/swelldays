@@ -1,3 +1,4 @@
+import { OrderStatus } from '@prisma/client';
 import type { IOrderRepository } from 'server/repositories/OrderRepository';
 import type { IMediaRepository } from 'server/repositories/MediaRepository';
 import type { IPurchaseRepository } from 'server/repositories/PurchaseRepository';
@@ -8,7 +9,7 @@ import type { PaymentAdapter } from 'server/providers/payment/PaymentAdapter';
 import { paymentAdapter } from 'server/providers/payment/activeAdapter';
 import type { ICloudinaryService } from 'server/services/CloudinaryService';
 import { cloudinaryService } from 'server/services/CloudinaryService';
-import { BadRequestError, BadGatewayError, ForbiddenError } from 'server/errors';
+import { BadRequestError, BadGatewayError, ForbiddenError, ConflictError } from 'server/errors';
 import { logger } from 'server/lib/logger';
 import { MEDIA_STATUS } from '@swelldays/contracts';
 import { apiConfig } from 'server/config/env';
@@ -23,6 +24,17 @@ export class CheckoutService {
     private frontendOrigin: string,
   ) { }
 
+  private async findCachedCheckoutSession(
+    buyerId: string | null,
+    clientRequestId: string,
+  ): Promise<{ checkoutUrl: string; orderId: string } | null> {
+    const existing = await this.orders.findOrderByBuyerAndClientRequestId(buyerId, clientRequestId);
+    if (existing && existing.status === OrderStatus.PENDING && existing.checkoutSessionUrl) {
+      return { checkoutUrl: existing.checkoutSessionUrl, orderId: existing.id };
+    }
+    return null;
+  }
+
   /**
    * Price validation: prices are always read from DB — never from the client.
    * Items must be PUBLISHED and not already purchased by this buyer.
@@ -31,23 +43,27 @@ export class CheckoutService {
     buyerId: string | null,
     guestEmail: string | undefined,
     itemIds: string[],
+    clientRequestId: string,
   ): Promise<{ checkoutUrl: string; orderId: string }> {
+    const cached = await this.findCachedCheckoutSession(buyerId, clientRequestId);
+    if (cached) return cached;
+
     const mediaItems = await this.fetchAndValidateCartItems(buyerId, itemIds);
     const totalCents = mediaItems.reduce((sum, item) => sum + (item.price ?? 0), 0);
 
-    const order = await this.orders.createOrder({
-      buyerId,
-      guestEmail,
-      totalAmount: totalCents,
-      itemIds
-    });
+    let order: Awaited<ReturnType<IOrderRepository['createOrder']>>;
+    try {
+      order = await this.orders.createOrder({ buyerId, guestEmail, totalAmount: totalCents, itemIds, clientRequestId });
+    } catch (err) {
+      if (err instanceof ConflictError) {
+        const raced = await this.findCachedCheckoutSession(buyerId, clientRequestId);
+        if (raced) return raced;
+      }
+      throw err;
+    }
 
-    const checkoutUrl = await this.openPaymentSession(
-      order.id,
-      buyerId,
-      mediaItems,
-      totalCents
-    );
+    const checkoutUrl = await this.openPaymentSession(order.id, buyerId, mediaItems, totalCents);
+    await this.orders.saveCheckoutSessionUrl(order.id, checkoutUrl);
 
     return { checkoutUrl, orderId: order.id };
   }

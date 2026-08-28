@@ -231,18 +231,26 @@ model UploadWorkspaceMediaChange {
 }
 
 model Order {
-  id              String      @id @default(uuid())
-  buyerId         String?     @map("buyer_id")
-  externalOrderId String?     @unique @map("external_order_id")
-  totalAmount     Int         @map("total_amount")
-  status          OrderStatus @default(PENDING)
-  createdAt       DateTime    @default(now()) @map("created_at")
-  updatedAt       DateTime    @updatedAt @map("updated_at")
-  guestEmail      String?     @map("guest_email")
-  items           OrderItem[]
-  buyer           User?       @relation(fields: [buyerId], references: [id])
-  purchases       Purchase[]
+  id                 String      @id @default(uuid())
+  buyerId            String?     @map("buyer_id")
+  clientRequestId    String      @map("client_request_id")
+  externalOrderId    String?     @unique @map("external_order_id")
+  totalAmount        Int         @map("total_amount")
+  status             OrderStatus @default(PENDING)
+  checkoutSessionUrl String?     @map("checkout_session_url")
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+  guestEmail         String?     @map("guest_email")
+  items              OrderItem[]
+  buyer              User?       @relation(fields: [buyerId], references: [id])
+  purchases          Purchase[]
 
+  // Postgres does not treat two NULL buyer_id values as equal, so this
+  // constraint gives no duplicate protection for a guest (buyerId: null)
+  // order. Acceptable today because checkout.create is protectedProcedure
+  // only (buyerId is always a real user id) — re-verify before a guest
+  // checkout route ships.
+  @@unique([buyerId, clientRequestId], map: "orders_buyer_client_request_key")
   @@map("orders")
 }
 

@@ -58,6 +58,7 @@ function makeOrder(overrides: Partial<OrderWithItems> = {}): OrderWithItems {
     externalOrderId: null,
     totalAmount: 10,
     status: 'PENDING',
+    checkoutSessionUrl: null,
     items: [{ id: 'oi-1', mediaItemId: 'media-1' }],
     ...overrides,
   };

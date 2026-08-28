@@ -38,6 +38,7 @@ async function createOrderFixture() {
   const order = await prisma.order.create({
     data: {
       buyerId: buyer.id,
+      clientRequestId: randomUUID(),
       totalAmount: 1000,
       status: OrderStatus.PENDING,
       items: { create: [{ mediaItemId: mediaItem.id }] },
