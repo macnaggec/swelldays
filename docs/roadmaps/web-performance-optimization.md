@@ -294,6 +294,8 @@ Atomic commits:
 1. `test(web): specify compressed bundle budget reporting`
 2. `build(web): enforce production bundle budgets`
 
+**Handoff (2026-08-28):** T01 is complete and fully green. Production builds now emit a content-hash-stable manifest and normalized module inventory; the checker follows only transitive static imports plus attached CSS, reports Mapbox, HLS, Sentry, route chunks, and total output separately, and enforces gzip caps of 295,000 bytes for entry JavaScript, 42,500 bytes for entry CSS, and 432,000 bytes for the default Browse Feed graph. The measured CI-placeholder build is 289,436 / 41,889 / 423,556 gzip bytes. Focused verification passed 13 script tests; both TypeScript checks, lint, style boundaries, `git diff --check`, both production builds, and the full 1,144-test client/server/scripts suite passed. The existing CI web-image build now runs the checker and removes internal manifests before the runtime image is assembled. T02 is ready.
+
 ### T02 — Enable and prove runtime compression
 
 **Depends on:** T01.
@@ -931,7 +933,7 @@ These are the complete handoff gates; during implementation, use only the smalle
 ## Completion checklist
 
 - [x] T00 route-preload baseline isolated and approved.
-- [ ] T01 bundle reporting and budgets green in CI.
+- [x] T01 bundle reporting and budgets green in CI.
 - [ ] T02 runtime compression proven locally and live.
 - [ ] T03 logo/hero assets fingerprinted and cache-safe.
 - [ ] T04 artwork is requested only when the intro/review presentation owns it.

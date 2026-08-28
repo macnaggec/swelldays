@@ -25,6 +25,8 @@ ARG VITE_CLOUDINARY_API_KEY
 ARG VITE_SENTRY_DSN
 
 RUN npm run build --workspace @swelldays/web
+RUN npm run check:bundle-budgets
+RUN rm -rf /app/apps/web/dist/.vite
 
 
 FROM nginxinc/nginx-unprivileged:1.29.4-alpine AS runner

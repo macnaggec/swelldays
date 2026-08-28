@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "baselineDate": "2026-08-28",
+  "headroomPercent": 2,
+  "entrySource": "index.html",
+  "entryJavaScript": {
+    "baselineGzipBytes": 289616,
+    "maximumGzipBytes": 295000
+  },
+  "entryCss": {
+    "baselineGzipBytes": 41889,
+    "maximumGzipBytes": 42500
+  },
+  "criticalGraphs": [
+    {
+      "id": "browse-feed",
+      "label": "Default Browse Feed critical graph",
+      "roots": [
+        "index.html",
+        "src/app/routes/_panel.tsx?tsr-split=component",
+        "src/app/routes/_panel.index.tsx?tsr-split=component"
+      ],
+      "budget": {
+        "baselineGzipBytes": 423724,
+        "maximumGzipBytes": 432000
+      }
+    }
+  ],
+  "reportedModuleGroups": [
+    {
+      "id": "mapbox",
+      "label": "Mapbox GL optional chunks",
+      "moduleSubstrings": ["node_modules/mapbox-gl/"]
+    },
+    {
+      "id": "hls",
+      "label": "HLS optional chunks",
+      "moduleSubstrings": ["node_modules/hls.js/"]
+    },
+    {
+      "id": "sentry",
+      "label": "Sentry optional chunks",
+      "moduleSubstrings": ["node_modules/@sentry/"]
+    }
+  ],
+  "moduleAbsenceAssertions": []
+}

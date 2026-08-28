@@ -5,6 +5,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import react from '@vitejs/plugin-react';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import { createBundleModuleInventoryPlugin } from './scripts/bundleBudget';
 import { decodeWebEnvironment } from './src/config/decodeWebEnvironment';
 
 const environmentDirectory = fileURLToPath(new URL('.', import.meta.url));
@@ -43,6 +44,9 @@ export default defineConfig(({ mode }) => {
       }),
       react(),
       tsconfigPaths(),
+      ...(mode === 'production'
+        ? [createBundleModuleInventoryPlugin(environmentDirectory)]
+        : []),
     ],
     server: {
       port: clientPort,
@@ -57,6 +61,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist',
+      manifest: true,
     },
   };
 });
