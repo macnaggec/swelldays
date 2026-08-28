@@ -28,6 +28,7 @@
     "test:integration": "vitest --project integration",
     "lint": "eslint apps/api/src apps/api/prisma.config.ts apps/web/src apps/web/scripts apps/web/vite.config.ts packages/contracts/src tests playwright.config.ts playwright.layout.config.ts",
     "check:bundle-budgets": "tsx apps/web/scripts/bundleBudget.ts",
+    "check:web-delivery": "node --experimental-strip-types apps/web/scripts/webDeliveryVerifier.ts",
     "check:style-boundaries": "node scripts/check-style-boundaries.mjs",
     "prisma:generate": "npm run prisma:generate --workspace @swelldays/api",
     "prisma:validate": "npm run prisma:validate --workspace @swelldays/api",
