@@ -64,6 +64,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
       - name: Build API runtime image
         run: docker build --file apps/api/Dockerfile --target runner --tag swelldays-api:ci .
 
@@ -72,6 +77,7 @@ jobs:
           docker build \
             --file apps/web/Dockerfile \
             --target runner \
+            --build-arg RELEASE_TAG=ci \
             --build-arg VITE_API_URL=https://api.example.test \
             --build-arg VITE_MAPBOX_ACCESS_TOKEN=pk.test-placeholder \
             --build-arg VITE_GOOGLE_CLIENT_ID=test-client.apps.googleusercontent.com \
@@ -80,3 +86,13 @@ jobs:
             --build-arg VITE_CLOUDINARY_API_KEY=test-cloudinary-key \
             --tag swelldays-web:ci \
             .
+
+      - name: Start web runtime image
+        run: docker run --detach --name swelldays-web-ci --publish 127.0.0.1:18080:8080 swelldays-web:ci
+
+      - name: Verify web delivery
+        run: npm run check:web-delivery -- --origin http://127.0.0.1:18080 --expected-release ci
+
+      - name: Stop web runtime image
+        if: always()
+        run: docker rm --force swelldays-web-ci || true

@@ -337,6 +337,8 @@ Atomic commits:
 
 Post-deploy gate: verify an actual live GET, not only the container. Deployment remains separately approval-gated.
 
+**Handoff (2026-08-28):** T02's repository work is complete and fully green. The unprivileged Nginx image now negotiates gzip for HTML, JavaScript, and CSS; emits one intentional immutable policy for hashed assets; keeps entry/release HTML state non-cacheable; and gives manifest/icons a short revalidating policy without compressing images. A dependency-free real-GET verifier now proves release identity, resolved HTML, gzip/decompression equality, `Vary`, cache headers, stable assets, and SPA fallback locally and in CI; tagged releases run the same public check before image pruning. The local runtime image passed at 288,354 transferred gzip bytes for 928,010 identity JavaScript and 41,860 for 275,084 identity CSS; the plain favicon was unencoded with one five-minute revalidating policy. Focused verification passed 10 verifier tests and 23 total script tests; 983 client tests, 148 server tests, both TypeScript checks, lint, style boundaries, both production builds, YAML parsing, and `git diff --check` passed. No deployment or live public request was performed; that post-deploy proof remains separately approval-gated. T03 is ready.
+
 ### T03 — Move startup visual assets onto hashed immutable URLs
 
 **Depends on:** T01.
@@ -934,7 +936,7 @@ These are the complete handoff gates; during implementation, use only the smalle
 
 - [x] T00 route-preload baseline isolated and approved.
 - [x] T01 bundle reporting and budgets green in CI.
-- [ ] T02 runtime compression proven locally and live.
+- [x] T02 runtime compression proven locally; public post-deploy verification is wired and remains approval-gated.
 - [ ] T03 logo/hero assets fingerprinted and cache-safe.
 - [ ] T04 artwork is requested only when the intro/review presentation owns it.
 - [ ] T05 contracts core is Zod-free and only supported public entries are used.

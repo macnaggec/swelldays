@@ -30,6 +30,7 @@ jobs:
           docker build \
             --file apps/web/Dockerfile \
             --target runner \
+            --build-arg RELEASE_TAG="${{ github.ref_name }}" \
             --build-arg VITE_API_URL="${{ secrets.VITE_API_URL }}" \
             --build-arg VITE_MAPBOX_ACCESS_TOKEN="${{ secrets.VITE_MAPBOX_ACCESS_TOKEN }}" \
             --build-arg VITE_GOOGLE_CLIENT_ID="${{ secrets.VITE_GOOGLE_CLIENT_ID }}" \
@@ -69,6 +70,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
       - name: Copy compose file to VPS
         uses: appleboy/scp-action@v1
         with:
@@ -92,4 +98,15 @@ jobs:
             docker compose --env-file deploy/.env.production --file docker-compose.prod.yml run --rm migrate
             docker compose --env-file deploy/.env.production --file docker-compose.prod.yml up --detach --no-deps api
             docker compose --env-file deploy/.env.production --file docker-compose.prod.yml up --detach --no-deps web
+
+      - name: Verify public web delivery
+        run: npm run check:web-delivery -- --origin https://swelldays.surf --expected-release "${{ github.ref_name }}"
+
+      - name: Prune unused images on VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
             docker image prune -af

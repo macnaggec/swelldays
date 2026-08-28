@@ -23,9 +23,11 @@ ARG VITE_GOOGLE_API_KEY
 ARG VITE_CLOUDINARY_CLOUD_NAME
 ARG VITE_CLOUDINARY_API_KEY
 ARG VITE_SENTRY_DSN
+ARG RELEASE_TAG=local
 
 RUN npm run build --workspace @swelldays/web
 RUN npm run check:bundle-budgets
+RUN test -n "$RELEASE_TAG" && printf '%s\n' "$RELEASE_TAG" > /app/apps/web/dist/release.txt
 RUN rm -rf /app/apps/web/dist/.vite
 
 
