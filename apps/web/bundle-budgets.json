@@ -43,5 +43,37 @@
       "moduleSubstrings": ["node_modules/@sentry/"]
     }
   ],
-  "moduleAbsenceAssertions": []
+  "moduleAbsenceAssertions": [],
+  "startupAssets": [
+    {
+      "id": "bootstrap-logo",
+      "label": "Bootstrap and first-visit logo",
+      "source": "src/assets/startup/swelldays-logo-white.png",
+      "minimumReferences": {
+        "html": 2,
+        "entryJavaScript": 1,
+        "entryCss": 0
+      }
+    },
+    {
+      "id": "first-visit-portrait",
+      "label": "First-visit portrait artwork",
+      "source": "src/assets/startup/first-visit-waves-portrait.webp",
+      "minimumReferences": {
+        "html": 1,
+        "entryJavaScript": 0,
+        "entryCss": 1
+      }
+    },
+    {
+      "id": "first-visit-landscape",
+      "label": "First-visit landscape artwork",
+      "source": "src/assets/startup/first-visit-waves-landscape.webp",
+      "minimumReferences": {
+        "html": 1,
+        "entryJavaScript": 0,
+        "entryCss": 1
+      }
+    }
+  ]
 }

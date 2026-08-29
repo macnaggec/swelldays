@@ -81,7 +81,7 @@
 
   position: absolute;
   inset: 0;
-  background-image: url('/first-visit-waves-portrait.webp');
+  background-image: url('../../../assets/startup/first-visit-waves-portrait.webp');
   background-repeat: no-repeat;
   background-position: center 56%;
   background-size: cover;
@@ -252,7 +252,7 @@
   /* Matches the media condition on the preload in index.html — a different
      boundary here would fetch one crop and then paint the other. */
   .plate {
-    background-image: url('/first-visit-waves-landscape.webp');
+    background-image: url('../../../assets/startup/first-visit-waves-landscape.webp');
   }
 
   .content {

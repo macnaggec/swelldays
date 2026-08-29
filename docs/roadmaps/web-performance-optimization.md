@@ -372,6 +372,8 @@ Acceptance:
 
 Atomic commit: `perf(web): fingerprint startup visual assets`.
 
+**Handoff (2026-08-29):** T03 is complete and fully green. The unchanged 600×272 logo, 1200×2133 portrait artwork, and 2560×1340 landscape artwork now live in Vite's source asset graph and emit as exactly three content-hashed `/assets/` files with their original byte sizes and SHA-256 identities. Production HTML and React share the one hashed logo URL; production HTML and entry CSS share one URL per hero; no stable public-root copy or old runtime URL remains. The production bundle checker now enforces manifest ownership, hashed placement, physical deduplication, byte identity, consumer references, the actual bootstrap-shell image URL, and removal of stable fallbacks. Verification passed 28 focused bundle-checker tests, 23 focused startup/first-visit tests, all 38 script tests, 30 layout tests, 1,151 client/server tests, both TypeScript checks, lint, style boundaries, both production builds, bundle budgets, and `git diff --check`. No deployment or live public request was performed. T04 is ready.
+
 ### T04 — Make first-visit artwork loading presentation-owned
 
 **Depends on:** T03.
@@ -937,7 +939,7 @@ These are the complete handoff gates; during implementation, use only the smalle
 - [x] T00 route-preload baseline isolated and approved.
 - [x] T01 bundle reporting and budgets green in CI.
 - [x] T02 runtime compression proven locally; public post-deploy verification is wired and remains approval-gated.
-- [ ] T03 logo/hero assets fingerprinted and cache-safe.
+- [x] T03 logo/hero assets fingerprinted and cache-safe.
 - [ ] T04 artwork is requested only when the intro/review presentation owns it.
 - [ ] T05 contracts core is Zod-free and only supported public entries are used.
 - [ ] T06 Add Spot UI absent from unrelated startup.

@@ -41,10 +41,16 @@ describe('startup performance contracts', () => {
 
   it('renders the branded logo shell before React downloads', () => {
     const indexHtml = readWorkspaceFile('apps/web/index.html');
+    const bootstrapShell = indexHtml.match(
+      /<div[^>]*data-bootstrap-shell[^>]*>[\s\S]*?<\/div>/,
+    )?.[0];
 
-    expect(indexHtml).toContain('data-bootstrap-shell');
-    expect(indexHtml).toContain('src="/swelldays-logo-white.png"');
-    expect(indexHtml).not.toContain('<span>SWELLDAYS</span>');
+    expect(bootstrapShell).toBeDefined();
+    expect(bootstrapShell).toContain('<img');
+    expect(bootstrapShell).toContain('width="600"');
+    expect(bootstrapShell).toContain('height="272"');
+    expect(bootstrapShell).toContain('fetchpriority="high"');
+    expect(bootstrapShell).not.toContain('<span>SWELLDAYS</span>');
   });
 
   it('loads Google APIs only from the Drive feature', () => {

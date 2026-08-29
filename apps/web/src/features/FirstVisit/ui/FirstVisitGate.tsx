@@ -1,5 +1,6 @@
 import { ActionIcon } from '@mantine/core';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import swelldaysLogoUrl from '../../../assets/startup/swelldays-logo-white.png';
 import { FirstVisitMapReadinessContext } from '../model/firstVisitMapReadiness';
 import { resolveFirstVisitPresentation } from '../model/firstVisitPolicy';
 import {
@@ -138,7 +139,7 @@ export function FirstVisitGate({
               <div className={classes.logo}>
                 <span className={classes.rise}>
                   <img
-                    src="/swelldays-logo-white.png"
+                    src={swelldaysLogoUrl}
                     alt="Swelldays"
                     className={classes.logoImage}
                   />

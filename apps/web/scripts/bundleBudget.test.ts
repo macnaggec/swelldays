@@ -23,6 +23,24 @@ afterEach(async () => {
 
 const gzipBytes = (contents: string): number => gzipSync(Buffer.from(contents)).byteLength;
 
+const startupAssetFiles = {
+  logo: 'assets/swelldays-logo-white-logo1234.png',
+  portrait: 'assets/first-visit-waves-portrait-portrait123.webp',
+  landscape: 'assets/first-visit-waves-landscape-landscape12.webp',
+};
+
+const startupAssetSources = {
+  logo: 'src/assets/startup/swelldays-logo-white.png',
+  portrait: 'src/assets/startup/first-visit-waves-portrait.webp',
+  landscape: 'src/assets/startup/first-visit-waves-landscape.webp',
+};
+
+const startupAssetContents = {
+  logo: 'approved-logo-bytes',
+  portrait: 'approved-portrait-bytes',
+  landscape: 'approved-landscape-bytes',
+};
+
 const writeJson = async (path: string, value: unknown): Promise<void> => {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`);
@@ -53,8 +71,13 @@ const createFixture = async (hash: string): Promise<Fixture> => {
   const feedExtra = `_feed-extra-${hash}.js`;
   const optional = `_optional-${hash}.js`;
   const files: Record<string, string> = {
-    'assets/index-HASH.js': 'entry();\nentry();\n',
-    'assets/index-HASH.css': '.entry{color:navy}\n',
+    'assets/index-HASH.js': `entry();\nentry();\nconst logo = "/${startupAssetFiles.logo}";\n`,
+    'assets/index-HASH.css': [
+      '.entry{color:navy}',
+      `.portrait{background-image:url('/${startupAssetFiles.portrait}')}`,
+      `.landscape{background-image:url('/${startupAssetFiles.landscape}')}`,
+      '',
+    ].join('\n'),
     'assets/shared-HASH.js': 'shared();\nshared();\n',
     'assets/shared-HASH.css': '.shared{display:block}\n',
     'assets/cycle-HASH.js': 'cycle();\ncycle();\n',
@@ -67,7 +90,17 @@ const createFixture = async (hash: string): Promise<Fixture> => {
     'assets/optional-HASH.js': 'mapboxOptional();\nmapboxOptional();\n',
     'assets/optional-HASH.css': '.map{position:fixed}\n',
     'assets/index-MISLEADING.js': 'notTheEntry();\n',
-    'index.html': '<div id="root"></div>\n',
+    [startupAssetFiles.logo]: startupAssetContents.logo,
+    [startupAssetFiles.portrait]: startupAssetContents.portrait,
+    [startupAssetFiles.landscape]: startupAssetContents.landscape,
+    'index.html': [
+      `<link rel="preload" href="/${startupAssetFiles.landscape}">`,
+      `<link rel="preload" href="/${startupAssetFiles.portrait}">`,
+      `<link rel="preload" href="/${startupAssetFiles.logo}">`,
+      `<div id="root"><div data-bootstrap-shell><img src="/${startupAssetFiles.logo}"></div></div>`,
+      '<script type="module" src="/assets/index-entry1234.js"></script>',
+      '',
+    ].join('\n'),
   };
 
   const hashedFiles = Object.fromEntries(
@@ -125,6 +158,18 @@ const createFixture = async (hash: string): Promise<Fixture> => {
       file: 'assets/index-MISLEADING.js',
       src: 'src/app/routes/not-really-entry.tsx',
       isDynamicEntry: true,
+    },
+    [startupAssetSources.logo]: {
+      file: startupAssetFiles.logo,
+      src: startupAssetSources.logo,
+    },
+    [startupAssetSources.portrait]: {
+      file: startupAssetFiles.portrait,
+      src: startupAssetSources.portrait,
+    },
+    [startupAssetSources.landscape]: {
+      file: startupAssetFiles.landscape,
+      src: startupAssetSources.landscape,
     },
   };
 
@@ -251,12 +296,42 @@ const createFixture = async (hash: string): Promise<Fixture> => {
       },
     ],
     moduleAbsenceAssertions: [],
+    startupAssets: [
+      {
+        id: 'bootstrap-logo',
+        label: 'Bootstrap and first-visit logo',
+        source: startupAssetSources.logo,
+        minimumReferences: { html: 2, entryJavaScript: 1, entryCss: 0 },
+      },
+      {
+        id: 'first-visit-portrait',
+        label: 'First-visit portrait artwork',
+        source: startupAssetSources.portrait,
+        minimumReferences: { html: 1, entryJavaScript: 0, entryCss: 1 },
+      },
+      {
+        id: 'first-visit-landscape',
+        label: 'First-visit landscape artwork',
+        source: startupAssetSources.landscape,
+        minimumReferences: { html: 1, entryJavaScript: 0, entryCss: 1 },
+      },
+    ],
   };
 
   await Promise.all(Object.entries(hashedFiles).map(async ([path, contents]) => {
     const outputPath = join(distDirectory, path);
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, contents);
+  }));
+  await Promise.all([
+    [startupAssetSources.logo, startupAssetContents.logo],
+    [startupAssetSources.portrait, startupAssetContents.portrait],
+    [startupAssetSources.landscape, startupAssetContents.landscape],
+  ].map(async ([path, contents]) => {
+    if (path === undefined || contents === undefined) throw new Error('Invalid startup fixture');
+    const sourcePath = join(directory, path);
+    await mkdir(dirname(sourcePath), { recursive: true });
+    await writeFile(sourcePath, contents);
   }));
   await writeJson(join(distDirectory, '.vite/manifest.json'), manifest);
   await writeJson(join(distDirectory, '.vite/bundle-modules.json'), inventory);
@@ -458,6 +533,244 @@ describe('analyzeWebBundle', () => {
 });
 
 describe('build-output validation', () => {
+  it('reports one shared hashed output and its consumer references for each startup asset', async () => {
+    const fixture = await createFixture('startup-valid');
+
+    const report = await analyzeFixture(fixture);
+
+    expect(report.startupAssets).toEqual([
+      {
+        id: 'bootstrap-logo',
+        label: 'Bootstrap and first-visit logo',
+        source: startupAssetSources.logo,
+        file: startupAssetFiles.logo,
+        rawBytes: Buffer.byteLength(startupAssetContents.logo),
+        references: { html: 2, entryJavaScript: 1, entryCss: 0 },
+      },
+      {
+        id: 'first-visit-landscape',
+        label: 'First-visit landscape artwork',
+        source: startupAssetSources.landscape,
+        file: startupAssetFiles.landscape,
+        rawBytes: Buffer.byteLength(startupAssetContents.landscape),
+        references: { html: 1, entryJavaScript: 0, entryCss: 1 },
+      },
+      {
+        id: 'first-visit-portrait',
+        label: 'First-visit portrait artwork',
+        source: startupAssetSources.portrait,
+        file: startupAssetFiles.portrait,
+        rawBytes: Buffer.byteLength(startupAssetContents.portrait),
+        references: { html: 1, entryJavaScript: 0, entryCss: 1 },
+      },
+    ]);
+    expect(formatWebBundleReport(report)).toContain(
+      `Bootstrap and first-visit logo: ${startupAssetFiles.logo}, ${Buffer.byteLength(startupAssetContents.logo)} raw bytes, references HTML 2 / entry JS 1 / entry CSS 0`,
+    );
+  });
+
+  it('rejects a bootstrap shell image that does not use the manifest-resolved logo', async () => {
+    const fixture = await createFixture('asset-shell-logo');
+    const indexPath = join(fixture.distDirectory, 'index.html');
+    const indexHtml = fixtureFile(fixture, 'index.html');
+    await writeFile(
+      indexPath,
+      `${indexHtml.replace(
+        `<img src="/${startupAssetFiles.logo}">`,
+        '<img src="/assets/wrong-logo-12345678.png">',
+      )}<meta content="/${startupAssetFiles.logo}">\n`,
+    );
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow(
+      `Bootstrap shell image must reference startup asset "bootstrap-logo" at "/${startupAssetFiles.logo}"`,
+    );
+  });
+
+  it('accepts Vite hoisting the deferred module entry before the bootstrap shell', async () => {
+    const fixture = await createFixture('asset-shell-order');
+    const indexPath = join(fixture.distDirectory, 'index.html');
+    const indexHtml = fixtureFile(fixture, 'index.html');
+    const shellMarkup = `<div id="root"><div data-bootstrap-shell><img src="/${startupAssetFiles.logo}"></div></div>`;
+    const moduleScript = '<script type="module" src="/assets/index-entry1234.js"></script>';
+    await writeFile(
+      indexPath,
+      indexHtml.replace(`${shellMarkup}\n${moduleScript}`, `${moduleScript}\n${shellMarkup}`),
+    );
+
+    await expect(analyzeFixture(fixture)).resolves.toMatchObject({
+      startupAssets: expect.any(Array),
+    });
+  });
+
+  it('rejects a startup asset missing from the Vite manifest', async () => {
+    const fixture = await createFixture('asset-manifest');
+    delete fixture.manifest[startupAssetSources.logo];
+    await writeJson(join(fixture.distDirectory, '.vite/manifest.json'), fixture.manifest);
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow(
+      `Expected exactly one Vite asset for source "${startupAssetSources.logo}", found 0`,
+    );
+  });
+
+  it('rejects a startup asset manifest output without a Vite content hash', async () => {
+    const fixture = await createFixture('asset-unhashed');
+    const logoEntry = fixture.manifest[startupAssetSources.logo];
+    expect(logoEntry).toBeDefined();
+    if (!logoEntry) return;
+    logoEntry.file = 'assets/swelldays-logo-white.png';
+    await writeFile(
+      join(fixture.distDirectory, logoEntry.file),
+      startupAssetContents.logo,
+    );
+    await writeJson(join(fixture.distDirectory, '.vite/manifest.json'), fixture.manifest);
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow(
+      `Startup asset "bootstrap-logo" output "${logoEntry.file}" is not a hashed asset URL`,
+    );
+  });
+
+  it('rejects a missing required entry JavaScript startup asset reference', async () => {
+    const fixture = await createFixture('asset-js-reference');
+    const entryPath = join(fixture.distDirectory, 'assets/index-asset-js-reference.js');
+    await writeFile(entryPath, 'entry();\nentry();\n');
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow(
+      'Startup asset "bootstrap-logo" requires at least 1 entry JavaScript reference, found 0',
+    );
+  });
+
+  it('does not count a longer URL that merely starts with the emitted startup asset URL', async () => {
+    const fixture = await createFixture('asset-url-prefix');
+    const entryPath = join(fixture.distDirectory, 'assets/index-asset-url-prefix.js');
+    await writeFile(
+      entryPath,
+      `entry();\nconst archived = "/${startupAssetFiles.logo}.backup";\n`,
+    );
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow(
+      'Startup asset "bootstrap-logo" requires at least 1 entry JavaScript reference, found 0',
+    );
+  });
+
+  it('rejects a mismatched hero URL in entry CSS', async () => {
+    const fixture = await createFixture('asset-css-reference');
+    const entryPath = join(fixture.distDirectory, 'assets/index-asset-css-reference.css');
+    const entryCss = fixtureFile(fixture, 'assets/index-asset-css-reference.css');
+    await writeFile(
+      entryPath,
+      entryCss.replace(startupAssetFiles.portrait, 'first-visit-waves-portrait-different12.webp'),
+    );
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow(
+      'Startup asset "first-visit-portrait" requires at least 1 entry CSS reference, found 0',
+    );
+  });
+
+  it('rejects byte divergence between a startup source and its emitted file', async () => {
+    const fixture = await createFixture('asset-bytes');
+    await writeFile(
+      join(fixture.distDirectory, startupAssetFiles.landscape),
+      'divergent-landscape-bytes',
+    );
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow(
+      'Startup asset "first-visit-landscape" emitted bytes differ from its source',
+    );
+  });
+
+  it('rejects a stable root output for a configured startup asset', async () => {
+    const fixture = await createFixture('asset-root-output');
+    await writeFile(
+      join(fixture.distDirectory, 'swelldays-logo-white.png'),
+      startupAssetContents.logo,
+    );
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow(
+      'Startup asset "bootstrap-logo" has forbidden stable root output "swelldays-logo-white.png"',
+    );
+  });
+
+  it('rejects an old stable startup asset URL in emitted runtime text', async () => {
+    const fixture = await createFixture('asset-old-url');
+    const indexPath = join(fixture.distDirectory, 'index.html');
+    const indexHtml = fixtureFile(fixture, 'index.html');
+    await writeFile(indexPath, `${indexHtml}<img src="/swelldays-logo-white.png">\n`);
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow(
+      'Startup asset "bootstrap-logo" has forbidden stable URL "/swelldays-logo-white.png"',
+    );
+  });
+
+  it('allows a configured startup basename below a different nested URL', async () => {
+    const fixture = await createFixture('asset-nested-url');
+    const indexPath = join(fixture.distDirectory, 'index.html');
+    const indexHtml = fixtureFile(fixture, 'index.html');
+    await writeFile(
+      indexPath,
+      `${indexHtml}<a href="/archive/swelldays-logo-white.png">Archive</a>\n`,
+    );
+
+    await expect(analyzeFixture(fixture)).resolves.toMatchObject({
+      startupAssets: expect.any(Array),
+    });
+  });
+
+  it('rejects duplicate startup asset IDs and sources', async () => {
+    const fixture = await createFixture('asset-duplicates');
+    const logo = fixture.config.startupAssets[0];
+    expect(logo).toBeDefined();
+    if (!logo) return;
+    fixture.config.startupAssets.push({ ...logo });
+    await writeJson(fixture.configPath, fixture.config);
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow(
+      'Duplicate startup asset id "bootstrap-logo"',
+    );
+
+    fixture.config.startupAssets[3] = { ...logo, id: 'duplicate-logo-source' };
+    await writeJson(fixture.configPath, fixture.config);
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow(
+      `Duplicate startup asset source "${startupAssetSources.logo}"`,
+    );
+  });
+
+  it('rejects missing startup asset configuration and invalid reference minimums', async () => {
+    const fixture = await createFixture('asset-config');
+    const configWithoutStartupAssets: Record<string, unknown> = { ...fixture.config };
+    delete configWithoutStartupAssets.startupAssets;
+    await writeJson(fixture.configPath, configWithoutStartupAssets);
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow('startupAssets must be an array');
+
+    const malformedConfig = {
+      ...fixture.config,
+      startupAssets: fixture.config.startupAssets.map((asset, index) => (
+        index === 0
+          ? { ...asset, minimumReferences: { ...asset.minimumReferences, html: -1 } }
+          : asset
+      )),
+    };
+    await writeJson(fixture.configPath, malformedConfig);
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow(
+      'startupAssets[0].minimumReferences.html must be a non-negative integer',
+    );
+  });
+
+  it('rejects startup source paths that escape the budget directory', async () => {
+    const fixture = await createFixture('asset-source-escape');
+    const logo = fixture.config.startupAssets[0];
+    expect(logo).toBeDefined();
+    if (!logo) return;
+    fixture.config.startupAssets[0] = { ...logo, source: '../outside-logo.png' };
+    await writeJson(fixture.configPath, fixture.config);
+
+    await expect(analyzeFixture(fixture)).rejects.toThrow(
+      'Startup asset "bootstrap-logo" source "../outside-logo.png" escapes the budget directory',
+    );
+  });
+
   it('rejects missing graph roots', async () => {
     const fixture = await createFixture('missing-root');
     fixture.config.criticalGraphs[0]?.roots.push('src/app/routes/missing.tsx');

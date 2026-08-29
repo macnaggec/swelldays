@@ -1,6 +1,6 @@
 import { realpathSync } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';
-import { isAbsolute, join, relative, resolve } from 'node:path';
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import type { Plugin } from 'vite';
@@ -56,6 +56,19 @@ export interface ModuleAbsenceAssertion {
   forbiddenModuleSubstrings: string[];
 }
 
+export interface StartupAssetReferenceMinimums {
+  html: number;
+  entryJavaScript: number;
+  entryCss: number;
+}
+
+export interface StartupAssetContract {
+  id: string;
+  label: string;
+  source: string;
+  minimumReferences: StartupAssetReferenceMinimums;
+}
+
 export interface WebBundleBudgetConfig {
   version: 1;
   baselineDate: string;
@@ -66,6 +79,7 @@ export interface WebBundleBudgetConfig {
   criticalGraphs: CriticalGraphBudget[];
   reportedModuleGroups: ReportedModuleGroup[];
   moduleAbsenceAssertions: ModuleAbsenceAssertion[];
+  startupAssets: StartupAssetContract[];
 }
 
 export interface ArtifactReport {
@@ -89,12 +103,22 @@ export interface ModuleAssertionFailure {
   matchingModules: string[];
 }
 
+export interface StartupAssetReport {
+  id: string;
+  label: string;
+  source: string;
+  file: string;
+  rawBytes: number;
+  references: StartupAssetReferenceMinimums;
+}
+
 export interface WebBundleReport {
   entryJavaScript: ArtifactReport;
   entryCss: ArtifactReport;
   criticalGraphs: ArtifactReport[];
   reportedModuleGroups: ArtifactReport[];
   routeChunks: ArtifactReport[];
+  startupAssets: StartupAssetReport[];
   emittedAssets: ArtifactReport;
   servedOutput: ArtifactReport;
   budgetFailures: BudgetFailure[];
@@ -299,6 +323,9 @@ const parseConfig = (value: unknown): WebBundleBudgetConfig => {
   if (!Array.isArray(record.moduleAbsenceAssertions)) {
     throw new Error('moduleAbsenceAssertions must be an array');
   }
+  if (!Array.isArray(record.startupAssets)) {
+    throw new Error('startupAssets must be an array');
+  }
 
   const criticalGraphs = record.criticalGraphs.map((value, index): CriticalGraphBudget => {
     const graph = requireRecord(value, `criticalGraphs[${index}]`);
@@ -350,6 +377,47 @@ const parseConfig = (value: unknown): WebBundleBudgetConfig => {
     }
   }
 
+  const startupAssets = record.startupAssets.map(
+    (value, index): StartupAssetContract => {
+      const asset = requireRecord(value, `startupAssets[${index}]`);
+      const minimumReferences = requireRecord(
+        asset.minimumReferences,
+        `startupAssets[${index}].minimumReferences`,
+      );
+      return {
+        id: requireString(asset.id, `startupAssets[${index}].id`),
+        label: requireString(asset.label, `startupAssets[${index}].label`),
+        source: requireString(asset.source, `startupAssets[${index}].source`),
+        minimumReferences: {
+          html: requireNonNegativeInteger(
+            minimumReferences.html,
+            `startupAssets[${index}].minimumReferences.html`,
+          ),
+          entryJavaScript: requireNonNegativeInteger(
+            minimumReferences.entryJavaScript,
+            `startupAssets[${index}].minimumReferences.entryJavaScript`,
+          ),
+          entryCss: requireNonNegativeInteger(
+            minimumReferences.entryCss,
+            `startupAssets[${index}].minimumReferences.entryCss`,
+          ),
+        },
+      };
+    },
+  );
+  const startupAssetIds = new Set<string>();
+  const startupAssetSources = new Set<string>();
+  for (const asset of startupAssets) {
+    if (startupAssetIds.has(asset.id)) {
+      throw new Error(`Duplicate startup asset id "${asset.id}"`);
+    }
+    if (startupAssetSources.has(asset.source)) {
+      throw new Error(`Duplicate startup asset source "${asset.source}"`);
+    }
+    startupAssetIds.add(asset.id);
+    startupAssetSources.add(asset.source);
+  }
+
   return {
     version: 1,
     baselineDate: requireString(record.baselineDate, 'baselineDate'),
@@ -360,6 +428,7 @@ const parseConfig = (value: unknown): WebBundleBudgetConfig => {
     criticalGraphs,
     reportedModuleGroups,
     moduleAbsenceAssertions,
+    startupAssets,
   };
 };
 
@@ -491,6 +560,199 @@ const listRegularFiles = async (
   return files;
 };
 
+const escapeRegularExpression = (value: string): string => (
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+);
+
+const countExactUrlOccurrences = (contents: string, value: string): number => (
+  contents.match(new RegExp(
+    `(^|[^A-Za-z0-9_./-])${escapeRegularExpression(value)}(?=$|[^A-Za-z0-9_./?%&=+#-])`,
+    'g',
+  ))?.length ?? 0
+);
+
+const readHtmlAttribute = (tag: string, name: string): string | undefined => {
+  const match = new RegExp(
+    `(?:^|\\s)${escapeRegularExpression(name)}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\\x60]+))`,
+    'i',
+  ).exec(tag);
+  return match?.[1] ?? match?.[2] ?? match?.[3];
+};
+
+const validateBootstrapShell = (
+  htmlContents: string,
+  assetId: string,
+  emittedUrl: string,
+): void => {
+  const shellMatch = /<div\b(?=[^>]*\bdata-bootstrap-shell(?=\s|=|>))[^>]*>[\s\S]*?<\/div>/i
+    .exec(htmlContents);
+  const imageTag = shellMatch?.[0].match(/<img\b[^>]*>/i)?.[0];
+  if (imageTag === undefined || readHtmlAttribute(imageTag, 'src') !== emittedUrl) {
+    throw new Error(
+      `Bootstrap shell image must reference startup asset "${assetId}" at "${emittedUrl}"`,
+    );
+  }
+  const moduleScriptMatch = /<script\b(?=[^>]*\btype\s*=\s*(?:"module"|'module'|module)(?=\s|>))[^>]*>/i
+    .exec(htmlContents);
+  if (moduleScriptMatch === null) {
+    throw new Error('Production module entry script is missing from index.html');
+  }
+};
+
+const outputPathExists = async (path: string): Promise<boolean> => {
+  try {
+    await stat(path);
+    return true;
+  } catch (error) {
+    if (isRecord(error) && error.code === 'ENOENT') return false;
+    throw error;
+  }
+};
+
+const validateStartupAssets = async (
+  distDirectory: string,
+  configPath: string,
+  manifest: ViteManifest,
+  entryGraph: ManifestGraph,
+  contracts: StartupAssetContract[],
+): Promise<StartupAssetReport[]> => {
+  const configDirectory = dirname(resolve(configPath));
+  const emittedAssetFiles = await listRegularFiles(distDirectory, 'assets');
+  const runtimeTextFiles = (await listRegularFiles(distDirectory))
+    .filter((file) => file === 'index.html' || file.endsWith('.js') || file.endsWith('.css'));
+  const runtimeText = new Map<string, string>();
+  await Promise.all(runtimeTextFiles.map(async (file) => {
+    runtimeText.set(file, await readFile(resolve(distDirectory, file), 'utf8'));
+  }));
+  const htmlContents = runtimeText.get('index.html');
+  if (htmlContents === undefined) {
+    throw new Error('Production index.html is missing from the build output');
+  }
+  const entryJavaScriptContents = await Promise.all(
+    [...entryGraph.javascriptFiles].sort().map((file) => readFile(resolve(distDirectory, file), 'utf8')),
+  );
+  const entryCssContents = await Promise.all(
+    [...entryGraph.cssFiles].sort().map((file) => readFile(resolve(distDirectory, file), 'utf8')),
+  );
+
+  const reports: StartupAssetReport[] = [];
+  for (const contract of contracts) {
+    if (isAbsolute(contract.source)) {
+      throw new Error(
+        `Startup asset "${contract.id}" source "${contract.source}" must be relative to the budget directory`,
+      );
+    }
+    const sourcePath = resolve(configDirectory, contract.source);
+    const relativeSourcePath = normalizeSlashes(relative(configDirectory, sourcePath));
+    if (relativeSourcePath === '..' || relativeSourcePath.startsWith('../')) {
+      throw new Error(
+        `Startup asset "${contract.id}" source "${contract.source}" escapes the budget directory`,
+      );
+    }
+    try {
+      const sourceMetadata = await stat(sourcePath);
+      if (!sourceMetadata.isFile()) throw new Error('path is not a regular file');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Startup asset "${contract.id}" source "${contract.source}" is not a regular file: ${message}`,
+      );
+    }
+
+    const matchingEntries = Object.entries(manifest).filter(([key, entry]) => (
+      key === contract.source || entry.src === contract.source
+    ));
+    if (matchingEntries.length !== 1) {
+      throw new Error(
+        `Expected exactly one Vite asset for source "${contract.source}", found ${matchingEntries.length}`,
+      );
+    }
+    const matchingEntry = matchingEntries[0];
+    if (!matchingEntry) throw new Error(`Startup asset "${contract.id}" manifest entry disappeared`);
+    const emittedFile = normalizeSlashes(matchingEntry[1].file);
+    const sourceExtension = extname(contract.source);
+    const sourceStem = basename(contract.source, sourceExtension);
+    const hashedAssetPattern = new RegExp(
+      `^assets/${escapeRegularExpression(sourceStem)}-[A-Za-z0-9_-]{8,}${escapeRegularExpression(sourceExtension)}$`,
+    );
+    if (!hashedAssetPattern.test(emittedFile)) {
+      throw new Error(
+        `Startup asset "${contract.id}" output "${emittedFile}" is not a hashed asset URL`,
+      );
+    }
+    const physicalMatches = emittedAssetFiles.filter((file) => hashedAssetPattern.test(file));
+    if (physicalMatches.length !== 1) {
+      throw new Error(
+        `Startup asset "${contract.id}" expected exactly one physical emitted file, found ${physicalMatches.length}`,
+      );
+    }
+
+    const [sourceContents, emittedContents] = await Promise.all([
+      readFile(sourcePath),
+      readFile(resolve(distDirectory, emittedFile)),
+    ]);
+    if (!sourceContents.equals(emittedContents)) {
+      throw new Error(`Startup asset "${contract.id}" emitted bytes differ from its source`);
+    }
+
+    const stableBasename = basename(contract.source);
+    if (await outputPathExists(resolve(distDirectory, stableBasename))) {
+      throw new Error(
+        `Startup asset "${contract.id}" has forbidden stable root output "${stableBasename}"`,
+      );
+    }
+    const stableUrl = `/${stableBasename}`;
+    if ([...runtimeText.values()].some(
+      (contents) => countExactUrlOccurrences(contents, stableUrl) > 0,
+    )) {
+      throw new Error(
+        `Startup asset "${contract.id}" has forbidden stable URL "${stableUrl}"`,
+      );
+    }
+
+    const emittedUrl = `/${emittedFile}`;
+    if (contract.id === 'bootstrap-logo') {
+      validateBootstrapShell(htmlContents, contract.id, emittedUrl);
+    }
+    const references: StartupAssetReferenceMinimums = {
+      html: countExactUrlOccurrences(htmlContents, emittedUrl),
+      entryJavaScript: entryJavaScriptContents.reduce(
+        (total, contents) => total + countExactUrlOccurrences(contents, emittedUrl),
+        0,
+      ),
+      entryCss: entryCssContents.reduce(
+        (total, contents) => total + countExactUrlOccurrences(contents, emittedUrl),
+        0,
+      ),
+    };
+    if (references.html < contract.minimumReferences.html) {
+      throw new Error(
+        `Startup asset "${contract.id}" requires at least ${contract.minimumReferences.html} HTML references, found ${references.html}`,
+      );
+    }
+    if (references.entryJavaScript < contract.minimumReferences.entryJavaScript) {
+      throw new Error(
+        `Startup asset "${contract.id}" requires at least ${contract.minimumReferences.entryJavaScript} entry JavaScript reference${contract.minimumReferences.entryJavaScript === 1 ? '' : 's'}, found ${references.entryJavaScript}`,
+      );
+    }
+    if (references.entryCss < contract.minimumReferences.entryCss) {
+      throw new Error(
+        `Startup asset "${contract.id}" requires at least ${contract.minimumReferences.entryCss} entry CSS reference${contract.minimumReferences.entryCss === 1 ? '' : 's'}, found ${references.entryCss}`,
+      );
+    }
+
+    reports.push({
+      id: contract.id,
+      label: contract.label,
+      source: contract.source,
+      file: emittedFile,
+      rawBytes: emittedContents.byteLength,
+      references,
+    });
+  }
+  return reports.sort((left, right) => left.id.localeCompare(right.id));
+};
+
 const compareReports = (left: ArtifactReport, right: ArtifactReport): number => (
   left.id.localeCompare(right.id) || left.label.localeCompare(right.label)
 );
@@ -550,6 +812,13 @@ export async function analyzeWebBundle(
     entryGraph.cssFiles,
     'entry-css',
     'Entry CSS',
+  );
+  const startupAssets = await validateStartupAssets(
+    options.distDirectory,
+    options.configPath,
+    manifest,
+    entryGraph,
+    config.startupAssets,
   );
 
   const graphs = new Map<string, ManifestGraph>([['entry', entryGraph]]);
@@ -677,6 +946,7 @@ export async function analyzeWebBundle(
     criticalGraphs,
     reportedModuleGroups,
     routeChunks,
+    startupAssets,
     emittedAssets,
     servedOutput,
     budgetFailures,
@@ -690,6 +960,10 @@ const formatArtifact = (report: ArtifactReport): string => (
 
 const pluralizeBytes = (bytes: number): string => `${bytes} ${bytes === 1 ? 'byte' : 'bytes'}`;
 
+const formatStartupAsset = (report: StartupAssetReport): string => (
+  `${report.label}: ${report.file}, ${report.rawBytes} raw bytes, references HTML ${report.references.html} / entry JS ${report.references.entryJavaScript} / entry CSS ${report.references.entryCss}`
+);
+
 export function formatWebBundleReport(report: WebBundleReport): string {
   const lines = [
     'Web bundle report',
@@ -698,6 +972,9 @@ export function formatWebBundleReport(report: WebBundleReport): string {
     ...[...report.criticalGraphs].sort(compareReports).map(formatArtifact),
     ...[...report.reportedModuleGroups].sort(compareReports).map(formatArtifact),
     ...[...report.routeChunks].sort(compareReports).map(formatArtifact),
+    ...[...report.startupAssets]
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .map(formatStartupAsset),
     formatArtifact(report.emittedAssets),
     formatArtifact(report.servedOutput),
   ];
