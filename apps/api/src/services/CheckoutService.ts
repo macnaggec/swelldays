@@ -26,6 +26,13 @@ const PENDING_ORDER_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const RACED_ORDER_RETRY_ATTEMPTS = 3;
 const RACED_ORDER_RETRY_DELAY_MS = 250; // ms
 
+function itemSetsMatch(orderItems: { mediaItemId: string }[], itemIds: string[]): boolean {
+  const orderItemIds = new Set(orderItems.map((item) => item.mediaItemId));
+  const requestedItemIds = new Set(itemIds);
+  return orderItemIds.size === requestedItemIds.size
+    && [...orderItemIds].every((id) => requestedItemIds.has(id));
+}
+
 export class CheckoutService {
   constructor(
     private orders: IOrderRepository,
@@ -36,12 +43,29 @@ export class CheckoutService {
     private frontendOrigin: string,
   ) { }
 
+  /**
+   * Looks up any existing order under this (buyerId, clientRequestId). If one
+   * exists but its items don't match the current request's itemIds, the key
+   * has been reused for different content — reject rather than silently
+   * returning a checkout session for the wrong cart (same "don't trust the
+   * client" posture as the price validation below — applied to idempotency
+   * keys, not just prices; see roadmap P05).
+   */
   private async findCachedCheckoutSession(
     buyerId: string | null,
     clientRequestId: string,
+    itemIds: string[],
   ): Promise<{ checkoutUrl: string; orderId: string } | null> {
     const existing = await this.orders.findOrderByBuyerAndClientRequestId(buyerId, clientRequestId);
-    if (existing && existing.status === OrderStatus.PENDING && existing.checkoutSessionUrl) {
+    if (!existing) return null;
+
+    if (!itemSetsMatch(existing.items, itemIds)) {
+      throw new BadRequestError(
+        'This request\'s idempotency key was already used for a different set of items — please retry with a new request.',
+      );
+    }
+
+    if (existing.status === OrderStatus.PENDING && existing.checkoutSessionUrl) {
       return { checkoutUrl: existing.checkoutSessionUrl, orderId: existing.id };
     }
     return null;
@@ -59,14 +83,24 @@ export class CheckoutService {
    * If the winning order is FAILED, that's a real terminal failure under this
    * key — per AD2, idempotency keys are permanent, so the caller needs a fresh
    * clientRequestId to retry, not a silent infinite retry.
+   *
+   * Also rejects if the polled order's items don't match this request's
+   * itemIds, for the same reason and with the same error as
+   * findCachedCheckoutSession (see roadmap P05).
    */
   private async resolveRacedCheckoutSession(
     buyerId: string | null,
     clientRequestId: string,
+    itemIds: string[],
   ): Promise<{ checkoutUrl: string; orderId: string }> {
     for (let attempt = 0; attempt < RACED_ORDER_RETRY_ATTEMPTS; attempt++) {
       const order = await this.orders.findOrderByBuyerAndClientRequestId(buyerId, clientRequestId);
 
+      if (order && !itemSetsMatch(order.items, itemIds)) {
+        throw new BadRequestError(
+          'This request\'s idempotency key was already used for a different set of items — please retry with a new request.',
+        );
+      }
       if (order?.status === OrderStatus.PENDING && order.checkoutSessionUrl) {
         return { checkoutUrl: order.checkoutSessionUrl, orderId: order.id };
       }
@@ -96,7 +130,7 @@ export class CheckoutService {
     itemIds: string[],
     clientRequestId: string,
   ): Promise<{ checkoutUrl: string; orderId: string }> {
-    const cached = await this.findCachedCheckoutSession(buyerId, clientRequestId);
+    const cached = await this.findCachedCheckoutSession(buyerId, clientRequestId, itemIds);
     if (cached) return cached;
 
     const mediaItems = await this.fetchAndValidateCartItems(buyerId, itemIds);
@@ -109,7 +143,7 @@ export class CheckoutService {
         : await this.orders.createOrder({ buyerId, guestEmail, totalAmount: totalCents, itemIds, clientRequestId });
     } catch (err) {
       if (err instanceof ConflictError) {
-        return await this.resolveRacedCheckoutSession(buyerId, clientRequestId);
+        return await this.resolveRacedCheckoutSession(buyerId, clientRequestId, itemIds);
       }
       throw err;
     }

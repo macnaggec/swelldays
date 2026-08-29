@@ -98,7 +98,11 @@ function makeMediaItem(overrides: Partial<{
 }
 
 function makeOrder(): OrderWithItems {
-  return { id: 'order-uuid-1', buyerId: 'buyer-1' } as unknown as OrderWithItems;
+  return {
+    id: 'order-uuid-1',
+    buyerId: 'buyer-1',
+    items: [{ id: 'oi-1', mediaItemId: 'media-1' }],
+  } as unknown as OrderWithItems;
 }
 
 function makePurchase(overrides: Partial<PurchaseWithMedia> = {}): PurchaseWithMedia {
@@ -279,6 +283,61 @@ describe('CheckoutService.createCheckoutSession', () => {
     await service.createCheckoutSession(BUYER_ID, undefined, ['media-2'], 'client-request-uuid-b');
 
     expect(mockTx.order.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a retried call under the same clientRequestId if the item set has changed', async () => {
+    setupHappyPath();
+
+    await service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID);
+
+    mockOrders.findOrderByBuyerAndClientRequestId.mockResolvedValue({
+      ...makeOrder(),
+      status: 'PENDING',
+      checkoutSessionUrl: 'https://pay.cryptocloud.plus/mock-invoice',
+    });
+
+    await expect(
+      service.createCheckoutSession(BUYER_ID, undefined, ['media-2'], CLIENT_REQUEST_ID),
+    ).rejects.toThrow('already used for a different set of items');
+  });
+
+  it('accepts a retried call under the same clientRequestId when the item set matches, regardless of array order', async () => {
+    const item1 = makeMediaItem({ id: 'media-1' });
+    const item2 = makeMediaItem({ id: 'media-2' });
+    setupHappyPath([item1, item2]);
+
+    const first = await service.createCheckoutSession(BUYER_ID, undefined, ['media-1', 'media-2'], CLIENT_REQUEST_ID);
+
+    mockOrders.findOrderByBuyerAndClientRequestId.mockResolvedValue({
+      ...makeOrder(),
+      status: 'PENDING',
+      checkoutSessionUrl: first.checkoutUrl,
+      items: [
+        { id: 'oi-1', mediaItemId: 'media-1' },
+        { id: 'oi-2', mediaItemId: 'media-2' },
+      ],
+    });
+
+    const second = await service.createCheckoutSession(BUYER_ID, undefined, ['media-2', 'media-1'], CLIENT_REQUEST_ID);
+
+    expect(second).toEqual(first);
+  });
+
+  it('rejects the raced session if the winning order\'s item set does not match this request\'s items', async () => {
+    mockMedia.findByIds.mockResolvedValue([makeMediaItem()]);
+    mockOrders.findOrderByBuyerAndClientRequestId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        ...makeOrder(),
+        status: 'PENDING',
+        checkoutSessionUrl: 'https://pay.cryptocloud.plus/winning-invoice',
+        items: [{ id: 'oi-1', mediaItemId: 'media-DIFFERENT' }],
+      });
+    mockTx.order.create.mockRejectedValue(new ConflictError('buyer_id, client_request_id already exists'));
+
+    await expect(
+      service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID),
+    ).rejects.toThrow('already used for a different set of items');
   });
 
   // ---
