@@ -228,6 +228,50 @@ describe('CheckoutService.createCheckoutSession', () => {
     expect(mockPayment.createCheckoutSession).not.toHaveBeenCalled();
   });
 
+  it('retries until the winning order\'s checkoutSessionUrl becomes available, instead of throwing immediately', async () => {
+    mockMedia.findByIds.mockResolvedValue([makeMediaItem()]);
+    mockOrders.findOrderByBuyerAndClientRequestId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ ...makeOrder(), status: 'PENDING', checkoutSessionUrl: null })
+      .mockResolvedValueOnce({
+        ...makeOrder(),
+        status: 'PENDING',
+        checkoutSessionUrl: 'https://pay.cryptocloud.plus/winning-invoice',
+      });
+    mockTx.order.create.mockRejectedValue(new ConflictError('buyer_id, client_request_id already exists'));
+
+    const result = await service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID);
+
+    expect(result.checkoutUrl).toBe('https://pay.cryptocloud.plus/winning-invoice');
+    expect(mockOrders.findOrderByBuyerAndClientRequestId).toHaveBeenCalledTimes(3);
+  });
+
+  it('throws a distinct error (not the raw ConflictError) when the winning order ended up FAILED', async () => {
+    mockMedia.findByIds.mockResolvedValue([makeMediaItem()]);
+    mockOrders.findOrderByBuyerAndClientRequestId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ ...makeOrder(), status: 'FAILED', checkoutSessionUrl: null });
+    mockTx.order.create.mockRejectedValue(new ConflictError('buyer_id, client_request_id already exists'));
+
+    const attempt = service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID);
+
+    await expect(attempt).rejects.toThrow(BadRequestError);
+    await expect(attempt).rejects.toThrow('failed — please retry with a new request');
+  });
+
+  it('throws a distinct error (not the raw ConflictError) when retries are exhausted and the order is still unresolved', async () => {
+    mockMedia.findByIds.mockResolvedValue([makeMediaItem()]);
+    mockOrders.findOrderByBuyerAndClientRequestId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({ ...makeOrder(), status: 'PENDING', checkoutSessionUrl: null });
+    mockTx.order.create.mockRejectedValue(new ConflictError('buyer_id, client_request_id already exists'));
+
+    const attempt = service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID);
+
+    await expect(attempt).rejects.toThrow(BadRequestError);
+    await expect(attempt).rejects.toThrow('still being processed');
+  });
+
   it('creates a new order when the clientRequestId differs from any prior attempt', async () => {
     setupHappyPath();
 
@@ -293,6 +337,20 @@ describe('CheckoutService.createCheckoutSession', () => {
 
     await expect(service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID)).rejects.toThrow(
       'Some items already have a pending order',
+    );
+  });
+
+  it('excludes the current clientRequestId from the pending-order collision check — a same-key resubmission is not a pending-order conflict', async () => {
+    setupHappyPath();
+
+    await service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID);
+
+    expect(mockTx.orderItem.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          order: expect.objectContaining({ clientRequestId: { not: CLIENT_REQUEST_ID } }),
+        }),
+      }),
     );
   });
 

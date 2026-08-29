@@ -74,3 +74,45 @@ describe('CheckoutService.createCheckoutSession — concurrent buyer requests', 
     expect(pendingOrders).toHaveLength(1);
   });
 });
+
+describe('CheckoutService.createCheckoutSession — concurrent same-key requests (P04)', () => {
+  it('serializes two concurrent checkouts under the SAME clientRequestId — both resolve to the one order created', async () => {
+    const photographer = await prisma.user.create({
+      data: { email: `photographer-${randomUUID()}@example.com`, balance: 0 },
+    });
+    const buyer = await prisma.user.create({
+      data: { email: `buyer-${randomUUID()}@example.com` },
+    });
+    const session = await prisma.surfSession.create({
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
+    });
+    const mediaItem = await prisma.mediaItem.create({
+      data: {
+        sessionId: session.id,
+        photographerId: photographer.id,
+        status: 'PUBLISHED',
+        price: 1000,
+        capturedAt: new Date('2026-01-01T06:30:00Z'),
+        lightboxUrl: 'https://res.cloudinary.com/test/checkout-samekey.jpg',
+        thumbnailUrl: 'https://res.cloudinary.com/test/checkout-samekey-thumb.jpg',
+        cloudinaryPublicId: 'swelldays/test/checkout-samekey',
+      },
+    });
+
+    const clientRequestId = randomUUID();
+    const results = await Promise.allSettled([
+      service.createCheckoutSession(buyer.id, undefined, [mediaItem.id], clientRequestId),
+      service.createCheckoutSession(buyer.id, undefined, [mediaItem.id], clientRequestId),
+    ]);
+
+    const fulfilled = results.filter(
+      (r): r is PromiseFulfilledResult<{ checkoutUrl: string; orderId: string }> => r.status === 'fulfilled',
+    );
+
+    expect(fulfilled).toHaveLength(2);
+    expect(fulfilled[0]!.value.orderId).toBe(fulfilled[1]!.value.orderId);
+
+    const orders = await prisma.order.findMany({ where: { buyerId: buyer.id, clientRequestId } });
+    expect(orders).toHaveLength(1);
+  });
+});

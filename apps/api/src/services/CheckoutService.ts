@@ -23,6 +23,8 @@ import { apiConfig } from 'server/config/env';
 // pending-order check below (see roadmap Non-goals: no reservation/expiry
 // system).
 const PENDING_ORDER_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const RACED_ORDER_RETRY_ATTEMPTS = 3;
+const RACED_ORDER_RETRY_DELAY_MS = 250; // ms
 
 export class CheckoutService {
   constructor(
@@ -43,6 +45,45 @@ export class CheckoutService {
       return { checkoutUrl: existing.checkoutSessionUrl, orderId: existing.id };
     }
     return null;
+  }
+
+  /**
+   * Called when createOrderForBuyer's/createOrder's unique-constraint INSERT
+   * lost a race against a concurrent call under the same (buyerId,
+   * clientRequestId) — the winner's Order row already exists (that's why we
+   * got ConflictError here), but it may not have saved its checkoutSessionUrl
+   * yet (openPaymentSession is still running for the winner). Poll briefly for
+   * the winner to finish instead of surfacing the raw ConflictError for what
+   * should be a transparently deduplicated request (AD2/roadmap P04).
+   *
+   * If the winning order is FAILED, that's a real terminal failure under this
+   * key — per AD2, idempotency keys are permanent, so the caller needs a fresh
+   * clientRequestId to retry, not a silent infinite retry.
+   */
+  private async resolveRacedCheckoutSession(
+    buyerId: string | null,
+    clientRequestId: string,
+  ): Promise<{ checkoutUrl: string; orderId: string }> {
+    for (let attempt = 0; attempt < RACED_ORDER_RETRY_ATTEMPTS; attempt++) {
+      const order = await this.orders.findOrderByBuyerAndClientRequestId(buyerId, clientRequestId);
+
+      if (order?.status === OrderStatus.PENDING && order.checkoutSessionUrl) {
+        return { checkoutUrl: order.checkoutSessionUrl, orderId: order.id };
+      }
+      if (order?.status === OrderStatus.FAILED) {
+        throw new BadRequestError(
+          'This checkout attempt failed — please retry with a new request.',
+        );
+      }
+
+      if (attempt < RACED_ORDER_RETRY_ATTEMPTS - 1) {
+        await new Promise((resolve) => setTimeout(resolve, RACED_ORDER_RETRY_DELAY_MS));
+      }
+    }
+
+    throw new BadRequestError(
+      'This checkout attempt is still being processed — please wait a moment and retry.',
+    );
   }
 
   /**
@@ -68,8 +109,7 @@ export class CheckoutService {
         : await this.orders.createOrder({ buyerId, guestEmail, totalAmount: totalCents, itemIds, clientRequestId });
     } catch (err) {
       if (err instanceof ConflictError) {
-        const raced = await this.findCachedCheckoutSession(buyerId, clientRequestId);
-        if (raced) return raced;
+        return await this.resolveRacedCheckoutSession(buyerId, clientRequestId);
       }
       throw err;
     }
@@ -199,7 +239,17 @@ export class CheckoutService {
         const pendingRows = await tx.orderItem.findMany({
           where: {
             mediaItemId: { in: itemIds },
-            order: { buyerId, status: OrderStatus.PENDING, createdAt: { gte: sinceCreatedAt } },
+            order: {
+              buyerId,
+              status: OrderStatus.PENDING,
+              createdAt: { gte: sinceCreatedAt },
+              // Exclude this same clientRequestId: a same-key resubmission (e.g. a
+              // double-click) is the identical logical attempt, not a different
+              // pending order — it must fall through to the unique-constraint
+              // ConflictError path (resolveRacedCheckoutSession) below, not be
+              // misreported here as a pending-item conflict. See roadmap P04.
+              clientRequestId: { not: clientRequestId },
+            },
           },
           select: { mediaItemId: true },
         });
