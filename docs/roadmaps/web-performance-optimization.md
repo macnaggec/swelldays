@@ -412,6 +412,8 @@ Measured escape hatch: if real-device new-visitor LCP regresses materially, eval
 
 Optional follow-up, only with visual approval: downscale or losslessly recompress the 600 px logo for its 180 CSS px maximum while retaining a two-device-pixel source.
 
+**Handoff (2026-08-29):** T04 is complete and fully green. Startup HTML no longer preloads or references either first-visit hero; the existing portrait/landscape artwork tree now mounts exactly once only when `FirstVisitGate` resolves the application-owned `intro` presentation, including deterministic review mode. Session resolution retains the dark covering veil and the persistent map while mounting no artwork; authenticated, acknowledged returning, and direct-ineligible states likewise mount none, and storage-denied behavior remains intro-safe. The production bundle report proves one unchanged hashed artifact per hero with references `HTML 0 / entry JS 0 / entry CSS 1`, while the high-priority logo remains `HTML 2 / entry JS 1 / entry CSS 0`. Verification passed 25 focused tests, the production client build and bundle budgets, 30 layout contracts, both TypeScript checks, lint, style boundaries, `git diff --check`, and the full 1,153-test client/server suite. No deployment, live public request, or real-iPhone request capture was performed; those remain later roadmap acceptance. T05 is the next ready task in document order.
+
 ### T05 — Split contracts core and validation public entries
 
 **Depends on:** T01.
@@ -940,7 +942,7 @@ These are the complete handoff gates; during implementation, use only the smalle
 - [x] T01 bundle reporting and budgets green in CI.
 - [x] T02 runtime compression proven locally; public post-deploy verification is wired and remains approval-gated.
 - [x] T03 logo/hero assets fingerprinted and cache-safe.
-- [ ] T04 artwork is requested only when the intro/review presentation owns it.
+- [x] T04 artwork is requested only when the intro/review presentation owns it.
 - [ ] T05 contracts core is Zod-free and only supported public entries are used.
 - [ ] T06 Add Spot UI absent from unrelated startup.
 - [ ] T07 Add Spot intent hides the new lazy latency.

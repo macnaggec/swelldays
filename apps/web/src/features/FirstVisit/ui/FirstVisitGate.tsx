@@ -128,14 +128,19 @@ export function FirstVisitGate({
           onTouchEnd={onTouchEnd}
           onTouchCancel={onTouchEnd}
         >
-          <div className={classes.artwork} aria-hidden="true">
-            <div className={classes.plate} />
-            <div className={`${classes.plate} ${classes.plateTrailing}`} />
-          </div>
           <div className={classes.veil} aria-hidden="true" />
 
           {presentation === 'intro' && (
             <>
+              <div
+                className={classes.artwork}
+                data-first-visit-artwork
+                aria-hidden="true"
+              >
+                <div className={classes.plate} />
+                <div className={`${classes.plate} ${classes.plateTrailing}`} />
+              </div>
+
               <div className={classes.logo}>
                 <span className={classes.rise}>
                   <img

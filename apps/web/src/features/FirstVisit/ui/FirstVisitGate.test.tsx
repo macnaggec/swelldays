@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { useFirstVisitMapReadiness } from '../model/firstVisitMapReadiness';
 import { FIRST_VISIT_STORAGE_KEY } from '../model/firstVisitStorage';
@@ -65,11 +65,12 @@ describe('FirstVisitGate', () => {
   });
 
   it('shows the introduction with its prompt to a first-time visitor', () => {
-    renderGate();
+    const { container } = renderGate();
 
     expect(screen.getByRole('heading', { name: TITLE })).not.toBeNull();
     expect(screen.getByText('Buy · Sell · Share')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Enter the map' })).not.toBeNull();
+    expect(container.querySelectorAll('[data-first-visit-artwork]')).toHaveLength(1);
   });
 
   it('holds the app behind an opaque cover without showing intro copy while the session resolves', () => {
@@ -77,7 +78,11 @@ describe('FirstVisitGate', () => {
 
     expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
     expect(container.querySelector('[data-first-visit-state="checking-session"]')).not.toBeNull();
+    expect(container.querySelector('[data-first-visit-artwork]')).toBeNull();
     expect(container.querySelector('[data-first-visit-app]')).toHaveAttribute('inert');
+    expect(container.querySelector('[data-first-visit-app]')).toContainElement(
+      screen.getByRole('button', { name: 'Mark map ready', hidden: true }),
+    );
   });
 
   it('keeps an early entry request covered until the map reports ready', async () => {
@@ -221,16 +226,18 @@ describe('FirstVisitGate', () => {
     window.localStorage.setItem(FIRST_VISIT_STORAGE_KEY, 'seen');
     window.history.replaceState({}, '', '/?firstVisitReview=1');
 
-    renderGate({ isAuthenticated: true });
+    const { container } = renderGate({ isAuthenticated: true });
 
     expect(screen.getByRole('dialog')).not.toBeNull();
     expect(screen.getByRole('heading', { name: TITLE })).not.toBeNull();
+    expect(container.querySelectorAll('[data-first-visit-artwork]')).toHaveLength(1);
   });
 
   it('bypasses the introduction for authenticated visitors and remembers the bypass', async () => {
-    renderGate({ isAuthenticated: true });
+    const { container } = renderGate({ isAuthenticated: true });
 
     expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
+    expect(container.querySelector('[data-first-visit-artwork]')).toBeNull();
     await waitFor(() => {
       expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBe('seen');
     });
@@ -238,14 +245,31 @@ describe('FirstVisitGate', () => {
 
   it('bypasses the introduction for returning visitors', () => {
     window.localStorage.setItem(FIRST_VISIT_STORAGE_KEY, 'seen');
-    renderGate();
+    const { container } = renderGate();
 
     expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
+    expect(container.querySelector('[data-first-visit-artwork]')).toBeNull();
   });
 
   it('bypasses the introduction for direct links', () => {
-    renderGate({ isEligibleRoute: false });
+    const { container } = renderGate({ isEligibleRoute: false });
 
     expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
+    expect(container.querySelector('[data-first-visit-artwork]')).toBeNull();
+  });
+
+  it('shows the introduction when acknowledgement storage cannot be read', () => {
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+
+    try {
+      const { container } = renderGate();
+
+      expect(screen.getByRole('heading', { name: TITLE })).not.toBeNull();
+      expect(container.querySelectorAll('[data-first-visit-artwork]')).toHaveLength(1);
+    } finally {
+      getItemSpy.mockRestore();
+    }
   });
 });

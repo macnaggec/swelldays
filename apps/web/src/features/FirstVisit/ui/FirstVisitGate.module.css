@@ -249,8 +249,8 @@
 }
 
 @container (min-width: 48em) {
-  /* Matches the media condition on the preload in index.html — a different
-     boundary here would fetch one crop and then paint the other. */
+  /* This container boundary selects the landscape crop for the
+     presentation-owned artwork. */
   .plate {
     background-image: url('../../../assets/startup/first-visit-waves-landscape.webp');
   }

@@ -53,6 +53,13 @@ describe('startup performance contracts', () => {
     expect(bootstrapShell).not.toContain('<span>SWELLDAYS</span>');
   });
 
+  it('leaves first-visit artwork requests to the resolved presentation', () => {
+    const indexHtml = readWorkspaceFile('apps/web/index.html');
+
+    expect(indexHtml).not.toContain('first-visit-waves-portrait.webp');
+    expect(indexHtml).not.toContain('first-visit-waves-landscape.webp');
+  });
+
   it('loads Google APIs only from the Drive feature', () => {
     const indexHtml = readWorkspaceFile('apps/web/index.html');
 

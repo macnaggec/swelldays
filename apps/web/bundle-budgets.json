@@ -60,7 +60,7 @@
       "label": "First-visit portrait artwork",
       "source": "src/assets/startup/first-visit-waves-portrait.webp",
       "minimumReferences": {
-        "html": 1,
+        "html": 0,
         "entryJavaScript": 0,
         "entryCss": 1
       }
@@ -70,7 +70,7 @@
       "label": "First-visit landscape artwork",
       "source": "src/assets/startup/first-visit-waves-landscape.webp",
       "minimumReferences": {
-        "html": 1,
+        "html": 0,
         "entryJavaScript": 0,
         "entryCss": 1
       }
