@@ -1,5 +1,5 @@
 import { GlobeMap, type MapSpotProjection } from 'widgets/GlobeMap';
-import { useMapSpots } from 'entities/Spot';
+import { useMapSpots, type Spot } from 'entities/Spot';
 import { AddSpotPanel, useAddSpotStore } from 'features/AddSpot';
 import { FavoriteSpotButton } from 'features/FavoriteSpot';
 import { useFirstVisitMapReadiness } from 'features/FirstVisit';
@@ -59,7 +59,7 @@ export function GlobeScene() {
   const { data: spots = [] } = useMapSpots(getOverviewMapBounds());
   const { markMapReady } = useFirstVisitMapReadiness();
   const mapSpots = useMemo<MapSpotProjection[]>(
-    () => spots.map(({ id, name, coords, status }) => ({ id, name, coords, status })),
+    () => spots.map(({ id, slug, name, coords, status }) => ({ id, slug, name, coords, status })),
     [spots],
   );
   const isAddSpotActive = useAddSpotStore((s) => s.isActive);
@@ -103,7 +103,10 @@ export function GlobeScene() {
   const spotMatch = matches.find((match) => match.routeId === '/_panel/$spotId');
   const spotGalleryMatch = matches.find((match) => match.routeId === '/_panel/$spotId/gallery');
   const allGalleryMatch = matches.find((match) => match.routeId === '/_panel/gallery');
-  const routeSelectedSpotId = (spotMatch?.params as { spotId?: string } | undefined)?.spotId ?? null;
+  // The map highlights/focuses a marker by database id, but the route's $spotId
+  // param is a slug — read the already-resolved spot off the match's loaderData
+  // instead of re-deriving an id from the slug.
+  const routeSelectedSpotId = (spotMatch?.loaderData as Spot | undefined)?.id ?? null;
   const selectedSpotId = uploadMatch
     ? (uploadSeedSpotId ?? uploadWorkspaceState?.workspace.spotId ?? null)
     : routeSelectedSpotId;
@@ -164,7 +167,7 @@ export function GlobeScene() {
       // that spot's session list, as before.
       await navigate({
         to: (allGalleryMatch || spotGalleryMatch) ? '/$spotId/gallery' : '/$spotId',
-        params: { spotId: spot.id },
+        params: { spotId: spot.slug },
       });
       return;
     }

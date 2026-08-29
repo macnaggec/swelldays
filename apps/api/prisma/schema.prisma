@@ -122,6 +122,7 @@ model MediaItem {
 
 model Spot {
   id               String             @id @default(uuid())
+  slug             String             @unique
   name             String
   location         String
   lat              Decimal?           @db.Decimal(10, 8)

@@ -91,7 +91,7 @@ export function useAddSpotFlow(): AddSpotFlowState {
 
     exitAddSpot();
 
-    void navigate({ to: '/$spotId', params: { spotId: spot.id } });
+    void navigate({ to: '/$spotId', params: { spotId: spot.slug } });
   }, [
     tempPin,
     name,
@@ -137,7 +137,7 @@ export function useAddSpotFlow(): AddSpotFlowState {
 
   const goToExisting = useCallback((spot: Spot) => {
     exitAddSpot();
-    void navigate({ to: '/$spotId', params: { spotId: spot.id } });
+    void navigate({ to: '/$spotId', params: { spotId: spot.slug } });
   }, [exitAddSpot, navigate]);
 
   return {

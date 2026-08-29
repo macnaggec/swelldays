@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useMatch, useNavigate } from '@tanstack/react-router';
 import { SessionFeed } from 'widgets/SidePanel';
 import { buildCanonicalLink } from 'shared/lib/seoMeta';
 import { usePanelFeedLayoutReadyChange, usePanelFilter } from '../lib/panelContexts';
@@ -10,13 +10,16 @@ export const Route = createFileRoute('/_panel/$spotId/')({
 
 function SpotFeed() {
   const { spotId } = Route.useParams();
+  // SessionFeed filters by the spot's database id, not its slug — the
+  // parent route (/_panel/$spotId) already resolved that from the slug.
+  const spot = useMatch({ from: '/_panel/$spotId', select: (match) => match.loaderData });
   const { filters } = usePanelFilter();
   const onLayoutReadyChange = usePanelFeedLayoutReadyChange();
   const navigate = useNavigate();
 
   return (
     <SessionFeed
-      spotId={spotId}
+      spotId={spot?.id}
       filters={filters}
       onLayoutReadyChange={onLayoutReadyChange}
       onSessionClick={(session) =>

@@ -66,7 +66,7 @@ async function collectSitemapEntries(): Promise<SitemapEntry[]> {
     { loc: canonicalUrl('/gallery') },
   ];
 
-  const seenSpotIds = new Set<string>();
+  const seenSpotSlugs = new Set<string>();
   let cursor: string | undefined;
   let hasMore = true;
 
@@ -74,15 +74,15 @@ async function collectSitemapEntries(): Promise<SitemapEntry[]> {
     const page = await surfSessionRepository.listPublished({ cursor, limit: SITEMAP_SESSION_PAGE_SIZE });
 
     for (const session of page.items) {
-      entries.push({ loc: canonicalUrl(`/${session.spotId}/session/${session.id}`), lastmod: session.createdAt });
+      entries.push({ loc: canonicalUrl(`/${session.spot.slug}/session/${session.id}`), lastmod: session.createdAt });
 
       // Sessions arrive newest-first, so the first one seen for a spot is
       // that spot's most recent content — a reasonable lastmod for its
       // own page and gallery without a second query.
-      if (!seenSpotIds.has(session.spotId)) {
-        seenSpotIds.add(session.spotId);
-        entries.push({ loc: canonicalUrl(`/${session.spotId}`), lastmod: session.createdAt });
-        entries.push({ loc: canonicalUrl(`/${session.spotId}/gallery`), lastmod: session.createdAt });
+      if (!seenSpotSlugs.has(session.spot.slug)) {
+        seenSpotSlugs.add(session.spot.slug);
+        entries.push({ loc: canonicalUrl(`/${session.spot.slug}`), lastmod: session.createdAt });
+        entries.push({ loc: canonicalUrl(`/${session.spot.slug}/gallery`), lastmod: session.createdAt });
       }
     }
 
@@ -127,45 +127,48 @@ publicPagesRouter.get('/gallery', async (c) => {
   }));
 });
 
+// The URL segment named :spotId here is a spot's slug, not its database id —
+// named to match the identical (also slug-holding) TanStack Router param in
+// apps/web, since this route exists purely to mirror that real public URL.
 publicPagesRouter.get('/:spotId', async (c) => {
-  const spotId = c.req.param('spotId');
-  const [spot, shell] = await Promise.all([spotRepository.findSpotById(spotId), fetchAppShell()]);
+  const spotSlug = c.req.param('spotId');
+  const [spot, shell] = await Promise.all([spotRepository.findSpotBySlug(spotSlug), fetchAppShell()]);
   if (!spot) return c.html(shell, 404);
 
   const { items } = await surfSessionRepository.listPublished({ spotId: spot.id, limit: 1 });
   return c.html(injectHead(shell, {
     title: spotPageTitle(spot),
     description: spotPageDescription(spot),
-    canonicalUrl: canonicalUrl(`/${spot.id}`),
+    canonicalUrl: canonicalUrl(`/${spot.slug}`),
     imageUrl: items[0]?.thumbnailUrl ?? undefined,
     jsonLd: [placeJsonLd(spot)],
   }));
 });
 
 publicPagesRouter.get('/:spotId/gallery', async (c) => {
-  const spotId = c.req.param('spotId');
-  const [spot, shell] = await Promise.all([spotRepository.findSpotById(spotId), fetchAppShell()]);
+  const spotSlug = c.req.param('spotId');
+  const [spot, shell] = await Promise.all([spotRepository.findSpotBySlug(spotSlug), fetchAppShell()]);
   if (!spot) return c.html(shell, 404);
 
   const { items } = await surfSessionRepository.listPublished({ spotId: spot.id, limit: 1 });
   return c.html(injectHead(shell, {
     title: spotGalleryTitle(spot),
     description: spotGalleryDescription(spot),
-    canonicalUrl: canonicalUrl(`/${spot.id}/gallery`),
+    canonicalUrl: canonicalUrl(`/${spot.slug}/gallery`),
     imageUrl: items[0]?.thumbnailUrl ?? undefined,
     jsonLd: [
       placeJsonLd(spot),
       breadcrumbListJsonLd([
         { name: 'Swelldays', url: canonicalUrl('/') },
-        { name: spot.name, url: canonicalUrl(`/${spot.id}`) },
-        { name: 'Gallery', url: canonicalUrl(`/${spot.id}/gallery`) },
+        { name: spot.name, url: canonicalUrl(`/${spot.slug}`) },
+        { name: 'Gallery', url: canonicalUrl(`/${spot.slug}/gallery`) },
       ]),
     ],
   }));
 });
 
 publicPagesRouter.get('/:spotId/session/:sessionId', async (c) => {
-  const spotId = c.req.param('spotId');
+  const spotSlug = c.req.param('spotId');
   const sessionId = c.req.param('sessionId');
   const shell = await fetchAppShell();
 
@@ -178,13 +181,13 @@ publicPagesRouter.get('/:spotId/session/:sessionId', async (c) => {
   return c.html(injectHead(shell, {
     title: sessionPageTitle(session, shortDate),
     description: sessionPageDescription(session, formatDateRangeLabel(session.startsAt, session.endsAt)),
-    canonicalUrl: canonicalUrl(`/${spotId}/session/${sessionId}`),
+    canonicalUrl: canonicalUrl(`/${spotSlug}/session/${sessionId}`),
     imageUrl: session.thumbnailUrl ?? undefined,
     jsonLd: [
       breadcrumbListJsonLd([
         { name: 'Swelldays', url: canonicalUrl('/') },
-        { name: session.spot.name, url: canonicalUrl(`/${session.spot.id}`) },
-        { name: `Session — ${shortDate}`, url: canonicalUrl(`/${spotId}/session/${sessionId}`) },
+        { name: session.spot.name, url: canonicalUrl(`/${session.spot.slug}`) },
+        { name: `Session — ${shortDate}`, url: canonicalUrl(`/${spotSlug}/session/${sessionId}`) },
       ]),
     ],
   }));

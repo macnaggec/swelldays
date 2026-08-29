@@ -29,7 +29,7 @@ export function FeedSearch({ placeholder, onSpotSelect, activeSpot: activeSpotOv
     if (onSpotSelect) {
       onSpotSelect(spot);
     } else {
-      void navigate({ to: '/$spotId', params: { spotId: spot.id } });
+      void navigate({ to: '/$spotId', params: { spotId: spot.slug } });
     }
   }, [navigate, onSpotSelect]);
 

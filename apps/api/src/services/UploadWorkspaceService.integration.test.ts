@@ -22,7 +22,7 @@ async function seedPublishedSessionWithOnePhoto(options: { purchased?: boolean }
     data: { email: `workspace-${crypto.randomUUID()}@example.com` },
   });
   const spot = await prisma.spot.create({
-    data: { name: 'Pipeline', location: 'North Shore' },
+    data: { slug: 'pipeline', name: 'Pipeline', location: 'North Shore' },
   });
   const session = await prisma.surfSession.create({
     data: {

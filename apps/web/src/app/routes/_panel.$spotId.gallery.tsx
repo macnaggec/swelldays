@@ -7,8 +7,10 @@ import { usePanelExpanded, usePanelFilter } from '../lib/panelContexts';
 
 export const Route = createFileRoute('/_panel/$spotId/gallery')({
   staticData: { appRouteIntent: 'galleryWorkspace' },
-  loader: async ({ params: { spotId }, context: { queryClient } }) =>
-    queryClient.ensureQueryData(trpcProxy.spots.byId.queryOptions(spotId)),
+  // $spotId is a slug; resolve it to the spot's real id here once, since
+  // PublicGallery filters the media feed by database id, not slug.
+  loader: async ({ params: { spotId: spotSlug }, context: { queryClient } }) =>
+    queryClient.ensureQueryData(trpcProxy.spots.bySlug.queryOptions(spotSlug)),
   head: ({ loaderData, params }) => ({
     ...(loaderData && {
       meta: buildPageMeta({
@@ -22,13 +24,14 @@ export const Route = createFileRoute('/_panel/$spotId/gallery')({
 });
 
 function GalleryPage() {
-  const { spotId } = Route.useParams();
+  const spot = Route.useLoaderData();
   const { filters, clearFilters } = usePanelFilter();
   const expanded = usePanelExpanded();
+  if (!spot) return null;
   return (
     <PublicGallery
       expanded={expanded}
-      spotId={spotId}
+      spotId={spot.id}
       filters={filters}
       onClearFilters={clearFilters}
     />

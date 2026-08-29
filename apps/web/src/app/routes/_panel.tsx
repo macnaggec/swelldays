@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, useMatches, useNavigate, useParams, useRouter } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { useSelectedSpot, useSpotPreview } from 'entities/Spot';
+import { useSelectedSpot, useSpotPreviewBySlug } from 'entities/Spot';
 import { useCallback, useLayoutEffect, useState, type ReactNode } from 'react';
 import { useTRPC } from 'shared/lib/trpc';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
@@ -161,7 +161,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
   }, [activeWorkspace, router, spotId]);
 
   const { spot: activeSpot } = useSelectedSpot();
-  const { data: cartFromSpot } = useSpotPreview(cartFrom ?? '', { enabled: !!cartFrom });
+  const { data: cartFromSpot } = useSpotPreviewBySlug(cartFrom ?? '', { enabled: !!cartFrom });
 
   const routeRequiresCompactMapInput = appRouteIntent === 'mapInput';
   const targetExpanded = layoutPolicy.drawer.state === 'expanded';
@@ -378,9 +378,9 @@ function PanelFrame({ children }: { children: ReactNode }) {
               // picking one from sessions stays in sessions. Only the scopeless
               // default index has nothing to preserve.
               if (!isDefaultIndex && (allGalleryMatch || spotGalleryMatch)) {
-                void navigate({ to: '/$spotId/gallery', params: { spotId: spot.id } });
+                void navigate({ to: '/$spotId/gallery', params: { spotId: spot.slug } });
               } else {
-                void navigate({ to: '/$spotId', params: { spotId: spot.id } });
+                void navigate({ to: '/$spotId', params: { spotId: spot.slug } });
               }
             }}
             onClear={

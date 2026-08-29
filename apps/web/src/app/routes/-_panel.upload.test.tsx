@@ -44,7 +44,7 @@ const mocks = vi.hoisted(() => ({
     isLoading: false,
   },
   spotPreview: {
-    data: { id: 'spot-a', name: 'Spot A', location: 'Beach' } as { id: string; name: string; location: string } | undefined,
+    data: { id: 'spot-a', slug: 'spot-a', name: 'Spot A', location: 'Beach' } as { id: string; slug: string; name: string; location: string } | undefined,
   },
   user: { isAuthenticated: true, isLoading: false },
   sizeBand: 'wide' as 'compact' | 'constrained' | 'wide',
@@ -192,7 +192,7 @@ describe('UploadPanel workspace routing', () => {
     mocks.stateQuery.data = workspaceState;
     mocks.stateQuery.isError = false;
     mocks.stateQuery.isLoading = false;
-    mocks.spotPreview.data = { id: 'spot-a', name: 'Spot A', location: 'Beach' };
+    mocks.spotPreview.data = { id: 'spot-a', slug: 'spot-a', name: 'Spot A', location: 'Beach' };
     mocks.user.isAuthenticated = true;
     mocks.user.isLoading = false;
     mocks.sizeBand = 'wide';
@@ -364,6 +364,7 @@ describe('UploadPanel workspace routing', () => {
     mocks.search.workspaceId = undefined;
     mocks.search.spotId = undefined;
     mocks.stateQuery.data = undefined;
+    mocks.spotPreview.data = undefined;
 
     renderUploadPanel();
 

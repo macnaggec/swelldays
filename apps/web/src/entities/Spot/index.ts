@@ -11,6 +11,7 @@ export { useSelectedSpot } from './model/useSelectedSpot';
 export { useSpotCard } from './model/useSpotCard';
 export { useSpotMediaFeed } from './model/useSpotMediaFeed';
 export { useSpotPreview } from './model/useSpotPreview';
+export { useSpotPreviewBySlug } from './model/useSpotPreviewBySlug';
 export { useMapSpots } from './model/useMapSpots';
 export type { MapBounds } from './types';
 export { useSpots } from './model/useSpots';

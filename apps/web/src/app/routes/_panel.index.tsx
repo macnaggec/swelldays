@@ -23,7 +23,7 @@ function DefaultFeed() {
       filters={filters}
       onLayoutReadyChange={onLayoutReadyChange}
       onSessionClick={(session) =>
-        void navigate({ to: '/$spotId/session/$sessionId', params: { spotId: session.spotId, sessionId: session.id } })
+        void navigate({ to: '/$spotId/session/$sessionId', params: { spotId: session.spot.slug, sessionId: session.id } })
       }
     />
   );

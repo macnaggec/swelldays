@@ -87,12 +87,12 @@ function UploadPanel() {
   }, [navigate, queryClient, trpc, updateWorkspace, workspaceId]);
 
   const handleClose = useCallback(() => {
-    if (stagedSpotId) {
-      void navigate({ to: '/$spotId', params: { spotId: stagedSpotId } });
+    if (stagedSpot) {
+      void navigate({ to: '/$spotId', params: { spotId: stagedSpot.slug } });
     } else {
       void navigate({ to: '/' });
     }
-  }, [navigate, stagedSpotId]);
+  }, [navigate, stagedSpot]);
 
   useEffect(() => {
     if (isUserLoading || isAuthenticated) return;
@@ -101,12 +101,12 @@ function UploadPanel() {
   }, [handleClose, isAuthenticated, isUserLoading, setPanelRouteBackAction]);
 
   const handleComplete = useCallback((_sessionId: string) => {
-    if (stagedSpotId) {
-      void navigate({ to: '/$spotId', params: { spotId: stagedSpotId } });
+    if (stagedSpot) {
+      void navigate({ to: '/$spotId', params: { spotId: stagedSpot.slug } });
     } else {
       void navigate({ to: '/' });
     }
-  }, [navigate, stagedSpotId]);
+  }, [navigate, stagedSpot]);
 
   const handleWorkspaceCreated = useCallback((newWorkspaceId: string) => {
     void navigate({

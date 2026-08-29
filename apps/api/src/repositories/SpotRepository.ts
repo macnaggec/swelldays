@@ -4,10 +4,12 @@ import type { Spot, SpotStatus } from '@swelldays/contracts/core';
 import { prisma } from 'server/db';
 import { haversineDistance, EARTH_RADIUS_M } from 'server/lib/geoUtils';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
+import { slugify } from 'server/lib/slugify';
 
 function mapToSpot(spot: PrismaSpot): Spot {
   return {
     id: spot.id,
+    slug: spot.slug,
     name: spot.name,
     location: spot.location,
     coords: { lat: Number(spot.lat), lng: Number(spot.lng) },
@@ -48,6 +50,7 @@ export interface ISpotRepository {
   findSpotsByBounds(swLat: number, swLng: number, neLat: number, neLng: number): Promise<Spot[]>;
   findSpotsNearby(lat: number, lng: number, radiusM: number): Promise<Spot[]>;
   findSpotById(id: string): Promise<Spot | null>;
+  findSpotBySlug(slug: string): Promise<Spot | null>;
   createSpot(data: SpotCreateInput): Promise<Spot>;
   updateSpot(id: string, data: SpotUpdateInput): Promise<Spot>;
   findSpotCard(id: string): Promise<SpotCard | null>;
@@ -127,11 +130,35 @@ export class SpotRepository implements ISpotRepository {
     });
   }
 
-  createSpot(data: SpotCreateInput): Promise<Spot> {
+  findSpotBySlug(slug: string): Promise<Spot | null> {
     return runQuery(async () => {
-      const spot = await prisma.spot.create({ data });
+      const spot = await prisma.spot.findUnique({ where: { slug } });
+      if (!spot) return null;
       return mapToSpot(spot);
     });
+  }
+
+  createSpot(data: SpotCreateInput): Promise<Spot> {
+    return runQuery(async () => {
+      const slug = await this.generateUniqueSlug(data.name);
+      const spot = await prisma.spot.create({ data: { ...data, slug } });
+      return mapToSpot(spot);
+    });
+  }
+
+  // Loops rather than a single query because Postgres can't express "give me
+  // an unused slug" declaratively; two duplicate names in the same request
+  // window would need to serialize anyway, and spot creation is rare enough
+  // that this cost is invisible.
+  private async generateUniqueSlug(name: string): Promise<string> {
+    const base = slugify(name);
+    let candidate = base;
+    let suffix = 2;
+    while (await prisma.spot.findUnique({ where: { slug: candidate }, select: { id: true } })) {
+      candidate = `${base}-${suffix}`;
+      suffix += 1;
+    }
+    return candidate;
   }
 
   updateSpot(id: string, data: SpotUpdateInput): Promise<Spot> {

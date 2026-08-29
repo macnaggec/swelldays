@@ -19,7 +19,7 @@ async function fixture({ balance = 0 }: { balance?: number } = {}) {
     data: { email: 'leaving@example.com', name: 'Kai', balance },
   });
   const spot = await prisma.spot.create({
-    data: { name: 'Pipeline', location: 'Oahu', creatorId: photographer.id },
+    data: { slug: 'pipeline', name: 'Pipeline', location: 'Oahu', creatorId: photographer.id },
   });
   const session = await prisma.surfSession.create({
     data: { photographerId: photographer.id, spotId: spot.id, status: 'PUBLISHED' },

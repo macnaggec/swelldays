@@ -67,7 +67,7 @@ function UploadsTab() {
             onClick={(s) =>
               void navigate({
                 to: '/$spotId/session/$sessionId',
-                params: { spotId: s.spotId, sessionId: s.id },
+                params: { spotId: s.spot.slug, sessionId: s.id },
                 search: { from: 'collections' },
               })
             }

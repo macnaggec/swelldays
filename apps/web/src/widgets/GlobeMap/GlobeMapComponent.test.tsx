@@ -208,6 +208,7 @@ vi.mock('./ui/SelectedSpotPopup', () => ({
 const spots: Spot[] = [
   {
     id: 'spot-1',
+    slug: 'uluwatu',
     name: 'Uluwatu',
     location: 'Bali, Indonesia',
     coords: { lng: 115.085, lat: -8.815 },

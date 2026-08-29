@@ -78,6 +78,7 @@ const mocks = vi.hoisted(() => ({
   renderRealFeedSearch: false,
   spotResults: [{
     id: 'spot-b',
+    slug: 'spot-b',
     name: 'Spot B',
     location: 'Somewhere',
     coords: [1, 2],
@@ -136,9 +137,10 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('entities/Spot', () => ({
   useSelectedSpot: () => ({
-    spot: mocks.params.spotId ? { id: mocks.params.spotId, name: 'Spot A', location: 'Somewhere' } : null,
+    spot: mocks.params.spotId ? { id: mocks.params.spotId, slug: mocks.params.spotId, name: 'Spot A', location: 'Somewhere' } : null,
   }),
   useSpotPreview: () => ({ data: null }),
+  useSpotPreviewBySlug: () => ({ data: null }),
   useSpots: () => ({ data: mocks.spotResults, isFetching: false }),
 }));
 
@@ -366,7 +368,7 @@ vi.mock('widgets/FeedDrawer', async (importOriginal) => {
       onClear,
     }: {
       activeSpot?: { id: string; name: string; location: string } | null;
-      onSpotSelect?: (spot: { id: string }) => void;
+      onSpotSelect?: (spot: { id: string; slug: string }) => void;
       onClear?: () => void;
     }) => (
       mocks.renderRealFeedSearch ? (
@@ -379,7 +381,7 @@ vi.mock('widgets/FeedDrawer', async (importOriginal) => {
         <div data-testid="feed-search" data-active-spot={activeSpot?.id ?? 'none'}>
           {onClear && <button onClick={onClear}>Clear spot search</button>}
           {onSpotSelect && (
-            <button onClick={() => onSpotSelect({ id: 'spot-b' })}>Select spot-b</button>
+            <button onClick={() => onSpotSelect({ id: 'spot-b', slug: 'spot-b' })}>Select spot-b</button>
           )}
         </div>
       )

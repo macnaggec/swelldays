@@ -18,6 +18,7 @@
 import { PayoutStatus, TransactionStatus, TransactionType } from '@prisma/client';
 import { prisma } from 'server/db';
 import { auth } from 'server/auth';
+import { slugify } from 'server/lib/slugify';
 import {
   CAPTURE_DATES,
   CAPTURE_IDS,
@@ -140,6 +141,7 @@ async function createFeedFixtures(photographerId: string): Promise<void> {
     await prisma.spot.create({
       data: {
         id: fixture.spotId,
+        slug: slugify(fixture.name),
         name: fixture.name,
         location: 'Bali, Indonesia',
         lat: fixture.lat,
@@ -202,6 +204,7 @@ async function seed(): Promise<void> {
   await prisma.spot.create({
     data: {
       id: CAPTURE_IDS.cangguSpotId,
+      slug: 'canggu',
       name: 'Canggu',
       location: 'Bali, Indonesia',
       lat: '-8.65100000',

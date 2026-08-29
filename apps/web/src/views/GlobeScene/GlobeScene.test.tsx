@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   matches: [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: { workspaceId: 'workspace-1' } }] as Array<{
     routeId: string;
     params?: { spotId?: string };
+    loaderData?: { id: string; slug: string };
     search?: { workspaceId?: string; spotId?: string };
     staticData?: { appRouteIntent?: DeclaredAppRouteIntent };
   }>,
@@ -52,7 +53,7 @@ vi.mock('widgets/GlobeMap', () => ({
   }: {
     isCoordinatePickerActive?: boolean;
     onMapCoordinateClick?: (coords: LngLat) => void;
-    onSpotSelect: (spot: { id: string }) => void;
+    onSpotSelect: (spot: { id: string; slug: string }) => void;
     onCameraGestureStart?: () => void;
     onMapReady?: () => void;
     selectedSpotId?: string | null;
@@ -72,7 +73,7 @@ vi.mock('widgets/GlobeMap', () => ({
       data-camera-inset-top-px={String(restProps.cameraInsetsPx?.top)}
       data-camera-inset-bottom-px={String(restProps.cameraInsetsPx?.bottom)}
     >
-      <button onClick={() => onSpotSelect({ id: 'spot-1' })}>Select Pipeline</button>
+      <button onClick={() => onSpotSelect({ id: 'spot-1', slug: 'pipeline' })}>Select Pipeline</button>
       <button onClick={() => onCameraGestureStart?.()}>Explore map</button>
       <button onClick={() => onMapCoordinateClick?.([151.2, -33.85])}>Place pin</button>
       <button onClick={() => onMapReady?.()}>Complete map load</button>
@@ -308,7 +309,7 @@ describe('GlobeScene selected spot ownership', () => {
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-selected-spot-id', '');
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-has-camera-intent', 'false');
 
-    mocks.matches = [{ routeId: '/_panel/$spotId', params: { spotId: 'spot-1' } }];
+    mocks.matches = [{ routeId: '/_panel/$spotId', params: { spotId: 'pipeline' }, loaderData: { id: 'spot-1', slug: 'pipeline' } }];
     rerender(globeSceneTree());
 
     expect(screen.getByText('Select Pipeline').parentElement).toHaveAttribute('data-selected-spot-id', 'spot-1');
@@ -406,7 +407,7 @@ describe('GlobeScene selected spot ownership', () => {
     expect(mocks.showBrowseResults).toHaveBeenCalledOnce();
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: '/$spotId',
-      params: { spotId: 'spot-1' },
+      params: { spotId: 'pipeline' },
     });
   });
 
@@ -418,7 +419,7 @@ describe('GlobeScene selected spot ownership', () => {
 
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: '/$spotId',
-      params: { spotId: 'spot-1' },
+      params: { spotId: 'pipeline' },
     });
   });
 
@@ -430,7 +431,7 @@ describe('GlobeScene selected spot ownership', () => {
 
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: '/$spotId/gallery',
-      params: { spotId: 'spot-1' },
+      params: { spotId: 'pipeline' },
     });
   });
 
@@ -445,7 +446,7 @@ describe('GlobeScene selected spot ownership', () => {
 
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: '/$spotId/gallery',
-      params: { spotId: 'spot-1' },
+      params: { spotId: 'pipeline' },
     });
   });
 });

@@ -20,7 +20,7 @@ type SessionProjectionRow = {
   endsAt: Date | null;
   status: SurfSessionStatus;
   createdAt: Date;
-  spot: { id: string; name: string; location: string } | null;
+  spot: { id: string; slug: string; name: string; location: string } | null;
   photographer: { id: string; name: string | null } | null;
   mediaItems: Array<{ thumbnailUrl: string }>;
   _count: { mediaItems: number };
@@ -44,7 +44,7 @@ function toSessionItem(row: SessionProjectionRow): SurfSessionItem | null {
 }
 
 const sessionProjectionInclude = {
-  spot: { select: { id: true, name: true, location: true } },
+  spot: { select: { id: true, slug: true, name: true, location: true } },
   photographer: { select: { id: true, name: true } },
   mediaItems: {
     where: { status: MediaStatus.PUBLISHED, deletedAt: null },

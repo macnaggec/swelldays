@@ -20,12 +20,18 @@ export const spotsRouter = router({
       if (!row) return null;
       return {
         id: row.id,
+        slug: row.slug,
         name: row.name,
         location: row.location,
         coords: row.coords,
         status: row.status,
       };
     }),
+
+  /** Public URL lookup — the slug is what appears in a spot's shareable link. */
+  bySlug: publicProcedure
+    .input(z.string().min(1))
+    .query(({ input: slug }): Promise<Spot | null> => spotRepository.findSpotBySlug(slug)),
 
   withinBounds: publicProcedure
     .input(z.object({

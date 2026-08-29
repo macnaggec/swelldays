@@ -72,7 +72,7 @@ describe('SurfSessionRepository.retire', () => {
       data: { email: 'retire-session@example.com' },
     });
     const spot = await prisma.spot.create({
-      data: { name: 'Pipeline', location: 'North Shore' },
+      data: { slug: 'pipeline', name: 'Pipeline', location: 'North Shore' },
     });
     const session = await prisma.surfSession.create({
       data: {
@@ -114,7 +114,7 @@ describe('SurfSessionRepository.retire', () => {
       data: { email: 'retire-purchased-session@example.com' },
     });
     const spot = await prisma.spot.create({
-      data: { name: 'Pipeline', location: 'North Shore' },
+      data: { slug: 'pipeline', name: 'Pipeline', location: 'North Shore' },
     });
     const session = await prisma.surfSession.create({
       data: {
@@ -161,8 +161,8 @@ describe('SurfSessionRepository.listPublished favorites filter', () => {
   it('returns paginated sessions at the viewer favorite spots within the date range', async () => {
     const viewer = await prisma.user.create({ data: { email: 'viewer@example.com' } });
     const photographer = await prisma.user.create({ data: { email: 'feed-photographer@example.com' } });
-    const favoriteSpot = await prisma.spot.create({ data: { name: 'Favorite', location: 'North' } });
-    const otherSpot = await prisma.spot.create({ data: { name: 'Other', location: 'South' } });
+    const favoriteSpot = await prisma.spot.create({ data: { slug: 'favorite', name: 'Favorite', location: 'North' } });
+    const otherSpot = await prisma.spot.create({ data: { slug: 'other', name: 'Other', location: 'South' } });
     await prisma.userFavoriteSpot.create({ data: { userId: viewer.id, spotId: favoriteSpot.id } });
 
     const createSession = (spotId: string, startsAt: Date, createdAt: Date) =>
