@@ -1,5 +1,7 @@
 import { OrderStatus } from '@prisma/client';
-import type { IOrderRepository } from 'server/repositories/OrderRepository';
+import { prisma } from 'server/db';
+import { runQuery } from 'server/lib/PrismaErrorMapper';
+import type { IOrderRepository, OrderWithItems } from 'server/repositories/OrderRepository';
 import type { IMediaRepository } from 'server/repositories/MediaRepository';
 import type { IPurchaseRepository } from 'server/repositories/PurchaseRepository';
 import { orderRepository } from 'server/repositories/OrderRepository';
@@ -61,7 +63,9 @@ export class CheckoutService {
 
     let order: Awaited<ReturnType<IOrderRepository['createOrder']>>;
     try {
-      order = await this.orders.createOrder({ buyerId, guestEmail, totalAmount: totalCents, itemIds, clientRequestId });
+      order = buyerId !== null
+        ? await this.createOrderForBuyer(buyerId, guestEmail, itemIds, clientRequestId, totalCents)
+        : await this.orders.createOrder({ buyerId, guestEmail, totalAmount: totalCents, itemIds, clientRequestId });
     } catch (err) {
       if (err instanceof ConflictError) {
         const raced = await this.findCachedCheckoutSession(buyerId, clientRequestId);
@@ -149,26 +153,74 @@ export class CheckoutService {
       if (ownedItems.length > 0) {
         throw new BadRequestError('You cannot purchase your own media');
       }
-
-      const purchasedIds = await this.purchases.findPurchasedItemIds(buyerId, itemIds);
-
-      if (purchasedIds.length > 0) {
-        throw new BadRequestError(
-          `Some items already purchased: ${purchasedIds.join(', ')}`,
-        );
-      }
-
-      const sinceCreatedAt = new Date(Date.now() - PENDING_ORDER_WINDOW_MS);
-      const pendingIds = await this.orders.findPendingMediaItemIds(buyerId, itemIds, sinceCreatedAt);
-
-      if (pendingIds.length > 0) {
-        throw new BadRequestError(
-          `Some items already have a pending order: ${pendingIds.join(', ')}`,
-        );
-      }
     }
 
     return mediaItems;
+  }
+
+  /**
+   * Creates the Order (+ its OrderItems) for an authenticated buyer inside one
+   * DB transaction, serialized per-buyer via a Postgres advisory lock
+   * (pg_advisory_xact_lock, scoped to hashtext(buyerId)). The lock and the
+   * pending/purchased-item checks MUST run inside this same transaction as
+   * the order INSERT — that's what closes P02a's own check-then-act race: a
+   * second concurrent call blocks on the lock until the first commits, then
+   * re-runs its check and now sees the first call's already-committed order.
+   * The lock self-releases on commit or rollback — no cleanup path needed.
+   *
+   * This necessarily re-implements (rather than calls) OrderRepository's
+   * findPendingMediaItemIds/createOrder and PurchaseRepository's
+   * findPurchasedItemIds: those repository methods are bound to the
+   * top-level prisma client, not this transaction's tx — calling them here
+   * would silently run outside the lock's protection. See roadmap P02c.
+   */
+  private async createOrderForBuyer(
+    buyerId: string,
+    guestEmail: string | undefined,
+    itemIds: string[],
+    clientRequestId: string,
+    totalAmount: number,
+  ): Promise<OrderWithItems> {
+    return runQuery(() =>
+      prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${buyerId}))`;
+
+        const purchasedRows = await tx.purchase.findMany({
+          where: { buyerId, mediaItemId: { in: itemIds } },
+          select: { mediaItemId: true },
+        });
+        if (purchasedRows.length > 0) {
+          throw new BadRequestError(
+            `Some items already purchased: ${purchasedRows.map((r) => r.mediaItemId).join(', ')}`,
+          );
+        }
+
+        const sinceCreatedAt = new Date(Date.now() - PENDING_ORDER_WINDOW_MS);
+        const pendingRows = await tx.orderItem.findMany({
+          where: {
+            mediaItemId: { in: itemIds },
+            order: { buyerId, status: OrderStatus.PENDING, createdAt: { gte: sinceCreatedAt } },
+          },
+          select: { mediaItemId: true },
+        });
+        if (pendingRows.length > 0) {
+          throw new BadRequestError(
+            `Some items already have a pending order: ${pendingRows.map((r) => r.mediaItemId).join(', ')}`,
+          );
+        }
+
+        return tx.order.create({
+          data: {
+            buyerId,
+            guestEmail,
+            totalAmount,
+            clientRequestId,
+            items: { createMany: { data: itemIds.map((mediaItemId) => ({ mediaItemId })) } },
+          },
+          include: { items: { select: { id: true, mediaItemId: true } } },
+        });
+      })
+    );
   }
 
   private async openPaymentSession(

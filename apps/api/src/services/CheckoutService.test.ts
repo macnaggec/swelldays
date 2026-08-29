@@ -1,4 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('server/db', () => ({
+  prisma: { $transaction: vi.fn() },
+}));
+
+import { prisma } from 'server/db';
 import { CheckoutService } from 'server/services/CheckoutService';
 import type { IOrderRepository, OrderWithItems } from 'server/repositories/OrderRepository';
 import type { IMediaRepository } from 'server/repositories/MediaRepository';
@@ -8,14 +14,15 @@ import type { ICloudinaryService } from 'server/services/CloudinaryService';
 import { BadRequestError, BadGatewayError, ForbiddenError, ConflictError } from 'server/errors';
 
 // ---------------------------------------------------------------------------
-// Inline mocks — no vi.mock() needed with constructor injection
+// Inline mocks via constructor injection, plus one vi.mock('server/db') for
+// the buyer-locked order-creation path, which owns its own prisma.$transaction
+// (see CheckoutService.createOrderForBuyer).
 // ---------------------------------------------------------------------------
 
 const mockOrders = {
   createOrder: vi.fn(),
   markOrderFailed: vi.fn(),
   findOrderByBuyerAndClientRequestId: vi.fn(),
-  findPendingMediaItemIds: vi.fn(),
   saveCheckoutSessionUrl: vi.fn(),
 };
 
@@ -39,6 +46,15 @@ const mockCloudinary = {
   generateSignedDownload: vi.fn(),
 };
 
+const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
+
+const mockTx = {
+  $executeRaw: vi.fn(),
+  purchase: { findMany: vi.fn() },
+  orderItem: { findMany: vi.fn() },
+  order: { create: vi.fn() },
+};
+
 const service = new CheckoutService(
   mockOrders as unknown as IOrderRepository,
   mockMedia as unknown as IMediaRepository,
@@ -55,7 +71,11 @@ const service = new CheckoutService(
 beforeEach(() => {
   vi.clearAllMocks();
   mockOrders.findOrderByBuyerAndClientRequestId.mockResolvedValue(null);
-  mockOrders.findPendingMediaItemIds.mockResolvedValue([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mockTransaction.mockImplementation((fn: any) => fn(mockTx));
+  mockTx.$executeRaw.mockResolvedValue(undefined);
+  mockTx.purchase.findMany.mockResolvedValue([]);
+  mockTx.orderItem.findMany.mockResolvedValue([]);
 });
 
 // ---------------------------------------------------------------------------
@@ -108,10 +128,8 @@ describe('CheckoutService.createCheckoutSession', () => {
 
   function setupHappyPath(items = [makeMediaItem()]) {
     mockMedia.findByIds.mockResolvedValue(items);
-    mockPurchases.findPurchasedItemIds.mockResolvedValue([]);
-    mockOrders.createOrder.mockResolvedValue(makeOrder());
+    mockTx.order.create.mockResolvedValue(makeOrder());
     mockOrders.findOrderByBuyerAndClientRequestId.mockResolvedValue(null);
-    mockOrders.findPendingMediaItemIds.mockResolvedValue([]);
     mockOrders.saveCheckoutSessionUrl.mockResolvedValue(undefined);
     mockPayment.createCheckoutSession.mockResolvedValue({
       checkoutUrl: 'https://pay.cryptocloud.plus/mock-invoice',
@@ -136,7 +154,7 @@ describe('CheckoutService.createCheckoutSession', () => {
 
     await service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID);
 
-    const orderCallOrder = mockOrders.createOrder.mock.invocationCallOrder[0];
+    const orderCallOrder = mockTx.order.create.mock.invocationCallOrder[0];
     const paymentCallOrder = mockPayment.createCheckoutSession.mock.invocationCallOrder[0];
 
     expect(orderCallOrder).toBeLessThan(paymentCallOrder!);
@@ -167,7 +185,8 @@ describe('CheckoutService.createCheckoutSession', () => {
     await service.createCheckoutSession(null, 'guest@example.com', ITEM_IDS, CLIENT_REQUEST_ID);
 
     expect(mockPurchases.findPurchasedItemIds).not.toHaveBeenCalled();
-    expect(mockOrders.findPendingMediaItemIds).not.toHaveBeenCalled();
+    expect(mockOrders.createOrder).toHaveBeenCalledOnce();
+    expect(mockTransaction).not.toHaveBeenCalled();
   });
 
   // ---
@@ -188,13 +207,12 @@ describe('CheckoutService.createCheckoutSession', () => {
     const second = await service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID);
 
     expect(second).toEqual(first);
-    expect(mockOrders.createOrder).toHaveBeenCalledOnce();
+    expect(mockTx.order.create).toHaveBeenCalledOnce();
     expect(mockPayment.createCheckoutSession).toHaveBeenCalledOnce();
   });
 
   it('recovers from a concurrent duplicate-key race by returning the winning order\'s session', async () => {
     mockMedia.findByIds.mockResolvedValue([makeMediaItem()]);
-    mockPurchases.findPurchasedItemIds.mockResolvedValue([]);
     mockOrders.findOrderByBuyerAndClientRequestId
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({
@@ -202,7 +220,7 @@ describe('CheckoutService.createCheckoutSession', () => {
         status: 'PENDING',
         checkoutSessionUrl: 'https://pay.cryptocloud.plus/winning-invoice',
       });
-    mockOrders.createOrder.mockRejectedValue(new ConflictError('buyer_id, client_request_id already exists'));
+    mockTx.order.create.mockRejectedValue(new ConflictError('buyer_id, client_request_id already exists'));
 
     const result = await service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID);
 
@@ -216,7 +234,7 @@ describe('CheckoutService.createCheckoutSession', () => {
     await service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, 'client-request-uuid-a');
     await service.createCheckoutSession(BUYER_ID, undefined, ['media-2'], 'client-request-uuid-b');
 
-    expect(mockOrders.createOrder).toHaveBeenCalledTimes(2);
+    expect(mockTx.order.create).toHaveBeenCalledTimes(2);
   });
 
   // ---
@@ -262,7 +280,7 @@ describe('CheckoutService.createCheckoutSession', () => {
 
   it('throws BadRequestError when buyer already purchased an item', async () => {
     mockMedia.findByIds.mockResolvedValue([makeMediaItem()]);
-    mockPurchases.findPurchasedItemIds.mockResolvedValue(['media-1']);
+    mockTx.purchase.findMany.mockResolvedValue([{ mediaItemId: 'media-1' }]);
 
     await expect(service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID)).rejects.toThrow(
       'Some items already purchased',
@@ -271,8 +289,7 @@ describe('CheckoutService.createCheckoutSession', () => {
 
   it('throws BadRequestError when buyer already has a pending order for an item', async () => {
     mockMedia.findByIds.mockResolvedValue([makeMediaItem()]);
-    mockPurchases.findPurchasedItemIds.mockResolvedValue([]);
-    mockOrders.findPendingMediaItemIds.mockResolvedValue(['media-1']);
+    mockTx.orderItem.findMany.mockResolvedValue([{ mediaItemId: 'media-1' }]);
 
     await expect(service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID)).rejects.toThrow(
       'Some items already have a pending order',
@@ -285,8 +302,7 @@ describe('CheckoutService.createCheckoutSession', () => {
 
   it('marks the order as FAILED and throws BadGatewayError when payment adapter rejects', async () => {
     mockMedia.findByIds.mockResolvedValue([makeMediaItem()]);
-    mockPurchases.findPurchasedItemIds.mockResolvedValue([]);
-    mockOrders.createOrder.mockResolvedValue(makeOrder());
+    mockTx.order.create.mockResolvedValue(makeOrder());
     mockOrders.markOrderFailed.mockResolvedValue({});
     mockPayment.createCheckoutSession.mockRejectedValue(new Error('CryptoCloud down'));
 
