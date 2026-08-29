@@ -205,6 +205,12 @@ export function GlobeScene() {
     setTempPin(coords);
   }, [setTempPin]);
 
+  // Mirrors handleSpotSelect's scope-aware navigation: leaving the spot keeps
+  // whichever browse section (gallery vs. sessions) was already showing.
+  const handleClearSelectedSpot = useCallback(() => {
+    void navigate({ to: (allGalleryMatch || spotGalleryMatch) ? '/gallery' : '/' });
+  }, [allGalleryMatch, navigate, spotGalleryMatch]);
+
   const handleCameraGestureStart = useCallback(() => {
     if (!canCompactPersistentDrawer) return;
 
@@ -233,6 +239,7 @@ export function GlobeScene() {
         onMapReady={markMapReady}
         onCameraGestureStart={handleCameraGestureStart}
         renderSelectedSpotContent={(spot) => <FavoriteSpotButton spotId={spot.id} />}
+        onClearSelectedSpot={sceneMode.kind === 'uploadSpotSelection' ? undefined : handleClearSelectedSpot}
       />
       {isUpdatingWorkspace && (
         <div className={`${classes.saveStatus} ${materialClasses.status}`} role="status">Saving spot…</div>

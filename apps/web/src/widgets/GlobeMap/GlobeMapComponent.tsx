@@ -79,6 +79,8 @@ export interface GlobeMapProps {
   onCameraGestureStart?: () => void;
   /** Feature-owned content (e.g. a favorite toggle) rendered in the selected-spot popup — GlobeMap stays feature-agnostic. */
   renderSelectedSpotContent?: (spot: MapSpotProjection) => ReactNode;
+  /** Clears the spot selection, shown as a close control on the selected-spot popup. Omit to hide the control. */
+  onClearSelectedSpot?: () => void;
 }
 
 export function GlobeMapComponent({
@@ -98,6 +100,7 @@ export function GlobeMapComponent({
   onMapReady,
   onCameraGestureStart,
   renderSelectedSpotContent,
+  onClearSelectedSpot,
 }: GlobeMapProps) {
   // Destructured into value primitives so effect and callback dependencies stay
   // value-based — a fresh insets object per parent render must never restart a camera
@@ -469,6 +472,7 @@ export function GlobeMapComponent({
           <SelectedSpotPopup
             spot={selectedSpot}
             renderExtra={renderSelectedSpotContent}
+            onClear={onClearSelectedSpot}
           />
         )}
 
