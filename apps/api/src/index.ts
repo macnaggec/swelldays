@@ -37,8 +37,11 @@ app.use('/api/*', cors({
   credentials: true,
 }));
 
-// Better Auth — handles /api/auth/* (sign in, sign up, session, sign out)
-app.on(['GET', 'POST'], '/api/auth/**', (c) => auth.handler(c.req.raw));
+// Better Auth — handles /api/auth/* (sign in, sign up, session, sign out).
+// Must be a single `*`, not `**` — combined with the `/:spotId`-style dynamic
+// routes in publicPagesRouter below, a `**` wildcard here silently breaks
+// Hono's router and every /api/auth/* request 404s instead of reaching auth.handler.
+app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw));
 
 // tRPC
 app.use('/api/trpc/*', trpcServer({
