@@ -1,5 +1,5 @@
 import type { DraftMedia } from 'entities/Media';
-import type { UploadAttemptStatus, UploadSource } from '@swelldays/contracts';
+import type { UploadAttemptStatus, UploadSource } from '@swelldays/contracts/core';
 
 // ── Browser-only transfer resources ────────────────────────────────────────
 // The store owns these. They are lost on page reload.

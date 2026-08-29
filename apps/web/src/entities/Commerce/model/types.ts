@@ -1,4 +1,4 @@
-import type { Cents } from '@swelldays/contracts';
+import type { Cents } from '@swelldays/contracts/core';
 
 export interface CartItem {
   /** Opaque item identifier — the purchasing layer resolves what it points to */

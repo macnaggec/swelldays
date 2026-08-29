@@ -458,6 +458,8 @@ Atomic commits:
 4. `refactor(api): consume contracts public entries`
 5. `build(web): keep validation libraries out of startup`
 
+**Handoff (2026-08-29):** T05 is complete and fully green. `@swelldays/contracts/core` now owns the Zod-free constants, helpers, SEO metadata, and domain types; checkout, media, spot, and upload validation each have an explicit supported public entry. Package exports, exact web/API TypeScript mappings, Vitest/Vite resolution, the API's generic esbuild directory alias, and ESLint's allowlist now enforce the same boundary, and every application import has migrated off the compatibility root. A production browser fixture proves that importing only `core` reaches neither Zod nor validation modules, while the real startup inventory now excludes checkout, media, and upload validation. The still-eager Add Spot UI legitimately retains `validation/spot` and Zod until T06; T05 did not absorb that lazy-boundary work. The fresh production comparison moved entry JavaScript from 289,641 to 291,840 gzip bytes and the default Browse Feed graph from 423,790 to 426,263 gzip bytes (entry CSS remained 41,913); all existing budgets remain green and unchanged, so no byte reduction is claimed before T06 realizes the seam. Focused verification passed 47 tests; contracts/web/API typechecks, lint, style boundaries, both production builds, bundle budgets, import/output scans, `git diff --check`, and the full 1,205-test client/server suite passed. T06 is ready.
+
 ### T06 — Introduce a lazy Add Spot UI boundary
 
 **Depends on:** T05.
@@ -943,7 +945,7 @@ These are the complete handoff gates; during implementation, use only the smalle
 - [x] T02 runtime compression proven locally; public post-deploy verification is wired and remains approval-gated.
 - [x] T03 logo/hero assets fingerprinted and cache-safe.
 - [x] T04 artwork is requested only when the intro/review presentation owns it.
-- [ ] T05 contracts core is Zod-free and only supported public entries are used.
+- [x] T05 contracts core is Zod-free and only supported public entries are used.
 - [ ] T06 Add Spot UI absent from unrelated startup.
 - [ ] T07 Add Spot intent hides the new lazy latency.
 - [ ] T08 auth surface absent from unrelated startup.

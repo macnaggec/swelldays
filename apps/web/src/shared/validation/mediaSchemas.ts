@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MEDIA_RESOURCE_TYPE } from '@swelldays/contracts';
+import { MEDIA_RESOURCE_TYPE } from '@swelldays/contracts/core';
 import { webConfig } from 'config/env';
 
 const cloudName = webConfig.cloudinary.cloudName;

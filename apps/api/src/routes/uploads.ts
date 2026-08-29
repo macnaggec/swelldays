@@ -2,7 +2,7 @@ import { router, protectedProcedure } from 'server/trpc';
 import { uploadService } from 'server/services/UploadService';
 import { uploadWorkspaceService } from 'server/services/UploadWorkspaceService';
 import { createRateLimiter } from 'server/lib/rateLimiter';
-import { MIN_MEDIA_PRICE_CENTS } from '@swelldays/contracts';
+import { MIN_MEDIA_PRICE_CENTS } from '@swelldays/contracts/core';
 import { z } from 'zod';
 import {
   beginLocalSchema,
@@ -12,7 +12,7 @@ import {
   discardAttemptSchema,
   listAttemptsForWorkspaceSchema,
   workspaceIdSchema,
-} from '@swelldays/contracts';
+} from '@swelldays/contracts/validation/upload';
 
 const beginLimiter = createRateLimiter({ windowMs: 60_000, max: 30 });
 const workspaceSeedSchema = z.object({

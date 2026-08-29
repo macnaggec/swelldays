@@ -1,4 +1,4 @@
-export type { Spot } from '@swelldays/contracts';
+export type { Spot } from '@swelldays/contracts/core';
 
 export interface MapBounds {
   swLat: number;

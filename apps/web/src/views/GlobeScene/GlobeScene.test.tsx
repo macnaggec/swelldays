@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GlobeScene } from './GlobeScene';
-import type { LngLat } from '@swelldays/contracts';
+import type { LngLat } from '@swelldays/contracts/core';
 import { resolveAppRouteIntent, type DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import type { DrawerGeometry, SheetSnap } from 'shared/ui/DrawerShell';

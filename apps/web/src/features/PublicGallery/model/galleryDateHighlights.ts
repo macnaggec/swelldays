@@ -1,4 +1,4 @@
-import { getCapturedMediaCalendarDayKey } from '@swelldays/contracts';
+import { getCapturedMediaCalendarDayKey } from '@swelldays/contracts/core';
 
 /**
  * Width below which the rail hides. Below this the gallery is a dense one-to-few-

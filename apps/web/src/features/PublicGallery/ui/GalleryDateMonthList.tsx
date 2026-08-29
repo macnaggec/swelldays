@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getCapturedMediaCalendarDayKey } from '@swelldays/contracts';
+import { getCapturedMediaCalendarDayKey } from '@swelldays/contracts/core';
 import { formatCapturedAtDate } from 'shared/lib/dateUtils';
 import {
   groupDaysByMonth,

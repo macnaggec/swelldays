@@ -4,7 +4,7 @@ import { Loader } from '@mantine/core';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { webConfig } from 'config/env';
 
-import { LngLat } from '@swelldays/contracts';
+import type { LngLat } from '@swelldays/contracts/core';
 import classes from './LocationPicker.module.css';
 
 const MAPBOX_TOKEN = webConfig.mapboxAccessToken;

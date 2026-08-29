@@ -6,7 +6,7 @@ import { useFirstVisitMapReadiness } from 'features/FirstVisit';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMatches, useNavigate } from '@tanstack/react-router';
 import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
-import type { LngLat } from '@swelldays/contracts';
+import type { LngLat } from '@swelldays/contracts/core';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
 import { useViewportCapabilities } from 'shared/model/viewportCapabilities';

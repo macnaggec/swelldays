@@ -13,7 +13,7 @@ import {
   spotGalleryTitle,
   spotPageDescription,
   spotPageTitle,
-} from '@swelldays/contracts';
+} from '@swelldays/contracts/core';
 import { apiConfig } from 'server/config/env';
 import { spotRepository } from 'server/repositories/SpotRepository';
 import { surfSessionRepository } from 'server/repositories/SurfSessionRepository';

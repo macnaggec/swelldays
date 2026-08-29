@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { router, adminProcedure } from 'server/trpc';
 import { spotRepository } from 'server/repositories/SpotRepository';
-import { spotNameSchema, spotLocationSchema } from '@swelldays/contracts';
-import type { Spot } from '@swelldays/contracts';
+import { spotNameSchema, spotLocationSchema } from '@swelldays/contracts/validation/spot';
+import type { Spot } from '@swelldays/contracts/core';
 
 export const adminSpotsRouter = router({
   update: adminProcedure

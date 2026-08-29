@@ -1,4 +1,4 @@
-import type { LngLat } from '@swelldays/contracts';
+import type { LngLat } from '@swelldays/contracts/core';
 import { webConfig } from 'config/env';
 
 const MAPBOX_TOKEN = webConfig.mapboxAccessToken;

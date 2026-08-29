@@ -1,4 +1,4 @@
-import type { LngLat } from '@swelldays/contracts';
+import type { LngLat } from '@swelldays/contracts/core';
 
 export interface CreateSpotCoordinates {
   lat: number;

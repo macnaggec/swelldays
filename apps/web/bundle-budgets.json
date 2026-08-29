@@ -43,7 +43,17 @@
       "moduleSubstrings": ["node_modules/@sentry/"]
     }
   ],
-  "moduleAbsenceAssertions": [],
+  "moduleAbsenceAssertions": [
+    {
+      "label": "Startup excludes unrelated contract validation domains",
+      "graph": "entry",
+      "forbiddenModuleSubstrings": [
+        "packages/contracts/src/validation/checkoutSchemas.ts",
+        "packages/contracts/src/validation/mediaSchemas.ts",
+        "packages/contracts/src/validation/uploadSchemas.ts"
+      ]
+    }
+  ],
   "startupAssets": [
     {
       "id": "bootstrap-logo",

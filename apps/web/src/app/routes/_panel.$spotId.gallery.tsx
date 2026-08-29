@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { spotGalleryDescription, spotGalleryTitle } from '@swelldays/contracts';
+import { spotGalleryDescription, spotGalleryTitle } from '@swelldays/contracts/core';
 import { PublicGallery } from 'features/PublicGallery';
 import { trpcProxy } from 'shared/lib/trpcClient';
 import { buildCanonicalLink, buildPageMeta } from 'shared/lib/seoMeta';

@@ -13,7 +13,7 @@ import type { ICloudinaryService } from 'server/services/CloudinaryService';
 import { cloudinaryService } from 'server/services/CloudinaryService';
 import { BadRequestError, BadGatewayError, ForbiddenError, ConflictError } from 'server/errors';
 import { logger } from 'server/lib/logger';
-import { MEDIA_STATUS } from '@swelldays/contracts';
+import { MEDIA_STATUS } from '@swelldays/contracts/core';
 import { apiConfig } from 'server/config/env';
 
 // A buyer plausibly needs up to this long to complete a CryptoCloud payment.

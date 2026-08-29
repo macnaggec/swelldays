@@ -5,4 +5,4 @@ export type {
   PublicMedia,
   PublicMediaPage,
   MediaType,
-} from '@swelldays/contracts';
+} from '@swelldays/contracts/core';

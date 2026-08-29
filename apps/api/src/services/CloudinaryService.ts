@@ -9,9 +9,9 @@
 import { z } from 'zod';
 import cloudinary, { generateDeliveryUrl as libGenerateDeliveryUrl, getWatermarkedPreviewTransform, MEDIA_CLOUDINARY_TRANSFORMS } from 'server/providers/cloudinary';
 import { InternalServerError, BadRequestError } from 'server/errors';
-import type { MediaResourceType } from '@swelldays/contracts';
+import type { MediaResourceType } from '@swelldays/contracts/core';
 import type { DirectUploadPort, RemoteImportPort, AssetCleanupPort, UploadTarget, StoredAsset, StoredAssetIdentity, RemoteImportInput } from 'server/ports/UploadAssetStorage';
-import type { DirectUploadGrant } from '@swelldays/contracts';
+import type { DirectUploadGrant } from '@swelldays/contracts/core';
 import { apiConfig } from 'server/config/env';
 
 export interface SignedMediaAccessResult {

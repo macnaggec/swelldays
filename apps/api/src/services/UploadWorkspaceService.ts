@@ -5,7 +5,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from 'server/errors';
 import { logger } from 'server/lib/logger';
 import { cloudinaryService } from './CloudinaryService';
 import type { AssetCleanupPort, StoredAssetIdentity } from 'server/ports/UploadAssetStorage';
-import type { UploadWorkspaceState, UploadWorkspaceSummary } from '@swelldays/contracts';
+import type { UploadWorkspaceState, UploadWorkspaceSummary } from '@swelldays/contracts/core';
 
 type WorkspaceSeed = {
   spotId?: string | null;

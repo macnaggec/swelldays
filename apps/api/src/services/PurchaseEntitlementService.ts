@@ -1,6 +1,6 @@
 import type { IPurchaseRepository } from 'server/repositories/PurchaseRepository';
 import { purchaseRepository } from 'server/repositories/PurchaseRepository';
-import type { ViewerMediaEntitlement } from '@swelldays/contracts';
+import type { ViewerMediaEntitlement } from '@swelldays/contracts/core';
 
 export interface IPurchaseEntitlementService {
   getViewerMediaEntitlements(

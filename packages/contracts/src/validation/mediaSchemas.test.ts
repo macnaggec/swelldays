@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  MIN_MEDIA_PRICE_CENTS,
-  mediaBatchUpdateSchema,
-  mediaUpdateSchema,
-} from '@swelldays/contracts';
+import { MIN_MEDIA_PRICE_CENTS } from '@swelldays/contracts/core';
+import { mediaBatchUpdateSchema, mediaUpdateSchema } from '@swelldays/contracts/validation/media';
 
 const mediaId = '11111111-1111-4111-8111-111111111111';
 

@@ -10,9 +10,15 @@ const serverClientIntegrationRestriction = {
   message: 'Server code must use server/trpc and server-safe shared contracts, not browser tRPC/query clients.',
 };
 
-const contractsDeepImportRestriction = {
-  group: ['@swelldays/contracts/*'],
-  message: 'Import contracts through the explicit @swelldays/contracts public surface.',
+const contractsUnsupportedSubpathRestriction = {
+  regex: '^@swelldays/contracts/(?!core$|validation/(?:checkout|media|spot|upload)$)',
+  message: 'Import contracts through one of the documented @swelldays/contracts public entries.',
+};
+
+const contractsBrowserRootRuntimeRestriction = {
+  name: '@swelldays/contracts',
+  allowTypeImports: true,
+  message: 'Browser runtime code must use an explicit @swelldays/contracts public entry.',
 };
 
 const webApiImplementationRestriction = {
@@ -197,7 +203,8 @@ export default defineConfig(
         ],
       }],
       'no-restricted-imports': ['error', {
-        patterns: [contractsDeepImportRestriction],
+        paths: [contractsBrowserRootRuntimeRestriction],
+        patterns: [contractsUnsupportedSubpathRestriction],
       }],
     },
   },
@@ -205,7 +212,8 @@ export default defineConfig(
     files: ['apps/api/src/**/*.ts'],
     rules: {
       'no-restricted-imports': ['error', {
-        patterns: [contractsDeepImportRestriction, serverClientIntegrationRestriction, apiWebImportRestriction],
+        paths: [contractsBrowserRootRuntimeRestriction],
+        patterns: [contractsUnsupportedSubpathRestriction, serverClientIntegrationRestriction, apiWebImportRestriction],
       }],
     },
   },
@@ -278,7 +286,8 @@ export default defineConfig(
     files: ['apps/web/src/**/*.ts', 'apps/web/src/**/*.tsx'],
     rules: {
       'no-restricted-imports': ['error', {
-        patterns: [contractsDeepImportRestriction, webApiImplementationRestriction],
+        paths: [contractsBrowserRootRuntimeRestriction],
+        patterns: [contractsUnsupportedSubpathRestriction, webApiImplementationRestriction],
       }],
     },
   },
@@ -287,6 +296,7 @@ export default defineConfig(
     rules: {
       'no-restricted-imports': ['error', {
         paths: [
+          contractsBrowserRootRuntimeRestriction,
           {
             name: 'entities/Spot',
             importNames: ['useSelectedSpot'],
@@ -298,7 +308,7 @@ export default defineConfig(
           },
         ],
         patterns: [
-          contractsDeepImportRestriction,
+          contractsUnsupportedSubpathRestriction,
           webApiImplementationRestriction,
           {
             group: ['features/*', 'features/**'],
@@ -317,8 +327,9 @@ export default defineConfig(
     ignores: ['apps/api/src/repositories/**/*.test.ts', 'apps/api/src/repositories/**/*.integration.test.ts'],
     rules: {
       'no-restricted-imports': ['error', {
+        paths: [contractsBrowserRootRuntimeRestriction],
         patterns: [
-          contractsDeepImportRestriction,
+          contractsUnsupportedSubpathRestriction,
           serverClientIntegrationRestriction,
           {
             group: ['server/services/*', 'server/providers/*', 'server/providers/**/*'],
@@ -334,11 +345,14 @@ export default defineConfig(
     files: ['apps/web/src/shared/lib/trpc.ts', 'apps/web/src/shared/lib/trpcClient.ts'],
     rules: {
       'no-restricted-imports': ['error', {
-        paths: [{
-          name: '@swelldays/api/router',
-          allowTypeImports: true,
-          message: 'The browser may only type-import the approved @swelldays/api/router surface.',
-        }],
+        paths: [
+          contractsBrowserRootRuntimeRestriction,
+          {
+            name: '@swelldays/api/router',
+            allowTypeImports: true,
+            message: 'The browser may only type-import the approved @swelldays/api/router surface.',
+          },
+        ],
         patterns: [
           {
             regex: '^@swelldays/api(?:/(?!router$).*)?$',
@@ -348,7 +362,7 @@ export default defineConfig(
             group: ['server/*', 'server/**'],
             message: 'Web code cannot import API implementation through server aliases.',
           },
-          contractsDeepImportRestriction,
+          contractsUnsupportedSubpathRestriction,
         ],
       }],
     },
@@ -357,8 +371,9 @@ export default defineConfig(
     files: ['apps/web/src/features/**/*.ts', 'apps/web/src/features/**/*.tsx'],
     rules: {
       'no-restricted-imports': ['error', {
+        paths: [contractsBrowserRootRuntimeRestriction],
         patterns: [
-          contractsDeepImportRestriction,
+          contractsUnsupportedSubpathRestriction,
           webApiImplementationRestriction,
           {
             group: ['server/providers/*', 'cloudinary', '@cloudinary/*'],

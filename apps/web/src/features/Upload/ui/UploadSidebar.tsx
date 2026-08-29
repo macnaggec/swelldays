@@ -25,7 +25,7 @@ import { combineDateAndTime, minutesToTime } from './steps/helpers';
 import { PanelLayoutFooter } from 'shared/ui/PanelLayout';
 import { AppButton } from 'shared/ui/AppButton';
 import styles from './UploadSidebar.module.css';
-import type { UploadWorkspaceState } from '@swelldays/contracts';
+import type { UploadWorkspaceState } from '@swelldays/contracts/core';
 
 interface UploadSidebarProps {
   header?: ReactNode;

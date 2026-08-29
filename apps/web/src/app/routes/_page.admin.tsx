@@ -27,8 +27,8 @@ import { AppButton } from 'shared/ui/AppButton';
 import { useSpots, useUpdateSpot } from 'entities/Spot';
 import type { Spot } from 'entities/Spot';
 import { LocationPicker } from 'widgets/LocationPicker';
-import { spotNameSchema, spotLocationSchema } from '@swelldays/contracts';
-import type { LngLat } from '@swelldays/contracts';
+import { spotNameSchema, spotLocationSchema } from '@swelldays/contracts/validation/spot';
+import type { LngLat } from '@swelldays/contracts/core';
 
 export const Route = createFileRoute('/_page/admin')({
   component: AdminPage,

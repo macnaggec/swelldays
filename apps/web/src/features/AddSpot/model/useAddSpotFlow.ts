@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAddSpotStore } from './addSpotStore';
 import { useCreateSpot, useNearbySpots } from 'entities/Spot';
-import { spotNameSchema, spotLocationSchema } from '@swelldays/contracts';
+import { spotNameSchema, spotLocationSchema } from '@swelldays/contracts/validation/spot';
 import { notify } from 'shared/lib/notifications';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { useReverseGeocode } from './useReverseGeocode';

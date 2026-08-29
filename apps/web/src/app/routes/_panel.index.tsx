@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { HOME_PAGE_DESCRIPTION, HOME_PAGE_TITLE } from '@swelldays/contracts';
+import { HOME_PAGE_DESCRIPTION, HOME_PAGE_TITLE } from '@swelldays/contracts/core';
 import { SessionFeed } from 'widgets/SidePanel';
 import { buildCanonicalLink, buildPageMeta } from 'shared/lib/seoMeta';
 import { usePanelFeedLayoutReadyChange, usePanelFilter } from '../lib/panelContexts';

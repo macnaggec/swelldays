@@ -6,7 +6,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import mapboxgl from 'mapbox-gl';
 import { webConfig } from 'config/env';
 
-import type { LngLat } from '@swelldays/contracts';
+import type { LngLat } from '@swelldays/contracts/core';
 import { useMapStore } from 'widgets/GlobeMap/model/mapStore';
 import type { GlobeMotionPolicy } from './model/globeMotionPolicy';
 import type { GlobeInteractionPolicy } from './model/globeInteractionPolicy';

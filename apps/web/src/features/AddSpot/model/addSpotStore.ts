@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { LngLat } from '@swelldays/contracts';
+import type { LngLat } from '@swelldays/contracts/core';
 
 interface AddSpotState {
   isActive: boolean;

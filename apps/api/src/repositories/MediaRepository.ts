@@ -2,9 +2,9 @@ import { MediaItem as PrismaMediaItem } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
-import { MEDIA_STATUS } from '@swelldays/contracts';
-import { getCapturedMediaCalendarDayKey } from '@swelldays/contracts';
-import type { DraftMedia, MediaStatus as DomainMediaStatus, PublicMedia } from '@swelldays/contracts';
+import { MEDIA_STATUS } from '@swelldays/contracts/core';
+import { getCapturedMediaCalendarDayKey } from '@swelldays/contracts/core';
+import type { DraftMedia, MediaStatus as DomainMediaStatus, PublicMedia } from '@swelldays/contracts/core';
 import { mapToDraftMedia } from './mappers';
 
 /** Public projection before the service attaches the viewer's entitlement. */

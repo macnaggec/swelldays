@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
-import { spotPageDescription, spotPageTitle } from '@swelldays/contracts';
+import { spotPageDescription, spotPageTitle } from '@swelldays/contracts/core';
 import { trpcProxy } from 'shared/lib/trpcClient';
 import { buildPageMeta } from 'shared/lib/seoMeta';
 

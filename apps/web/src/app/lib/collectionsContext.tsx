@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { PublicMedia } from '@swelldays/contracts';
+import type { PublicMedia } from '@swelldays/contracts/core';
 import type { SurfSessionItem } from 'entities/SurfSession';
 
 type CollectionsContextValue = {

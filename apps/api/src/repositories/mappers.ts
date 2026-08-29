@@ -1,6 +1,6 @@
 import { MediaItem as PrismaMediaItem, MediaType } from '@prisma/client';
-import { MEDIA_RESOURCE_TYPE } from '@swelldays/contracts';
-import type { DraftMedia } from '@swelldays/contracts';
+import { MEDIA_RESOURCE_TYPE } from '@swelldays/contracts/core';
+import type { DraftMedia } from '@swelldays/contracts/core';
 
 export function mapToDraftMedia(row: PrismaMediaItem): DraftMedia {
   return {

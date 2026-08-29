@@ -1,4 +1,4 @@
-import { getCapturedMediaCalendarDayKey } from '@swelldays/contracts';
+import { getCapturedMediaCalendarDayKey } from '@swelldays/contracts/core';
 
 export type GalleryRow<T = { id: string; capturedAt: Date }> =
   | { type: 'divider'; date: Date; key: string; mediaRowCount: number }

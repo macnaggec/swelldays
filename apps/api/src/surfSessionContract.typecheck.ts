@@ -1,5 +1,5 @@
 import type { SurfSessionStatus as PrismaSurfSessionStatus } from '@prisma/client';
-import type { SurfSessionItem } from '@swelldays/contracts';
+import type { SurfSessionItem } from '@swelldays/contracts/core';
 
 type Assert<T extends true> = T;
 type IsEqual<A, B> =

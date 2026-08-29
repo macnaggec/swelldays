@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { sessionPageDescription, sessionPageTitle } from '@swelldays/contracts';
+import { sessionPageDescription, sessionPageTitle } from '@swelldays/contracts/core';
 import { trpcProxy } from 'shared/lib/trpcClient';
 import { SessionDetail } from 'widgets/SidePanel';
 import { formatDateRange, formatShortDate } from 'shared/lib/dateUtils';

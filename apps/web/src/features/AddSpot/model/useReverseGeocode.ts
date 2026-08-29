@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { LngLat } from '@swelldays/contracts';
+import type { LngLat } from '@swelldays/contracts/core';
 import { fetchReverseGeocode } from 'shared/api/mapbox';
 
 interface UseReverseGeocodeResult {

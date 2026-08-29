@@ -4,9 +4,9 @@ import { router, publicProcedure, protectedProcedure } from 'server/trpc';
 import { mediaRepository } from 'server/repositories/MediaRepository';
 import { mediaService } from 'server/services/MediaService';
 import { spotRepository } from 'server/repositories/SpotRepository';
-import { SPOT_STATUS } from '@swelldays/contracts';
-import type { Spot } from '@swelldays/contracts';
-import { spotNameSchema, spotLocationSchema } from '@swelldays/contracts';
+import { SPOT_STATUS } from '@swelldays/contracts/core';
+import type { Spot } from '@swelldays/contracts/core';
+import { spotNameSchema, spotLocationSchema } from '@swelldays/contracts/validation/spot';
 
 export const spotsRouter = router({
   list: publicProcedure

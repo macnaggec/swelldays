@@ -1,6 +1,6 @@
 import { Spot as PrismaSpot } from '@prisma/client';
-import type { MediaType } from '@swelldays/contracts';
-import type { Spot, SpotStatus } from '@swelldays/contracts';
+import type { MediaType } from '@swelldays/contracts/core';
+import type { Spot, SpotStatus } from '@swelldays/contracts/core';
 import { prisma } from 'server/db';
 import { haversineDistance, EARTH_RADIUS_M } from 'server/lib/geoUtils';
 import { runQuery } from 'server/lib/PrismaErrorMapper';

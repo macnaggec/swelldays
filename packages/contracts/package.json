@@ -7,6 +7,26 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./core": {
+      "types": "./src/core.ts",
+      "default": "./src/core.ts"
+    },
+    "./validation/checkout": {
+      "types": "./src/validation/checkout.ts",
+      "default": "./src/validation/checkout.ts"
+    },
+    "./validation/media": {
+      "types": "./src/validation/media.ts",
+      "default": "./src/validation/media.ts"
+    },
+    "./validation/spot": {
+      "types": "./src/validation/spot.ts",
+      "default": "./src/validation/spot.ts"
+    },
+    "./validation/upload": {
+      "types": "./src/validation/upload.ts",
+      "default": "./src/validation/upload.ts"
     }
   },
   "scripts": {

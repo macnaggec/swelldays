@@ -1,4 +1,4 @@
-import type { Position } from '@swelldays/contracts';
+import type { Position } from '@swelldays/contracts/core';
 
 export function placeJsonLd(spot: { name: string; location: string; coords: Position }): Record<string, unknown> {
   return {

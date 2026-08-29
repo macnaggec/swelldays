@@ -7,7 +7,7 @@ import { PanelLayout } from 'shared/ui/PanelLayout';
 import { UploadSidebar } from './UploadSidebar';
 import type { DraftMedia } from 'entities/Media';
 import type { GalleryCard } from '../model';
-import type { UploadWorkspaceState } from '@swelldays/contracts';
+import type { UploadWorkspaceState } from '@swelldays/contracts/core';
 
 function mediaItem(id: string): DraftMedia {
   return {

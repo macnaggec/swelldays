@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { ABOUT_PAGE_DESCRIPTION, ABOUT_PAGE_TITLE } from '@swelldays/contracts';
+import { ABOUT_PAGE_DESCRIPTION, ABOUT_PAGE_TITLE } from '@swelldays/contracts/core';
 import { PanelGalleryLayout } from 'shared/ui/PanelGalleryLayout';
 import { AboutPanel } from 'features/About';
 import { buildCanonicalLink, buildPageMeta } from 'shared/lib/seoMeta';

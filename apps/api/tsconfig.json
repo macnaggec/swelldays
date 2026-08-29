@@ -5,6 +5,11 @@
     "types": ["node", "vitest/globals"],
     "paths": {
       "@swelldays/contracts": ["../../packages/contracts/src/index.ts"],
+      "@swelldays/contracts/core": ["../../packages/contracts/src/core.ts"],
+      "@swelldays/contracts/validation/checkout": ["../../packages/contracts/src/validation/checkout.ts"],
+      "@swelldays/contracts/validation/media": ["../../packages/contracts/src/validation/media.ts"],
+      "@swelldays/contracts/validation/spot": ["../../packages/contracts/src/validation/spot.ts"],
+      "@swelldays/contracts/validation/upload": ["../../packages/contracts/src/validation/upload.ts"],
       "server/*": ["./src/*"],
       "test/*": ["./src/test/*"]
     }
