@@ -18,6 +18,8 @@
     "prisma:migrate:status": "DOTENV_CONFIG_PATH=.env.development prisma migrate status --config prisma.config.ts",
     "prisma:studio": "DOTENV_CONFIG_PATH=.env.development prisma studio --config prisma.config.ts",
     "prisma:seed": "DOTENV_CONFIG_PATH=.env.development prisma db seed --config prisma.config.ts",
+    "promote-admin": "DOTENV_CONFIG_PATH=.env.development tsx src/scripts/promoteAdmin.ts",
+    "promote-admin:production": "DOTENV_CONFIG_PATH=.env.production tsx src/scripts/promoteAdmin.ts",
     "start": "DOTENV_CONFIG_PATH=.env.production node dist/index.js",
     "typecheck": "tsc --noEmit"
   },

@@ -1,5 +1,3 @@
-
-
 import { useRef, useCallback, useState } from 'react';
 import Map, { MapRef, Marker, NavigationControl, MapLayerMouseEvent } from 'react-map-gl';
 import { Loader } from '@mantine/core';
@@ -7,7 +5,6 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { webConfig } from 'config/env';
 
 import { LngLat } from '@swelldays/contracts';
-import globeClasses from './GlobeMap.module.css';
 import classes from './LocationPicker.module.css';
 
 const MAPBOX_TOKEN = webConfig.mapboxAccessToken;
@@ -26,7 +23,7 @@ export interface LocationPickerProps {
 /**
  * LocationPicker - Click-to-place marker component using Mapbox
  *
- * Used in spot creation flow to select a location on the map.
+ * Used in spot creation/editing flows to select a location on the map.
  * Uses flat projection (not globe) for better precision when picking locations.
  */
 export function LocationPicker({
@@ -85,7 +82,7 @@ export function LocationPicker({
             latitude={position[1]}
             anchor="bottom"
           >
-            <div className={`${globeClasses.spotMarker} ${classes.marker}`} />
+            <div className={classes.marker} />
           </Marker>
         )}
       </Map>

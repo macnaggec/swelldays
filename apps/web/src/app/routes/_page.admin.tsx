@@ -14,7 +14,7 @@ import {
   Title,
 } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { IconCheck, IconCreditCard, IconPlayerPlay, IconX } from '@tabler/icons-react';
+import { IconCheck, IconCreditCard, IconMapPin, IconPlayerPlay, IconX } from '@tabler/icons-react';
 import { useCallback, useState } from 'react';
 import { LoginForm } from 'features/Auth';
 import { useUser } from 'shared/hooks/useUser';
@@ -24,6 +24,11 @@ import { notify } from 'shared/lib/notifications';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { useTRPC } from 'shared/lib/trpc';
 import { AppButton } from 'shared/ui/AppButton';
+import { useSpots, useUpdateSpot } from 'entities/Spot';
+import type { Spot } from 'entities/Spot';
+import { LocationPicker } from 'widgets/LocationPicker';
+import { spotNameSchema, spotLocationSchema } from '@swelldays/contracts';
+import type { LngLat } from '@swelldays/contracts';
 
 export const Route = createFileRoute('/_page/admin')({
   component: AdminPage,
@@ -101,10 +106,17 @@ function AdminPage() {
           <Tabs.Tab value="payouts" leftSection={<IconCreditCard size={16} />}>
             Payouts
           </Tabs.Tab>
+          <Tabs.Tab value="spots" leftSection={<IconMapPin size={16} />}>
+            Spots
+          </Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="payouts" pt="lg">
           <AdminPayoutsPanel />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="spots" pt="lg">
+          <AdminSpotsPanel />
         </Tabs.Panel>
       </Tabs>
     </Stack>
@@ -370,6 +382,174 @@ function AdminPayoutsPanel() {
         </Paper>
       </Stack>
     </Stack>
+  );
+}
+
+function AdminSpotsPanel() {
+  const [search, setSearch] = useState('');
+  const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
+  const { data: spots = [], isLoading } = useSpots(search || undefined);
+  const selectedSpot = spots.find((spot) => spot.id === selectedSpotId) ?? null;
+
+  return (
+    <Stack gap="lg">
+      <Stack gap={4}>
+        <Title order={3}>Admin spots</Title>
+        <Text c="dimmed" size="sm">
+          Find a spot and edit its name, location, or map position.
+        </Text>
+      </Stack>
+
+      <TextInput
+        placeholder="Search spots by name or location"
+        value={search}
+        onChange={(event) => setSearch(event.currentTarget.value)}
+        styles={LIGHT_INPUT_STYLES}
+      />
+
+      {selectedSpot && (
+        <AdminSpotEditForm
+          key={selectedSpot.id}
+          spot={selectedSpot}
+          onClose={() => setSelectedSpotId(null)}
+        />
+      )}
+
+      <Paper shadow="xs" p="lg" radius="md" withBorder>
+        {isLoading ? (
+          <Center mih={160}>
+            <Loader size="sm" />
+          </Center>
+        ) : spots.length === 0 ? (
+          <Center mih={160}>
+            <Text c="dimmed" size="sm">No spots match that search.</Text>
+          </Center>
+        ) : (
+          <Table.ScrollContainer minWidth={700}>
+            <Table verticalSpacing="sm">
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Name</Table.Th>
+                  <Table.Th>Location</Table.Th>
+                  <Table.Th>Status</Table.Th>
+                  <Table.Th>Actions</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {spots.map((spot) => (
+                  <Table.Tr key={spot.id}>
+                    <Table.Td>
+                      <Text size="sm" fw={600}>{spot.name}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">{spot.location}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge color={spot.status === 'verified' ? 'green' : 'gray'} variant="light">
+                        {spot.status ?? 'unverified'}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <AppButton onClick={() => setSelectedSpotId(spot.id)}>
+                        Edit
+                      </AppButton>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
+        )}
+      </Paper>
+    </Stack>
+  );
+}
+
+function AdminSpotEditForm({ spot, onClose }: { spot: Spot; onClose: () => void }) {
+  const [name, setName] = useState(spot.name);
+  const [location, setLocation] = useState(spot.location);
+  const [position, setPosition] = useState<LngLat>([spot.coords.lng, spot.coords.lat]);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const updateMutation = useUpdateSpot();
+
+  const handleSave = async () => {
+    const nameResult = spotNameSchema.safeParse(name.trim());
+    const locationResult = spotLocationSchema.safeParse(location.trim());
+    if (!nameResult.success) setNameError(nameResult.error.issues[0]!.message);
+    if (!locationResult.success) setLocationError(locationResult.error.issues[0]!.message);
+    if (!nameResult.success || !locationResult.success) return;
+
+    try {
+      await updateMutation.mutateAsync({
+        id: spot.id,
+        name: name.trim(),
+        location: location.trim(),
+        lat: position[1],
+        lng: position[0],
+      });
+      notify.success('Spot updated.', 'Spot Updated');
+      onClose();
+    } catch (error) {
+      notify.error(getErrorMessage(error), 'Spot Update Failed');
+    }
+  };
+
+  return (
+    <Paper shadow="xs" p="lg" radius="md" withBorder>
+      <Stack gap="md">
+        <Group justify="space-between">
+          <Text size="sm" fw={600}>Editing {spot.name}</Text>
+          <AppButton onClick={onClose}>Cancel</AppButton>
+        </Group>
+
+        <TextInput
+          label="Spot name"
+          value={name}
+          onChange={(event) => {
+            setName(event.currentTarget.value);
+            setNameError(null);
+          }}
+          error={nameError}
+          required
+          styles={LIGHT_INPUT_STYLES}
+        />
+        <TextInput
+          label="Location"
+          value={location}
+          onChange={(event) => {
+            setLocation(event.currentTarget.value);
+            setLocationError(null);
+          }}
+          error={locationError}
+          required
+          styles={LIGHT_INPUT_STYLES}
+        />
+
+        <Stack gap={4}>
+          <Text size="sm" fw={500}>Map position</Text>
+          <Text size="xs" c="dimmed">Click the map to move the pin.</Text>
+          <div style={{ height: 400, borderRadius: 8, overflow: 'hidden' }}>
+            <LocationPicker
+              position={position}
+              onPositionChange={setPosition}
+              initialCenter={position}
+              initialZoom={12}
+            />
+          </div>
+        </Stack>
+
+        <Group justify="flex-end">
+          <AppButton
+            tone="highlight"
+            onClick={() => { void handleSave(); }}
+            loading={updateMutation.isPending}
+          >
+            Save
+          </AppButton>
+        </Group>
+      </Stack>
+    </Paper>
   );
 }
 

@@ -15,6 +15,7 @@ vi.mock('server/db', () => ({
     },
     spot: {
       findMany: vi.fn(),
+      update: vi.fn(),
     },
     userFavoriteSpot: {
       findUnique: vi.fn(),
@@ -29,6 +30,7 @@ import { SpotRepository } from './SpotRepository';
 
 const repo = new SpotRepository();
 const mockSpotFindMany = prisma.spot.findMany as ReturnType<typeof vi.fn>;
+const mockSpotUpdate = prisma.spot.update as ReturnType<typeof vi.fn>;
 const mockFavoriteFindUnique = prisma.userFavoriteSpot.findUnique as ReturnType<typeof vi.fn>;
 const mockFavoriteCreate = prisma.userFavoriteSpot.create as ReturnType<typeof vi.fn>;
 const mockFavoriteDelete = prisma.userFavoriteSpot.delete as ReturnType<typeof vi.fn>;
@@ -96,6 +98,42 @@ describe('SpotRepository.findSpotsByBounds', () => {
     const result = await repo.findSpotsByBounds(-90, -180, 90, 180);
 
     expect(result[0]!.coords).toEqual({ lat: -8.815, lng: 115.085 });
+  });
+});
+
+describe('SpotRepository.updateSpot', () => {
+  it('updates the spot and returns the mapped result', async () => {
+    mockSpotUpdate.mockResolvedValue({
+      id: 'spot-1',
+      name: 'Renamed Spot',
+      location: 'Kuta, Bali',
+      lat: '-8.7',
+      lng: '115.2',
+      status: 'verified',
+      creatorId: null,
+      createdAt: new Date('2024-01-01'),
+      coverUrl: null,
+      searchRadius: null,
+    });
+
+    const result = await repo.updateSpot('spot-1', {
+      name: 'Renamed Spot',
+      location: 'Kuta, Bali',
+      lat: -8.7,
+      lng: 115.2,
+    });
+
+    expect(mockSpotUpdate).toHaveBeenCalledWith({
+      where: { id: 'spot-1' },
+      data: { name: 'Renamed Spot', location: 'Kuta, Bali', lat: -8.7, lng: 115.2 },
+    });
+    expect(result).toEqual({
+      id: 'spot-1',
+      name: 'Renamed Spot',
+      location: 'Kuta, Bali',
+      coords: { lat: -8.7, lng: 115.2 },
+      status: 'verified',
+    });
   });
 });
 

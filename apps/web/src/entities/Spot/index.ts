@@ -4,6 +4,7 @@ export { SPOT_STATUS } from './constants';
 export type { SpotStatus } from './constants';
 
 export { useCreateSpot } from './model/useCreateSpot';
+export { useUpdateSpot } from './model/useUpdateSpot';
 export { useFavoriteSpot } from './model/useFavoriteSpot';
 export { useNearbySpots } from './model/useNearbySpots';
 export { useSelectedSpot } from './model/useSelectedSpot';

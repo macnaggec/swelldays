@@ -22,6 +22,14 @@ type PayoutFixture = {
   };
 };
 
+type SpotFixture = {
+  id: string;
+  name: string;
+  location: string;
+  coords: { lat: number; lng: number };
+  status: 'verified' | 'unverified';
+};
+
 const mocks = vi.hoisted(() => {
   const payouts: PayoutFixture[] = [{
     id: '11111111-1111-4111-8111-111111111111',
@@ -38,6 +46,14 @@ const mocks = vi.hoisted(() => {
     },
   }];
 
+  const spots: SpotFixture[] = [{
+    id: 'spot-1',
+    name: 'Uluwatu',
+    location: 'Bali, Indonesia',
+    coords: { lat: -8.815, lng: 115.085 },
+    status: 'verified',
+  }];
+
   return {
     completePayout: vi.fn(),
     invalidateQueries: vi.fn(),
@@ -45,12 +61,41 @@ const mocks = vi.hoisted(() => {
     isForbidden: false,
     isLoadingUser: false,
     isLoadingPayouts: false,
+    isLoadingSpots: false,
     isMutating: false,
     markProcessing: vi.fn(),
     payouts,
     rejectPayout: vi.fn(),
+    spots,
+    updateSpot: vi.fn(),
   };
 });
+
+vi.mock('mapbox-gl', () => ({ default: {} }));
+
+vi.mock('react-map-gl', () => ({
+  default: ({
+    children,
+    onClick,
+    onLoad,
+  }: {
+    children?: React.ReactNode;
+    onClick?: (event: { lngLat: { lng: number; lat: number } }) => void;
+    onLoad?: () => void;
+  }) => {
+    onLoad?.();
+    return (
+      <div
+        data-testid="location-picker-map"
+        onClick={() => onClick?.({ lngLat: { lng: 200.5, lat: -10.25 } })}
+      >
+        {children}
+      </div>
+    );
+  },
+  Marker: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  NavigationControl: () => null,
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => options,
@@ -80,11 +125,17 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();
   return {
     ...actual,
-    useQuery: () => ({
-      data: mocks.payouts,
-      isError: mocks.isForbidden,
-      isLoading: mocks.isLoadingPayouts,
-    }),
+    useQuery: (options: { queryKey?: unknown[] }) => {
+      const rootKey = Array.isArray(options.queryKey) ? options.queryKey[0] : undefined;
+      if (rootKey === 'spots') {
+        return { data: mocks.spots, isLoading: mocks.isLoadingSpots };
+      }
+      return {
+        data: mocks.payouts,
+        isError: mocks.isForbidden,
+        isLoading: mocks.isLoadingPayouts,
+      };
+    },
     useMutation: (options: { mutationKey?: string[] }) => {
       const key = options.mutationKey?.join('.');
       const mutateAsync =
@@ -92,7 +143,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           ? mocks.completePayout
           : key === 'admin.ledger.reject'
             ? mocks.rejectPayout
-            : mocks.markProcessing;
+            : key === 'admin.spots.update'
+              ? mocks.updateSpot
+              : mocks.markProcessing;
       return { mutateAsync, isPending: mocks.isMutating };
     },
     useQueryClient: () => ({
@@ -112,6 +165,14 @@ vi.mock('shared/lib/trpc', () => ({
         },
         markProcessing: { mutationOptions: () => ({ mutationKey: ['admin', 'ledger', 'markProcessing'] }) },
         reject: { mutationOptions: () => ({ mutationKey: ['admin', 'ledger', 'reject'] }) },
+      },
+      spots: {
+        update: { mutationOptions: () => ({ mutationKey: ['admin', 'spots', 'update'] }) },
+      },
+    },
+    spots: {
+      list: {
+        queryOptions: (search?: string) => ({ queryKey: ['spots', 'list', search] }),
       },
     },
   }),
@@ -138,6 +199,14 @@ describe('AdminPage', () => {
         email: 'photographer@example.com',
         name: 'Pipeline Shooter',
       },
+    }];
+    mocks.isLoadingSpots = false;
+    mocks.spots = [{
+      id: 'spot-1',
+      name: 'Uluwatu',
+      location: 'Bali, Indonesia',
+      coords: { lat: -8.815, lng: 115.085 },
+      status: 'verified',
     }];
   });
 
@@ -250,5 +319,46 @@ describe('AdminPage', () => {
 
     expect(screen.getByText('wise-ref-1')).toBeInTheDocument();
     expect(screen.getByText('Invalid bank details')).toBeInTheDocument();
+  });
+
+  it('lets an admin open the Spots tab, reposition a spot on the map, and save it', async () => {
+    mocks.updateSpot.mockResolvedValue({
+      id: 'spot-1',
+      name: 'Uluwatu',
+      location: 'Bali, Indonesia',
+      coords: { lat: -10.25, lng: 200.5 },
+      status: 'verified',
+    });
+    const Component = (Route as unknown as { component: ComponentType }).component;
+
+    render(<Component />);
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Spots' }));
+
+    expect(await screen.findByText('Uluwatu')).toBeInTheDocument();
+    expect(screen.getByText('Bali, Indonesia')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+    const nameInput = screen.getByLabelText(/Spot name/);
+    expect(nameInput).toHaveValue('Uluwatu');
+
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, 'Uluwatu Reef');
+
+    // The mocked map fires onClick with a fixed lngLat to simulate dragging the pin.
+    await userEvent.click(screen.getByTestId('location-picker-map'));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(mocks.updateSpot).toHaveBeenCalledWith({
+        id: 'spot-1',
+        name: 'Uluwatu Reef',
+        location: 'Bali, Indonesia',
+        lat: -10.25,
+        lng: 200.5,
+      });
+    });
   });
 });

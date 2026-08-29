@@ -28,6 +28,13 @@ export interface SpotCreateInput {
   creatorId: string;
 }
 
+export interface SpotUpdateInput {
+  name: string;
+  location: string;
+  lat: number;
+  lng: number;
+}
+
 export type SpotCard = {
   id: string;
   name: string;
@@ -42,6 +49,7 @@ export interface ISpotRepository {
   findSpotsNearby(lat: number, lng: number, radiusM: number): Promise<Spot[]>;
   findSpotById(id: string): Promise<Spot | null>;
   createSpot(data: SpotCreateInput): Promise<Spot>;
+  updateSpot(id: string, data: SpotUpdateInput): Promise<Spot>;
   findSpotCard(id: string): Promise<SpotCard | null>;
   isSpotFavorited(spotId: string, userId: string): Promise<boolean>;
   toggleSpotFavorite(spotId: string, userId: string): Promise<boolean>;
@@ -122,6 +130,13 @@ export class SpotRepository implements ISpotRepository {
   createSpot(data: SpotCreateInput): Promise<Spot> {
     return runQuery(async () => {
       const spot = await prisma.spot.create({ data });
+      return mapToSpot(spot);
+    });
+  }
+
+  updateSpot(id: string, data: SpotUpdateInput): Promise<Spot> {
+    return runQuery(async () => {
+      const spot = await prisma.spot.update({ where: { id }, data });
       return mapToSpot(spot);
     });
   }

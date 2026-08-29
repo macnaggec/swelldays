@@ -7,10 +7,12 @@ import { sessionsRouter } from './routes/sessions';
 import { uploadsRouter } from './routes/uploads';
 import { ledgerRouter } from './routes/ledger';
 import { adminLedgerRouter } from './routes/adminLedger';
+import { adminSpotsRouter } from './routes/adminSpots';
 
 export const appRouter = router({
   admin: router({
     ledger: adminLedgerRouter,
+    spots: adminSpotsRouter,
   }),
   spots: spotsRouter,
   media: mediaRouter,
