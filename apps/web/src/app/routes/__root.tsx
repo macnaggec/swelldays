@@ -1,4 +1,4 @@
-import { createRootRouteWithContext, Outlet, useMatches, useNavigate } from '@tanstack/react-router';
+import { createRootRouteWithContext, HeadContent, Outlet, useMatches, useNavigate } from '@tanstack/react-router';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { Center, Stack, Text, Title } from '@mantine/core';
 import { useLayoutEffect, useRef } from 'react';
@@ -47,6 +47,7 @@ function RootLayout() {
 
   return (
     <AuthModalProvider>
+      <HeadContent />
       <AddSpotProvider>
         <AppShellLayoutPolicyProvider
           routeIntent={routeIntent}

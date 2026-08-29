@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { useAuthModal } from 'features/Auth';
+import { NOINDEX_HEAD } from 'shared/lib/seoMeta';
 
 export const Route = createFileRoute('/auth')({
+  head: () => NOINDEX_HEAD,
   component: AuthRoute,
 });
 

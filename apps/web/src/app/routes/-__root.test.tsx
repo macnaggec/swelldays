@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@tanstack/react-router', () => ({
   createRootRouteWithContext: () => (options: Record<string, unknown>) => options,
+  HeadContent: () => null,
   Outlet: () => <div data-testid="route-outlet" />,
   useMatches: () => mocks.matches,
   useNavigate: () => vi.fn(),

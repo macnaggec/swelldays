@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MantineProvider } from '@mantine/core';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -12,6 +12,7 @@ import { PanelScrollChromeStateProvider } from 'shared/ui/PanelScrollChrome';
 import { PanelLayout } from 'shared/ui/PanelLayout';
 import { PanelSettledWidthContext } from 'shared/ui/DrawerShell/panelSettledWidth';
 import { publishDrawerGeometry } from 'shared/ui/DrawerShell/geometry';
+import { formatCapturedAtDate } from 'shared/lib/dateUtils';
 
 const mediaItem: PublicMedia = {
   id: 'media-1',
@@ -510,14 +511,14 @@ describe('PublicGallery', () => {
         </MantineProvider>
       );
       const { rerender } = render(gallery(false));
-      const card = screen.getByRole('button', { name: 'Open Media media-1' });
+      const card = screen.getByRole('button', { name: `Open Surf photo from ${formatCapturedAtDate(mediaItem.capturedAt)}` });
 
       card.focus();
       await user.keyboard('{Enter}');
 
       expect(screen.getByRole('dialog')).toBeInTheDocument();
       await waitFor(() => expect(screen.getByRole('button', { name: 'Close preview' })).toHaveFocus());
-      const previewImage = screen.getByAltText(/Surf photo from/);
+      const previewImage = within(screen.getByRole('dialog')).getByAltText(/Surf photo from/);
       expect(previewImage).toHaveAttribute('src', mediaItem.lightboxUrl);
 
       Object.defineProperty(previewImage, 'naturalWidth', { value: 1200, configurable: true });
@@ -533,7 +534,7 @@ describe('PublicGallery', () => {
       rerender(gallery(true));
 
       expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByAltText(/Surf photo from/)).toHaveAttribute('src', mediaItem.lightboxUrl);
+      expect(within(screen.getByRole('dialog')).getByAltText(/Surf photo from/)).toHaveAttribute('src', mediaItem.lightboxUrl);
 
       fireEvent.click(screen.getByRole('button', { name: 'Close preview' }));
 

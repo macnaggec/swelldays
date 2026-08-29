@@ -6,12 +6,14 @@ import type { CartItem } from 'entities/Commerce';
 import { BaseGallery } from 'shared/ui/BaseGallery';
 import { PanelGalleryLayout } from 'shared/ui/PanelGalleryLayout';
 import { CartCard, CartCheckoutFooter, CartLightbox } from 'features/Cart';
+import { NOINDEX_HEAD } from 'shared/lib/seoMeta';
 
 export const Route = createFileRoute('/_panel/cart')({
   validateSearch: (search): { from?: string } => ({
     from: typeof search.from === 'string' ? search.from : undefined,
   }),
   staticData: { appRouteIntent: 'siteWorkspace' },
+  head: () => NOINDEX_HEAD,
   component: CartPanelRoute,
 });
 

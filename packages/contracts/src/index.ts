@@ -8,6 +8,21 @@ export type { MediaResourceType, MediaStatus } from './constants/media';
 
 export { getCapturedMediaCalendarDayKey } from './capturedMediaCalendarDay';
 
+export {
+  ABOUT_PAGE_DESCRIPTION,
+  ABOUT_PAGE_TITLE,
+  GALLERY_PAGE_DESCRIPTION,
+  GALLERY_PAGE_TITLE,
+  HOME_PAGE_DESCRIPTION,
+  HOME_PAGE_TITLE,
+  sessionPageDescription,
+  sessionPageTitle,
+  spotGalleryDescription,
+  spotGalleryTitle,
+  spotPageDescription,
+  spotPageTitle,
+} from './seo/pageMeta';
+
 export type { Cents, LngLat, Position } from './types/coordinates';
 export type {
   DraftMedia,

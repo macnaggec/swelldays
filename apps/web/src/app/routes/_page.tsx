@@ -1,9 +1,11 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { Box } from '@mantine/core';
 import classes from './_page.module.css';
+import { NOINDEX_HEAD } from 'shared/lib/seoMeta';
 
 export const Route = createFileRoute('/_page')({
   staticData: { appRouteIntent: 'fullPage' },
+  head: () => NOINDEX_HEAD,
   component: PageLayout,
 });
 

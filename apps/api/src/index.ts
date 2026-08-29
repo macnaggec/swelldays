@@ -15,6 +15,7 @@ import { createRateLimiter } from 'server/lib/rateLimiter';
 import { getClientIp } from 'server/lib/getClientIp';
 import { logger } from 'server/lib/logger';
 import { apiConfig } from 'server/config/env';
+import { publicPagesRouter } from 'server/routes/publicPages';
 
 // Initialized here rather than via Sentry's recommended preloaded instrument
 // file — that pattern exists to auto-instrument I/O (pg, http) for tracing
@@ -85,6 +86,12 @@ app.post('/api/webhook/cryptocloud', async (c) => {
 
   return c.json({ ok: true });
 });
+
+// Server-rendered metadata for crawlers/share-bots (docs/roadmaps/seo-optimization.md,
+// Phase 2). Mounted outside /api/* because these mirror the web app's real
+// public URLs, not API endpoints — an edge proxy can route bot traffic here
+// on the exact same path with no rewriting.
+app.route('/', publicPagesRouter);
 
 const RECONCILE_INTERVAL_MS = 15 * 60_000;
 const runReconciler = () => reconcileUploadAttempts().catch((err) => logger.error('[reconciler] run failed', { err }));

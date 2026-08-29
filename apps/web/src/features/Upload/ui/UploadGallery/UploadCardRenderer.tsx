@@ -5,6 +5,7 @@ import { IconRefresh, IconX } from '@tabler/icons-react';
 import { DraftMedia, MEDIA_STATUS } from 'entities/Media';
 import { formatPrice } from 'shared/lib/currency';
 import { formatDimensions } from 'shared/lib/formatDimensions';
+import { formatCapturedAtDate } from 'shared/lib/dateUtils';
 import { AppButton } from 'shared/ui/AppButton';
 import { GalleryCard, AttemptCardStatus } from '../../model';
 import DraftCard from '../cards/DraftCard';
@@ -60,7 +61,7 @@ export const UploadCardRenderer = memo<UploadCardRendererProps>(({
     : item.kind === 'attempt' ? item.resourceType : 'image') as 'image' | 'video';
 
   const alt = mediaItem
-    ? `Media ${mediaItem.resource.assetId}`
+    ? `Surf ${mediaItem.type === 'VIDEO' ? 'video' : 'photo'} from ${formatCapturedAtDate(mediaItem.capturedAt)}`
     : 'Upload preview';
 
   const overlays = item.kind !== 'attempt'

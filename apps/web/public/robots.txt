@@ -1,0 +1,12 @@
+# Public content (home, spot pages, galleries, sessions, about) is allowed
+# by default below. Everything else is a private/transactional route and is
+# explicitly blocked. See docs/roadmaps/seo-optimization.md.
+User-agent: *
+Disallow: /cart
+Disallow: /upload
+Disallow: /me
+Disallow: /admin
+Disallow: /auth
+Disallow: /order-success
+
+Sitemap: https://swelldays.surf/sitemap.xml

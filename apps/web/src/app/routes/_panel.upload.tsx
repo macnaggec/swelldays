@@ -12,6 +12,7 @@ import type { Spot } from 'entities/Spot';
 import { useSpotPreview } from 'entities/Spot';
 import { useAuthModal } from 'entities/Identity';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
+import { NOINDEX_HEAD } from 'shared/lib/seoMeta';
 import { useSetPanelRouteBackAction } from '../lib/panelContexts';
 
 export const Route = createFileRoute('/_panel/upload')({
@@ -20,6 +21,7 @@ export const Route = createFileRoute('/_panel/upload')({
     spotId: typeof search.spotId === 'string' ? search.spotId : undefined,
   }),
   staticData: { panelHeader: 'Upload', appRouteIntent: 'mapInput' },
+  head: () => NOINDEX_HEAD,
   component: UploadPanel,
 });
 

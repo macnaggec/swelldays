@@ -206,7 +206,7 @@ const PublicCard: FC<PublicCardProps> = memo(({
     <BaseCard
       imageUrl={mediaItem.thumbnailUrl}
       resourceType={mediaItem.type === 'VIDEO' ? 'video' : 'image'}
-      alt={`Media ${mediaItem.id}`}
+      alt={`Surf ${mediaItem.type === 'VIDEO' ? 'video' : 'photo'} from ${formatCapturedAtDate(mediaItem.capturedAt)}`}
       onClick={onCardClick ? handleClick : undefined}
       flush={dense}
       onLoad={handleLoad}
