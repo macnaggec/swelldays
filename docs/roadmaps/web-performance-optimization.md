@@ -496,6 +496,8 @@ Atomic commits:
 1. `refactor(web): separate lightweight Add Spot runtime`
 2. `perf(web): lazy-load Add Spot workspace UI`
 
+**Handoff (2026-08-30):** T06 is complete and fully green. The eager Add Spot feature entry now retains only the lightweight provider, hook, and store while a feature-owned `AddSpotUiBoundary` owns one cached, rejection-resetting dynamic import for the workspace panel. `GlobeScene` mounts that lazy panel only for the existing `immersiveMapInput` state under a non-covering `null` Suspense fallback. A real lifecycle test proves inactive startup does not evaluate the UI module, activation preserves the seeded name and temporary pin, cancellation unmounts the panel, and the same map DOM node remains mounted. Production graph rules now exclude Add Spot UI, controller/coordinate modules, spot validation, and Zod from entry; Browse applies the same Add Spot exclusions while retaining its independent search/media Zod edge. Entry JavaScript moved from 934,949 raw / 291,864 gzip bytes to 850,717 raw / 269,159 gzip (−22,705 gzip), entry CSS moved from 275,116 raw / 41,913 gzip to 271,169 raw / 41,218 gzip, and default Browse Feed moved from 1,483,637 raw / 426,327 gzip to 1,473,392 raw / 425,136 gzip. No byte cap increased. Focused verification passed 30 client tests and 29 bundle-script tests; both typechecks, lint, style boundaries, both production builds, fresh bundle budgets, `git diff --check`, and the full 1,210-test client/server suite passed. T07 is ready.
+
 ### T07 — Preload Add Spot UI on exact intent
 
 **Depends on:** T06.
@@ -946,7 +948,7 @@ These are the complete handoff gates; during implementation, use only the smalle
 - [x] T03 logo/hero assets fingerprinted and cache-safe.
 - [x] T04 artwork is requested only when the intro/review presentation owns it.
 - [x] T05 contracts core is Zod-free and only supported public entries are used.
-- [ ] T06 Add Spot UI absent from unrelated startup.
+- [x] T06 Add Spot UI absent from unrelated startup.
 - [ ] T07 Add Spot intent hides the new lazy latency.
 - [ ] T08 auth surface absent from unrelated startup.
 - [ ] T09 gated actions warm auth on exact intent.

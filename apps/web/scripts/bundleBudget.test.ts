@@ -183,7 +183,16 @@ const createFixture = async (hash: string): Promise<Fixture> => {
         isDynamicEntry: false,
         imports: [`assets/shared-${hash}.js`],
         dynamicImports: [`assets/optional-${hash}.js`],
-        modules: ['src/main.tsx', 'src/startup/forbidden.ts'],
+        modules: [
+          'src/main.tsx',
+          'src/startup/forbidden.ts',
+          'src/features/AddSpot/ui/AddSpotPanel.tsx',
+          'src/features/AddSpot/model/useAddSpotFlow.ts',
+          'src/features/AddSpot/model/useReverseGeocode.ts',
+          'src/features/AddSpot/model/addSpotCoordinates.ts',
+          'packages/contracts/src/validation/spotSchemas.ts',
+          'node_modules/zod/v4/core/index.js',
+        ],
       },
       {
         file: `assets/shared-${hash}.js`,
@@ -246,7 +255,11 @@ const createFixture = async (hash: string): Promise<Fixture> => {
         isDynamicEntry: true,
         imports: [`assets/index-${hash}.js`],
         dynamicImports: [],
-        modules: ['node_modules/mapbox-gl/src/index.ts', 'src/optional/forbidden.ts'],
+        modules: [
+          'node_modules/mapbox-gl/src/index.ts',
+          'src/optional/forbidden.ts',
+          'src/features/AddSpot/ui/steps/ProximityStep.tsx',
+        ],
       },
       {
         file: 'assets/index-MISLEADING.js',
@@ -510,6 +523,71 @@ describe('analyzeWebBundle', () => {
         matchingModules: ['src/startup/forbidden.ts'],
       },
     ]);
+  });
+
+  it('reports eager Add Spot workspace modules but ignores a dynamic-only step', async () => {
+    const fixture = await createFixture('add-spot-assertions');
+    fixture.config.moduleAbsenceAssertions = [
+      {
+        label: 'Startup excludes Add Spot workspace UI and validation',
+        graph: 'entry',
+        forbiddenModuleSubstrings: [
+          'src/features/AddSpot/ui/',
+          'src/features/AddSpot/model/useAddSpotFlow.ts',
+          'src/features/AddSpot/model/useReverseGeocode.ts',
+          'src/features/AddSpot/model/addSpotCoordinates.ts',
+          'packages/contracts/src/validation/spotSchemas.ts',
+          'node_modules/zod/',
+        ],
+      },
+      {
+        label: 'Default Browse Feed excludes Add Spot workspace UI and validation',
+        graph: 'browse-feed',
+        forbiddenModuleSubstrings: [
+          'src/features/AddSpot/ui/',
+          'src/features/AddSpot/model/useAddSpotFlow.ts',
+          'src/features/AddSpot/model/useReverseGeocode.ts',
+          'src/features/AddSpot/model/addSpotCoordinates.ts',
+          'packages/contracts/src/validation/spotSchemas.ts',
+        ],
+      },
+    ];
+    await writeJson(fixture.configPath, fixture.config);
+
+    const report = await analyzeFixture(fixture);
+
+    expect(report.moduleAssertionFailures).toEqual([
+      {
+        label: 'Default Browse Feed excludes Add Spot workspace UI and validation',
+        graph: 'browse-feed',
+        matchingModules: [
+          'packages/contracts/src/validation/spotSchemas.ts',
+          'src/features/AddSpot/model/addSpotCoordinates.ts',
+          'src/features/AddSpot/model/useAddSpotFlow.ts',
+          'src/features/AddSpot/model/useReverseGeocode.ts',
+          'src/features/AddSpot/ui/AddSpotPanel.tsx',
+        ],
+      },
+      {
+        label: 'Startup excludes Add Spot workspace UI and validation',
+        graph: 'entry',
+        matchingModules: [
+          'node_modules/zod/v4/core/index.js',
+          'packages/contracts/src/validation/spotSchemas.ts',
+          'src/features/AddSpot/model/addSpotCoordinates.ts',
+          'src/features/AddSpot/model/useAddSpotFlow.ts',
+          'src/features/AddSpot/model/useReverseGeocode.ts',
+          'src/features/AddSpot/ui/AddSpotPanel.tsx',
+        ],
+      },
+    ]);
+    expect(report.moduleAssertionFailures).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        matchingModules: expect.arrayContaining([
+          'src/features/AddSpot/ui/steps/ProximityStep.tsx',
+        ]),
+      }),
+    ]));
   });
 
   it('sums raw file lengths and per-file gzip sizes after deduplication', async () => {

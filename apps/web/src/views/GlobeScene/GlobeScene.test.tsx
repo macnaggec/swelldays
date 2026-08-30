@@ -87,7 +87,7 @@ vi.mock('entities/Spot', () => ({
 }));
 
 vi.mock('features/AddSpot', () => ({
-  AddSpotPanel: () => <div>Add spot panel</div>,
+  LazyAddSpotPanel: () => <div>Add spot panel</div>,
   useAddSpotStore: (selector: (state: typeof mocks.addSpotState) => unknown) =>
     selector(mocks.addSpotState),
 }));

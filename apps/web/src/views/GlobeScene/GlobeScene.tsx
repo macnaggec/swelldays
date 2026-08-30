@@ -1,11 +1,11 @@
 import { GlobeMap, type MapSpotProjection } from 'widgets/GlobeMap';
 import { useMapSpots, type Spot } from 'entities/Spot';
-import { AddSpotPanel, useAddSpotStore } from 'features/AddSpot';
+import { LazyAddSpotPanel, useAddSpotStore } from 'features/AddSpot';
 import { FavoriteSpotButton } from 'features/FavoriteSpot';
 import { useFirstVisitMapReadiness } from 'features/FirstVisit';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMatches, useNavigate } from '@tanstack/react-router';
-import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
+import { Suspense, useCallback, useMemo, useState, useSyncExternalStore } from 'react';
 import type { LngLat } from '@swelldays/contracts/core';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
@@ -247,7 +247,11 @@ export function GlobeScene() {
       {isUpdatingWorkspace && (
         <div className={`${classes.saveStatus} ${materialClasses.status}`} role="status">Saving spot…</div>
       )}
-      {isImmersiveMapInput && <AddSpotPanel />}
+      {isImmersiveMapInput && (
+        <Suspense fallback={null}>
+          <LazyAddSpotPanel />
+        </Suspense>
+      )}
     </div>
   );
 }

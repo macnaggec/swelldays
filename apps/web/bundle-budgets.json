@@ -52,6 +52,29 @@
         "packages/contracts/src/validation/mediaSchemas.ts",
         "packages/contracts/src/validation/uploadSchemas.ts"
       ]
+    },
+    {
+      "label": "Startup excludes Add Spot workspace UI and validation",
+      "graph": "entry",
+      "forbiddenModuleSubstrings": [
+        "src/features/AddSpot/ui/",
+        "src/features/AddSpot/model/useAddSpotFlow.ts",
+        "src/features/AddSpot/model/useReverseGeocode.ts",
+        "src/features/AddSpot/model/addSpotCoordinates.ts",
+        "packages/contracts/src/validation/spotSchemas.ts",
+        "node_modules/zod/"
+      ]
+    },
+    {
+      "label": "Default Browse Feed excludes Add Spot workspace UI and validation",
+      "graph": "browse-feed",
+      "forbiddenModuleSubstrings": [
+        "src/features/AddSpot/ui/",
+        "src/features/AddSpot/model/useAddSpotFlow.ts",
+        "src/features/AddSpot/model/useReverseGeocode.ts",
+        "src/features/AddSpot/model/addSpotCoordinates.ts",
+        "packages/contracts/src/validation/spotSchemas.ts"
+      ]
     }
   ],
   "startupAssets": [
