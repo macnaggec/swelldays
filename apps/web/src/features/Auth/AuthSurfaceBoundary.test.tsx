@@ -100,4 +100,38 @@ describe('AuthSurfaceBoundary', () => {
       });
     }
   });
+
+  it('dedupes concurrent preloads to a single module load and resolves them all to undefined', async () => {
+    const lifecycle = { moduleLoads: 0 };
+    vi.doMock('./AuthModalSurface', async (importOriginal) => {
+      lifecycle.moduleLoads += 1;
+      const actual = await importOriginal<typeof import('./AuthModalSurface')>();
+      return actual;
+    });
+    const { preloadAuthSurface } = await import('./AuthSurfaceBoundary');
+
+    const results = await Promise.all([
+      preloadAuthSurface(),
+      preloadAuthSurface(),
+      preloadAuthSurface(),
+    ]);
+
+    expect(results).toEqual([undefined, undefined, undefined]);
+    expect(lifecycle.moduleLoads).toBe(1);
+  });
+
+  it('resolves to undefined and clears the cache when the underlying import rejects', async () => {
+    const lifecycle = { moduleLoads: 0 };
+    vi.doMock('./AuthModalSurface', () => {
+      lifecycle.moduleLoads += 1;
+      throw new Error('Auth surface unavailable');
+    });
+    const { preloadAuthSurface, loadAuthSurface } = await import('./AuthSurfaceBoundary');
+
+    await expect(preloadAuthSurface()).resolves.toBeUndefined();
+    expect(lifecycle.moduleLoads).toBe(1);
+
+    await expect(loadAuthSurface()).rejects.toThrow();
+    expect(lifecycle.moduleLoads).toBe(2);
+  });
 });

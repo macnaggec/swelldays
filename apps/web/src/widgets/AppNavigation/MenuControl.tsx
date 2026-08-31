@@ -13,7 +13,7 @@ import {
 import { useNavigate, useRouter } from '@tanstack/react-router';
 import { signOut } from 'shared/lib/auth';
 import { useUser } from 'shared/hooks/useUser';
-import { useAuthModal } from 'features/Auth';
+import { preloadAuthSurface, useAuthModal } from 'features/Auth';
 import { notify } from 'shared/lib/notifications';
 import classes from './MenuControl.module.css';
 
@@ -38,6 +38,9 @@ export function MenuControl() {
   const [opened, setOpened] = useState(false);
 
   const handleSignIn = useCallback(() => openAuthModal(), [openAuthModal]);
+  const handleSignInIntent = useCallback(() => {
+    void preloadAuthSurface();
+  }, []);
   const handleSignOut = useCallback(async () => {
     try {
       const result = await signOut();
@@ -147,6 +150,9 @@ export function MenuControl() {
           <Menu.Item
             leftSection={<IconLogin size={16} stroke={1.75} style={ITEM_ICON_STYLE} />}
             onClick={handleSignIn}
+            onPointerEnter={handleSignInIntent}
+            onPointerDown={handleSignInIntent}
+            onFocus={handleSignInIntent}
           >
             Sign in
           </Menu.Item>

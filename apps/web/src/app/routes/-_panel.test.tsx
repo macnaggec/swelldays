@@ -56,6 +56,7 @@ const mocks = vi.hoisted(() => ({
   notifyError: vi.fn(),
   openAuth: vi.fn(),
   preloadAddSpotUi: vi.fn(() => Promise.resolve()),
+  preloadAuthSurface: vi.fn(() => Promise.resolve()),
   preloadRoute: vi.fn(),
   startAddSpot: vi.fn(),
   isAuthenticated: false,
@@ -153,6 +154,7 @@ vi.mock('shared/hooks/useUser', () => ({
 
 vi.mock('features/Auth', () => ({
   useAuthModal: () => ({ open: mocks.openAuth }),
+  preloadAuthSurface: mocks.preloadAuthSurface,
 }));
 
 vi.mock('features/AddSpot', async (importOriginal) => {
@@ -461,7 +463,7 @@ describe('Panel upload entry', () => {
     expect(mocks.startAddSpot).toHaveBeenCalledWith('Seeded break');
   });
 
-  it('keeps signed-out Add Spot intent behind authentication without preloading', async () => {
+  it('keeps signed-out Add Spot intent behind authentication, preloading the sign-in surface instead of Add Spot', async () => {
     mocks.renderRealFeedSearch = true;
     mocks.spotResults = [];
     const user = userEvent.setup();
@@ -476,9 +478,41 @@ describe('Panel upload entry', () => {
     fireEvent.focus(signInAction);
     fireEvent.click(signInAction);
 
+    expect(mocks.preloadAuthSurface).toHaveBeenCalledTimes(3);
     expect(mocks.preloadAddSpotUi).not.toHaveBeenCalled();
     expect(mocks.startAddSpot).not.toHaveBeenCalled();
     expect(mocks.openAuth).toHaveBeenCalledOnce();
+  });
+
+  it('preloads the sign-in surface from the Upload control for a signed-out visitor, alongside the route preload', () => {
+    mocks.params = { spotId: 'spot-current' };
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    const uploadButton = screen.getByRole('button', { name: 'Upload' });
+    fireEvent.pointerEnter(uploadButton);
+    fireEvent.pointerDown(uploadButton);
+    fireEvent.focus(uploadButton);
+
+    expect(mocks.preloadAuthSurface).toHaveBeenCalledTimes(3);
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({
+      to: '/upload',
+      search: { spotId: 'spot-current' },
+    });
+  });
+
+  it('never preloads the sign-in surface from the Upload control for an authenticated visitor', () => {
+    mocks.isAuthenticated = true;
+    mocks.params = { spotId: 'spot-current' };
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    const uploadButton = screen.getByRole('button', { name: 'Upload' });
+    fireEvent.pointerEnter(uploadButton);
+    fireEvent.pointerDown(uploadButton);
+    fireEvent.focus(uploadButton);
+
+    expect(mocks.preloadAuthSurface).not.toHaveBeenCalled();
   });
 
   it('preloads Upload with the selected spot when the user approaches its control', () => {

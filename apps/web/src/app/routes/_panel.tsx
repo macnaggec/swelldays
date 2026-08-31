@@ -29,7 +29,7 @@ import {
 import { formatDateRange } from 'shared/lib/dateUtils';
 import { dismissActiveTextEntry } from 'shared/lib/dismissActiveTextEntry';
 import { useUser } from 'shared/hooks/useUser';
-import { useAuthModal } from 'features/Auth';
+import { preloadAuthSurface, useAuthModal } from 'features/Auth';
 import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
 import { useAppShellLayoutPolicy } from 'shared/model/appShellPresentation';
 import { waitForKeyboardViewportToSettle } from 'shared/model/viewportMetrics';
@@ -152,13 +152,16 @@ function PanelFrame({ children }: { children: ReactNode }) {
   }, [activeWorkspace, isAuthenticated, layoutPolicy.drawer.presentation, navigate, openAuthModal, spotId]);
 
   const handleUploadIntent = useCallback(() => {
+    if (!isAuthenticated) {
+      void preloadAuthSurface();
+    }
     void router.preloadRoute({
       to: '/upload',
       search: activeWorkspace
         ? { workspaceId: activeWorkspace.id }
         : { spotId: spotId ?? undefined },
     }).catch(() => {});
-  }, [activeWorkspace, router, spotId]);
+  }, [activeWorkspace, isAuthenticated, router, spotId]);
 
   const { spot: activeSpot } = useSelectedSpot();
   const { data: cartFromSpot } = useSpotPreviewBySlug(cartFrom ?? '', { enabled: !!cartFrom });

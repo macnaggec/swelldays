@@ -5,7 +5,7 @@ import { Text } from '@mantine/core';
 import { SpotSearch } from 'features/SpotSearch';
 import { preloadAddSpotUi, useAddSpot } from 'features/AddSpot';
 import { useUser } from 'shared/hooks/useUser';
-import { useAuthModal } from 'features/Auth';
+import { preloadAuthSurface, useAuthModal } from 'features/Auth';
 import type { Spot } from 'entities/Spot';
 import { AppButton } from 'shared/ui/AppButton';
 
@@ -27,6 +27,10 @@ export function FeedSearch({ placeholder, onSpotSelect, activeSpot: activeSpotOv
 
   const handleAddSpotIntent = useCallback((): void => {
     void preloadAddSpotUi();
+  }, []);
+
+  const handleSignInIntent = useCallback((): void => {
+    void preloadAuthSurface();
   }, []);
 
   const handleSelect = useCallback((spot: Spot) => {
@@ -53,12 +57,20 @@ export function FeedSearch({ placeholder, onSpotSelect, activeSpot: activeSpotOv
         );
       }
       return (
-        <Text size="sm" c="dimmed" style={{ cursor: 'pointer' }} onClick={() => openAuthModal()}>
+        <Text
+          size="sm"
+          c="dimmed"
+          style={{ cursor: 'pointer' }}
+          onClick={() => openAuthModal()}
+          onPointerEnter={handleSignInIntent}
+          onPointerDown={handleSignInIntent}
+          onFocus={handleSignInIntent}
+        >
           Sign in to add as a new spot
         </Text>
       );
     },
-    [handleAddSpotIntent, isAuthenticated, startAddSpot, openAuthModal],
+    [handleAddSpotIntent, handleSignInIntent, isAuthenticated, startAddSpot, openAuthModal],
   );
 
   return (

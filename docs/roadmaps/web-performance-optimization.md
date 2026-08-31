@@ -699,6 +699,8 @@ Acceptance:
 
 Atomic commit: `perf(web): preload auth UI on gated action intent`.
 
+**Handoff (2026-08-31):** T09 is complete and fully green. `features/Auth` now exports one deduplicated `preloadAuthSurface`, reusing T08's single cached `loadAuthSurface` module promise and resolving to `undefined` on both success and rejection. It is wired to pointer-enter, pointer-down, and focus on exactly three signed-out entry points: the "Sign in" menu item in `MenuControl`, the panel "Upload" action in `_panel.tsx` (alongside its existing unconditional route-code preload, unchanged), and the "Sign in to add as a new spot" action in `FeedSearch` — the branch T07 explicitly deferred to this task. Authenticated variants of all three never call it, and a rejected preload still leaves `openAuthModal`/its continuation working normally. `Menu.Item`'s test mock was extended to forward the same pointer/focus props it drops today, matching how the real Mantine component already forwards them. Focused verification passed 93 tests across the boundary, menu, and panel route files, including 2 new tests proving `preloadAuthSurface` dedupes concurrent calls to one module load and still resolves after a rejection (clearing the cache for a fresh attempt). Both TypeScript checks, lint, style boundaries, `git diff --check`, and the full 1,225-test client/server suite passed. No bundle-budget change was needed or made; this task adds no new lazy boundary. No deployment, live request, or browser check was performed because this task has no visible behavior change. T10 is next but must be split into T10a before dispatch, per the roadmap's delegation rules.
+
 ### T10 — Remove proven and remaining measured graph leakage
 
 **Depends on:** T05, T06, and T08.
@@ -1131,7 +1133,7 @@ These are the complete handoff gates; during implementation, use only the smalle
 - [x] T06 Add Spot UI absent from unrelated startup.
 - [x] T07 Add Spot intent hides the new lazy latency.
 - [x] T08 auth surface absent from unrelated startup.
-- [ ] T09 gated actions warm auth on exact intent.
+- [x] T09 gated actions warm auth on exact intent.
 - [ ] T10 Public Gallery absent from default Feed and only measured additional leakage corrected.
 - [ ] T11 Feed/Gallery query contracts centralized.
 - [ ] T12 primary content, auxiliary metadata, errors, and empty states are independent.

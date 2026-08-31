@@ -30,6 +30,13 @@ export function loadAuthSurface(): Promise<typeof import('./AuthModalSurface')> 
   return authSurfacePromise;
 }
 
+export function preloadAuthSurface(): Promise<void> {
+  return loadAuthSurface().then(
+    () => undefined,
+    () => undefined,
+  );
+}
+
 // A browser that has failed to fetch a dynamically imported module keeps
 // rejecting every later import() of that exact URL, even after connectivity
 // returns, so an in-place retry can never succeed. A full reload is the only

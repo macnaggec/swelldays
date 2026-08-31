@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   notifyError: vi.fn(),
   openAuthModal: vi.fn(),
+  preloadAuthSurface: vi.fn(() => Promise.resolve()),
   preloadRoute: vi.fn(),
   signOut: vi.fn(),
   user: {
@@ -36,12 +37,25 @@ vi.mock('@mantine/core', async (importOriginal) => {
         children,
         color: _color,
         onClick,
+        onPointerEnter,
+        onPointerDown,
+        onFocus,
       }: {
         children: ReactNode;
         color?: string;
         onClick?: () => void;
+        onPointerEnter?: () => void;
+        onPointerDown?: () => void;
+        onFocus?: () => void;
       }) => (
-        <button type="button" role="menuitem" onClick={onClick}>
+        <button
+          type="button"
+          role="menuitem"
+          onClick={onClick}
+          onPointerEnter={onPointerEnter}
+          onPointerDown={onPointerDown}
+          onFocus={onFocus}
+        >
           {children}
         </button>
       ),
@@ -65,6 +79,7 @@ vi.mock('shared/hooks/useUser', () => ({
 
 vi.mock('features/Auth', () => ({
   useAuthModal: () => ({ open: mocks.openAuthModal }),
+  preloadAuthSurface: mocks.preloadAuthSurface,
 }));
 
 vi.mock('shared/lib/auth', () => ({
@@ -108,6 +123,19 @@ describe('MenuControl', () => {
       [{ to: '/me/earnings' }],
       [{ to: '/me' }],
     ]);
+    expect(mocks.preloadAuthSurface).not.toHaveBeenCalled();
+  });
+
+  it('preloads the authentication surface from the signed-out "Sign in" menu item on pointer and focus intent', () => {
+    mocks.isAuthenticated = false;
+    render(<MenuControl />);
+
+    const signIn = screen.getByRole('menuitem', { name: 'Sign in' });
+    fireEvent.pointerEnter(signIn);
+    fireEvent.pointerDown(signIn);
+    fireEvent.focus(signIn);
+
+    expect(mocks.preloadAuthSurface).toHaveBeenCalledTimes(3);
   });
 
   it('preloads only About for a signed-out visitor', () => {
