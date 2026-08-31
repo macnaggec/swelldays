@@ -11,6 +11,7 @@ const lifecycle = vi.hoisted(() => ({
   moduleLoads: 0,
   mounts: 0,
   unmounts: 0,
+  rejectNextModuleLoad: false,
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -57,6 +58,10 @@ vi.mock('shared/lib/notifications', () => ({
 
 vi.mock('./ui/AddSpotPanel', async (importOriginal) => {
   lifecycle.moduleLoads += 1;
+  if (lifecycle.rejectNextModuleLoad) {
+    lifecycle.rejectNextModuleLoad = false;
+    throw new Error('Add Spot UI unavailable');
+  }
   const actual = await importOriginal<typeof import('./ui/AddSpotPanel')>();
   const { useEffect } = await import('react');
 
@@ -112,6 +117,7 @@ describe('Add Spot UI boundary', () => {
     lifecycle.moduleLoads = 0;
     lifecycle.mounts = 0;
     lifecycle.unmounts = 0;
+    lifecycle.rejectNextModuleLoad = false;
     useAddSpotStore.getState().exit();
   });
 
@@ -123,14 +129,13 @@ describe('Add Spot UI boundary', () => {
 
   it('loads the real workspace only while active without remounting the map', async () => {
     const user = userEvent.setup();
-    const featureModule: {
-      LazyAddSpotPanel?: unknown;
-      AddSpotPanel?: unknown;
-    } = await import('./index');
-    const Panel = featureModule.LazyAddSpotPanel ?? featureModule.AddSpotPanel;
+    const { LazyAddSpotPanel: Panel, preloadAddSpotUi } = await import('./index');
 
     if (!isRenderableComponent(Panel)) {
       throw new Error('Add Spot must expose a renderable UI boundary');
+    }
+    if (typeof preloadAddSpotUi !== 'function') {
+      throw new Error('Add Spot must expose a preload function');
     }
 
     expect(lifecycle.moduleLoads).toBe(0);
@@ -142,6 +147,14 @@ describe('Add Spot UI boundary', () => {
     );
     const map = screen.getByRole('application', { name: 'Globe map' });
 
+    lifecycle.rejectNextModuleLoad = true;
+    await Promise.all([
+      preloadAddSpotUi(),
+      preloadAddSpotUi(),
+      preloadAddSpotUi(),
+    ]);
+    expect(lifecycle.moduleLoads).toBe(1);
+
     act(() => {
       useAddSpotStore.getState().enter('Seeded break');
       useAddSpotStore.getState().setTempPin([151.2, -33.85]);
@@ -149,7 +162,7 @@ describe('Add Spot UI boundary', () => {
 
     expect(await screen.findByRole('textbox', { name: 'Spot name' }))
       .toHaveValue('Seeded break');
-    expect(lifecycle.moduleLoads).toBe(1);
+    expect(lifecycle.moduleLoads).toBe(2);
     expect(lifecycle.mounts).toBe(1);
     expect(screen.getByRole('application', { name: 'Globe map' })).toBe(map);
 

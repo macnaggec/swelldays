@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { Text } from '@mantine/core';
 import { SpotSearch } from 'features/SpotSearch';
-import { useAddSpot } from 'features/AddSpot';
+import { preloadAddSpotUi, useAddSpot } from 'features/AddSpot';
 import { useUser } from 'shared/hooks/useUser';
 import { useAuthModal } from 'features/Auth';
 import type { Spot } from 'entities/Spot';
@@ -25,6 +25,10 @@ export function FeedSearch({ placeholder, onSpotSelect, activeSpot: activeSpotOv
   const { isAuthenticated } = useUser();
   const { open: openAuthModal } = useAuthModal();
 
+  const handleAddSpotIntent = useCallback((): void => {
+    void preloadAddSpotUi();
+  }, []);
+
   const handleSelect = useCallback((spot: Spot) => {
     if (onSpotSelect) {
       onSpotSelect(spot);
@@ -37,7 +41,13 @@ export function FeedSearch({ placeholder, onSpotSelect, activeSpot: activeSpotOv
     (search: string): ReactNode => {
       if (isAuthenticated) {
         return (
-          <AppButton tone="highlight" onClick={() => startAddSpot(search)}>
+          <AppButton
+            tone="highlight"
+            onPointerEnter={handleAddSpotIntent}
+            onPointerDown={handleAddSpotIntent}
+            onFocus={handleAddSpotIntent}
+            onClick={() => startAddSpot(search)}
+          >
             Add as a new spot
           </AppButton>
         );
@@ -48,7 +58,7 @@ export function FeedSearch({ placeholder, onSpotSelect, activeSpot: activeSpotOv
         </Text>
       );
     },
-    [isAuthenticated, startAddSpot, openAuthModal],
+    [handleAddSpotIntent, isAuthenticated, startAddSpot, openAuthModal],
   );
 
   return (

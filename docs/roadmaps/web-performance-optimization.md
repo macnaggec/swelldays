@@ -523,6 +523,8 @@ Acceptance:
 
 Atomic commit: `perf(web): preload Add Spot UI on user intent`.
 
+**Handoff (2026-08-31):** T07 is complete and fully green. The authenticated “Add as a new spot” action now starts the existing feature-owned Add Spot UI loader on pointer enter, pointer down, and focus, while repeated events share its one cached module promise. Speculative rejection remains best-effort: the loader clears its cache, the event handler consumes the failure, and the later authoritative activation retries and preserves the seeded search term, panel lifecycle, and persistent map. Signed-out behavior remains unchanged and performs no Add Spot preload; T09 still owns future auth-surface intent warming. The implementation agent returned one test-order stop; the lead consolidated deduplication, rejection, and activation retry into one real lifecycle test to avoid a test-only reset API or second cache owner. Focused verification passed 77 tests across the lazy boundary and panel route files; both TypeScript checks, lint, style boundaries, both production builds, `git diff --check`, and the full 1,212-test client/server suite passed. No browser, deployment, live request, or visual check was performed because this task has no visible behavior change. T08 is next but requires the roadmap's explicit visual approval before implementation.
+
 ### T08 — Split the authentication controller from the modal surface
 
 **Depends on:** T01.
@@ -949,7 +951,7 @@ These are the complete handoff gates; during implementation, use only the smalle
 - [x] T04 artwork is requested only when the intro/review presentation owns it.
 - [x] T05 contracts core is Zod-free and only supported public entries are used.
 - [x] T06 Add Spot UI absent from unrelated startup.
-- [ ] T07 Add Spot intent hides the new lazy latency.
+- [x] T07 Add Spot intent hides the new lazy latency.
 - [ ] T08 auth surface absent from unrelated startup.
 - [ ] T09 gated actions warm auth on exact intent.
 - [ ] T10 Public Gallery absent from default Feed and only measured additional leakage corrected.

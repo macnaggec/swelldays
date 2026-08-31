@@ -55,6 +55,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   notifyError: vi.fn(),
   openAuth: vi.fn(),
+  preloadAddSpotUi: vi.fn(() => Promise.resolve()),
   preloadRoute: vi.fn(),
   startAddSpot: vi.fn(),
   isAuthenticated: false,
@@ -158,6 +159,7 @@ vi.mock('features/AddSpot', async (importOriginal) => {
   const actual = await importOriginal<typeof import('features/AddSpot')>();
   return {
     ...actual,
+    preloadAddSpotUi: mocks.preloadAddSpotUi,
     useAddSpot: () => ({ startAddSpot: mocks.startAddSpot }),
   };
 });
@@ -410,6 +412,13 @@ describe('Panel upload entry', () => {
     mocks.sizeBand = 'wide';
     mocks.heightBand = 'regular';
     mocks.renderRealFeedSearch = false;
+    mocks.spotResults = [{
+      id: 'spot-b',
+      slug: 'spot-b',
+      name: 'Spot B',
+      location: 'Somewhere',
+      coords: [1, 2],
+    }];
     usePanelExpansionStore.setState({ browsingExpanded: false, galleryExpanded: true });
     useAddSpotStore.getState().exit();
   });
@@ -428,6 +437,48 @@ describe('Panel upload entry', () => {
 
     expect(mocks.openAuth).toHaveBeenCalledOnce();
     expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('preloads Add Spot UI on authenticated intent before starting with the search term', async () => {
+    mocks.isAuthenticated = true;
+    mocks.renderRealFeedSearch = true;
+    mocks.spotResults = [];
+    const user = userEvent.setup();
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    await user.type(screen.getByPlaceholderText('Search for a spot...'), 'Seeded break');
+    const addSpotButton = await screen.findByRole('button', { name: 'Add as a new spot' });
+
+    fireEvent.pointerEnter(addSpotButton);
+    fireEvent.pointerDown(addSpotButton);
+    fireEvent.focus(addSpotButton);
+
+    expect(mocks.preloadAddSpotUi).toHaveBeenCalledTimes(3);
+    expect(mocks.startAddSpot).not.toHaveBeenCalled();
+
+    await user.click(addSpotButton);
+    expect(mocks.startAddSpot).toHaveBeenCalledWith('Seeded break');
+  });
+
+  it('keeps signed-out Add Spot intent behind authentication without preloading', async () => {
+    mocks.renderRealFeedSearch = true;
+    mocks.spotResults = [];
+    const user = userEvent.setup();
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    await user.type(screen.getByPlaceholderText('Search for a spot...'), 'Seeded break');
+    const signInAction = await screen.findByText('Sign in to add as a new spot');
+
+    fireEvent.pointerEnter(signInAction);
+    fireEvent.pointerDown(signInAction);
+    fireEvent.focus(signInAction);
+    fireEvent.click(signInAction);
+
+    expect(mocks.preloadAddSpotUi).not.toHaveBeenCalled();
+    expect(mocks.startAddSpot).not.toHaveBeenCalled();
+    expect(mocks.openAuth).toHaveBeenCalledOnce();
   });
 
   it('preloads Upload with the selected spot when the user approaches its control', () => {

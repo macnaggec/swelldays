@@ -1,3 +1,3 @@
 export { AddSpotProvider, useAddSpot } from './AddSpotProvider';
-export { LazyAddSpotPanel } from './AddSpotUiBoundary';
+export { LazyAddSpotPanel, preloadAddSpotUi } from './AddSpotUiBoundary';
 export { useAddSpotStore } from './model/addSpotStore';

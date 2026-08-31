@@ -13,6 +13,13 @@ export function loadAddSpotUi(): Promise<typeof import('./ui/AddSpotPanel')> {
   return addSpotUiPromise;
 }
 
+export function preloadAddSpotUi(): Promise<void> {
+  return loadAddSpotUi().then(
+    () => undefined,
+    () => undefined,
+  );
+}
+
 export const LazyAddSpotPanel: LazyExoticComponent<
   typeof import('./ui/AddSpotPanel')['AddSpotPanel']
 > = lazy(() => (
