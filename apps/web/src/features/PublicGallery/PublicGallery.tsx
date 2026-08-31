@@ -26,7 +26,7 @@ import {
 } from './model/galleryDateHighlights';
 import { usePublicGalleryActions } from './model/usePublicGalleryActions';
 import { EMPTY_BROWSE_FILTERS, type BrowseFilters } from 'shared/model/browseFilters';
-import { GalleryEmptyState } from './ui/GalleryEmptyState';
+import { PanelCollectionEmptyState } from 'shared/ui/PanelCollectionEmptyState';
 
 const TABLET_SIDE_OVERLAY_MIN_COLUMNS = 2;
 const TABLET_SIDE_OVERLAY_MAX_COLUMNS = 4;
@@ -268,7 +268,7 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
           : 'Published photos and clips will show up here. Use Upload above to add the first set.';
 
     return (
-      <GalleryEmptyState
+      <PanelCollectionEmptyState
         title={emptyMessage ?? (hasActiveFilters ? 'No shots match this view' : 'No shots here yet')}
         description={description}
         actionLabel={hasActiveFilters ? 'Show all media' : undefined}

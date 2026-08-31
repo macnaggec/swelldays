@@ -242,7 +242,10 @@ const createFixture = async (hash: string): Promise<Fixture> => {
         isDynamicEntry: true,
         imports: [`assets/index-${hash}.js`, `assets/feed-extra-${hash}.js`],
         dynamicImports: [],
-        modules: ['src/app/routes/_panel.index.tsx'],
+        modules: [
+          'src/app/routes/_panel.index.tsx',
+          'src/features/PublicGallery/ui/GalleryEmptyState.tsx',
+        ],
       },
       {
         file: `assets/feed-extra-${hash}.js`,
@@ -633,6 +636,28 @@ describe('analyzeWebBundle', () => {
         ]),
       }),
     ]));
+  });
+
+  it('reports the Public Gallery feature module reachable from the Default Browse Feed graph', async () => {
+    const fixture = await createFixture('public-gallery-assertions');
+    fixture.config.moduleAbsenceAssertions = [
+      {
+        label: 'Default Browse Feed excludes Public Gallery feature modules',
+        graph: 'browse-feed',
+        forbiddenModuleSubstrings: ['src/features/PublicGallery/'],
+      },
+    ];
+    await writeJson(fixture.configPath, fixture.config);
+
+    const report = await analyzeFixture(fixture);
+
+    expect(report.moduleAssertionFailures).toEqual([
+      {
+        label: 'Default Browse Feed excludes Public Gallery feature modules',
+        graph: 'browse-feed',
+        matchingModules: ['src/features/PublicGallery/ui/GalleryEmptyState.tsx'],
+      },
+    ]);
   });
 
   it('sums raw file lengths and per-file gzip sizes after deduplication', async () => {

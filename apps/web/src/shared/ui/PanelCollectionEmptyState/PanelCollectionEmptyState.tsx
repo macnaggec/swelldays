@@ -1,19 +1,19 @@
-import styles from './GalleryEmptyState.module.css';
+import styles from './PanelCollectionEmptyState.module.css';
 import { AppButton } from 'shared/ui/AppButton';
 
-interface GalleryEmptyStateProps {
+interface PanelCollectionEmptyStateProps {
   title: string;
   description: string;
   actionLabel?: string;
   onAction?: () => void;
 }
 
-export function GalleryEmptyState({
+export function PanelCollectionEmptyState({
   title,
   description,
   actionLabel,
   onAction,
-}: GalleryEmptyStateProps) {
+}: PanelCollectionEmptyStateProps) {
   return (
     <section className={styles.root} aria-labelledby="gallery-empty-title">
       <div className={styles.content}>

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Center, Loader, Skeleton, Stack, Text } from '@mantine/core';
 import { IconPhoto, IconMapPin } from '@tabler/icons-react';
 import { useSessionFeed, type SurfSessionItem } from 'entities/SurfSession';
-import { GalleryEmptyState } from 'features/PublicGallery';
+import { PanelCollectionEmptyState } from 'shared/ui/PanelCollectionEmptyState';
 import type { BrowseFilters } from 'shared/model/browseFilters';
 import { formatDateRange } from 'shared/lib/dateUtils';
 import { DRAWER_SHELL_TRANSITION } from 'shared/ui/DrawerShell';
@@ -123,7 +123,7 @@ export function SessionFeed({
           ))}
         </PanelCollectionGrid>
       ) : sessions.length === 0 ? (
-        <GalleryEmptyState
+        <PanelCollectionEmptyState
           title={hasActiveFilters ? 'No sessions match this view' : 'No sessions here yet'}
           description={emptyDescription}
         />
