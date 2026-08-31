@@ -17,6 +17,7 @@
   line-height: 1.4;
   white-space: nowrap;
   box-shadow: none;
+  cursor: pointer;
   transition:
     color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
     background-color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
