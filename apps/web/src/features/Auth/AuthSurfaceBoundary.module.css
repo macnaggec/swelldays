@@ -1,0 +1,92 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--wa-z-modal-interrupt);
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  padding:
+    calc(var(--wa-shell-edge-clearance) + var(--wa-safe-area-top))
+    calc(var(--wa-shell-edge-clearance) + var(--wa-safe-area-right))
+    calc(var(--wa-shell-edge-clearance) + var(--wa-safe-area-bottom))
+    calc(var(--wa-shell-edge-clearance) + var(--wa-safe-area-left));
+  background: color-mix(in srgb, transparent, var(--wa-surface-media-fallback) 62%);
+}
+
+.dialog {
+  box-sizing: border-box;
+  width: min(100%, 360px);
+  padding: 24px;
+  color: var(--wa-text-primary);
+  background: var(--wa-surface-dialog-opaque);
+  border: 1px solid var(--wa-control-border);
+  border-radius: var(--wa-radius-dialog);
+  box-shadow: var(--wa-glass-shadow-md);
+}
+
+.title {
+  margin: 0;
+  color: var(--wa-text-strong);
+  font-size: var(--wa-font-size-lg);
+  line-height: 1.25;
+}
+
+.message {
+  margin: 12px 0 0;
+  color: var(--wa-text-muted);
+  font-size: var(--wa-font-size-base);
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.button {
+  min-width: var(--wa-control-height-default);
+  height: var(--wa-control-height-default);
+  padding-inline: 14px;
+  color: var(--wa-text-primary);
+  font: inherit;
+  font-size: var(--wa-font-size-sm);
+  background: var(--wa-control-fill);
+  border: 1px solid var(--wa-control-border);
+  border-radius: var(--wa-radius-pill);
+  cursor: pointer;
+  transition:
+    background-color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    border-color var(--wa-motion-duration-control) var(--wa-motion-easing-standard),
+    transform var(--wa-motion-duration-control) var(--wa-motion-easing-standard);
+}
+
+.button:hover {
+  background: var(--wa-control-fill-hover);
+}
+
+.button:active {
+  transform: translateY(1px);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--wa-accent-spot);
+  outline-offset: 2px;
+}
+
+.retryButton {
+  color: var(--wa-text-on-accent);
+  background: var(--wa-control-fill-selected);
+  border-color: var(--wa-accent-spot);
+}
+
+.retryButton:hover {
+  background: color-mix(in srgb, var(--wa-accent-spot) 88%, white);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+}

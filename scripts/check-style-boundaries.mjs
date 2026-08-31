@@ -206,7 +206,7 @@ const requiredFloatingChromeOffsetStyles = [
 // it (auth) each declare their tier so an interrupt always outranks content.
 const requiredModalRoleTokenByFile = new Map([
   ['apps/web/src/shared/ui/CarouselLightbox/CarouselLightbox.tsx', 'var(--wa-z-modal-content)'],
-  ['apps/web/src/features/Auth/AuthModalProvider.tsx', 'var(--wa-z-modal-interrupt)'],
+  ['apps/web/src/features/Auth/AuthModalSurface.tsx', 'var(--wa-z-modal-interrupt)'],
 ]);
 
 const requiredResponsiveTokensByFile = new Map([

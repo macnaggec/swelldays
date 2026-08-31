@@ -3,25 +3,28 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { useAuthModal } from 'entities/Identity';
 import { AuthModalProvider } from './AuthModalProvider';
+import type { AuthSurfaceBoundaryProps } from './AuthSurfaceBoundary';
 
-// AuthPage drags in the login/register forms and their data layer; the interrupt
-// dismissal behavior under test doesn't need them.
-vi.mock('./ui/AuthPage', () => ({
-  AuthPage: ({
+// The deferred surface owns the forms and viewport presentation; the eager
+// controller behavior under test only needs its callback contract.
+vi.mock('./AuthSurfaceBoundary', () => ({
+  AuthSurfaceBoundary: ({
     mode,
     onModeChange,
-    onSuccess,
-  }: {
-    mode: 'login' | 'register';
-    onModeChange: (mode: 'login' | 'register') => void;
-    onSuccess?: () => void;
-  }) => (
-    <>
+    onAuthenticated,
+    onClose,
+  }: AuthSurfaceBoundaryProps) => (
+    <section role="dialog">
+      <h2>
+        {mode === 'login'
+          ? 'Sign in to Swelldays'
+          : 'Create your Swelldays account'}
+      </h2>
       <div>Auth form</div>
-      <div>Auth mode: {mode}</div>
       <button type="button" onClick={() => onModeChange('register')}>show-registration</button>
-      <button type="button" onClick={() => onSuccess?.()}>succeed-auth</button>
-    </>
+      <button type="button" onClick={onAuthenticated}>succeed-auth</button>
+      <button type="button" onClick={onClose}>dismiss-auth</button>
+    </section>
   ),
 }));
 
@@ -84,6 +87,24 @@ describe('AuthModalProvider — the interrupt owns Escape', () => {
 });
 
 describe('AuthModalProvider — one controlled auth workspace', () => {
+  it('keeps the opener and closer ready while mounting the surface only when opened', () => {
+    render(
+      <AuthModalProvider>
+        <Opener />
+      </AuthModalProvider>,
+    );
+
+    expect(screen.getByText('open-auth')).toBeInTheDocument();
+    expect(screen.getByText('close-auth')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('open-auth'));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('close-auth'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('starts with one sign-in heading, switches that heading, and resets on reopen', () => {
     render(
       <AuthModalProvider>

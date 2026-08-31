@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 const sourceRoot = 'apps/web/src';
 const appButtonFile = 'apps/web/src/shared/ui/AppButton/AppButton.tsx';
 const nativeButtonOwners = new Set([
+  'apps/web/src/features/Auth/AuthSurfaceBoundary.tsx',
   'apps/web/src/features/PublicGallery/ui/GalleryDateJumpHeading.tsx',
   'apps/web/src/features/PublicGallery/ui/GalleryDateMonthList.tsx',
   'apps/web/src/shared/ui/BaseGallery/BaseCard.tsx',

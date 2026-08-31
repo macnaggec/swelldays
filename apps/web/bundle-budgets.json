@@ -66,6 +66,15 @@
       ]
     },
     {
+      "label": "Startup excludes authentication modal surface and forms",
+      "graph": "entry",
+      "forbiddenModuleSubstrings": [
+        "src/features/Auth/AuthModalProvider.module.css",
+        "src/features/Auth/AuthModalSurface.tsx",
+        "src/features/Auth/ui/"
+      ]
+    },
+    {
       "label": "Default Browse Feed excludes Add Spot workspace UI and validation",
       "graph": "browse-feed",
       "forbiddenModuleSubstrings": [

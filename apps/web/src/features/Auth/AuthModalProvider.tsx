@@ -4,42 +4,17 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type ReactElement,
   type ReactNode,
 } from 'react';
-import { Modal } from '@mantine/core';
 import { AuthModalContext, type AuthModalOpenOptions } from 'entities/Identity';
-import { resolveModalWorkspacePresentation, useViewportCapabilities } from 'shared/model/viewportCapabilities';
-import { useViewportMetrics } from 'shared/model/viewportMetrics';
-import { AuthPage, type AuthMode } from './ui/AuthPage';
-import classes from './AuthModalProvider.module.css';
-
-interface AuthModalViewportStyle extends CSSProperties {
-  '--wa-auth-visual-viewport-width': string;
-  '--wa-auth-visual-viewport-height': string;
-  '--wa-auth-visual-viewport-left': string;
-  '--wa-auth-visual-viewport-top': string;
-}
+import { AuthSurfaceBoundary } from './AuthSurfaceBoundary';
+import type { AuthMode } from './ui/AuthPage';
 
 export function AuthModalProvider({ children }: { children: ReactNode }): ReactElement {
   const [opened, setOpened] = useState(false);
   const [mode, setMode] = useState<AuthMode>('login');
   const continuationRef = useRef<(() => void) | null>(null);
-  const { sizeBand, heightBand } = useViewportCapabilities();
-  const {
-    visualViewportWidthPx,
-    visualViewportHeightPx,
-    visualViewportOffsetLeftPx,
-    visualViewportOffsetTopPx,
-  } = useViewportMetrics();
-  const presentation = resolveModalWorkspacePresentation(sizeBand, heightBand);
-  const viewportStyle: AuthModalViewportStyle = {
-    '--wa-auth-visual-viewport-width': `${visualViewportWidthPx}px`,
-    '--wa-auth-visual-viewport-height': `${visualViewportHeightPx}px`,
-    '--wa-auth-visual-viewport-left': `${visualViewportOffsetLeftPx}px`,
-    '--wa-auth-visual-viewport-top': `${visualViewportOffsetTopPx}px`,
-  };
 
   const open = useCallback((options?: AuthModalOpenOptions) => {
     continuationRef.current = options?.onAuthenticated ?? null;
@@ -87,34 +62,14 @@ export function AuthModalProvider({ children }: { children: ReactNode }): ReactE
   return (
     <AuthModalContext.Provider value={value}>
       {children}
-      <Modal
-        opened={opened}
-        onClose={close}
-        centered
-        size="sm"
-        fullScreen={presentation !== 'dialog'}
-        title={mode === 'login'
-          ? 'Sign in to Swelldays'
-          : 'Create your Swelldays account'}
-        zIndex="var(--wa-z-modal-interrupt)"
-        data-auth-presentation={presentation}
-        style={viewportStyle}
-        classNames={{
-          root: classes.root,
-          inner: classes.inner,
-          content: classes.content,
-          header: classes.header,
-          body: classes.body,
-          close: classes.close,
-        }}
-        closeButtonProps={{ 'aria-label': 'Close' }}
-      >
-        <AuthPage
+      {opened && (
+        <AuthSurfaceBoundary
           mode={mode}
           onModeChange={setMode}
-          onSuccess={handleAuthenticated}
+          onAuthenticated={handleAuthenticated}
+          onClose={close}
         />
-      </Modal>
+      )}
     </AuthModalContext.Provider>
   );
 }

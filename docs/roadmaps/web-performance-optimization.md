@@ -1,7 +1,7 @@
 # Web Performance Optimization Roadmap
 
-Status: proposed
-Updated: 2026-08-28
+Status: in progress
+Updated: 2026-08-29
 Primary objective: reduce cold-start transfer, startup execution, and intent-to-content latency without weakening the map-first product, first-visit experience, route ownership, or existing responsive contracts.
 
 ## Executive summary
@@ -120,27 +120,97 @@ Feed sessions and Gallery media cards own the content-ready state. Calendar/date
 
 ### Lead agent responsibilities
 
-The lead agent owns all architecture, scope, code edits, dependency order, decisions, final verification, staging, and commit requests. Before every task it must:
+The lead agent owns architecture, scope, dependency order, decisions, the implementation contract, final verification, staging, and commit requests. A lower-cost implementation agent may own the bounded source/test edits for one task only after every decision listed below is fixed in writing. Before every task the lead must:
 
 1. Read this roadmap and the current task section completely.
 2. Inspect `git status` and preserve unrelated or user-owned work.
 3. Resolve generated-file activity before editing route files.
 4. Record the exact baseline relevant to the task.
 5. Add or identify a failing behavior/contract test before implementation where practical.
-6. Assign one edit owner per file.
-7. Stop when a required gate is red; do not weaken the gate.
+6. Assign one edit owner per file and name every allowed edit path, including planned new files.
+7. Record the task-specific focused commands and the complete handoff gates.
+8. Record what evidence the implementation agent must return.
+9. Stop when a required gate is red; do not weaken the gate.
+
+### Lower-cost implementation-agent eligibility
+
+A task is implementation-agent ready only when all of these are true:
+
+- Its dependencies are checked complete and no overlapping task is editing the same owner.
+- The lead has already chosen the interface, ownership boundary, fallback behavior, and rollback point. The implementation agent is not asked to choose among designs.
+- `.scratch/CONTRACT.md` lists an exact allowlist of edit paths. Directories, globs, “likely files,” and “related tests” are not an edit allowlist.
+- The first failing behavioral or build contract and its exact command are named. If a red-first test is genuinely impractical, the contract contains a reproducible measured baseline and the lead's reason.
+- Acceptance is observable through named tests, build output, bundle arithmetic, or response evidence. “Improve,” “clean up,” and “measurably” are not sufficient without a threshold or a lead-owned retain/revert decision.
+- All approval-gated work is excluded. The task cannot require a browser, deployment, public probing, staging, committing, pushing, dependency installation, or product/visual judgment.
+- Stop conditions are explicit, including unexpected owners, a red base, an interface decision, a budget increase, or a result below the task's retain threshold.
+
+If any item is missing, delegate discovery only. The lead resolves the gap and rewrites the contract before implementation starts.
+
+### Lower-cost implementation-agent rules
+
+The implementation agent must:
+
+1. Read `CLAUDE.md`, this operating protocol, the selected task, and `.scratch/CONTRACT.md` completely.
+2. Confirm that `git status --short` matches the contract. It must not absorb, revert, format, stage, or commit user-owned changes.
+3. Edit only the allowlisted paths. A newly discovered edit path is a stop-and-return condition, not implied permission.
+4. Make the named contract fail for the intended reason, then make the smallest implementation pass it.
+5. Preserve existing public interfaces and visible behavior unless the contract names an exact change.
+6. Run the focused commands, then the complete handoff commands from the contract. It must not weaken, skip, or reinterpret a red check.
+7. Leave the roadmap, `.scratch/CONTRACT.md`, generated route output, lockfiles, workflows, budgets, staging area, and commits untouched unless the allowlist names the exact file and purpose.
+8. Return the handback report below and stop. It must not start the next task.
+
+Implementation agents must not open a browser or start a development/preview server. Runtime checks that require a browser or a live origin remain a user/lead acceptance step under `CLAUDE.md` and the approval boundaries in this roadmap.
+
+### Required implementation-agent handback
+
+```text
+Task: Txx — <single outcome>
+Changed paths: <exact list>
+Red evidence: <command and the intended failure>
+Focused green evidence: <commands and pass counts/results>
+Full handoff evidence: <each required command and result>
+Before/after evidence: <bytes, graph membership, request contract, or n/a>
+Contract deviations: <none, or the exact unresolved mismatch>
+Uninspected/unverified: <explicit list>
+Risks and lead decisions needed: <none, or stop reason>
+```
+
+The lead independently inspects the diff and reruns the required evidence. A clean handback is evidence to review, not permission to update the roadmap or commit.
+
+### Delegation classes for this roadmap
+
+- **Closed, do not redispatch:** T00-T05. Their handoffs are the accepted record. Any regression becomes a new bounded task instead of silently reopening a completed task.
+- **Bounded implementation after contract:** T06-T09, T11, T12, and the separately dispatched T13a/T13b/T13c slices.
+- **Must be split before implementation:** T10. T10a removes the already-proven Feed-to-Public-Gallery edge; every later measured edge becomes its own lead-approved T10b contract.
+- **Decision gate, discovery first:** T14. Scouts may collect evidence, but an implementation agent receives only one selected candidate with a fixed threshold and file allowlist.
+- **Lead/approval owned:** T15. Local build, container verification, and report production may be delegated under the exact contract. Deployment, live checks, budget ratchets, roadmap closeout, staging, and commits remain with the lead and require the stated approvals.
+
+| Tasks | Delegation state | Dispatch unit |
+| --- | --- | --- |
+| T00-T05 | Closed | Do not redispatch; create a new regression task if evidence stops holding |
+| T06 | Prepared | One lazy-boundary implementation after fresh bundle baseline |
+| T07 | Prepared after T06 | One intent-wiring implementation |
+| T08 | Prepared after baseline and visual approval | One controller/surface split |
+| T09 | Prepared after T08 | One serial intent-wiring implementation |
+| T10 | Split required | T10a known ownership edge; one T10b contract per later measured cause |
+| T11 | Prepared | T11a sessions factory, then T11b media factories |
+| T12 | Prepared after visual approval | T12a readiness, then T12b retryable errors |
+| T13 | Split required | T13a Browse, T13b Upload, then one measured T13c account item at a time |
+| T14 | Not yet implementation-ready | One evidence-selected candidate only |
+| T15 | Lead/approval owned | Local verifier may report; lead performs live closeout and ratchet |
 
 ### Work delegated to subagents
 
-Use subagents proactively for bounded, read-only, parallel work:
+Use discovery/review agents for bounded, read-only, parallel work and one lower-cost implementation agent for the contract's single edit allowlist:
 
 - `search-scout`: locate imports, exports, asset references, matching tests, route IDs, query keys, and prior-art patterns with `rg`/file reads.
 - `bundle-scout`: run production builds, read manifests/source maps, compare raw/gzip totals, and report module/request movement. It must not edit configuration.
 - `test-scout`: identify the narrowest existing tests and stable behavioral locators. It must reject source-text snapshots when runtime behavior has an owner.
 - `delivery-scout`: inspect Nginx/Docker/CI/release paths and perform read-only header checks when live access is approved.
 - `diff-reviewer`: review the finished task diff for scope leakage, duplicated state ownership, accidental eager imports, and missing tests.
+- `implementation-agent`: execute one completed `.scratch/CONTRACT.md`, own only its allowlisted files, run red/green and handoff commands, return the required report, and stop before staging or the next task.
 
-Searches, inventories, log classification, and before/after arithmetic should be delegated. Architectural choice, code mutation, staging, committing, deployment, and approval decisions remain with the lead.
+Searches, inventories, log classification, before/after arithmetic, and contract-bounded source/test edits may be delegated. Architectural choice, contract changes, cross-contract mutation, final verification, staging, committing, deployment, and approval decisions remain with the lead.
 
 ### Subagent output contract
 
@@ -183,7 +253,7 @@ diff-reviewer: After implementation, inspect only the Txx diff against this road
 report scope leakage, ownership duplication, eager edges, and missing gates. Do not fix it.
 ```
 
-The lead continues local baseline inspection while scouts run, synthesizes their reports, and writes the implementation. A subagent may receive a code/test edit only when its file list is disjoint, the interface is already decided, and one agent remains the sole owner of each file. Search, inventories, log/error classification, command discovery, and byte arithmetic are the default delegated work; architecture and cross-file mutation are not.
+The lead continues local baseline inspection while scouts run, synthesizes their reports, fixes every decision in `.scratch/CONTRACT.md`, and then dispatches one implementation agent. A subagent may receive a code/test edit only when its exact file list is disjoint from all other work, the interface is already decided, and one agent remains the sole owner of each file. Architecture, scope expansion, contract edits, roadmap edits, and cross-contract mutation are never delegated.
 
 ### Parallelism restrictions
 
@@ -193,7 +263,7 @@ The lead continues local baseline inspection while scouts run, synthesizes their
 - Query-prefetch work and the existing route-preload patch both touch the panel composition route and must be serial.
 - Asset hashing and first-visit artwork request ownership both touch startup HTML/asset references and must be serial.
 - Contracts export changes and application import migrations must use one package-boundary edit owner; subagents may inventory imports but must not bulk-rewrite them.
-- Subagents may search these areas concurrently, but the lead performs the edit after synthesizing their findings.
+- Subagents may search these areas concurrently. Source edits begin only after the lead synthesizes their findings and assigns the exact file allowlist to one implementation owner.
 
 ## Dependency and execution order
 
@@ -230,6 +300,7 @@ Tasks that share source files remain serial even when their dependency lines wou
 
 **Depends on:** none.
 **Outcome:** the current intent-preload work is reviewed, fully green, and isolated from all later performance changes.
+**Implementation delegation:** closed; do not redispatch. Treat commit `6142645` and the handoff below as the accepted evidence. If route-intent behavior regresses, create a new task with the current route topology instead of replaying this historical contract.
 
 Lead work:
 
@@ -259,6 +330,7 @@ Atomic commit if approved: `perf(web): preload likely panel routes on intent`.
 
 **Depends on:** T00.
 **Outcome:** CI can detect entry-weight regression even when Vite only emits an advisory.
+**Implementation delegation:** closed; do not redispatch. Treat commits `fa8eebd` and `f7e7eb8` and the handoff below as the accepted evidence. Changes to checker semantics, CI placement, or budgets require a new task with a new red fixture and explicit budget authority.
 
 Lead work:
 
@@ -300,6 +372,7 @@ Atomic commits:
 
 **Depends on:** T01.
 **Outcome:** compressible files from the production container negotiate gzip and retain correct cache semantics.
+**Implementation delegation:** closed; do not redispatch. Treat commits `67bbe3a` and `c63ce4a` and the handoff below as the accepted local/CI evidence. Public verification remains an approval-gated T15 concern.
 
 Lead work:
 
@@ -343,6 +416,7 @@ Post-deploy gate: verify an actual live GET, not only the container. Deployment 
 
 **Depends on:** T01.
 **Outcome:** the bootstrap logo and responsive first-visit artwork are processed by Vite and can be cached immutably without stale stable-path risk.
+**Implementation delegation:** closed; do not redispatch. Treat commit `2a5a5d2` and the handoff below as the accepted asset identity and build-graph evidence. Any artwork replacement is a new browser-visible task and requires visual approval.
 
 Lead work:
 
@@ -378,6 +452,7 @@ Atomic commit: `perf(web): fingerprint startup visual assets`.
 
 **Depends on:** T03.
 **Outcome:** first-visit artwork is requested only after the application has decided to render the intro, avoiding wasted downloads for authenticated, returning, and otherwise ineligible visitors.
+**Implementation delegation:** closed; do not redispatch. Treat commit `9d65b5a` and the handoff below as the accepted behavior. The measured escape hatch remains a separate, approval-gated task.
 
 Lead work:
 
@@ -418,6 +493,7 @@ Optional follow-up, only with visual approval: downscale or losslessly recompres
 
 **Depends on:** T01.
 **Outcome:** browser startup code can consume shared constants, types, and Zod-free helpers without pulling the validation library or unsupported package internals into the entry graph.
+**Implementation delegation:** closed; do not redispatch. Treat commit `3b1a06b` and the handoff below as the accepted package-boundary evidence. New contract entries require their own package-export, resolution, boundary-rule, and browser-graph contract.
 
 Lead work:
 
@@ -465,6 +541,15 @@ Atomic commits:
 **Depends on:** T05.
 **Outcome:** Add Spot state remains globally available, while its panel, validation schemas, and form UI leave the startup graph.
 
+**Implementation-agent packet:** ready after the lead records a fresh `npm run build:client && npm run check:bundle-budgets` baseline in `.scratch/CONTRACT.md`.
+
+- Fixed design: keep `AddSpotProvider`, `useAddSpot`, and `useAddSpotStore` eager through `features/AddSpot/index.ts`. Add `features/AddSpot/AddSpotUiBoundary.tsx`, which owns one cached dynamic import of `./ui/AddSpotPanel`, exports `LazyAddSpotPanel`, and exposes the same module promise for T07's `preloadAddSpotUi`. `GlobeScene` renders the lazy component only for `immersiveMapInput` with a non-covering `null` fallback. Do not add a provider, store, or route.
+- Exact edit allowlist: `apps/web/src/features/AddSpot/index.ts`; new `apps/web/src/features/AddSpot/AddSpotUiBoundary.tsx`; new `apps/web/src/features/AddSpot/AddSpotUiBoundary.test.tsx`; `apps/web/src/views/GlobeScene/GlobeScene.tsx`; `apps/web/src/views/GlobeScene/GlobeScene.test.tsx`; `apps/web/bundle-budgets.json`; `apps/web/scripts/bundleBudget.test.ts`. `apps/web/scripts/bundleBudget.ts` is read-only because the existing module-absence mechanism is sufficient.
+- Red contract: the boundary test proves the UI loader is not called while Add Spot is inactive, is called once after the existing store enters, preserves the seeded name/pin, and unmounts on exit without remounting the map. The bundle fixture/config must fail while Add Spot UI, `validation/spot`, or `node_modules/zod/` remains in the entry graph.
+- Focused commands: `npx vitest run --project client apps/web/src/features/AddSpot/AddSpotUiBoundary.test.tsx apps/web/src/views/GlobeScene/GlobeScene.test.tsx`; `npx vitest run --project scripts apps/web/scripts/bundleBudget.test.ts`; `npm run build:client`; `npm run check:bundle-budgets`.
+- Retain threshold: after a fresh identical-env build, entry or default Browse Feed must fall by at least 5,120 gzip bytes, and the entry graph must exclude Add Spot UI, spot validation, and Zod. If it does not, stop and return the measurements without changing budgets.
+- Stop conditions: the split requires edits to `AddSpotProvider.tsx`, `addSpotStore.ts`, `useAddSpotFlow.ts`, generated routes, Vite configuration, or any UI/CSS behavior; a new eager edge keeps the panel in startup; the fallback would cover/remount the map; any budget must rise.
+
 Lead work:
 
 - Keep the Add Spot store and lightweight provider eager.
@@ -503,6 +588,14 @@ Atomic commits:
 **Depends on:** T06.
 **Outcome:** moving Add Spot out of startup does not create a noticeable wait after the user chooses “Add as a new spot.”
 
+**Implementation-agent packet:** ready only after T06 is independently green and committed.
+
+- Fixed design: export `preloadAddSpotUi` from `features/AddSpot/index.ts` using T06's cached module promise. Attach it directly to the rendered “Add as a new spot” button's pointer-enter, pointer-down, and focus events. For the signed-out action, call `preloadAuthSurface` from T09 instead; if T09 is not complete, leave signed-out behavior unchanged and do not partially implement that branch.
+- Exact edit allowlist: `apps/web/src/features/AddSpot/AddSpotUiBoundary.tsx`; `apps/web/src/features/AddSpot/AddSpotUiBoundary.test.tsx`; `apps/web/src/features/AddSpot/index.ts`; `apps/web/src/widgets/FeedDrawer/FeedSearch.tsx`; `apps/web/src/app/routes/-_panel.test.tsx`. `AppButton` already forwards native intent handlers and is read-only.
+- Red contract: authenticated pointer-enter, pointer-down, and focus call one deduplicated loader before `startAddSpot`; repeated intent is idempotent; rejected preload is consumed and a later click still activates the normal lazy render; signed-out intent does not call the Add Spot loader.
+- Focused command: `npx vitest run --project client apps/web/src/features/AddSpot/AddSpotUiBoundary.test.tsx apps/web/src/app/routes/-_panel.test.tsx`.
+- Stop conditions: another Add Spot entry action is discovered outside the search empty action; satisfying signed-out behavior would require implementing T09 early; the loader needs a second promise/cache owner; any click, search-term seed, or auth-continuation behavior would change.
+
 Lead work:
 
 - Export one idempotent `preloadAddSpotUi` operation from the feature-owned lazy entry.
@@ -529,6 +622,15 @@ Atomic commit: `perf(web): preload Add Spot UI on user intent`.
 
 **Depends on:** T01.
 **Outcome:** auth continuation/context remains root-owned, while modal, login, registration, and related control UI load only when needed.
+
+**Implementation-agent packet:** ready after the lead records a fresh bundle baseline, confirms T06/T07 are not editing shared intent callers, and obtains visual approval for the rare load-error retry/close fallback.
+
+- Fixed design: `AuthModalProvider.tsx` keeps only context, opened/mode/continuation state, `open`/`close`, authenticated continuation, and Escape capture. Move the Mantine `Modal`, viewport presentation/style, `AuthPage`, and surface CSS import into new `AuthModalSurface.tsx`. Add `AuthSurfaceBoundary.tsx` with one cached dynamic-import function whose cache clears on rejection. It owns a fresh `lazy(...)` type per retry generation and a local error boundary, so retry does not reuse React's rejected lazy payload. Mount it only while opening/open. Its small native fallback exposes Retry and Close through provider callbacks and never owns continuation state.
+- Exact edit allowlist: `apps/web/src/features/Auth/AuthModalProvider.tsx`; `apps/web/src/features/Auth/AuthModalProvider.test.tsx`; new `apps/web/src/features/Auth/AuthModalSurface.tsx`; new `apps/web/src/features/Auth/AuthSurfaceBoundary.tsx`; new `apps/web/src/features/Auth/AuthSurfaceBoundary.module.css`; new `apps/web/src/features/Auth/AuthSurfaceBoundary.test.tsx`; `apps/web/src/features/Auth/index.ts`; `apps/web/bundle-budgets.json`; `apps/web/scripts/bundleBudget.test.ts`. Existing `AuthModalProvider.module.css` and the mobile layout harness are read-only inputs; any required edit to them is a stop condition because normal auth presentation must not change.
+- Red contract: a closed provider exposes working `open`/`close` context without loading the surface; opening loads once and preserves the supplied continuation; Escape closes only auth; a rejected first load shows retry/close behavior and a retry can load successfully. The bundle contract fails while auth forms, `AuthPage`, or the modal surface remains in the entry graph.
+- Focused commands: `npx vitest run --project client apps/web/src/features/Auth/AuthModalProvider.test.tsx apps/web/src/features/Auth/AuthSurfaceBoundary.test.tsx`; `npx vitest run --project scripts apps/web/scripts/bundleBudget.test.ts`; `npm run build:client`; `npm run check:bundle-budgets`; after the user's manual visual approval, `DEV_HTTPS=true npm run test:layout` at final closeout only.
+- Retain threshold: the entry or default Browse Feed graph must fall by at least 5,120 gzip bytes with auth forms absent from signed-in/closed startup. Stop and return measurements without raising budgets if it does not.
+- Stop conditions: root session ownership must move; direct `/auth` route behavior must change; the fallback cannot close/retry; mobile/dialog geometry or copy changes; another task is editing `AuthModalProvider.tsx` or `mobileLayoutContract.tsx`.
 
 Lead work:
 
@@ -562,10 +664,20 @@ Atomic commits:
 1. `refactor(web): isolate auth modal controller`
 2. `perf(web): lazy-load authentication surface`
 
+**Handoff (2026-08-31):** T08 is complete and fully green. `AuthModalProvider.tsx` now keeps only context, opened/mode/continuation state, `open`/`close`, authenticated continuation, and capture-phase Escape, mounting a new `AuthSurfaceBoundary` only while `opened` is true. The Mantine modal, viewport presentation/metrics, unchanged auth stylesheet, and `AuthPage` moved unchanged into new `AuthModalSurface.tsx`, which `AuthSurfaceBoundary` loads through one cached, rejection-resetting dynamic import; a fresh `lazy(...)` type is created per retry generation so a rejected payload is never reused, and a local error boundary renders a native "Sign in unavailable" fallback with working Retry and Close actions, keyed by that same generation. `scripts/check-style-boundaries.mjs`'s modal z-index rule now targets `AuthModalSurface.tsx`, the file that actually renders the modal. One deviation from `.scratch/CONTRACT.md`: the native Retry/Close buttons in the new failure fallback tripped the pre-existing `AppButton.boundary.test.ts` rule restricting native `<button>` elements to an explicit allowlist; the contract itself required avoiding an `AppButton`/Mantine dependency in this fallback, so the lead added `AuthSurfaceBoundary.tsx` to that allowlist as the matching machine-enforcement update rather than weakening the rule. Production evidence: entry JavaScript moved from 850,774 raw / 269,172 gzip bytes to 831,456 raw / 263,872 gzip (−5,300 gzip, past the 5,120 gzip retain threshold), entry CSS moved from 271,169 raw / 41,218 gzip to 268,315 raw / 40,757 gzip, and the default Browse Feed graph moved from 1,473,534 raw / 425,198 gzip to 1,460,394 raw / 422,418 gzip. The bundle-budget module-absence assertion now proves `AuthModalProvider.module.css`, `AuthModalSurface.tsx`, and every `features/Auth/ui/` module are absent from the entry graph while a dynamic-only auth module correctly stays unreported. No numeric budget cap changed. Focused verification passed 9 tests across the two Auth test files and 30 bundle-script tests; both TypeScript checks, lint, style boundaries, both production builds, fresh bundle budgets, `git diff --check`, and the full 1,214-test client/server suite passed. No browser, deployment, or live request was performed; per the contract, the rare load-failure fallback still needs the user's own in-browser manual check before `DEV_HTTPS=true npm run test:layout` runs at final closeout. T09 is ready.
+
 ### T09 — Preload authentication UI on exact intent
 
 **Depends on:** T08.
 **Outcome:** the lazy auth surface is warm before common sign-in interruptions.
+
+**Implementation-agent packet:** dispatch as one serial intent-wiring task after T08. Do not combine it with T07.
+
+- Fixed design: `preloadAuthSurface` reuses T08's single cached module promise and resolves to `void`. Wire it only on the signed-out Sign in menu item, signed-out Upload action, and signed-out “Add as a new spot” action. Use pointer-enter, pointer-down, and focus on the actual action element. Authenticated paths never call it. Rejection is consumed and click/open remains authoritative.
+- Exact edit allowlist: `apps/web/src/features/Auth/AuthSurfaceBoundary.tsx`; `apps/web/src/features/Auth/AuthSurfaceBoundary.test.tsx`; `apps/web/src/features/Auth/index.ts`; `apps/web/src/widgets/AppNavigation/MenuControl.tsx`; `apps/web/src/widgets/AppNavigation/MenuControl.test.tsx`; `apps/web/src/app/routes/_panel.tsx`; `apps/web/src/app/routes/-_panel.test.tsx`; `apps/web/src/widgets/FeedDrawer/FeedSearch.tsx`.
+- Red contract: each of the three signed-out actions exercises all supported intent events; repeated events share one load; authenticated variants do not load auth; a rejected preload does not block `openAuthModal` or its continuation.
+- Focused command: `npx vitest run --project client apps/web/src/features/Auth/AuthSurfaceBoundary.test.tsx apps/web/src/widgets/AppNavigation/MenuControl.test.tsx apps/web/src/app/routes/-_panel.test.tsx`.
+- Stop conditions: wiring requires a global startup listener, a second loader/cache, a change to shared control visuals, or changes to auth eligibility/continuation.
 
 Lead work:
 
@@ -591,6 +703,15 @@ Atomic commit: `perf(web): preload auth UI on gated action intent`.
 
 **Depends on:** T05, T06, and T08.
 **Outcome:** the known Feed-to-Public-Gallery dependency is removed, then only modules proven unnecessary on the cold home path leave the critical graph; feature boundaries remain explicit.
+
+**Implementation-agent packet:** never dispatch T10 as one open-ended cleanup. Dispatch T10a below; convert each additional measured cause into one separately numbered T10b contract after the lead approves its evidence.
+
+- T10a fixed design: move `GalleryEmptyState` and its CSS unchanged to new neutral owner `shared/ui/PanelCollectionEmptyState/`, rename the symbol `PanelCollectionEmptyState`, make `SessionFeed` and `PublicGallery` import that owner, and remove the feature export. Do not reuse the existing `PanelEmptyState` in `shared/ui/PanelRouteLayout.tsx`; it has a required action and a different route-level presentation. This is an ownership move with no copy, geometry, or behavior change.
+- T10a exact edit allowlist: `apps/web/src/features/PublicGallery/ui/GalleryEmptyState.tsx`; `apps/web/src/features/PublicGallery/ui/GalleryEmptyState.module.css`; `apps/web/src/features/PublicGallery/index.ts`; `apps/web/src/features/PublicGallery/PublicGallery.tsx`; `apps/web/src/features/PublicGallery/PublicGallery.test.tsx`; `apps/web/src/widgets/SidePanel/SessionFeed.tsx`; `apps/web/src/widgets/SidePanel/SessionFeed.test.tsx`; new `apps/web/src/shared/ui/PanelCollectionEmptyState/PanelCollectionEmptyState.tsx`; new `apps/web/src/shared/ui/PanelCollectionEmptyState/PanelCollectionEmptyState.module.css`; new `apps/web/src/shared/ui/PanelCollectionEmptyState/index.ts`; `apps/web/bundle-budgets.json`; `apps/web/scripts/bundleBudget.test.ts`. `apps/web/src/shared/ui/PanelRouteLayout.tsx` is read-only.
+- T10a red contract: the default Browse Feed graph fails a module-absence assertion while any `features/PublicGallery/` module or feature-only CSS is reachable; successful empty Feed and Gallery states render the unchanged titles, descriptions, and action behavior through the neutral owner.
+- T10a focused commands: `npx vitest run --project client apps/web/src/widgets/SidePanel/SessionFeed.test.tsx apps/web/src/features/PublicGallery/PublicGallery.test.tsx`; `npx vitest run --project scripts apps/web/scripts/bundleBudget.test.ts`; `npm run build:client`; `npm run check:bundle-budgets`.
+- T10a stop conditions: Public Gallery remains reachable for a legitimate non-empty Feed dependency; moving the CSS changes geometry; another shared owner already provides the exact presentation; removing the edge does not remove the feature from the default Feed graph.
+- T10b contract requirement: name one measured import or CSS side-effect edge, its exact current and proposed owners, an exact file allowlist, before/after entry and Browse Feed gzip totals, visual-risk tests, and a lead-owned retain/revert threshold. No “remaining barrels/styles” batch is allowed.
 
 Lead work:
 
@@ -628,6 +749,16 @@ Atomic commits, one measured cause each:
 **Depends on:** T00.
 **Outcome:** mounted hooks and intent prefetch use exactly the same query keys, inputs, pagination, and stale behavior.
 
+**Implementation-agent packet:** dispatch as two bounded contracts, T11a then T11b. They may be reviewed together, but neither agent may edit the panel route or add prefetch behavior.
+
+- T11a fixed design: in `useSessionFeed.ts`, export `sessionFeedInfiniteQueryOptions(trpc, params)` and make `useSessionFeed` call it. The factory accepts the existing tRPC options proxy plus `spotId`, `filters`, and `limit`; it owns input normalization and `getNextPageParam`. The React hook keeps `useTRPC` and `useInfiniteQuery` ownership.
+- T11a exact edit allowlist: `apps/web/src/entities/SurfSession/model/useSessionFeed.ts`; `apps/web/src/entities/SurfSession/model/useSessionFeed.test.tsx`; `apps/web/src/entities/SurfSession/index.ts`.
+- T11b fixed design: in `useSpotMediaFeed.ts`, export `spotMediaFeedInfiniteQueryOptions(trpc, params)` and `mediaDateIndexQueryOptions(trpc, params)`; make the hook call both. Factories own the existing input normalization, page size, sort, anchor, and cursor functions. React memoization and the returned view data remain in the hook.
+- T11b exact edit allowlist: `apps/web/src/entities/Spot/model/useSpotMediaFeed.ts`; `apps/web/src/entities/Spot/model/useSpotMediaFeed.test.tsx`; `apps/web/src/entities/Spot/index.ts`.
+- Red contracts: the exported factory and mounted hook produce identical query keys/options for the same input; global versus database-ID-scoped, filtered versus unfiltered, ascending versus descending, and anchored versus unanchored inputs remain distinct; session next cursor and media previous/next cursors are unchanged. Route `$spotId` values are slugs and must never be passed as query `spotId`; the route loader's resolved database ID is the query input.
+- Focused command: `npx vitest run --project client apps/web/src/entities/SurfSession/model/useSessionFeed.test.tsx apps/web/src/entities/Spot/model/useSpotMediaFeed.test.tsx`.
+- Stop conditions: a factory needs React context or a second tRPC client; an existing query key changes; a cache/invalidation caller needs migration; the work changes loading/error UI, filter ownership, retry, stale time, or pagination behavior.
+
 Lead work:
 
 - Extract a session-feed infinite-query option factory from the current hook.
@@ -662,6 +793,16 @@ Atomic commits:
 
 **Depends on:** T11.
 **Outcome:** Feed sessions and Gallery cards render as soon as their primary request succeeds; auxiliary date-index latency/failure and primary query failures have honest, independently recoverable UI states.
+
+**Implementation-agent packet:** split into T12a readiness and T12b errors. Both change visible states, so the lead must first describe the visible behavior and obtain the explicit approval required by `CLAUDE.md`. Do not dispatch both to agents concurrently because both edit `PublicGallery.tsx` and its test.
+
+- T12a fixed design: keep the primary media infinite-query fields at the hook's top level. Replace top-level `availableDates` with a `dateIndex` object containing `availableDates`, `isLoading`, `isError`, `error`, and `refetch`. `PublicGallery` uses only primary `isLoading` to choose card skeletons; date controls remain absent/disabled while `dateIndex.isLoading`; date-index failure preserves cards and exposes recovery only in the date-control area. Pending jump-anchor completion waits for the primary media request, not date metadata.
+- T12a exact edit allowlist: `apps/web/src/entities/Spot/model/useSpotMediaFeed.ts`; `apps/web/src/entities/Spot/model/useSpotMediaFeed.test.tsx`; `apps/web/src/features/PublicGallery/PublicGallery.tsx`; `apps/web/src/features/PublicGallery/PublicGallery.test.tsx`; `apps/web/src/features/PublicGallery/ui/GalleryDateJumpHeading.tsx`; `apps/web/src/features/PublicGallery/ui/GalleryDateJumpHeading.test.tsx`; `apps/web/src/features/PublicGallery/ui/GalleryDateSidebar.tsx`; `apps/web/src/features/PublicGallery/ui/GalleryDateSidebar.test.tsx`.
+- T12a red contract: cards render while the date index is pending; date-index error leaves cards and filters intact; date retry calls only `dateIndex.refetch`; a primary media error still does not render an empty state; jump-anchor and both cursor directions remain unchanged.
+- T12b fixed design: add neutral `shared/ui/PanelQueryError/` with title, description, and retry action, following the approved existing panel control language. `SessionFeed` uses its primary query `isError/error/refetch`; `PublicGallery` uses its primary media query fields. A successful zero-item response continues to use T10a's `PanelCollectionEmptyState`. Retry must not remount the map or clear filters/cached content.
+- T12b exact edit allowlist: new `apps/web/src/shared/ui/PanelQueryError/PanelQueryError.tsx`; new `apps/web/src/shared/ui/PanelQueryError/PanelQueryError.module.css`; new `apps/web/src/shared/ui/PanelQueryError/PanelQueryError.test.tsx`; new `apps/web/src/shared/ui/PanelQueryError/index.ts`; `apps/web/src/widgets/SidePanel/SessionFeed.tsx`; `apps/web/src/widgets/SidePanel/SessionFeed.test.tsx`; `apps/web/src/features/PublicGallery/PublicGallery.tsx`; `apps/web/src/features/PublicGallery/PublicGallery.test.tsx`.
+- Focused commands: T12a runs `npx vitest run --project client apps/web/src/entities/Spot/model/useSpotMediaFeed.test.tsx apps/web/src/features/PublicGallery/PublicGallery.test.tsx apps/web/src/features/PublicGallery/ui/GalleryDateJumpHeading.test.tsx apps/web/src/features/PublicGallery/ui/GalleryDateSidebar.test.tsx`; T12b runs `npx vitest run --project client apps/web/src/shared/ui/PanelQueryError/PanelQueryError.test.tsx apps/web/src/widgets/SidePanel/SessionFeed.test.tsx apps/web/src/features/PublicGallery/PublicGallery.test.tsx`. After manual visual approval, run `DEV_HTTPS=true npm run test:layout` at final closeout.
+- Stop conditions: retry needs a global query reset; cached cards would be cleared; an error is mapped to empty; filters, virtualization, scroll restoration, query keys, or sheet geometry must change; the approved error presentation cannot be reproduced within the allowlist.
 
 Lead work:
 
@@ -703,6 +844,16 @@ Atomic commits:
 
 **Depends on:** T11 and T12.
 **Outcome:** Browse, Upload, and account intent warm only the exact safe data their destination will consume, without global eager fetches or signed-out private requests.
+
+**Implementation-agent packet:** never dispatch T13 as one task. Dispatch T13a, T13b, and each retained T13c destination serially because they share `_panel.tsx`, `MenuControl.tsx`, and query-cache behavior.
+
+- T13a fixed design and allowlist: `apps/web/src/app/routes/_panel.tsx` and `apps/web/src/app/routes/-_panel.test.tsx` only. `handleBrowseSectionIntent` runs route preload and `queryClient.prefetchInfiniteQuery`/`prefetchQuery` concurrently through T11's factories. Use the current filters. Use `spotMatch.loaderData.id` for server queries while preserving the route's slug in route params. Gallery warms media and date index concurrently. Feed warms sessions. Skip the active section, use `retry: false` only for the speculative call without changing mounted-query defaults, consume rejection, and rely on the identical key for deduplication.
+- T13a red contract and command: assert exact global/scoped/filter inputs, resolved database ID versus route slug, active-section skip, route/data concurrency, no duplicate mounted first-page request inside stale time, and navigation after rejection. Run `npx vitest run --project client apps/web/src/app/routes/-_panel.test.tsx apps/web/src/entities/SurfSession/model/useSessionFeed.test.tsx apps/web/src/entities/Spot/model/useSpotMediaFeed.test.tsx`.
+- T13b fixed design and allowlist: `apps/web/src/app/routes/_panel.tsx`, `apps/web/src/app/routes/-_panel.test.tsx`, `apps/web/src/app/routes/_panel.upload.tsx`, and `apps/web/src/app/routes/-_panel.upload.test.tsx` only. Signed-out Upload intent warms route/auth code and performs no tRPC query. Authenticated intent uses `ensureQueryData(trpc.uploads.getActiveWorkspace.queryOptions())`; when it yields a workspace, prefetch exactly `getWorkspaceState` for that ID and preserve `{ workspaceId }` in navigation. With no workspace, use `spotMatch.loaderData.id` as `{ spotId }`; the route `$spotId` param is a slug and must never enter Upload query/search state as a database ID. The mounted route consumes the identical generated options; do not add a workspace store or query-key wrapper.
+- T13b red contract and command: assert signed-out privacy, workspace-ID exactness, selected-spot fallback, identical keys, no duplicate first request within stale time, and click/navigation after prefetch failure. Run `npx vitest run --project client apps/web/src/app/routes/-_panel.test.tsx apps/web/src/app/routes/-_panel.upload.test.tsx`.
+- T13c is measurement-gated. Menu opening itself remains route-code-only. If the lead records a user-visible reason, dispatch one item at a time with allowlist `apps/web/src/widgets/AppNavigation/MenuControl.tsx`, `apps/web/src/widgets/AppNavigation/MenuControl.test.tsx`, and only the destination route test needed to prove identical options. Collections may prefetch `sessions.mine`; Earnings and Account may each prefetch `ledger.summary`; favorites, purchases, settings, and admin data are excluded unless their exact item becomes a separate measured contract.
+- T13c focused command: `npx vitest run --project client apps/web/src/widgets/AppNavigation/MenuControl.test.tsx <one exact destination test named by the lead>`.
+- Stop conditions for every slice: route param and query input cannot be distinguished; a private request occurs signed out or on menu open; a new cache key/owner is required; prefetch changes mounted retry/stale policy; request deduplication cannot be demonstrated; another slice needs the same file concurrently.
 
 Lead work:
 
@@ -757,6 +908,15 @@ Atomic commits:
 **Depends on:** T02, T04, T10, and T13.
 **Outcome:** remaining network scheduling changes address a measured waterfall rather than generic advice.
 
+**Implementation-agent packet:** not dispatchable as written. This is a lead-owned decision gate. A lower-cost agent may perform static inventory and build arithmetic only; `CLAUDE.md` forbids it from opening a browser, driving a preview, or capturing a waterfall.
+
+- Required lead input before any implementation: a user-supplied or separately approved production/real-device request capture; the named bottleneck; one selected candidate; current and target values; exact edit allowlist; a fixed retain/revert threshold; and confirmation that no visual behavior changes.
+- Candidate A likely owners are `apps/web/index.html`, `apps/web/vite.config.ts`, `apps/web/src/app/startupPerformance.test.ts`, and their exact environment/config owner. The implementation contract must name the proven API/Mapbox origin and must prohibit literal environment-specific production hostnames unless the existing build environment owns them.
+- Candidate B likely owners are `apps/web/src/shared/ui/BaseGallery/BaseCard.tsx`, `apps/web/src/shared/ui/BaseGallery/BaseCard.test.tsx`, `apps/web/src/entities/SurfSession/ui/SurfSessionCard.tsx`, `apps/web/src/widgets/SidePanel/SessionFeed.tsx`, and Public Gallery card tests. The lead must decide which rendered indices are above the fold before delegation. Local blob videos, the lightbox, and LCP media remain excluded.
+- Candidate C is not eligible for cheaper-agent implementation in this roadmap. A style change needs separate visual/product approval and its own roadmap task.
+- Required red contract: the selected candidate's exact attribute/request contract fails before implementation. Required evidence is named request ordering/host timing or per-card loading policy, plus unchanged entry/Browse graph totals. Fixed millisecond UI timing is prohibited.
+- Stop conditions: evidence does not isolate the candidate; more than two preconnects are proposed; LCP priority is ambiguous; the change affects artwork/map style/visible behavior; any browser/live action lacks explicit approval; the result misses the retain threshold.
+
 This task is a decision gate, not permission to implement every option.
 
 Candidate A — connection warmup:
@@ -798,6 +958,24 @@ Atomic commit: one commit per retained candidate, never one combined “misc per
 
 **Depends on:** all retained tasks.
 **Outcome:** repository gates and live behavior agree, with a repeatable baseline for future work.
+
+**Implementation-agent packet:** lead/approval owned; do not delegate as an implementation task.
+
+- Before approval, a lower-cost verification agent may run the full local gates, `npm run build:client`, `npm run check:bundle-budgets`, `npm run build:server`, and `git diff --check`. It may create only the named local build artifacts below. If Docker is available and the exact container name is unused, it may reproduce CI's runtime proof and must remove only the container it created even on failure. It returns raw command output classification and the final size table without editing repository files.
+
+```text
+docker build --file apps/api/Dockerfile --target runner --tag swelldays-api:t15-local .
+docker build --file apps/web/Dockerfile --target runner --build-arg RELEASE_TAG=t15-local --build-arg VITE_API_URL=https://api.example.test --build-arg VITE_MAPBOX_ACCESS_TOKEN=pk.test-placeholder --build-arg VITE_GOOGLE_CLIENT_ID=test-client.apps.googleusercontent.com --build-arg VITE_GOOGLE_API_KEY=test-google-api-key --build-arg VITE_CLOUDINARY_CLOUD_NAME=test-cloud --build-arg VITE_CLOUDINARY_API_KEY=test-cloudinary-key --tag swelldays-web:t15-local .
+docker run --detach --name swelldays-web-t15-local --publish 127.0.0.1:18080:8080 swelldays-web:t15-local
+npm run check:web-delivery -- --origin http://127.0.0.1:18080 --expected-release t15-local
+docker rm --force swelldays-web-t15-local
+```
+
+The lead contract must add an always-run cleanup wrapper around the final command. If port `18080`, the container name, or Docker build output is already owned by other work, stop instead of replacing or removing it.
+- Deployment, public-origin GETs, release identity checks, real-device request capture, and visual acceptance require the separate approvals and user participation defined by `CLAUDE.md`. They are never implied by completion of local checks.
+- Only after all evidence is accepted may the lead choose budget headroom and write the closeout. Exact lead-owned edit allowlist: `apps/web/bundle-budgets.json`, its existing checker fixture if a red ratchet contract is needed, and this roadmap. The implementation/reporting agent must not edit workflows, Nginx, Dockerfiles, budgets, or roadmap status.
+- Ratchet contract: first make the checker fail against the lead-approved achieved caps, then set narrow headroom that passes the same fresh build. A budget increase, a changed environment, or a missing live scenario is a stop condition, not a documentation footnote.
+- Final handoff must separate local automated evidence, built-container evidence, approved live HTTP evidence, user-performed iPhone/Mobile Safari evidence, rejected T14 candidates, and checks not run. “Production verified” is prohibited if any required live check is absent.
 
 Lead work:
 
@@ -900,21 +1078,21 @@ Current search targets are listed to help agents rediscover the seam; they are n
 
 ### Required gates after every source task
 
-Run the narrowest focused tests first, then before handoff:
+The lead records a green base before dispatch. The implementation agent runs the task's focused commands first, then every command below before handback. The lead reruns them independently before closeout:
 
 ```text
-npm run test:client
-npm run test:server
-npm run typecheck --workspace @swelldays/web
-npm run typecheck --workspace @swelldays/api
+npx tsc --noEmit
+npx tsc -p tsconfig.server.json --noEmit
 npm run lint
 npm run check:style-boundaries
+npx vitest run --project client --project server
 npm run build:client
 npm run build:server
 git diff --check
+git status --short
 ```
 
-These are the complete handoff gates; during implementation, use only the smallest task-relevant subset until focused behavior is green. Run integration tests when query/API behavior or shared runtime contracts change. Run layout tests when startup assets, responsive first-visit presentation, auth workspace, sheet behavior, or media priority can affect visible geometry. Run the production-container smoke whenever delivery configuration changes.
+These are the complete handoff gates; during implementation, use only the smallest task-relevant subset until focused behavior is green. T06, T08, T10, and any retained T14 source task also run `npm run check:bundle-budgets` against a fresh `npm run build:client`. Run integration tests when query/API behavior or shared runtime contracts change. Run layout tests only after the user has manually approved a browser-visible change, when startup assets, responsive first-visit presentation, auth workspace, sheet behavior, or media priority can affect visible geometry. Run the production-container smoke whenever delivery configuration changes. Any pre-existing red command stops dispatch until the user directs otherwise.
 
 ### Performance acceptance matrix
 
@@ -952,7 +1130,7 @@ These are the complete handoff gates; during implementation, use only the smalle
 - [x] T05 contracts core is Zod-free and only supported public entries are used.
 - [x] T06 Add Spot UI absent from unrelated startup.
 - [x] T07 Add Spot intent hides the new lazy latency.
-- [ ] T08 auth surface absent from unrelated startup.
+- [x] T08 auth surface absent from unrelated startup.
 - [ ] T09 gated actions warm auth on exact intent.
 - [ ] T10 Public Gallery absent from default Feed and only measured additional leakage corrected.
 - [ ] T11 Feed/Gallery query contracts centralized.

@@ -186,6 +186,11 @@ const createFixture = async (hash: string): Promise<Fixture> => {
         modules: [
           'src/main.tsx',
           'src/startup/forbidden.ts',
+          'src/features/Auth/AuthModalProvider.module.css',
+          'src/features/Auth/AuthModalSurface.tsx',
+          'src/features/Auth/ui/AuthPage.tsx',
+          'src/features/Auth/ui/LoginForm.tsx',
+          'src/features/Auth/ui/RegisterForm.tsx',
           'src/features/AddSpot/ui/AddSpotPanel.tsx',
           'src/features/AddSpot/model/useAddSpotFlow.ts',
           'src/features/AddSpot/model/useReverseGeocode.ts',
@@ -258,6 +263,7 @@ const createFixture = async (hash: string): Promise<Fixture> => {
         modules: [
           'node_modules/mapbox-gl/src/index.ts',
           'src/optional/forbidden.ts',
+          'src/features/Auth/ui/AuthDynamicOnly.tsx',
           'src/features/AddSpot/ui/steps/ProximityStep.tsx',
         ],
       },
@@ -585,6 +591,45 @@ describe('analyzeWebBundle', () => {
       expect.objectContaining({
         matchingModules: expect.arrayContaining([
           'src/features/AddSpot/ui/steps/ProximityStep.tsx',
+        ]),
+      }),
+    ]));
+  });
+
+  it('reports the eager authentication surface but ignores a dynamic-only auth module', async () => {
+    const fixture = await createFixture('auth-assertions');
+    fixture.config.moduleAbsenceAssertions = [
+      {
+        label: 'Startup excludes authentication modal surface and forms',
+        graph: 'entry',
+        forbiddenModuleSubstrings: [
+          'src/features/Auth/AuthModalProvider.module.css',
+          'src/features/Auth/AuthModalSurface.tsx',
+          'src/features/Auth/ui/',
+        ],
+      },
+    ];
+    await writeJson(fixture.configPath, fixture.config);
+
+    const report = await analyzeFixture(fixture);
+
+    expect(report.moduleAssertionFailures).toEqual([
+      {
+        label: 'Startup excludes authentication modal surface and forms',
+        graph: 'entry',
+        matchingModules: [
+          'src/features/Auth/AuthModalProvider.module.css',
+          'src/features/Auth/AuthModalSurface.tsx',
+          'src/features/Auth/ui/AuthPage.tsx',
+          'src/features/Auth/ui/LoginForm.tsx',
+          'src/features/Auth/ui/RegisterForm.tsx',
+        ],
+      },
+    ]);
+    expect(report.moduleAssertionFailures).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        matchingModules: expect.arrayContaining([
+          'src/features/Auth/ui/AuthDynamicOnly.tsx',
         ]),
       }),
     ]));
