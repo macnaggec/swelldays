@@ -8,12 +8,18 @@ import {
   type ReactNode,
 } from 'react';
 import { AuthModalContext, type AuthModalOpenOptions } from 'entities/Identity';
+import { consumeAuthReloadIntent } from './authReloadIntent';
 import { AuthSurfaceBoundary } from './AuthSurfaceBoundary';
 import type { AuthMode } from './ui/AuthPage';
 
 export function AuthModalProvider({ children }: { children: ReactNode }): ReactElement {
-  const [opened, setOpened] = useState(false);
-  const [mode, setMode] = useState<AuthMode>('login');
+  // A Retry after a failed surface load reloads the page (see AuthSurfaceBoundary)
+  // because a browser keeps rejecting every later import() of a URL it already
+  // failed to fetch. Reading the saved intent as initial state (not an effect)
+  // reopens the sign-in form the reload was recovering, from the first paint.
+  const [reloadIntentMode] = useState(() => consumeAuthReloadIntent());
+  const [opened, setOpened] = useState(() => reloadIntentMode !== null);
+  const [mode, setMode] = useState<AuthMode>(() => reloadIntentMode ?? 'login');
   const continuationRef = useRef<(() => void) | null>(null);
 
   const open = useCallback((options?: AuthModalOpenOptions) => {

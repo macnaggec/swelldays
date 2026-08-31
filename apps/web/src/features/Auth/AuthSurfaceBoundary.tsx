@@ -3,12 +3,11 @@ import {
   Suspense,
   createElement,
   lazy,
-  useMemo,
-  useState,
   type ReactElement,
   type ReactNode,
 } from 'react';
 import classes from './AuthSurfaceBoundary.module.css';
+import { writeAuthReloadIntent } from './authReloadIntent';
 import type { AuthMode } from './ui/AuthPage';
 
 export interface AuthSurfaceBoundaryProps {
@@ -31,16 +30,18 @@ export function loadAuthSurface(): Promise<typeof import('./AuthModalSurface')> 
   return authSurfacePromise;
 }
 
-function createLazyAuthModalSurface() {
-  return lazy(() => loadAuthSurface().then(({ AuthModalSurface }) => ({
-    default: AuthModalSurface,
-  })));
-}
+// A browser that has failed to fetch a dynamically imported module keeps
+// rejecting every later import() of that exact URL, even after connectivity
+// returns, so an in-place retry can never succeed. A full reload is the only
+// reliable recovery; the sign-in intent survives it via authReloadIntent.
+const LazyAuthModalSurface = lazy(() => loadAuthSurface().then(({ AuthModalSurface }) => ({
+  default: AuthModalSurface,
+})));
 
 interface AuthSurfaceErrorBoundaryProps {
   readonly children: ReactNode;
   readonly onClose: () => void;
-  readonly onRetry: () => void;
+  readonly onReload: () => void;
 }
 
 interface AuthSurfaceErrorBoundaryState {
@@ -58,7 +59,7 @@ class AuthSurfaceErrorBoundary extends Component<
   }
 
   render(): ReactNode {
-    const { children, onClose, onRetry } = this.props;
+    const { children, onClose, onReload } = this.props;
 
     if (!this.state.hasError) return children;
 
@@ -81,7 +82,7 @@ class AuthSurfaceErrorBoundary extends Component<
             <button
               type="button"
               className={`${classes.button} ${classes.retryButton}`}
-              onClick={onRetry}
+              onClick={onReload}
             >
               Retry
             </button>
@@ -98,15 +99,10 @@ export function AuthSurfaceBoundary({
   onAuthenticated,
   onClose,
 }: AuthSurfaceBoundaryProps): ReactElement {
-  const [retryGeneration, setRetryGeneration] = useState(0);
-  const LazyAuthModalSurface = useMemo(
-    () => {
-      void retryGeneration;
-      return createLazyAuthModalSurface();
-    },
-    [retryGeneration],
-  );
-  const retry = () => setRetryGeneration((generation) => generation + 1);
+  const reload = () => {
+    writeAuthReloadIntent(mode);
+    window.location.reload();
+  };
   const surface = createElement(LazyAuthModalSurface, {
     mode,
     onModeChange,
@@ -116,11 +112,7 @@ export function AuthSurfaceBoundary({
 
   return (
     <Suspense fallback={null}>
-      <AuthSurfaceErrorBoundary
-        key={retryGeneration}
-        onClose={onClose}
-        onRetry={retry}
-      >
+      <AuthSurfaceErrorBoundary onClose={onClose} onReload={reload}>
         {surface}
       </AuthSurfaceErrorBoundary>
     </Suspense>

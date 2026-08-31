@@ -2,6 +2,7 @@ import { act, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { useAuthModal } from 'entities/Identity';
+import { consumeAuthReloadIntent, writeAuthReloadIntent } from './authReloadIntent';
 import { AuthModalProvider } from './AuthModalProvider';
 import type { AuthSurfaceBoundaryProps } from './AuthSurfaceBoundary';
 
@@ -191,5 +192,36 @@ describe('AuthModalProvider — gated-action continuity', () => {
     fireEvent.click(screen.getByText('succeed-auth'));
 
     expect(continuation).toHaveBeenCalledOnce();
+  });
+});
+
+describe('AuthModalProvider — reopens after a Retry reload', () => {
+  afterEach(() => {
+    window.sessionStorage.clear();
+  });
+
+  it('reopens in the saved mode and consumes the stored intent', () => {
+    writeAuthReloadIntent('register');
+
+    render(
+      <AuthModalProvider>
+        <Opener />
+      </AuthModalProvider>,
+    );
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('heading', { name: 'Create your Swelldays account' }))
+      .toBeInTheDocument();
+    expect(consumeAuthReloadIntent()).toBeNull();
+  });
+
+  it('stays closed when there is no stored intent', () => {
+    render(
+      <AuthModalProvider>
+        <Opener />
+      </AuthModalProvider>,
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
