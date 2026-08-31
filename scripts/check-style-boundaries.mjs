@@ -135,7 +135,7 @@ const panelGridSpacingPropConsumers = new Set([
 
 const ordinaryPanelCollectionCssConsumers = new Set([
   'apps/web/src/shared/ui/BaseGallery/BaseGallery.module.css',
-  'apps/web/src/widgets/SidePanel/SessionDetail.module.css',
+  'apps/web/src/widgets/SessionDetail/SessionDetail.module.css',
   'apps/web/src/widgets/SidePanel/SessionFeed.module.css',
 ]);
 

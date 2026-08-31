@@ -84,6 +84,11 @@
         "src/features/AddSpot/model/addSpotCoordinates.ts",
         "packages/contracts/src/validation/spotSchemas.ts"
       ]
+    },
+    {
+      "label": "Default Browse Feed excludes Public Gallery feature modules",
+      "graph": "browse-feed",
+      "forbiddenModuleSubstrings": ["src/features/PublicGallery/"]
     }
   ],
   "startupAssets": [
