@@ -1,0 +1,80 @@
+.root {
+  position: relative;
+  isolation: isolate;
+  flex: 1 0 auto;
+  min-height: min(30rem, 60dvh);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: clamp(3rem, 9vh, 6rem) clamp(1.5rem, 5vw, 4.5rem) clamp(5rem, 11vh, 7.5rem);
+}
+
+.root::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: min(30rem, 86%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 179, 237, 0.1) 0%, rgba(99, 179, 237, 0.025) 42%, transparent 70%);
+  filter: blur(12px);
+  transform: translateY(-6%);
+  pointer-events: none;
+}
+
+.content {
+  display: flex;
+  max-width: 31rem;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transform: translateY(-4%);
+}
+
+.artwork {
+  width: 6.5rem;
+  height: 5rem;
+  display: grid;
+  place-items: center;
+  margin-bottom: 1.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(circle at 70% 18%, rgba(255, 255, 255, 0.11), transparent 34%),
+    rgba(255, 255, 255, 0.045);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 1.25rem 3.25rem rgba(7, 22, 39, 0.22);
+  color: rgba(255, 255, 255, 0.62);
+  transform: rotate(-2deg);
+}
+
+.artwork svg {
+  width: 4.75rem;
+  height: 3.6rem;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.title {
+  margin: 0;
+  color: var(--wa-text-strong);
+  font-size: clamp(1.35rem, 2.2vw, 1.7rem);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+.description {
+  max-width: 38ch;
+  margin: 0.75rem 0 0;
+  color: var(--wa-text-muted);
+  font-size: var(--wa-font-size-base);
+  line-height: 1.55;
+  text-wrap: pretty;
+}

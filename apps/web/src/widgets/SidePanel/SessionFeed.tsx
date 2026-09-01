@@ -4,6 +4,7 @@ import { Center, Loader, Skeleton, Stack, Text } from '@mantine/core';
 import { IconPhoto, IconMapPin } from '@tabler/icons-react';
 import { useSessionFeed, type SurfSessionItem } from 'entities/SurfSession';
 import { PanelCollectionEmptyState } from 'shared/ui/PanelCollectionEmptyState';
+import { PanelQueryError } from 'shared/ui/PanelQueryError';
 import type { BrowseFilters } from 'shared/model/browseFilters';
 import { formatDateRange } from 'shared/lib/dateUtils';
 import { DRAWER_SHELL_TRANSITION } from 'shared/ui/DrawerShell';
@@ -84,7 +85,7 @@ export function SessionFeed({
   spotId: spotIdProp,
   onLayoutReadyChange,
 }: SessionFeedProps) {
-  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } =
+  const { data, isLoading, isError, refetch, isFetchingNextPage, fetchNextPage, hasNextPage } =
     useSessionFeed({ spotId: spotIdProp, filters });
 
   const sessions = data?.pages.flatMap((p) => p.items) ?? [];
@@ -122,6 +123,12 @@ export function SessionFeed({
             </div>
           ))}
         </PanelCollectionGrid>
+      ) : isError ? (
+        <PanelQueryError
+          title="Couldn't load the feed"
+          description="Something went wrong loading these sessions. Try again."
+          onRetry={refetch}
+        />
       ) : sessions.length === 0 ? (
         <PanelCollectionEmptyState
           title={hasActiveFilters ? 'No sessions match this view' : 'No sessions here yet'}

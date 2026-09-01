@@ -1,11 +1,13 @@
 import { MantineProvider } from '@mantine/core';
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { SessionFeed } from './SessionFeed';
 
 const mocks = vi.hoisted(() => ({
   isLoading: false,
+  isError: false,
+  refetch: vi.fn(),
 }));
 
 vi.mock('entities/SurfSession', () => ({
@@ -29,6 +31,8 @@ vi.mock('entities/SurfSession', () => ({
       }],
     },
     isLoading: mocks.isLoading,
+    isError: mocks.isError,
+    refetch: mocks.refetch,
     isFetchingNextPage: false,
     fetchNextPage: vi.fn(),
     hasNextPage: false,
@@ -38,6 +42,8 @@ vi.mock('entities/SurfSession', () => ({
 describe('SessionFeed', () => {
   beforeEach(() => {
     mocks.isLoading = false;
+    mocks.isError = false;
+    mocks.refetch.mockClear();
   });
 
   it('reports layout readiness only while real session cards are committed', () => {
@@ -67,5 +73,23 @@ describe('SessionFeed', () => {
     unmount();
 
     expect(onLayoutReadyChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('shows a retry panel instead of the empty state when the primary session query fails', () => {
+    mocks.isError = true;
+
+    render(
+      <MantineProvider>
+        <AppShellLayoutPolicyProvider routeIntent="browse" browseExpanded={false} galleryExpanded={false}>
+          <SessionFeed />
+        </AppShellLayoutPolicyProvider>
+      </MantineProvider>,
+    );
+
+    expect(screen.getByRole('heading', { name: "Couldn't load the feed" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(mocks.refetch).toHaveBeenCalledOnce();
   });
 });

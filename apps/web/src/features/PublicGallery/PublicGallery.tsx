@@ -27,6 +27,7 @@ import {
 import { usePublicGalleryActions } from './model/usePublicGalleryActions';
 import { EMPTY_BROWSE_FILTERS, type BrowseFilters } from 'shared/model/browseFilters';
 import { PanelCollectionEmptyState } from 'shared/ui/PanelCollectionEmptyState';
+import { PanelQueryError } from 'shared/ui/PanelQueryError';
 
 const TABLET_SIDE_OVERLAY_MIN_COLUMNS = 2;
 const TABLET_SIDE_OVERLAY_MAX_COLUMNS = 4;
@@ -55,6 +56,7 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
     dateIndex,
     isLoading,
     isError,
+    refetch,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -256,7 +258,17 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
     );
   }
 
-  if (flatItems.length === 0 && !isError) {
+  if (isError) {
+    return (
+      <PanelQueryError
+        title="Couldn't load the gallery"
+        description="Something went wrong loading these photos. Try again."
+        onRetry={refetch}
+      />
+    );
+  }
+
+  if (flatItems.length === 0) {
     const hasDateFilter = filters.date !== null;
     const hasActiveFilters = hasDateFilter || filters.favoriteSpotsOnly;
     const description = hasDateFilter && filters.favoriteSpotsOnly

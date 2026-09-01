@@ -39,6 +39,7 @@ const galleryState = vi.hoisted(() => ({
   dateIndexError: false,
   dateIndexRefetch: vi.fn(),
   primaryError: false,
+  primaryRefetch: vi.fn(),
   measuredWidth: 0,
   columns: 0,
   dense: false,
@@ -199,6 +200,7 @@ describe('PublicGallery', () => {
       },
       isLoading: galleryState.isLoading,
       isError: galleryState.primaryError,
+      refetch: galleryState.primaryRefetch,
       fetchNextPage: galleryState.fetchNextPage,
       hasNextPage: galleryState.hasNextPage,
       isFetchingNextPage: galleryState.isFetchingNextPage,
@@ -408,7 +410,7 @@ describe('PublicGallery', () => {
     expect(galleryState.fetchNextPage).not.toHaveBeenCalled();
   });
 
-  it('does not render the empty state when only the primary media request fails', () => {
+  it('shows a retry panel instead of the empty state when the primary media request fails', () => {
     galleryState.flatItems = [];
     galleryState.primaryError = true;
 
@@ -416,6 +418,12 @@ describe('PublicGallery', () => {
 
     expect(screen.queryByRole('heading', { name: 'No shots match this view' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'No shots here yet' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: "Couldn't load the gallery" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(galleryState.primaryRefetch).toHaveBeenCalledOnce();
+    expect(galleryState.fetchNextPage).not.toHaveBeenCalled();
   });
 
   it.each([
