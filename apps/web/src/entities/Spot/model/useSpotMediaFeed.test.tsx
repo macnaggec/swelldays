@@ -12,8 +12,20 @@ const mocks = vi.hoisted(() => ({
     },
   ) => ({ queryKey: ['spots', 'mediaFeed'] })),
   dateIndexQueryOptions: vi.fn((_input: unknown) => ({ queryKey: ['spots', 'mediaDateIndex'] })),
-  useInfiniteQuery: vi.fn(() => ({ data: undefined })),
-  useQuery: vi.fn(() => ({ data: [new Date('2026-07-10T12:00:00.000Z')], isLoading: false })),
+  useInfiniteQuery: vi.fn((): { data: unknown; isLoading?: boolean; isError?: boolean } => ({ data: undefined })),
+  useQuery: vi.fn((): {
+    data: Date[] | undefined;
+    isLoading: boolean;
+    isError: boolean;
+    error: Error | null;
+    refetch: () => void;
+  } => ({
+    data: [new Date('2026-07-10T12:00:00.000Z')],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  })),
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -57,7 +69,7 @@ describe('useSpotMediaFeed', () => {
       dateTo: new Date(2026, 6, 11),
       favoriteSpotsOnly: true,
     });
-    expect(result.current.availableDates).toEqual([
+    expect(result.current.dateIndex.availableDates).toEqual([
       new Date('2026-07-10T12:00:00.000Z'),
     ]);
   });
@@ -156,5 +168,25 @@ describe('useSpotMediaFeed', () => {
       expect.anything(),
     );
     expect(mocks.dateIndexQueryOptions.mock.calls.at(-1)?.[0]).not.toHaveProperty('anchorCapturedAt');
+  });
+
+  it('keeps primary loading independent of a failed date index', () => {
+    const refetch = vi.fn();
+    mocks.useInfiniteQuery.mockReturnValueOnce({ data: undefined, isLoading: true, isError: false });
+    mocks.useQuery.mockReturnValueOnce({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error('date index failed'),
+      refetch,
+    });
+
+    const { result } = renderHook(() => useSpotMediaFeed({ spotId: 'spot-1' }));
+
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.dateIndex.isLoading).toBe(false);
+    expect(result.current.dateIndex.isError).toBe(true);
+    expect(result.current.dateIndex.error).toEqual(new Error('date index failed'));
+    expect(result.current.dateIndex.refetch).toBe(refetch);
   });
 });

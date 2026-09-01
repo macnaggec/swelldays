@@ -35,6 +35,10 @@ const galleryState = vi.hoisted(() => ({
   hasNextPage: false,
   isFetchingNextPage: false,
   isLoading: false,
+  dateIndexLoading: false,
+  dateIndexError: false,
+  dateIndexRefetch: vi.fn(),
+  primaryError: false,
   measuredWidth: 0,
   columns: 0,
   dense: false,
@@ -181,10 +185,20 @@ describe('PublicGallery', () => {
     galleryState.isFetchingNextPage = false;
     galleryState.isLoading = false;
     galleryState.measuredWidth = 0;
+    galleryState.dateIndexLoading = false;
+    galleryState.dateIndexError = false;
+    galleryState.primaryError = false;
     useSpotMediaFeedMock.mockImplementation(() => ({
       flatItems: galleryState.flatItems,
-      availableDates: galleryState.availableDates,
+      dateIndex: {
+        availableDates: galleryState.availableDates,
+        isLoading: galleryState.dateIndexLoading,
+        isError: galleryState.dateIndexError,
+        error: galleryState.dateIndexError ? new Error('date index failed') : null,
+        refetch: galleryState.dateIndexRefetch,
+      },
       isLoading: galleryState.isLoading,
+      isError: galleryState.primaryError,
       fetchNextPage: galleryState.fetchNextPage,
       hasNextPage: galleryState.hasNextPage,
       isFetchingNextPage: galleryState.isFetchingNextPage,
@@ -347,6 +361,61 @@ describe('PublicGallery', () => {
     );
 
     expect(screen.getAllByRole('button', { name: 'Jump to date' })).toHaveLength(1);
+  });
+
+  it('renders cards while the date index is still pending', () => {
+    galleryState.measuredWidth = 420;
+    galleryState.dateIndexLoading = true;
+
+    render(
+      <MantineProvider env="test">
+        <PanelScrollChromeStateProvider
+          value={{ hidden: true, drawerPresentation: 'sideOverlay', mapExclusive: true }}
+        >
+          <PanelLayout>
+            <PublicGallery expanded spotId="spot-1" />
+          </PanelLayout>
+        </PanelScrollChromeStateProvider>
+      </MantineProvider>,
+    );
+
+    expect(screen.getByTestId('virtual-gallery')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Jump to date' })).not.toBeInTheDocument();
+  });
+
+  it('preserves cards and offers retry only in the date control when the date index fails', async () => {
+    galleryState.measuredWidth = 420;
+    galleryState.dateIndexError = true;
+
+    render(
+      <MantineProvider env="test">
+        <PanelScrollChromeStateProvider
+          value={{ hidden: true, drawerPresentation: 'sideOverlay', mapExclusive: true }}
+        >
+          <PanelLayout>
+            <PublicGallery expanded spotId="spot-1" />
+          </PanelLayout>
+        </PanelScrollChromeStateProvider>
+      </MantineProvider>,
+    );
+
+    expect(screen.getByTestId('virtual-gallery')).toBeInTheDocument();
+    const retryButton = screen.getByRole('button', { name: 'Retry dates' });
+
+    await userEvent.click(retryButton);
+
+    expect(galleryState.dateIndexRefetch).toHaveBeenCalledOnce();
+    expect(galleryState.fetchNextPage).not.toHaveBeenCalled();
+  });
+
+  it('does not render the empty state when only the primary media request fails', () => {
+    galleryState.flatItems = [];
+    galleryState.primaryError = true;
+
+    render(<PublicGallery expanded spotId="spot-1" />);
+
+    expect(screen.queryByRole('heading', { name: 'No shots match this view' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'No shots here yet' })).not.toBeInTheDocument();
   });
 
   it.each([

@@ -52,16 +52,16 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   const [jumpAnchor, setJumpAnchor] = useState<Date | null>(null);
   const {
     flatItems,
-    availableDates,
+    dateIndex,
     isLoading,
+    isError,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     fetchPreviousPage,
     hasPreviousPage,
     isFetchingPreviousPage,
-  } =
-    useSpotMediaFeed({ spotId, filters, jumpAnchor: jumpAnchor ?? undefined });
+  } = useSpotMediaFeed({ spotId, filters, jumpAnchor: jumpAnchor ?? undefined });
 
   const { data: spot } = useSpotPreview(spotId ?? '', { enabled: !!spotId });
   const spotName = spot?.name ?? '';
@@ -175,8 +175,8 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
   }
   const usesCompactDateChrome = !railVisible;
   const dayHighlights = useMemo(
-    () => mergeGalleryDateHighlights(availableDates, loadedHighlights),
-    [availableDates, loadedHighlights],
+    () => mergeGalleryDateHighlights(dateIndex.availableDates, loadedHighlights),
+    [dateIndex.availableDates, loadedHighlights],
   );
   const activeDay = dayHighlights[activeDayIndex(dayHighlights, firstVisibleIndex)];
   const [pendingScrollAnchor, setPendingScrollAnchor] = useState<Date | null>(null);
@@ -256,7 +256,7 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
     );
   }
 
-  if (flatItems.length === 0) {
+  if (flatItems.length === 0 && !isError) {
     const hasDateFilter = filters.date !== null;
     const hasActiveFilters = hasDateFilter || filters.favoriteSpotsOnly;
     const description = hasDateFilter && filters.favoriteSpotsOnly
@@ -279,12 +279,15 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
 
   return (
     <>
-      {usesCompactDateChrome && activeDay && (
+      {usesCompactDateChrome && (
         <PanelLayoutStickyChromeReplacement>
           <GalleryDateJumpHeading
-            date={activeDay.date}
+            date={activeDay?.date ?? null}
             dayHighlights={dayHighlights}
             onJump={handleDateJump}
+            isLoading={dateIndex.isLoading}
+            isError={dateIndex.isError}
+            onRetry={dateIndex.refetch}
           />
         </PanelLayoutStickyChromeReplacement>
       )}
@@ -343,6 +346,9 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
               firstVisibleIndex={firstVisibleIndex}
               galleryRef={galleryRef}
               onJump={handleDateJump}
+              isLoading={dateIndex.isLoading}
+              isError={dateIndex.isError}
+              onRetry={dateIndex.refetch}
             />
           </PanelLayoutRail>
         )}

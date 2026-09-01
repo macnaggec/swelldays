@@ -55,6 +55,9 @@ describe('GalleryDateJumpHeading mobile rail', () => {
             date={date}
             dayHighlights={DAY_HIGHLIGHTS}
             onJump={onJump}
+            isLoading={false}
+            isError={false}
+            onRetry={vi.fn()}
           />
         </PanelScrollChromeStateProvider>
       </MantineProvider>
@@ -104,6 +107,9 @@ describe('GalleryDateJumpHeading mobile rail', () => {
             date={AUG_1}
             dayHighlights={DAY_HIGHLIGHTS}
             onJump={onJump}
+            isLoading={false}
+            isError={false}
+            onRetry={vi.fn()}
           />
         </PanelScrollChromeStateProvider>
       </MantineProvider>,
@@ -131,6 +137,9 @@ describe('GalleryDateJumpHeading mobile rail', () => {
             date={AUG_1}
             dayHighlights={DAY_HIGHLIGHTS}
             onJump={onJump}
+            isLoading={false}
+            isError={false}
+            onRetry={vi.fn()}
           />
         </PanelScrollChromeStateProvider>
       </MantineProvider>,
@@ -144,6 +153,56 @@ describe('GalleryDateJumpHeading mobile rail', () => {
     expect(screen.getByRole('navigation', { name: 'Dates' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Jul' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: '13' })).toBeInTheDocument();
+  });
+
+  it('renders nothing while its own date data is still pending', () => {
+    const onJump = vi.fn();
+
+    render(
+      <MantineProvider env="test">
+        <PanelScrollChromeStateProvider
+          value={{ hidden: true, drawerPresentation: 'bottomSheet' }}
+        >
+          <GalleryDateJumpHeading
+            date={AUG_1}
+            dayHighlights={DAY_HIGHLIGHTS}
+            onJump={onJump}
+            isLoading={true}
+            isError={false}
+            onRetry={vi.fn()}
+          />
+        </PanelScrollChromeStateProvider>
+      </MantineProvider>,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Jump to date' })).not.toBeInTheDocument();
+  });
+
+  it('offers a retry control when its own date data fails to load', async () => {
+    const onJump = vi.fn();
+    const onRetry = vi.fn();
+
+    render(
+      <MantineProvider env="test">
+        <PanelScrollChromeStateProvider
+          value={{ hidden: true, drawerPresentation: 'bottomSheet' }}
+        >
+          <GalleryDateJumpHeading
+            date={AUG_1}
+            dayHighlights={DAY_HIGHLIGHTS}
+            onJump={onJump}
+            isLoading={false}
+            isError={true}
+            onRetry={onRetry}
+          />
+        </PanelScrollChromeStateProvider>
+      </MantineProvider>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Retry dates' }));
+
+    expect(onRetry).toHaveBeenCalledOnce();
+    expect(onJump).not.toHaveBeenCalled();
   });
 });
 

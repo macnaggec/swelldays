@@ -70,7 +70,12 @@ export function useSpotMediaFeed(params: SpotMediaFeedParams = {}) {
   return {
     ...query,
     flatItems,
-    availableDates: dateIndexQuery.data ?? [],
-    isLoading: query.isLoading || dateIndexQuery.isLoading,
+    dateIndex: {
+      availableDates: dateIndexQuery.data ?? [],
+      isLoading: dateIndexQuery.isLoading,
+      isError: dateIndexQuery.isError,
+      error: dateIndexQuery.error,
+      refetch: dateIndexQuery.refetch,
+    },
   };
 }

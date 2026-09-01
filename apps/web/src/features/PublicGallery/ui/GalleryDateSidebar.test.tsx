@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { RefObject } from 'react';
+import { MantineProvider } from '@mantine/core';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { GalleryDateSidebar } from './GalleryDateSidebar';
 import type { VirtualGalleryHandle } from 'shared/ui/VirtualGallery/VirtualGallery';
@@ -64,7 +65,14 @@ describe('GalleryDateSidebar', () => {
     labelAllMonths();
 
     render(
-      <GalleryDateSidebar highlights={TWO_MONTHS} firstVisibleIndex={0} galleryRef={galleryRef()} />,
+      <GalleryDateSidebar
+        highlights={TWO_MONTHS}
+        firstVisibleIndex={0}
+        galleryRef={galleryRef()}
+        isLoading={false}
+        isError={false}
+        onRetry={vi.fn()}
+      />,
     );
 
     // Newest month (July) is in view, so its days show; June stays a header.
@@ -80,12 +88,26 @@ describe('GalleryDateSidebar', () => {
     labelAllMonths();
 
     const { rerender } = render(
-      <GalleryDateSidebar highlights={TWO_MONTHS} firstVisibleIndex={0} galleryRef={galleryRef()} />,
+      <GalleryDateSidebar
+        highlights={TWO_MONTHS}
+        firstVisibleIndex={0}
+        galleryRef={galleryRef()}
+        isLoading={false}
+        isError={false}
+        onRetry={vi.fn()}
+      />,
     );
 
     // Scroll into June's rows: June unfolds, July folds back to a header.
     rerender(
-      <GalleryDateSidebar highlights={TWO_MONTHS} firstVisibleIndex={8} galleryRef={galleryRef()} />,
+      <GalleryDateSidebar
+        highlights={TWO_MONTHS}
+        firstVisibleIndex={8}
+        galleryRef={galleryRef()}
+        isLoading={false}
+        isError={false}
+        onRetry={vi.fn()}
+      />,
     );
 
     expect(screen.getByRole('button', { name: '25' })).toBeInTheDocument();
@@ -99,7 +121,14 @@ describe('GalleryDateSidebar', () => {
     const ref = galleryRef();
 
     render(
-      <GalleryDateSidebar highlights={TWO_MONTHS} firstVisibleIndex={0} galleryRef={ref} />,
+      <GalleryDateSidebar
+        highlights={TWO_MONTHS}
+        firstVisibleIndex={0}
+        galleryRef={ref}
+        isLoading={false}
+        isError={false}
+        onRetry={vi.fn()}
+      />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Jun' }));
@@ -114,7 +143,14 @@ describe('GalleryDateSidebar', () => {
     const ref = galleryRef();
 
     render(
-      <GalleryDateSidebar highlights={TWO_MONTHS} firstVisibleIndex={0} galleryRef={ref} />,
+      <GalleryDateSidebar
+        highlights={TWO_MONTHS}
+        firstVisibleIndex={0}
+        galleryRef={ref}
+        isLoading={false}
+        isError={false}
+        onRetry={vi.fn()}
+      />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: '18' }));
@@ -141,11 +177,56 @@ describe('GalleryDateSidebar', () => {
         ]}
         firstVisibleIndex={0}
         galleryRef={galleryRef()}
+        isLoading={false}
+        isError={false}
+        onRetry={vi.fn()}
       />,
     );
 
     // One June section, two distinct days inside it.
     expect(screen.getByRole('button', { name: 'Jun' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^2[45]$/ }).map((b) => b.textContent)).toEqual(['24', '25']);
+  });
+
+  it('renders nothing while its own date data is still pending', () => {
+    const ref = galleryRef();
+
+    const { container } = render(
+      <GalleryDateSidebar
+        highlights={TWO_MONTHS}
+        firstVisibleIndex={0}
+        galleryRef={ref}
+        isLoading={true}
+        isError={false}
+        onRetry={vi.fn()}
+      />,
+    );
+
+    expect(within(container).queryByRole('button')).not.toBeInTheDocument();
+    expect(ref.current.scrollToIndex).not.toHaveBeenCalled();
+  });
+
+  it('offers a retry control when its own date data fails to load', () => {
+    const ref = galleryRef();
+    const onRetry = vi.fn();
+
+    render(
+      <MantineProvider env="test">
+        <GalleryDateSidebar
+          highlights={TWO_MONTHS}
+          firstVisibleIndex={0}
+          galleryRef={ref}
+          isLoading={false}
+          isError={true}
+          onRetry={onRetry}
+        />
+      </MantineProvider>,
+    );
+
+    const alert = screen.getByRole('alert');
+    fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
+
+    expect(onRetry).toHaveBeenCalledOnce();
+    expect(ref.current.scrollToIndex).not.toHaveBeenCalled();
   });
 });

@@ -14,9 +14,12 @@ import { GalleryDateMonthList } from './GalleryDateMonthList';
 import styles from './GalleryDateJumpHeading.module.css';
 
 interface GalleryDateJumpHeadingProps {
-  date: Date;
+  date: Date | null;
   dayHighlights: GalleryDateHighlight[];
   onJump: (day: GalleryDateHighlight) => void;
+  isLoading: boolean;
+  isError: boolean;
+  onRetry: () => void;
 }
 
 /**
@@ -42,7 +45,14 @@ export function dropdownWidthCss(surfaceWidthPx: number | null): string {
  * wide date rail doesn't fit (mobile drawer or a narrowed desktop panel):
  * tapping it opens the same grouped month/day list as the wide rail.
  */
-export function GalleryDateJumpHeading({ date, dayHighlights, onJump }: GalleryDateJumpHeadingProps) {
+export function GalleryDateJumpHeading({
+  date,
+  dayHighlights,
+  onJump,
+  isLoading,
+  isError,
+  onRetry,
+}: GalleryDateJumpHeadingProps) {
   const [opened, setOpened] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const { pinChromeHidden } = usePanelScrollChromeState();
@@ -57,6 +67,23 @@ export function GalleryDateJumpHeading({ date, dayHighlights, onJump }: GalleryD
     return () => pinChromeHidden?.(false);
   }, [opened, pinChromeHidden]);
   const uniqueDays = useMemo(() => toDayHighlights(dayHighlights), [dayHighlights]);
+
+  if (isLoading) return null;
+
+  if (isError) {
+    return (
+      <button
+        type="button"
+        className={`${styles.heading} ${materialClasses.panelControl}`}
+        onClick={onRetry}
+      >
+        <span className={styles.headingText}>Retry dates</span>
+      </button>
+    );
+  }
+
+  if (date === null) return null;
+
   const activeDayKey = getCapturedMediaCalendarDayKey(date);
   const activeDay = uniqueDays.find(
     (day) => getCapturedMediaCalendarDayKey(day.date) === activeDayKey,
