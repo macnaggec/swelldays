@@ -87,6 +87,7 @@ const mocks = vi.hoisted(() => ({
   }],
   prefetchInfiniteQuery: vi.fn(() => Promise.resolve()),
   prefetchQuery: vi.fn(() => Promise.resolve()),
+  ensureQueryData: vi.fn(() => Promise.resolve(null as { id: string } | null)),
   sessionFeedInfiniteQueryOptions: vi.fn((_trpc: unknown, params: unknown) => ({ queryKey: ['sessionFeed', params] })),
   spotMediaFeedInfiniteQueryOptions: vi.fn((_trpc: unknown, params: unknown) => ({ queryKey: ['spotMediaFeed', params] })),
   mediaDateIndexQueryOptions: vi.fn((_trpc: unknown, params: unknown) => ({ queryKey: ['mediaDateIndex', params] })),
@@ -143,6 +144,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({
     prefetchInfiniteQuery: mocks.prefetchInfiniteQuery,
     prefetchQuery: mocks.prefetchQuery,
+    ensureQueryData: mocks.ensureQueryData,
   }),
 }));
 
@@ -181,7 +183,12 @@ vi.mock('features/AddSpot', async (importOriginal) => {
 
 vi.mock('shared/lib/trpc', () => ({
   useTRPC: () => ({
-    uploads: { getActiveWorkspace: { queryOptions: vi.fn() } },
+    uploads: {
+      getActiveWorkspace: { queryOptions: () => ({ queryKey: ['uploads.getActiveWorkspace'] }) },
+      getWorkspaceState: {
+        queryOptions: (input: { workspaceId: string }) => ({ queryKey: ['uploads.getWorkspaceState', input] }),
+      },
+    },
   }),
 }));
 
@@ -504,6 +511,7 @@ describe('Panel upload entry', () => {
 
   it('preloads the sign-in surface from the Upload control for a signed-out visitor, alongside the route preload', () => {
     mocks.params = { spotId: 'spot-current' };
+    mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {}, loaderData: { id: 'spot-current-db-id' } }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
@@ -515,8 +523,9 @@ describe('Panel upload entry', () => {
     expect(mocks.preloadAuthSurface).toHaveBeenCalledTimes(3);
     expect(mocks.preloadRoute).toHaveBeenCalledWith({
       to: '/upload',
-      search: { spotId: 'spot-current' },
+      search: { spotId: 'spot-current-db-id' },
     });
+    expect(mocks.ensureQueryData).not.toHaveBeenCalled();
   });
 
   it('never preloads the sign-in surface from the Upload control for an authenticated visitor', () => {
@@ -535,6 +544,7 @@ describe('Panel upload entry', () => {
 
   it('preloads Upload with the selected spot when the user approaches its control', () => {
     mocks.params = { spotId: 'spot-current' };
+    mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {}, loaderData: { id: 'spot-current-db-id' } }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
@@ -542,7 +552,7 @@ describe('Panel upload entry', () => {
 
     expect(mocks.preloadRoute).toHaveBeenCalledWith({
       to: '/upload',
-      search: { spotId: 'spot-current' },
+      search: { spotId: 'spot-current-db-id' },
     });
   });
 
@@ -569,6 +579,62 @@ describe('Panel upload entry', () => {
     expect(mocks.preloadRoute).toHaveBeenCalledWith({
       to: '/upload',
       search: { spotId: undefined },
+    });
+  });
+
+  it('prefetches the exact resolved workspace state on authenticated Upload intent', async () => {
+    mocks.isAuthenticated = true;
+    mocks.ensureQueryData.mockResolvedValueOnce({ id: 'workspace-resolved' });
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Upload' }));
+
+    expect(mocks.ensureQueryData).toHaveBeenCalledWith({ queryKey: ['uploads.getActiveWorkspace'] });
+
+    await waitFor(() => {
+      expect(mocks.prefetchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          retry: false,
+          queryKey: ['uploads.getWorkspaceState', { workspaceId: 'workspace-resolved' }],
+        }),
+      );
+    });
+  });
+
+  it('does not prefetch workspace state when authenticated Upload intent resolves no active workspace', async () => {
+    mocks.isAuthenticated = true;
+    mocks.params = { spotId: 'spot-current' };
+    mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {}, loaderData: { id: 'spot-current-db-id' } }];
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Upload' }));
+
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({
+      to: '/upload',
+      search: { spotId: 'spot-current-db-id' },
+    });
+
+    await waitFor(() => expect(mocks.ensureQueryData).toHaveBeenCalled());
+    expect(mocks.prefetchQuery).not.toHaveBeenCalled();
+  });
+
+  it('continues to Upload after its workspace prefetch fails', async () => {
+    mocks.isAuthenticated = true;
+    mocks.params = { spotId: 'spot-current' };
+    mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {}, loaderData: { id: 'spot-current-db-id' } }];
+    mocks.ensureQueryData.mockRejectedValueOnce(new Error('Ensure failed'));
+    const Component = (Route as unknown as { component: ComponentType }).component;
+    render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Upload' }));
+    await act(async () => Promise.resolve());
+    fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: '/upload',
+      search: { spotId: 'spot-current-db-id' },
     });
   });
 
@@ -701,6 +767,7 @@ describe('Panel upload entry', () => {
   it('continues to Upload with the same search after its preload is rejected', async () => {
     mocks.isAuthenticated = true;
     mocks.params = { spotId: 'spot-current' };
+    mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {}, loaderData: { id: 'spot-current-db-id' } }];
     mocks.preloadRoute.mockRejectedValueOnce(new Error('Route preload failed'));
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
@@ -711,7 +778,7 @@ describe('Panel upload entry', () => {
 
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: '/upload',
-      search: { spotId: 'spot-current' },
+      search: { spotId: 'spot-current-db-id' },
     });
   });
 
@@ -736,6 +803,7 @@ describe('Panel upload entry', () => {
 
   it('carries the visitor through to upload once they sign in', () => {
     mocks.params = { spotId: 'spot-current' };
+    mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {}, loaderData: { id: 'spot-current-db-id' } }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
@@ -750,13 +818,14 @@ describe('Panel upload entry', () => {
 
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: '/upload',
-      search: { spotId: 'spot-current' },
+      search: { spotId: 'spot-current-db-id' },
     });
   });
 
   it('navigates straight to /upload carrying the current spot, without creating a draft', () => {
     mocks.isAuthenticated = true;
     mocks.params = { spotId: 'spot-current' };
+    mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {}, loaderData: { id: 'spot-current-db-id' } }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
@@ -764,7 +833,7 @@ describe('Panel upload entry', () => {
 
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: '/upload',
-      search: { spotId: 'spot-current' },
+      search: { spotId: 'spot-current-db-id' },
     });
   });
 

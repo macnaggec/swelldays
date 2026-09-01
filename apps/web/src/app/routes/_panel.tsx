@@ -135,6 +135,11 @@ function PanelFrame({ children }: { children: ReactNode }) {
 
   const { spotId } = useParams({ strict: false });
 
+  // spotMatch.loaderData is the resolved Spot (database id); spotId above is
+  // the route's slug and must never enter Upload query/search state as if it
+  // were a database id.
+  const scopedSpotId = spotMatch ? (spotMatch.loaderData as Spot | undefined)?.id : undefined;
+
   const handleUpload = useCallback(() => {
     // The workspace query is gated on authentication, so a visitor signing in
     // here has no draft loaded yet. Landing on /upload without a workspaceId is
@@ -149,7 +154,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
         to: '/upload',
         search: activeWorkspace
           ? { workspaceId: activeWorkspace.id }
-          : { spotId: spotId ?? undefined },
+          : { spotId: scopedSpotId },
       });
     };
     if (!isAuthenticated) {
@@ -157,7 +162,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
       return;
     }
     submit();
-  }, [activeWorkspace, isAuthenticated, layoutPolicy.drawer.presentation, navigate, openAuthModal, spotId]);
+  }, [activeWorkspace, isAuthenticated, layoutPolicy.drawer.presentation, navigate, openAuthModal, scopedSpotId]);
 
   const handleUploadIntent = useCallback(() => {
     if (!isAuthenticated) {
@@ -167,9 +172,20 @@ function PanelFrame({ children }: { children: ReactNode }) {
       to: '/upload',
       search: activeWorkspace
         ? { workspaceId: activeWorkspace.id }
-        : { spotId: spotId ?? undefined },
+        : { spotId: scopedSpotId },
     }).catch(() => {});
-  }, [activeWorkspace, isAuthenticated, router, spotId]);
+    if (isAuthenticated) {
+      void queryClient.ensureQueryData(trpc.uploads.getActiveWorkspace.queryOptions())
+        .then((workspace) => {
+          if (!workspace) return;
+          return queryClient.prefetchQuery({
+            ...trpc.uploads.getWorkspaceState.queryOptions({ workspaceId: workspace.id }),
+            retry: false,
+          });
+        })
+        .catch(() => {});
+    }
+  }, [activeWorkspace, isAuthenticated, queryClient, router, scopedSpotId, trpc]);
 
   const { spot: activeSpot } = useSelectedSpot();
   const { data: cartFromSpot } = useSpotPreviewBySlug(cartFrom ?? '', { enabled: !!cartFrom });
@@ -296,11 +312,6 @@ function PanelFrame({ children }: { children: ReactNode }) {
       || (scope === 'gallery' && Boolean(galleryMatch))
     ) return;
 
-    // spotMatch.loaderData is the resolved Spot (database id); spotId (from
-    // useParams) is the route's slug and must stay in route params only —
-    // the two must never be swapped.
-    const scopedSpotId = spotMatch ? (spotMatch.loaderData as Spot | undefined)?.id : undefined;
-
     if (scope === 'gallery') {
       void (spotMatch
         ? router.preloadRoute({ to: '/$spotId/gallery', params: { spotId: spotId! } })
@@ -325,7 +336,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
       ...sessionFeedInfiniteQueryOptions(trpc, { spotId: scopedSpotId, filters }),
       retry: false,
     }).catch(() => {});
-  }, [filters, galleryMatch, queryClient, router, spotId, spotMatch, trpc]);
+  }, [filters, galleryMatch, queryClient, router, scopedSpotId, spotId, spotMatch, trpc]);
 
   const header: ReactNode = (() => {
     if (cartMatch) {
