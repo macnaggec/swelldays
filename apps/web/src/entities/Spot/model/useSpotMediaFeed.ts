@@ -3,13 +3,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useTRPC } from 'shared/lib/trpc';
 import { EMPTY_BROWSE_FILTERS, toBrowseDateRange, type BrowseFilters } from 'shared/model/browseFilters';
 
-/** Published media, optionally scoped to a single spot; omit spotId to browse all spots. */
-export function useSpotMediaFeed({
-  spotId,
-  filters = EMPTY_BROWSE_FILTERS,
-  sortOrder = 'desc',
-  jumpAnchor,
-}: {
+interface SpotMediaFeedParams {
   spotId?: string;
   filters?: BrowseFilters;
   sortOrder?: 'asc' | 'desc';
@@ -21,34 +15,52 @@ export function useSpotMediaFeed({
    * back toward the present) like any other page.
    */
   jumpAnchor?: Date;
-} = {}) {
-  const trpc = useTRPC();
+}
+
+type TRPCOptionsProxy = ReturnType<typeof useTRPC>;
+
+export function spotMediaFeedInfiniteQueryOptions(
+  trpc: TRPCOptionsProxy,
+  { spotId, filters = EMPTY_BROWSE_FILTERS, sortOrder = 'desc', jumpAnchor }: SpotMediaFeedParams = {},
+) {
   const dateRange = toBrowseDateRange(filters.date);
 
-  const query = useInfiniteQuery(
-    trpc.spots.mediaFeed.infiniteQueryOptions(
-      {
-        spotId,
-        limit: 30,
-        sortOrder,
-        ...dateRange,
-        favoriteSpotsOnly: filters.favoriteSpotsOnly,
-        anchorCapturedAt: jumpAnchor,
-      },
-      {
-        getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-        getPreviousPageParam: (firstPage) => firstPage.prevCursor ?? undefined,
-      },
-    ),
-  );
-  const dateIndexQuery = useQuery(
-    trpc.spots.mediaDateIndex.queryOptions({
+  return trpc.spots.mediaFeed.infiniteQueryOptions(
+    {
       spotId,
+      limit: 30,
       sortOrder,
       ...dateRange,
       favoriteSpotsOnly: filters.favoriteSpotsOnly,
-    }),
+      anchorCapturedAt: jumpAnchor,
+    },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      getPreviousPageParam: (firstPage) => firstPage.prevCursor ?? undefined,
+    },
   );
+}
+
+export function mediaDateIndexQueryOptions(
+  trpc: TRPCOptionsProxy,
+  { spotId, filters = EMPTY_BROWSE_FILTERS, sortOrder = 'desc' }: SpotMediaFeedParams = {},
+) {
+  const dateRange = toBrowseDateRange(filters.date);
+
+  return trpc.spots.mediaDateIndex.queryOptions({
+    spotId,
+    sortOrder,
+    ...dateRange,
+    favoriteSpotsOnly: filters.favoriteSpotsOnly,
+  });
+}
+
+/** Published media, optionally scoped to a single spot; omit spotId to browse all spots. */
+export function useSpotMediaFeed(params: SpotMediaFeedParams = {}) {
+  const trpc = useTRPC();
+
+  const query = useInfiniteQuery(spotMediaFeedInfiniteQueryOptions(trpc, params));
+  const dateIndexQuery = useQuery(mediaDateIndexQueryOptions(trpc, params));
 
   const flatItems = useMemo(
     () => query.data?.pages.flatMap((p) => p.items) ?? [],
