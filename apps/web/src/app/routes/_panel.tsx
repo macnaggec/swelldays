@@ -1,12 +1,19 @@
 import { createFileRoute, Outlet, useMatches, useNavigate, useParams, useRouter } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
-import { useSelectedSpot, useSpotPreviewBySlug } from 'entities/Spot';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useSelectedSpot,
+  useSpotPreviewBySlug,
+  spotMediaFeedInfiniteQueryOptions,
+  mediaDateIndexQueryOptions,
+  type Spot,
+} from 'entities/Spot';
 import { useCallback, useLayoutEffect, useState, type ReactNode } from 'react';
 import { useTRPC } from 'shared/lib/trpc';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { Loader, Skeleton, Text, Title } from '@mantine/core';
 import {
   type SurfSessionItem,
+  sessionFeedInfiniteQueryOptions,
 } from 'entities/SurfSession';
 import { EMPTY_BROWSE_FILTERS, type BrowseDateFilter, type BrowseFilters } from 'shared/model/browseFilters';
 import { SidePanel } from 'widgets/SidePanel';
@@ -90,6 +97,7 @@ function PanelFrame({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useUser();
   const { open: openAuthModal } = useAuthModal();
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const { data: activeWorkspace } = useQuery({
     ...trpc.uploads.getActiveWorkspace.queryOptions(),
     enabled: isAuthenticated,
@@ -288,11 +296,24 @@ function PanelFrame({ children }: { children: ReactNode }) {
       || (scope === 'gallery' && Boolean(galleryMatch))
     ) return;
 
+    // spotMatch.loaderData is the resolved Spot (database id); spotId (from
+    // useParams) is the route's slug and must stay in route params only —
+    // the two must never be swapped.
+    const scopedSpotId = spotMatch ? (spotMatch.loaderData as Spot | undefined)?.id : undefined;
+
     if (scope === 'gallery') {
       void (spotMatch
         ? router.preloadRoute({ to: '/$spotId/gallery', params: { spotId: spotId! } })
         : router.preloadRoute({ to: '/gallery' })
       ).catch(() => {});
+      void queryClient.prefetchInfiniteQuery({
+        ...spotMediaFeedInfiniteQueryOptions(trpc, { spotId: scopedSpotId, filters }),
+        retry: false,
+      }).catch(() => {});
+      void queryClient.prefetchQuery({
+        ...mediaDateIndexQueryOptions(trpc, { spotId: scopedSpotId, filters }),
+        retry: false,
+      }).catch(() => {});
       return;
     }
 
@@ -300,7 +321,11 @@ function PanelFrame({ children }: { children: ReactNode }) {
       ? router.preloadRoute({ to: '/$spotId', params: { spotId: spotId! } })
       : router.preloadRoute({ to: '/' })
     ).catch(() => {});
-  }, [galleryMatch, router, spotId, spotMatch]);
+    void queryClient.prefetchInfiniteQuery({
+      ...sessionFeedInfiniteQueryOptions(trpc, { spotId: scopedSpotId, filters }),
+      retry: false,
+    }).catch(() => {});
+  }, [filters, galleryMatch, queryClient, router, spotId, spotMatch, trpc]);
 
   const header: ReactNode = (() => {
     if (cartMatch) {

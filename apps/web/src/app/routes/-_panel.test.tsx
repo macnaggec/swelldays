@@ -85,6 +85,11 @@ const mocks = vi.hoisted(() => ({
     location: 'Somewhere',
     coords: [1, 2],
   }],
+  prefetchInfiniteQuery: vi.fn(() => Promise.resolve()),
+  prefetchQuery: vi.fn(() => Promise.resolve()),
+  sessionFeedInfiniteQueryOptions: vi.fn((_trpc: unknown, params: unknown) => ({ queryKey: ['sessionFeed', params] })),
+  spotMediaFeedInfiniteQueryOptions: vi.fn((_trpc: unknown, params: unknown) => ({ queryKey: ['spotMediaFeed', params] })),
+  mediaDateIndexQueryOptions: vi.fn((_trpc: unknown, params: unknown) => ({ queryKey: ['mediaDateIndex', params] })),
 }));
 
 vi.mock('shared/model/viewportCapabilities', () => ({
@@ -135,6 +140,10 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mocks.activeWorkspace }),
+  useQueryClient: () => ({
+    prefetchInfiniteQuery: mocks.prefetchInfiniteQuery,
+    prefetchQuery: mocks.prefetchQuery,
+  }),
 }));
 
 vi.mock('entities/Spot', () => ({
@@ -144,9 +153,13 @@ vi.mock('entities/Spot', () => ({
   useSpotPreview: () => ({ data: null }),
   useSpotPreviewBySlug: () => ({ data: null }),
   useSpots: () => ({ data: mocks.spotResults, isFetching: false }),
+  spotMediaFeedInfiniteQueryOptions: mocks.spotMediaFeedInfiniteQueryOptions,
+  mediaDateIndexQueryOptions: mocks.mediaDateIndexQueryOptions,
 }));
 
-vi.mock('entities/SurfSession', () => ({}));
+vi.mock('entities/SurfSession', () => ({
+  sessionFeedInfiniteQueryOptions: mocks.sessionFeedInfiniteQueryOptions,
+}));
 
 vi.mock('shared/hooks/useUser', () => ({
   useUser: () => ({ isAuthenticated: mocks.isAuthenticated, isLoading: false, user: null }),
@@ -406,6 +419,11 @@ describe('Panel upload entry', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.preloadRoute.mockResolvedValue(undefined);
+    mocks.prefetchInfiniteQuery.mockClear();
+    mocks.prefetchQuery.mockClear();
+    mocks.sessionFeedInfiniteQueryOptions.mockClear();
+    mocks.spotMediaFeedInfiniteQueryOptions.mockClear();
+    mocks.mediaDateIndexQueryOptions.mockClear();
     mocks.isAuthenticated = false;
     mocks.matches = [{ routeId: '/_panel/', staticData: {} }];
     mocks.params = {};
@@ -560,12 +578,37 @@ describe('Panel upload entry', () => {
 
     fireEvent.pointerEnter(screen.getByRole('button', { name: 'Gallery' }));
 
+    // Route-code preload and data prefetch must already both have fired
+    // synchronously off the same pointer-enter — no chained .then() here.
     expect(mocks.preloadRoute).toHaveBeenCalledWith({ to: '/gallery' });
+    expect(mocks.prefetchInfiniteQuery).toHaveBeenCalledTimes(1);
+
+    expect(mocks.spotMediaFeedInfiniteQueryOptions).toHaveBeenCalledWith(
+      expect.anything(),
+      { spotId: undefined, filters: expect.anything() },
+    );
+    expect(mocks.mediaDateIndexQueryOptions).toHaveBeenCalledWith(
+      expect.anything(),
+      { spotId: undefined, filters: expect.anything() },
+    );
+    expect(mocks.prefetchInfiniteQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retry: false,
+        queryKey: mocks.spotMediaFeedInfiniteQueryOptions.mock.results[0]?.value.queryKey,
+      }),
+    );
+    expect(mocks.prefetchQuery).toHaveBeenCalledTimes(1);
+    expect(mocks.prefetchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retry: false,
+        queryKey: mocks.mediaDateIndexQueryOptions.mock.results[0]?.value.queryKey,
+      }),
+    );
   });
 
   it('preloads the selected spot Gallery from that spot Feed', () => {
     mocks.params = { spotId: 'spot-current' };
-    mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {} }];
+    mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {}, loaderData: { id: 'spot-current-db-id' } }];
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
@@ -575,12 +618,20 @@ describe('Panel upload entry', () => {
       to: '/$spotId/gallery',
       params: { spotId: 'spot-current' },
     });
+    expect(mocks.spotMediaFeedInfiniteQueryOptions).toHaveBeenCalledWith(
+      expect.anything(),
+      { spotId: 'spot-current-db-id', filters: expect.anything() },
+    );
+    expect(mocks.mediaDateIndexQueryOptions).toHaveBeenCalledWith(
+      expect.anything(),
+      { spotId: 'spot-current-db-id', filters: expect.anything() },
+    );
   });
 
   it('preloads the selected spot Feed from that spot Gallery', () => {
     mocks.params = { spotId: 'spot-current' };
     mocks.matches = [
-      { routeId: '/_panel/$spotId', staticData: {} },
+      { routeId: '/_panel/$spotId', staticData: {}, loaderData: { id: 'spot-current-db-id' } },
       { routeId: '/_panel/$spotId/gallery', staticData: { appRouteIntent: 'galleryWorkspace' } },
     ];
     const Component = (Route as unknown as { component: ComponentType }).component;
@@ -592,6 +643,14 @@ describe('Panel upload entry', () => {
       to: '/$spotId',
       params: { spotId: 'spot-current' },
     });
+    expect(mocks.sessionFeedInfiniteQueryOptions).toHaveBeenCalledWith(
+      expect.anything(),
+      { spotId: 'spot-current-db-id', filters: expect.anything() },
+    );
+    expect(mocks.prefetchInfiniteQuery).toHaveBeenCalledTimes(1);
+    expect(mocks.prefetchInfiniteQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ retry: false }),
+    );
   });
 
   it('preloads the all-spots Feed from the all-spots Gallery', () => {
@@ -605,6 +664,10 @@ describe('Panel upload entry', () => {
     fireEvent.pointerEnter(screen.getByRole('button', { name: 'Feed' }));
 
     expect(mocks.preloadRoute).toHaveBeenCalledWith({ to: '/' });
+    expect(mocks.sessionFeedInfiniteQueryOptions).toHaveBeenCalledWith(
+      expect.anything(),
+      { spotId: undefined, filters: expect.anything() },
+    );
   });
 
   it('does not preload the already-active Feed destination', () => {
@@ -614,6 +677,8 @@ describe('Panel upload entry', () => {
     fireEvent.pointerEnter(screen.getByRole('button', { name: 'Feed' }));
 
     expect(mocks.preloadRoute).not.toHaveBeenCalled();
+    expect(mocks.prefetchInfiniteQuery).not.toHaveBeenCalled();
+    expect(mocks.sessionFeedInfiniteQueryOptions).not.toHaveBeenCalled();
   });
 
   it('does not preload the already-active Gallery destination', () => {
@@ -627,6 +692,10 @@ describe('Panel upload entry', () => {
     fireEvent.pointerEnter(screen.getByRole('button', { name: 'Gallery' }));
 
     expect(mocks.preloadRoute).not.toHaveBeenCalled();
+    expect(mocks.prefetchInfiniteQuery).not.toHaveBeenCalled();
+    expect(mocks.prefetchQuery).not.toHaveBeenCalled();
+    expect(mocks.spotMediaFeedInfiniteQueryOptions).not.toHaveBeenCalled();
+    expect(mocks.mediaDateIndexQueryOptions).not.toHaveBeenCalled();
   });
 
   it('continues to Upload with the same search after its preload is rejected', async () => {
@@ -648,8 +717,10 @@ describe('Panel upload entry', () => {
 
   it('continues to the selected spot Gallery with the same params after preload rejection', async () => {
     mocks.params = { spotId: 'spot-current' };
-    mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {} }];
+    mocks.matches = [{ routeId: '/_panel/$spotId', staticData: {}, loaderData: { id: 'spot-current-db-id' } }];
     mocks.preloadRoute.mockRejectedValueOnce(new Error('Route preload failed'));
+    mocks.prefetchInfiniteQuery.mockRejectedValueOnce(new Error('Prefetch failed'));
+    mocks.prefetchQuery.mockRejectedValueOnce(new Error('Prefetch failed'));
     const Component = (Route as unknown as { component: ComponentType }).component;
     render(<TestShellPolicyProvider><Component /></TestShellPolicyProvider>);
 
