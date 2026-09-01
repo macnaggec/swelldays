@@ -8,18 +8,21 @@ interface SessionFeedParams {
   limit?: number;
 }
 
-export function useSessionFeed({
-  spotId,
-  filters = EMPTY_BROWSE_FILTERS,
-  limit = 20,
-}: SessionFeedParams = {}) {
-  const trpc = useTRPC();
+type TRPCOptionsProxy = ReturnType<typeof useTRPC>;
+
+export function sessionFeedInfiniteQueryOptions(
+  trpc: TRPCOptionsProxy,
+  { spotId, filters = EMPTY_BROWSE_FILTERS, limit = 20 }: SessionFeedParams = {},
+) {
   const dateRange = toBrowseDateRange(filters.date);
 
-  return useInfiniteQuery({
-    ...trpc.sessions.list.infiniteQueryOptions(
-      { limit, spotId: spotId ?? undefined, ...dateRange, favoritesOnly: filters.favoriteSpotsOnly },
-      { getNextPageParam: (last) => last.nextCursor ?? undefined },
-    ),
-  });
+  return trpc.sessions.list.infiniteQueryOptions(
+    { limit, spotId: spotId ?? undefined, ...dateRange, favoritesOnly: filters.favoriteSpotsOnly },
+    { getNextPageParam: (last) => last.nextCursor ?? undefined },
+  );
+}
+
+export function useSessionFeed(params: SessionFeedParams = {}) {
+  const trpc = useTRPC();
+  return useInfiniteQuery(sessionFeedInfiniteQueryOptions(trpc, params));
 }

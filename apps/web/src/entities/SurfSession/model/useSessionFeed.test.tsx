@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useSessionFeed } from './useSessionFeed';
+import { sessionFeedInfiniteQueryOptions, useSessionFeed } from './useSessionFeed';
+import { useTRPC } from 'shared/lib/trpc';
 import { toBrowseDateRange } from 'shared/model/browseFilters';
 
 const mocks = vi.hoisted(() => ({
@@ -73,5 +74,46 @@ describe('useSessionFeed', () => {
     const pagination = mocks.infiniteQueryOptions.mock.calls[0]?.[1];
     expect(pagination?.getNextPageParam({ nextCursor: 'next-session' })).toBe('next-session');
     expect(pagination?.getNextPageParam({ nextCursor: null })).toBeUndefined();
+  });
+
+  it('produces the identical infiniteQueryOptions call from the factory directly and from the hook', () => {
+    const selectedDate = new Date(2026, 4, 3, 12, 15);
+    const params = {
+      spotId: 'adca9ad6-f886-4f19-bb64-64c092873c59',
+      filters: { date: { date: selectedDate }, favoriteSpotsOnly: true },
+    };
+    const expectedInput = {
+      limit: 20,
+      spotId: 'adca9ad6-f886-4f19-bb64-64c092873c59',
+      dateFrom: new Date(2026, 4, 3),
+      dateTo: new Date(2026, 4, 4),
+      favoritesOnly: true,
+    };
+
+    const { result: trpcResult } = renderHook(() => useTRPC());
+
+    sessionFeedInfiniteQueryOptions(trpcResult.current, params);
+
+    expect(mocks.infiniteQueryOptions).toHaveBeenCalledWith(
+      expectedInput,
+      { getNextPageParam: expect.any(Function) },
+    );
+
+    const factoryPagination = mocks.infiniteQueryOptions.mock.calls[0]?.[1];
+    expect(factoryPagination?.getNextPageParam({ nextCursor: 'next-session' })).toBe('next-session');
+    expect(factoryPagination?.getNextPageParam({ nextCursor: null })).toBeUndefined();
+
+    mocks.infiniteQueryOptions.mockClear();
+
+    renderHook(() => useSessionFeed(params));
+
+    expect(mocks.infiniteQueryOptions).toHaveBeenCalledWith(
+      expectedInput,
+      { getNextPageParam: expect.any(Function) },
+    );
+
+    const hookPagination = mocks.infiniteQueryOptions.mock.calls[0]?.[1];
+    expect(hookPagination?.getNextPageParam({ nextCursor: 'next-session' })).toBe('next-session');
+    expect(hookPagination?.getNextPageParam({ nextCursor: null })).toBeUndefined();
   });
 });
