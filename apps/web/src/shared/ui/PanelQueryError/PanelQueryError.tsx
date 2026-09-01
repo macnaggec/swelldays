@@ -22,7 +22,7 @@ export function PanelQueryError({ title, description, onRetry }: PanelQueryError
         <h2 id="panel-query-error-title" className={styles.title}>{title}</h2>
         <p className={styles.description}>{description}</p>
 
-        <AppButton tone="highlight" onClick={onRetry}>Retry</AppButton>
+        <AppButton tone="highlight" onClick={onRetry} className={styles.action}>Retry</AppButton>
       </div>
     </section>
   );

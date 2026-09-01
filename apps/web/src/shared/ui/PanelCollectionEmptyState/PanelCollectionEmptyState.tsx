@@ -30,7 +30,7 @@ export function PanelCollectionEmptyState({
         <p className={styles.description}>{description}</p>
 
         {actionLabel && onAction && (
-          <AppButton tone="highlight" onClick={onAction}>
+          <AppButton tone="highlight" onClick={onAction} className={styles.action}>
             {actionLabel}
           </AppButton>
         )}
