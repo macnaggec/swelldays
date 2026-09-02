@@ -1161,7 +1161,7 @@ These are the complete handoff gates; during implementation, use only the smalle
 - [x] T10 Public Gallery absent from default Feed and only measured additional leakage corrected.
 - [x] T11 Feed/Gallery query contracts centralized.
 - [x] T12 primary content, auxiliary metadata, errors, and empty states are independent.
-- [ ] T13 exact safe destination data prefetched on intent without private fan-out.
+- [x] T13 exact safe destination data prefetched on intent without private fan-out. T13a (Browse) and T13b (Upload) shipped; T13c (Account) was evaluated on 2026-09-02 and skipped — no recorded user-visible reason exists, so account-menu items stay route-code-only, matching the roadmap's own prior "current account route chunks are small enough to keep" finding. Revisit T13c only if a real observed wait surfaces.
 - [ ] T14 only evidence-backed scheduling candidates retained.
 - [ ] T15 production results recorded and budgets ratcheted.
 - [ ] Full gates green.
