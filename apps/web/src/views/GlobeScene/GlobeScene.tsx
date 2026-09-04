@@ -232,7 +232,7 @@ export function GlobeScene() {
         onSpotSelect={handleSpotSelect}
         motionPolicy={motionPolicy}
         interactionPolicy={interactionPolicy}
-        selectedSpotFocusEnabled={sheetSnap !== 'full'}
+        selectedSpotFocusEnabled={sheetSnap !== 'full' && !canCompactPersistentDrawer}
         cameraInsetsPx={cameraInsetsPx}
         isCoordinatePickerActive={isImmersiveMapInput}
         tempPin={tempPin}
