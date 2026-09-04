@@ -1,5 +1,5 @@
 import { Anchor, Text, ThemeIcon } from '@mantine/core';
-import { IconCamera, IconMail, IconSearch } from '@tabler/icons-react';
+import { IconCamera, IconCash, IconMail, IconSearch } from '@tabler/icons-react';
 import materials from 'shared/ui/design-system/materials.module.css';
 import classes from './AboutPanel.module.css';
 
@@ -42,6 +42,22 @@ export function AboutPanel() {
             <Text className={classes.cardBody}>
               Search the map by spot and date to find sessions you were in. Preview and buy the
               shots you want, then download them from your purchases.
+            </Text>
+          </div>
+        </div>
+
+        <div className={`${materials.panel} ${classes.card}`}>
+          <ThemeIcon className={classes.cardIcon} variant="light" color="gray" radius="md">
+            <IconCash size={18} stroke={1.75} />
+          </ThemeIcon>
+          <div>
+            <Text component="h2" className={classes.cardTitle}>
+              Payouts
+            </Text>
+            <Text className={classes.cardBody}>
+              Photographers receive 80% of each sale; Swelldays retains a 20% platform fee.
+              Payouts may be requested once the available balance reaches $20 and are processed
+              manually within several business days.
             </Text>
           </div>
         </div>
