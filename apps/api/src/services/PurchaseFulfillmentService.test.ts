@@ -35,6 +35,7 @@ const service = new PurchaseFulfillmentService(
   mockMedia as any,
   mockFulfillment,
   mockCloudinary,
+  'cryptocloud',
 );
 
 // ---------------------------------------------------------------------------
@@ -277,6 +278,69 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
 
     expect(warnSpy).not.toHaveBeenCalled();
     warnSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Paddle's platform-fee split: fixed $0.50 + 30% (Paddle's own 5% + 0.50 fee,
+// plus a 25% margin) instead of the flat 20%/80% used by other providers —
+// see PurchaseFulfillmentService.ts's computeSplit for the full rationale.
+// ---------------------------------------------------------------------------
+
+describe('PurchaseFulfillmentService.fulfillOrder — Paddle platform-fee split', () => {
+  const ORDER_ID = 'order-1';
+  const EXTERNAL_ID = 'txn_01paddle';
+
+  const paddleService = new PurchaseFulfillmentService(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- partial mock objects in test
+    mockOrders as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockMedia as any,
+    mockFulfillment,
+    mockCloudinary,
+    'paddle',
+  );
+
+  function setupHappyPath(mediaItems: MediaFulfillmentItem[]) {
+    mockOrders.findOrderByExternalId.mockResolvedValue(null);
+    mockOrders.findOrderById.mockResolvedValue(makeOrder());
+    mockMedia.findByIdsForFulfillment.mockResolvedValue(mediaItems);
+  }
+
+  it('takes a fixed $0.50 plus 30% of the price as the platform fee', async () => {
+    setupHappyPath([makeMediaItem({ price: 1000 })]); // $10.00
+
+    await paddleService.fulfillOrder(ORDER_ID, EXTERNAL_ID);
+
+    const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
+    expect(payload.purchases[0]).toMatchObject<Partial<FulfillPurchaseData>>({
+      amountPaid: 1000,
+      platformFee: 350, // 50 + 1000 * 0.30
+      photographerEarned: 650,
+    });
+  });
+
+  it('never pays the photographer a negative amount when the fee formula would exceed the price', async () => {
+    setupHappyPath([makeMediaItem({ price: 50 })]); // $0.50 — fixed fee alone would exceed this
+
+    await paddleService.fulfillOrder(ORDER_ID, EXTERNAL_ID);
+
+    const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
+    expect(payload.purchases[0]).toMatchObject<Partial<FulfillPurchaseData>>({
+      amountPaid: 50,
+      platformFee: 50,
+      photographerEarned: 0,
+    });
+  });
+
+  it('platformFee and photographerEarned always sum to exactly the item price', async () => {
+    setupHappyPath([makeMediaItem({ price: 333 })]);
+
+    await paddleService.fulfillOrder(ORDER_ID, EXTERNAL_ID);
+
+    const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
+    const purchase = payload.purchases[0]!;
+    expect(purchase.platformFee + purchase.photographerEarned).toBe(333);
   });
 });
 
