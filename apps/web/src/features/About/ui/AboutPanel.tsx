@@ -55,7 +55,8 @@ export function AboutPanel() {
               Payouts
             </Text>
             <Text className={classes.cardBody}>
-              Photographers receive 80% of each sale; Swelldays retains a 20% platform fee.
+              Photographers receive the majority of each sale. Swelldays&apos; share covers
+              payment-processing costs, which vary by payment method, plus a service fee.
               Payouts may be requested once the available balance reaches $20 and are processed
               manually within several business days.
             </Text>
