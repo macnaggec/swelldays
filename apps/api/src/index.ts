@@ -2,7 +2,7 @@ import 'dotenv/config';
 import * as Sentry from '@sentry/hono/node';
 import { sentry } from '@sentry/hono/node';
 import { serve } from '@hono/node-server';
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { trpcServer } from '@hono/trpc-server';
 import { auth } from 'server/auth';
@@ -59,8 +59,11 @@ app.onError((err, c) => {
   return c.json({ error: 'Internal server error' }, 500);
 });
 
-// CryptoCloud webhook — raw body required for HMAC verification, must NOT go through tRPC
-app.post('/api/webhook/cryptocloud', async (c) => {
+// Payment webhook — raw body required for signature verification, must NOT go through tRPC.
+// Shared by every provider's route below: only the currently active adapter
+// (server/providers/payment/activeAdapter) ever does real work, regardless
+// of which URL the provider was configured to call.
+async function paymentWebhookHandler(c: Context) {
   try {
     webhookLimiter(getClientIp(c));
   } catch {
@@ -88,7 +91,10 @@ app.post('/api/webhook/cryptocloud', async (c) => {
   }
 
   return c.json({ ok: true });
-});
+}
+
+app.post('/api/webhook/cryptocloud', paymentWebhookHandler);
+app.post('/api/webhook/paddle', paymentWebhookHandler);
 
 // Server-rendered metadata for crawlers/share-bots (docs/roadmaps/seo-optimization.md,
 // Phase 2). Mounted outside /api/* because these mirror the web app's real

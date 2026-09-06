@@ -11,6 +11,10 @@ export type WebConfig = {
   };
   isDevelopment: boolean;
   sentryDsn: string;
+  paddle: {
+    clientToken: string;
+    environment: string;
+  };
 };
 
 const optionalValue = (
@@ -95,5 +99,9 @@ export function decodeWebEnvironment(
     },
     isDevelopment: mode === 'development',
     sentryDsn: optionalValue(raw, 'VITE_SENTRY_DSN'),
+    paddle: {
+      clientToken: optionalValue(raw, 'VITE_PADDLE_CLIENT_TOKEN'),
+      environment: optionalValue(raw, 'VITE_PADDLE_ENVIRONMENT'),
+    },
   };
 }

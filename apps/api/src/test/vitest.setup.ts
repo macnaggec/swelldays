@@ -15,6 +15,9 @@ process.env.PAYMENT_PROVIDER ??= 'mock'
 process.env.CRYPTOCLOUD_API_KEY ??= 'test-cryptocloud-api-key'
 process.env.CRYPTOCLOUD_SHOP_ID ??= 'test-cryptocloud-shop-id'
 process.env.CRYPTOCLOUD_SECRET_KEY ??= 'unit-test-secret-key'
+process.env.PADDLE_API_KEY ??= 'test-paddle-api-key'
+process.env.PADDLE_WEBHOOK_SECRET ??= 'unit-test-secret-key'
+process.env.PADDLE_ENVIRONMENT ??= 'sandbox'
 
 // ---------------------------------------------------------------------------
 // Server module mocks — applied globally to every server test so individual

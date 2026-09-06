@@ -26,6 +26,7 @@ const ROUTES_INHERITING_HEAD_FROM_PARENT = new Set([
   '_panel.tsx', // shared panel shell; every child sets its own head
   '_page.admin.tsx', // inherits noindex from _page.tsx
   '_page.order-success.tsx', // inherits noindex from _page.tsx
+  '_page.checkout.paddle.tsx', // inherits noindex from _page.tsx
   '_panel.me.collections.tsx', // inherits noindex from _panel.me.tsx
   '_panel.me.collections.index.tsx',
   '_panel.me.collections.favorites.tsx',

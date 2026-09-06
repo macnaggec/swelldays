@@ -17,6 +17,7 @@
     "@mantine/dates": "^8.3.11",
     "@mantine/hooks": "^8.3.1",
     "@mantine/notifications": "^8.3.11",
+    "@paddle/paddle-js": "^1.6.5",
     "@sentry/react": "^10.70.0",
     "@swelldays/contracts": "*",
     "@tabler/icons-react": "^3.12.0",

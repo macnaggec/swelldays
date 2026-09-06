@@ -21,6 +21,7 @@ import { Route as PanelCartRouteImport } from './routes/_panel.cart'
 import { Route as PanelGalleryRouteImport } from './routes/_panel.gallery'
 import { Route as PanelMeRouteImport } from './routes/_panel.me'
 import { Route as PanelUploadRouteImport } from './routes/_panel.upload'
+import { Route as PageCheckoutPaddleRouteImport } from './routes/_page.checkout.paddle'
 import { Route as PanelSpotIdIndexRouteImport } from './routes/_panel.$spotId.index'
 import { Route as PanelSpotIdGalleryRouteImport } from './routes/_panel.$spotId.gallery'
 import { Route as PanelMeIndexRouteImport } from './routes/_panel.me.index'
@@ -89,6 +90,11 @@ const PanelUploadRoute = PanelUploadRouteImport.update({
   path: '/upload',
   getParentRoute: () => PanelRoute,
 } as any)
+const PageCheckoutPaddleRoute = PageCheckoutPaddleRouteImport.update({
+  id: '/checkout/paddle',
+  path: '/checkout/paddle',
+  getParentRoute: () => PageRoute,
+} as any)
 const PanelSpotIdIndexRoute = PanelSpotIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -149,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/gallery': typeof PanelGalleryRoute
   '/me': typeof PanelMeRouteWithChildren
   '/upload': typeof PanelUploadRoute
+  '/checkout/paddle': typeof PageCheckoutPaddleRoute
   '/$spotId/gallery': typeof PanelSpotIdGalleryRoute
   '/me/collections': typeof PanelMeCollectionsRouteWithChildren
   '/me/earnings': typeof PanelMeEarningsRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/cart': typeof PanelCartRoute
   '/gallery': typeof PanelGalleryRoute
   '/upload': typeof PanelUploadRoute
+  '/checkout/paddle': typeof PageCheckoutPaddleRoute
   '/$spotId/gallery': typeof PanelSpotIdGalleryRoute
   '/me/earnings': typeof PanelMeEarningsRoute
   '/$spotId': typeof PanelSpotIdIndexRoute
@@ -191,6 +199,7 @@ export interface FileRoutesById {
   '/_panel/me': typeof PanelMeRouteWithChildren
   '/_panel/upload': typeof PanelUploadRoute
   '/_panel/': typeof PanelIndexRoute
+  '/_page/checkout/paddle': typeof PageCheckoutPaddleRoute
   '/_panel/$spotId/gallery': typeof PanelSpotIdGalleryRoute
   '/_panel/me/collections': typeof PanelMeCollectionsRouteWithChildren
   '/_panel/me/earnings': typeof PanelMeEarningsRoute
@@ -214,6 +223,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/me'
     | '/upload'
+    | '/checkout/paddle'
     | '/$spotId/gallery'
     | '/me/collections'
     | '/me/earnings'
@@ -233,6 +243,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/gallery'
     | '/upload'
+    | '/checkout/paddle'
     | '/$spotId/gallery'
     | '/me/earnings'
     | '/$spotId'
@@ -255,6 +266,7 @@ export interface FileRouteTypes {
     | '/_panel/me'
     | '/_panel/upload'
     | '/_panel/'
+    | '/_page/checkout/paddle'
     | '/_panel/$spotId/gallery'
     | '/_panel/me/collections'
     | '/_panel/me/earnings'
@@ -358,6 +370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanelUploadRouteImport
       parentRoute: typeof PanelRoute
     }
+    '/_page/checkout/paddle': {
+      id: '/_page/checkout/paddle'
+      path: '/checkout/paddle'
+      fullPath: '/checkout/paddle'
+      preLoaderRoute: typeof PageCheckoutPaddleRouteImport
+      parentRoute: typeof PageRoute
+    }
     '/_panel/$spotId/': {
       id: '/_panel/$spotId/'
       path: '/'
@@ -427,11 +446,13 @@ declare module '@tanstack/react-router' {
 interface PageRouteChildren {
   PageAdminRoute: typeof PageAdminRoute
   PageOrderSuccessRoute: typeof PageOrderSuccessRoute
+  PageCheckoutPaddleRoute: typeof PageCheckoutPaddleRoute
 }
 
 const PageRouteChildren: PageRouteChildren = {
   PageAdminRoute: PageAdminRoute,
   PageOrderSuccessRoute: PageOrderSuccessRoute,
+  PageCheckoutPaddleRoute: PageCheckoutPaddleRoute,
 }
 
 const PageRouteWithChildren = PageRoute._addFileChildren(PageRouteChildren)

@@ -25,6 +25,7 @@ describe('decodeWebEnvironment', () => {
       },
       isDevelopment: false,
       sentryDsn: '',
+      paddle: { clientToken: '', environment: '' },
     });
   });
 
@@ -70,6 +71,7 @@ describe('decodeWebEnvironment', () => {
       cloudinary: { cloudName: '', apiKey: '' },
       isDevelopment: true,
       sentryDsn: '',
+      paddle: { clientToken: '', environment: '' },
     });
   });
 

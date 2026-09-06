@@ -6,6 +6,12 @@ export type CryptoCloudConfig = {
   secretKey: string;
 };
 
+export type PaddleConfig = {
+  apiKey: string;
+  webhookSecret: string;
+  environment: 'sandbox' | 'production';
+};
+
 export type ApiConfig = {
   nodeEnv: ApiNodeEnvironment;
   databaseUrl: string;
@@ -26,8 +32,10 @@ export type ApiConfig = {
   };
   payment:
     | { provider: 'mock' }
-    | ({ provider: 'cryptocloud' } & CryptoCloudConfig);
+    | ({ provider: 'cryptocloud' } & CryptoCloudConfig)
+    | ({ provider: 'paddle' } & PaddleConfig);
   cryptoCloud: CryptoCloudConfig | null;
+  paddle: PaddleConfig | null;
   sentryDsn: string | null;
 };
 
@@ -131,6 +139,24 @@ const parseCryptoCloudConfig = (
   return { apiKey, shopId, secretKey };
 };
 
+const parsePaddleConfig = (
+  raw: Record<string, string | undefined>,
+): PaddleConfig | null => {
+  const apiKey = optionalValue(raw, 'PADDLE_API_KEY');
+  const webhookSecret = optionalValue(raw, 'PADDLE_WEBHOOK_SECRET');
+  const environment = optionalValue(raw, 'PADDLE_ENVIRONMENT');
+  const configuredCount = [apiKey, webhookSecret, environment].filter(Boolean).length;
+
+  if (configuredCount === 0) return null;
+  if (!apiKey || !webhookSecret || !environment) {
+    throw new Error('Paddle credentials must be provided together');
+  }
+  if (environment !== 'sandbox' && environment !== 'production') {
+    throw new Error('PADDLE_ENVIRONMENT must be sandbox or production');
+  }
+  return { apiKey, webhookSecret, environment };
+};
+
 export function decodeApiEnvironment(
   raw: Record<string, string | undefined>,
 ): ApiConfig {
@@ -175,12 +201,16 @@ export function decodeApiEnvironment(
   );
 
   const paymentProvider = requiredValue(raw, 'PAYMENT_PROVIDER', 'PAYMENT_PROVIDER');
-  if (paymentProvider !== 'mock' && paymentProvider !== 'cryptocloud') {
-    throw new Error('PAYMENT_PROVIDER must be mock or cryptocloud');
+  if (paymentProvider !== 'mock' && paymentProvider !== 'cryptocloud' && paymentProvider !== 'paddle') {
+    throw new Error('PAYMENT_PROVIDER must be mock, cryptocloud, or paddle');
   }
   const cryptoCloud = parseCryptoCloudConfig(raw);
   if (paymentProvider === 'cryptocloud' && !cryptoCloud) {
     throw new Error('CryptoCloud credentials are required when PAYMENT_PROVIDER=cryptocloud');
+  }
+  const paddle = parsePaddleConfig(raw);
+  if (paymentProvider === 'paddle' && !paddle) {
+    throw new Error('Paddle credentials are required when PAYMENT_PROVIDER=paddle');
   }
 
   return {
@@ -200,8 +230,11 @@ export function decodeApiEnvironment(
     },
     payment: paymentProvider === 'mock'
       ? { provider: 'mock' }
-      : { provider: 'cryptocloud', ...cryptoCloud! },
+      : paymentProvider === 'cryptocloud'
+        ? { provider: 'cryptocloud', ...cryptoCloud! }
+        : { provider: 'paddle', ...paddle! },
     cryptoCloud,
+    paddle,
     sentryDsn: optionalValue(raw, 'SENTRY_DSN') ?? null,
   };
 }
