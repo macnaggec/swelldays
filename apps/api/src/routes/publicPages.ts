@@ -95,6 +95,14 @@ async function collectSitemapEntries(): Promise<SitemapEntry[]> {
 
 export const publicPagesRouter = new Hono();
 
+// api.swelldays.surf is a separate origin from the web app's own robots.txt
+// (apps/web/public/robots.txt). Nothing on this origin is meant for search
+// results directly: the page routes below exist only to mirror the web app's
+// metadata for crawlers/share-bots (their canonical tag already points back
+// to the real swelldays.surf URL), and everything else here is a JSON/tRPC
+// API endpoint that was never meant to be indexed at all.
+publicPagesRouter.get('/robots.txt', (c) => c.text('User-agent: *\nDisallow: /\n'));
+
 publicPagesRouter.get('/sitemap.xml', async (c) => {
   const entries = await collectSitemapEntries();
   return c.body(buildSitemapXml(entries), 200, { 'Content-Type': 'application/xml; charset=UTF-8' });

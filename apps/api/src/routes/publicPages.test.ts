@@ -47,6 +47,14 @@ describe('publicPagesRouter', () => {
     mocks.findPublishedById.mockReset();
   });
 
+  it('serves a disallow-all robots.txt, since this origin is a metadata mirror, not a page meant to be indexed', async () => {
+    const res = await publicPagesRouter.request('/robots.txt');
+    const text = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(text).toBe('User-agent: *\nDisallow: /\n');
+  });
+
   it('serves the home page shell with home copy and a canonical link', async () => {
     const res = await publicPagesRouter.request('/');
     const html = await res.text();
