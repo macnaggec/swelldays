@@ -14,6 +14,7 @@ export type PaddleConfig = {
 
 export type ApiConfig = {
   nodeEnv: ApiNodeEnvironment;
+  commerceMode: 'test' | 'live';
   databaseUrl: string;
   frontendOrigin: string;
   betterAuth: {
@@ -162,6 +163,10 @@ export function decodeApiEnvironment(
 ): ApiConfig {
   const nodeEnv = parseNodeEnvironment(optionalValue(raw, 'NODE_ENV'));
   const production = nodeEnv === 'production';
+  const commerceMode = optionalValue(raw, 'COMMERCE_MODE') ?? (production ? 'live' : 'test');
+  if (commerceMode !== 'test' && commerceMode !== 'live') {
+    throw new Error('COMMERCE_MODE must be test or live');
+  }
   const databaseUrl = parseDatabaseUrl(requiredValue(raw, 'DATABASE_URL', 'database configuration'));
 
   const frontendOrigin = parseHttpOrigin(
@@ -213,8 +218,54 @@ export function decodeApiEnvironment(
     throw new Error('Paddle credentials are required when PAYMENT_PROVIDER=paddle');
   }
 
+  const live = commerceMode === 'live';
+  if (live && paymentProvider === 'mock') {
+    throw new Error('PAYMENT_PROVIDER cannot be mock when COMMERCE_MODE is live');
+  }
+  if (paymentProvider === 'paddle' && paddle) {
+    if (live && paddle.environment !== 'production') {
+      throw new Error('PADDLE_ENVIRONMENT must be production when COMMERCE_MODE is live');
+    }
+    const oppositePrefix = paddle.environment === 'production' ? 'pdl_sdbx_apikey_' : 'pdl_live_apikey_';
+    if (paddle.apiKey.startsWith(oppositePrefix)
+      || (live && !/^pdl_live_apikey_.+/.test(paddle.apiKey))) {
+      throw new Error('PADDLE_API_KEY must match PADDLE_ENVIRONMENT');
+    }
+    if (live && /(change.?me|replace.?with|your.?secret|placeholder)/i.test(paddle.webhookSecret)) {
+      throw new Error('PADDLE_WEBHOOK_SECRET must be non-placeholder');
+    }
+  }
+  if (live && paymentProvider === 'cryptocloud' && cryptoCloud) {
+    for (const key of ['CRYPTOCLOUD_API_KEY', 'CRYPTOCLOUD_SHOP_ID', 'CRYPTOCLOUD_SECRET_KEY']) {
+      if (/(change.?me|replace.?with|your.?secret|placeholder)/i.test(optionalValue(raw, key) ?? '')) {
+        throw new Error(`${key} must be non-placeholder`);
+      }
+    }
+  }
+
+  const publicMode = optionalValue(raw, 'VITE_COMMERCE_MODE');
+  const publicProvider = optionalValue(raw, 'VITE_PAYMENT_PROVIDER');
+  if ((live || publicMode !== undefined) && publicMode !== commerceMode) {
+    throw new Error('VITE_COMMERCE_MODE must match COMMERCE_MODE');
+  }
+  if ((live || publicProvider !== undefined) && publicProvider !== paymentProvider) {
+    throw new Error('VITE_PAYMENT_PROVIDER must match PAYMENT_PROVIDER');
+  }
+  if (paymentProvider === 'paddle' && paddle) {
+    const publicEnvironment = optionalValue(raw, 'VITE_PADDLE_ENVIRONMENT');
+    const publicToken = optionalValue(raw, 'VITE_PADDLE_CLIENT_TOKEN');
+    if ((live || publicEnvironment !== undefined) && publicEnvironment !== paddle.environment) {
+      throw new Error('VITE_PADDLE_ENVIRONMENT must match PADDLE_ENVIRONMENT');
+    }
+    const tokenPattern = paddle.environment === 'production' ? /^live_.+/ : /^test_.+/;
+    if ((live || publicToken !== undefined) && !tokenPattern.test(publicToken ?? '')) {
+      throw new Error('VITE_PADDLE_CLIENT_TOKEN must match PADDLE_ENVIRONMENT');
+    }
+  }
+
   return {
     nodeEnv,
+    commerceMode,
     databaseUrl,
     frontendOrigin,
     betterAuth: {

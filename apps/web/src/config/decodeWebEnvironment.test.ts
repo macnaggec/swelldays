@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { decodeWebEnvironment } from './decodeWebEnvironment';
 
 const productionEnvironment = (): Record<string, string | undefined> => ({
+  VITE_COMMERCE_MODE: 'test',
   VITE_API_URL: 'https://api.wave.example.test',
   VITE_MAPBOX_ACCESS_TOKEN: 'pk.test-mapbox-token',
   VITE_GOOGLE_CLIENT_ID: 'test-client.apps.googleusercontent.com',
@@ -13,6 +14,8 @@ const productionEnvironment = (): Record<string, string | undefined> => ({
 describe('decodeWebEnvironment', () => {
   it('returns the browser-safe production configuration', () => {
     expect(decodeWebEnvironment(productionEnvironment(), 'production')).toEqual({
+      commerceMode: 'test',
+      paymentProvider: 'mock',
       apiOrigin: 'https://api.wave.example.test',
       mapboxAccessToken: 'pk.test-mapbox-token',
       google: {
@@ -65,6 +68,8 @@ describe('decodeWebEnvironment', () => {
 
   it('keeps development usable with relative API proxying and absent optional integrations', () => {
     expect(decodeWebEnvironment({}, 'development')).toEqual({
+      commerceMode: 'test',
+      paymentProvider: 'mock',
       apiOrigin: '',
       mapboxAccessToken: '',
       google: { clientId: '', apiKey: '' },
@@ -78,5 +83,69 @@ describe('decodeWebEnvironment', () => {
   it('still validates an explicitly configured development API origin', () => {
     expect(() => decodeWebEnvironment({ VITE_API_URL: 'localhost:3001' }, 'development'))
       .toThrow(/VITE_API_URL/);
+  });
+});
+
+const liveWebEnvironment = (): Record<string, string | undefined> => ({
+  ...productionEnvironment(), VITE_COMMERCE_MODE: 'live', VITE_PAYMENT_PROVIDER: 'paddle',
+  VITE_PADDLE_ENVIRONMENT: 'production', VITE_PADDLE_CLIENT_TOKEN: 'live_fixture',
+});
+
+describe('live commerce web configuration', () => {
+  it('accepts live Paddle and defaults a production build to live', () => {
+    expect(decodeWebEnvironment(liveWebEnvironment(), 'production')).toMatchObject({ commerceMode: 'live', paymentProvider: 'paddle' });
+    expect(decodeWebEnvironment({ ...liveWebEnvironment(), VITE_COMMERCE_MODE: undefined }, 'production'))
+      .toMatchObject({ commerceMode: 'live' });
+  });
+
+  it('requires a live provider when production omits explicit commerce mode', () => {
+    expect(() => decodeWebEnvironment({ ...productionEnvironment(), VITE_COMMERCE_MODE: undefined }, 'production'))
+      .toThrow('VITE_PAYMENT_PROVIDER');
+  });
+
+  it.each([
+    ['VITE_COMMERCE_MODE', 'typo'],
+    ['VITE_PAYMENT_PROVIDER', 'mock'],
+    ['VITE_PAYMENT_PROVIDER', 'typo'],
+    ['VITE_PAYMENT_PROVIDER', undefined],
+    ['VITE_PADDLE_ENVIRONMENT', undefined],
+    ['VITE_PADDLE_ENVIRONMENT', ''],
+    ['VITE_PADDLE_ENVIRONMENT', 'sandbox'],
+    ['VITE_PADDLE_ENVIRONMENT', 'typo'],
+    ['VITE_PADDLE_CLIENT_TOKEN', undefined],
+    ['VITE_PADDLE_CLIENT_TOKEN', ''],
+    ['VITE_PADDLE_CLIENT_TOKEN', 'test_fixture'],
+    ['VITE_PADDLE_CLIENT_TOKEN', 'live_'],
+  ])('rejects unsafe live %s=%s', (key, value) => {
+    expect(() => decodeWebEnvironment({ ...liveWebEnvironment(), [key]: value }, 'production')).toThrow(key);
+  });
+
+  it.each([
+    ['VITE_PADDLE_ENVIRONMENT', 'sandbox'],
+    ['VITE_PADDLE_CLIENT_TOKEN', 'test_fixture'],
+  ])('rejects stale test Paddle %s even with CryptoCloud selected', (key, value) => {
+    expect(() => decodeWebEnvironment({ ...liveWebEnvironment(), VITE_PAYMENT_PROVIDER: 'cryptocloud', [key]: value }, 'production')).toThrow(key);
+  });
+
+  it('accepts live CryptoCloud without Paddle declarations', () => {
+    expect(decodeWebEnvironment({ ...productionEnvironment(), VITE_COMMERCE_MODE: 'live', VITE_PAYMENT_PROVIDER: 'cryptocloud' }, 'production'))
+      .toMatchObject({ commerceMode: 'live', paymentProvider: 'cryptocloud' });
+  });
+
+  it('supports explicit test staging with Paddle sandbox', () => {
+    expect(decodeWebEnvironment({ ...productionEnvironment(), VITE_PAYMENT_PROVIDER: 'paddle',
+      VITE_PADDLE_ENVIRONMENT: 'sandbox', VITE_PADDLE_CLIENT_TOKEN: 'test_fixture' }, 'production'))
+      .toMatchObject({ commerceMode: 'test', paymentProvider: 'paddle' });
+  });
+
+  it.each([
+    ['VITE_PADDLE_ENVIRONMENT', undefined],
+    ['VITE_PADDLE_ENVIRONMENT', 'typo'],
+    ['VITE_PADDLE_CLIENT_TOKEN', undefined],
+    ['VITE_PADDLE_CLIENT_TOKEN', 'test_'],
+    ['VITE_PADDLE_CLIENT_TOKEN', 'live_fixture'],
+  ])('validates selected sandbox Paddle %s=%s in test mode', (key, value) => {
+    expect(() => decodeWebEnvironment({ VITE_PAYMENT_PROVIDER: 'paddle', VITE_PADDLE_ENVIRONMENT: 'sandbox',
+      VITE_PADDLE_CLIENT_TOKEN: 'test_fixture', [key]: value }, 'development')).toThrow(key);
   });
 });

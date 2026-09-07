@@ -38,6 +38,10 @@ jobs:
             --build-arg VITE_CLOUDINARY_CLOUD_NAME="${{ secrets.VITE_CLOUDINARY_CLOUD_NAME }}" \
             --build-arg VITE_CLOUDINARY_API_KEY="${{ secrets.VITE_CLOUDINARY_API_KEY }}" \
             --build-arg VITE_SENTRY_DSN="${{ secrets.VITE_SENTRY_DSN }}" \
+            --build-arg VITE_COMMERCE_MODE=live \
+            --build-arg VITE_PAYMENT_PROVIDER="${{ vars.VITE_PAYMENT_PROVIDER }}" \
+            --build-arg VITE_PADDLE_CLIENT_TOKEN="${{ secrets.VITE_PADDLE_CLIENT_TOKEN }}" \
+            --build-arg VITE_PADDLE_ENVIRONMENT="${{ vars.VITE_PADDLE_ENVIRONMENT }}" \
             --tag ghcr.io/${{ github.repository }}-web:${{ github.ref_name }} \
             .
           docker push ghcr.io/${{ github.repository }}-web:${{ github.ref_name }}

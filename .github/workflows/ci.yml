@@ -78,6 +78,8 @@ jobs:
             --file apps/web/Dockerfile \
             --target runner \
             --build-arg RELEASE_TAG=ci \
+            --build-arg VITE_COMMERCE_MODE=test \
+            --build-arg VITE_PAYMENT_PROVIDER=mock \
             --build-arg VITE_API_URL=https://api.example.test \
             --build-arg VITE_MAPBOX_ACCESS_TOKEN=pk.test-placeholder \
             --build-arg VITE_GOOGLE_CLIENT_ID=test-client.apps.googleusercontent.com \

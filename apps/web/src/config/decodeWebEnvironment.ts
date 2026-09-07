@@ -1,4 +1,6 @@
 export type WebConfig = {
+  commerceMode: 'test' | 'live';
+  paymentProvider: 'mock' | 'cryptocloud' | 'paddle';
   apiOrigin: string;
   mapboxAccessToken: string;
   google: {
@@ -77,8 +79,39 @@ export function decodeWebEnvironment(
 ): WebConfig {
   assertNoServerSecrets(raw);
   const production = mode === 'production';
+  const commerceMode = optionalValue(raw, 'VITE_COMMERCE_MODE') || (production ? 'live' : 'test');
+  if (commerceMode !== 'test' && commerceMode !== 'live') {
+    throw new Error('VITE_COMMERCE_MODE must be test or live');
+  }
+  const live = commerceMode === 'live';
+  const paymentProvider = optionalValue(raw, 'VITE_PAYMENT_PROVIDER') || (live ? '' : 'mock');
+  if (paymentProvider !== 'mock' && paymentProvider !== 'cryptocloud' && paymentProvider !== 'paddle') {
+    throw new Error('VITE_PAYMENT_PROVIDER must be mock, cryptocloud, or paddle');
+  }
+  if (live && paymentProvider === 'mock') {
+    throw new Error('VITE_PAYMENT_PROVIDER cannot be mock when VITE_COMMERCE_MODE is live');
+  }
+  const environment = optionalValue(raw, 'VITE_PADDLE_ENVIRONMENT');
+  const clientToken = optionalValue(raw, 'VITE_PADDLE_CLIENT_TOKEN');
+  if (live && environment === 'sandbox') {
+    throw new Error('VITE_PADDLE_ENVIRONMENT cannot be sandbox when VITE_COMMERCE_MODE is live');
+  }
+  if (live && clientToken.startsWith('test_')) {
+    throw new Error('VITE_PADDLE_CLIENT_TOKEN cannot use test_ when VITE_COMMERCE_MODE is live');
+  }
+  if (paymentProvider === 'paddle') {
+    if (environment !== 'sandbox' && environment !== 'production') {
+      throw new Error('VITE_PADDLE_ENVIRONMENT must be sandbox or production');
+    }
+    const tokenPattern = environment === 'production' ? /^live_.+/ : /^test_.+/;
+    if (!tokenPattern.test(clientToken)) {
+      throw new Error('VITE_PADDLE_CLIENT_TOKEN must match VITE_PADDLE_ENVIRONMENT');
+    }
+  }
 
   return {
+    commerceMode,
+    paymentProvider,
     apiOrigin: parseApiOrigin(requiredProductionValue(raw, 'VITE_API_URL', production)),
     mapboxAccessToken: requiredProductionValue(
       raw,
@@ -100,8 +133,8 @@ export function decodeWebEnvironment(
     isDevelopment: mode === 'development',
     sentryDsn: optionalValue(raw, 'VITE_SENTRY_DSN'),
     paddle: {
-      clientToken: optionalValue(raw, 'VITE_PADDLE_CLIENT_TOKEN'),
-      environment: optionalValue(raw, 'VITE_PADDLE_ENVIRONMENT'),
+      clientToken,
+      environment,
     },
   };
 }
