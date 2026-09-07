@@ -262,6 +262,21 @@ model OrderItem {
   mediaItem   MediaItem @relation(fields: [mediaItemId], references: [id])
   order       Order     @relation(fields: [orderId], references: [id])
 
+  // These columns are nullable because the roadmap requires expand-first with
+  // no backfill — a pre-R01 row carries no agreed price, and
+  // requireOrderLineSnapshot rejects it at read time rather than inventing
+  // one from the current catalog. sellerId is a plain column, not a relation
+  // to User, because it records a historical fact that must not move or be
+  // restricted when the user row changes.
+  unitAmountCents      Int?       @map("unit_amount_cents")
+  currency             String?
+  sellerId             String?    @map("seller_id")
+  feePolicyVersion     String?    @map("fee_policy_version")
+  platformFeeAmount    Int?       @map("platform_fee_amount")
+  sellerEarningsAmount Int?       @map("seller_earnings_amount")
+  deliverablePublicId  String?    @map("deliverable_public_id")
+  deliverableType      MediaType? @map("deliverable_type")
+
   @@map("order_items")
 }
 
