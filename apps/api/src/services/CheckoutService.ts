@@ -2,7 +2,7 @@ import { OrderStatus } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
 import type { IOrderRepository, OrderWithItems } from 'server/repositories/OrderRepository';
-import type { IMediaRepository } from 'server/repositories/MediaRepository';
+import type { IMediaRepository, MediaCheckoutReadClient } from 'server/repositories/MediaRepository';
 import type { IPurchaseRepository } from 'server/repositories/PurchaseRepository';
 import { orderRepository } from 'server/repositories/OrderRepository';
 import { mediaRepository } from 'server/repositories/MediaRepository';
@@ -15,6 +15,8 @@ import { BadRequestError, BadGatewayError, ForbiddenError, ConflictError } from 
 import { logger } from 'server/lib/logger';
 import { MEDIA_STATUS } from '@swelldays/contracts/core';
 import { apiConfig } from 'server/config/env';
+import type { OrderLineSnapshot, PaymentProvider, PricedCheckoutCatalogItem } from 'server/domain/OrderEconomics';
+import { snapshotOrderLine } from 'server/domain/OrderEconomics';
 
 // A buyer plausibly needs up to this long to complete a CryptoCloud payment.
 // Order has no expiresAt column to derive this from structurally, so the
@@ -41,6 +43,7 @@ export class CheckoutService {
     private payment: PaymentAdapter,
     private cloudinary: ICloudinaryService,
     private frontendOrigin: string,
+    private paymentProvider: PaymentProvider,
   ) { }
 
   /**
@@ -133,14 +136,16 @@ export class CheckoutService {
     const cached = await this.findCachedCheckoutSession(buyerId, clientRequestId, itemIds);
     if (cached) return cached;
 
-    const mediaItems = await this.fetchAndValidateCartItems(buyerId, itemIds);
-    const totalCents = mediaItems.reduce((sum, item) => sum + (item.price ?? 0), 0);
-
     let order: Awaited<ReturnType<IOrderRepository['createOrder']>>;
     try {
       order = buyerId !== null
-        ? await this.createOrderForBuyer(buyerId, guestEmail, itemIds, clientRequestId, totalCents)
-        : await this.orders.createOrder({ buyerId, guestEmail, totalAmount: totalCents, itemIds, clientRequestId });
+        ? await this.createOrderForBuyer(buyerId, guestEmail, itemIds, clientRequestId)
+        : await this.orders.createOrder({
+          buyerId,
+          guestEmail,
+          clientRequestId,
+          items: await this.snapshotCartLines(buyerId, itemIds),
+        });
     } catch (err) {
       if (err instanceof ConflictError) {
         return await this.resolveRacedCheckoutSession(buyerId, clientRequestId, itemIds);
@@ -148,7 +153,7 @@ export class CheckoutService {
       throw err;
     }
 
-    const checkoutUrl = await this.openPaymentSession(order.id, buyerId, mediaItems, totalCents);
+    const checkoutUrl = await this.openPaymentSession(order.id, buyerId, order.totalAmount);
     await this.orders.saveCheckoutSessionUrl(order.id, checkoutUrl);
 
     return { checkoutUrl, orderId: order.id };
@@ -197,10 +202,14 @@ export class CheckoutService {
     );
   }
 
-  private async fetchAndValidateCartItems(buyerId: string | null, itemIds: string[]) {
+  private async snapshotCartLines(
+    buyerId: string | null,
+    itemIds: string[],
+    db?: MediaCheckoutReadClient,
+  ): Promise<OrderLineSnapshot[]> {
     if (itemIds.length === 0) throw new BadRequestError('Cart is empty');
 
-    const mediaItems = await this.media.findByIds(itemIds);
+    const mediaItems = await this.media.findByIdsForCheckout(itemIds, db);
 
     if (mediaItems.length !== itemIds.length) {
       throw new BadRequestError('One or more items not found');
@@ -229,7 +238,9 @@ export class CheckoutService {
       }
     }
 
-    return mediaItems;
+    const priced = mediaItems.filter((m): m is PricedCheckoutCatalogItem => m.price !== null);
+
+    return priced.map((item) => snapshotOrderLine(item, this.paymentProvider));
   }
 
   /**
@@ -242,18 +253,15 @@ export class CheckoutService {
    * re-runs its check and now sees the first call's already-committed order.
    * The lock self-releases on commit or rollback — no cleanup path needed.
    *
-   * This necessarily re-implements (rather than calls) OrderRepository's
-   * findPendingMediaItemIds/createOrder and PurchaseRepository's
-   * findPurchasedItemIds: those repository methods are bound to the
-   * top-level prisma client, not this transaction's tx — calling them here
-   * would silently run outside the lock's protection. See roadmap P02c.
+   * createOrder and findByIdsForCheckout accept this transaction's client, so
+   * the catalog read, the snapshot, and the order INSERT all commit under the
+   * one buyer lock.
    */
   private async createOrderForBuyer(
     buyerId: string,
     guestEmail: string | undefined,
     itemIds: string[],
     clientRequestId: string,
-    totalAmount: number,
   ): Promise<OrderWithItems> {
     return runQuery(() =>
       prisma.$transaction(async (tx) => {
@@ -293,16 +301,8 @@ export class CheckoutService {
           );
         }
 
-        return tx.order.create({
-          data: {
-            buyerId,
-            guestEmail,
-            totalAmount,
-            clientRequestId,
-            items: { createMany: { data: itemIds.map((mediaItemId) => ({ mediaItemId })) } },
-          },
-          include: { items: { select: { id: true, mediaItemId: true } } },
-        });
+        const items = await this.snapshotCartLines(buyerId, itemIds, tx);
+        return this.orders.createOrder({ buyerId, guestEmail, clientRequestId, items }, tx);
       })
     );
   }
@@ -310,7 +310,6 @@ export class CheckoutService {
   private async openPaymentSession(
     orderId: string,
     buyerId: string | null,
-    mediaItems: { id: string }[],
     totalCents: number,
   ): Promise<string> {
     const successUrl = buyerId
@@ -342,4 +341,5 @@ export const checkoutService = new CheckoutService(
   paymentAdapter,
   cloudinaryService,
   apiConfig.frontendOrigin,
+  apiConfig.payment.provider,
 );

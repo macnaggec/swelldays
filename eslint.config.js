@@ -339,6 +339,33 @@ export default defineConfig(
       }],
     },
   },
+  // Domain modules express what the business facts mean — money allocation, fee policy,
+  // currency. They must stay pure so both repositories and services can depend on them
+  // without either direction becoming a cycle. A type-only import of the config decoder is
+  // permitted today because the payment-provider union's source of truth is the environment
+  // decoder; inverting that so config derives its union from the domain is future work.
+  {
+    files: ['apps/api/src/domain/**/*.ts'],
+    ignores: ['apps/api/src/domain/**/*.test.ts', 'apps/api/src/domain/**/*.integration.test.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: [
+              'server/db',
+              'server/repositories/*',
+              'server/services/*',
+              'server/providers/*',
+              'server/providers/**/*',
+              'server/routes/*',
+              'server/jobs/*',
+            ],
+            message: 'Domain modules must stay pure: no persistence, provider, service, route, or job imports. Move orchestration into a service.',
+          },
+        ],
+      }],
+    },
+  },
   // shared/lib/trpc*.ts may only type-import from server modules.
   // A runtime import would pull the server router and all its dependencies into the browser bundle.
   {

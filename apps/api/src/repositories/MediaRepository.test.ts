@@ -28,6 +28,35 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+describe('MediaRepository.findByIdsForCheckout', () => {
+  it('uses the supplied transaction client and returns only checkout snapshot inputs', async () => {
+    const rows = [{
+      id: 'media-1',
+      status: 'PUBLISHED',
+      price: 1000,
+      photographerId: 'seller-1',
+      cloudinaryPublicId: 'waves/photo-1',
+      type: 'PHOTO',
+    }];
+    const txFindMany = vi.fn().mockResolvedValue(rows);
+
+    await expect(repo.findByIdsForCheckout(['media-1'], { mediaItem: { findMany: txFindMany } })).resolves.toEqual(rows);
+
+    expect(txFindMany).toHaveBeenCalledWith({
+      where: { id: { in: ['media-1'] } },
+      select: {
+        id: true,
+        status: true,
+        price: true,
+        photographerId: true,
+        cloudinaryPublicId: true,
+        type: true,
+      },
+    });
+    expect(mockFindMany).not.toHaveBeenCalled();
+  });
+});
+
 describe('MediaRepository.findDraftsBySpot', () => {
   it('queries only owned non-deleted drafts for the spot', async () => {
     mockFindMany.mockResolvedValue([]);

@@ -1,55 +1,25 @@
 import { randomBytes } from 'crypto';
 import type { IOrderRepository } from 'server/repositories/OrderRepository';
-import type { IMediaRepository } from 'server/repositories/MediaRepository';
 import type { IFulfillmentRepository, PurchaseInsertData } from 'server/repositories/FulfillmentRepository';
 import { orderRepository } from 'server/repositories/OrderRepository';
-import { mediaRepository } from 'server/repositories/MediaRepository';
 import { fulfillmentRepository } from 'server/repositories/FulfillmentRepository';
 import type { ICloudinaryService } from 'server/services/CloudinaryService';
 import { cloudinaryService } from 'server/services/CloudinaryService';
+import { requireOrderLineSnapshot } from 'server/domain/OrderEconomics';
 import { ConflictError } from 'server/errors';
 import { logger } from 'server/lib/logger';
-import { apiConfig } from 'server/config/env';
 
-const PLATFORM_FEE_RATE = 0.20;
-const PHOTOGRAPHER_RATE = 0.80;
-
-// Paddle is a merchant of record: VAT is extracted from the sticker price
-// before it ever reaches the platform (passed through to tax authorities,
-// not platform revenue), and Paddle additionally deducts its own processing
-// fee (5% + $0.50) from what's left. A flat 20% cut of the sticker price
-// doesn't account for either — on a cheap item the $0.50 alone can exceed
-// the platform's entire flat-rate cut, putting the platform underwater on
-// that sale once the photographer is paid 80% of the full sticker price.
-// This mirrors Paddle's own fee shape (fixed + percentage) so the
-// platform's cut always covers it, plus a 25% margin on top of that cost.
-const PADDLE_PLATFORM_FEE_FIXED_CENTS = 50;
-const PADDLE_PLATFORM_FEE_RATE = 0.30; // Paddle's 5% + 25% margin
-
-function computeSplit(
-  price: number,
-  paymentProvider: string,
-): { platformFee: number; photographerEarned: number } {
-  if (paymentProvider === 'paddle') {
-    const platformFee = Math.min(
-      price,
-      Math.round(PADDLE_PLATFORM_FEE_FIXED_CENTS + price * PADDLE_PLATFORM_FEE_RATE),
-    );
-    return { platformFee, photographerEarned: price - platformFee };
-  }
-  return {
-    platformFee: Math.round(price * PLATFORM_FEE_RATE),
-    photographerEarned: Math.round(price * PHOTOGRAPHER_RATE),
-  };
-}
-
+/**
+ * Fulfills a paid order by turning its immutable order lines into Purchase
+ * rows and seller earnings credits. Every amount and the deliverable itself
+ * come from the order line recorded at checkout — a later catalog edit or
+ * payment-provider change cannot alter what gets paid or delivered.
+ */
 export class PurchaseFulfillmentService {
   constructor(
     private orders: IOrderRepository,
-    private media: IMediaRepository,
     private fulfillment: IFulfillmentRepository,
     private cloudinary: Pick<ICloudinaryService, 'tryGeneratePermanentPreviewUrl'>,
-    private paymentProvider: string = 'mock',
   ) { }
 
   /**
@@ -65,36 +35,29 @@ export class PurchaseFulfillmentService {
     const order = await this.orders.findOrderById(orderId);
     if (!order) return;
 
-    // itemIds come from OrderItem rows — not trusted from the external webhook payload
-    const itemIds = order.items.map((item) => item.mediaItemId);
-    const mediaItems = await this.media.findByIdsForFulfillment(itemIds);
-    const availableIds = new Set(mediaItems.map((item) => item.id));
-    const unavailableIds = itemIds.filter((itemId) => !availableIds.has(itemId));
-
-    if (unavailableIds.length > 0) {
-      throw new Error(`Order contains unavailable media items: ${unavailableIds.join(', ')}`);
-    }
+    // Each line's snapshot is the single source of truth for what was agreed
+    // at checkout — see requireOrderLineSnapshot's own guard for why an
+    // incomplete or non-conserving line refuses to pay anyone.
+    const lines = order.items.map(requireOrderLineSnapshot);
 
     const purchaseData: PurchaseInsertData[] = [];
     const earningsMap = new Map<string, number>();
 
-    for (const item of mediaItems) {
-      const { platformFee, photographerEarned } = computeSplit(item.price, this.paymentProvider);
-
+    for (const line of lines) {
       purchaseData.push({
         orderId,
-        mediaItemId: item.id,
+        mediaItemId: line.mediaItemId,
         buyerId: order.buyerId,
         guestEmail: order.guestEmail,
         downloadToken: randomBytes(32).toString('hex'),
-        amountPaid: item.price,
-        platformFee,
-        photographerEarned,
-        previewUrl: this.cloudinary.tryGeneratePermanentPreviewUrl(item.cloudinaryPublicId),
+        amountPaid: line.unitAmountCents,
+        platformFee: line.platformFeeAmount,
+        photographerEarned: line.sellerEarningsAmount,
+        previewUrl: this.cloudinary.tryGeneratePermanentPreviewUrl(line.deliverablePublicId),
       });
       earningsMap.set(
-        item.photographerId,
-        (earningsMap.get(item.photographerId) ?? 0) + photographerEarned,
+        line.sellerId,
+        (earningsMap.get(line.sellerId) ?? 0) + line.sellerEarningsAmount,
       );
     }
 
@@ -122,8 +85,6 @@ export class PurchaseFulfillmentService {
 
 export const purchaseFulfillmentService = new PurchaseFulfillmentService(
   orderRepository,
-  mediaRepository,
   fulfillmentRepository,
   cloudinaryService,
-  apiConfig.payment.provider,
 );

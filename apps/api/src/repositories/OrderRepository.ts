@@ -1,6 +1,13 @@
 import { OrderStatus } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
+import type { OrderLineSnapshot, PersistedOrderLine } from 'server/domain/OrderEconomics';
+
+/** The narrow slice of a Prisma client this repository writes orders through. */
+export type OrderWriteClient = {
+  order: Pick<Prisma.TransactionClient['order'], 'create'>;
+};
 
 export type OrderWithItems = {
   id: string;
@@ -10,19 +17,21 @@ export type OrderWithItems = {
   totalAmount: number;
   status: OrderStatus;
   checkoutSessionUrl: string | null;
-  items: { id: string; mediaItemId: string }[];
+  items: PersistedOrderLine[];
 };
 
 export type CreateOrderData = {
   buyerId: string | null;
   guestEmail?: string;
-  totalAmount: number;
-  itemIds: string[];
   clientRequestId: string;
+  items: OrderLineSnapshot[];
 };
 
 export interface IOrderRepository {
-  createOrder(data: CreateOrderData): Promise<OrderWithItems>;
+  createOrder(
+    data: CreateOrderData,
+    db?: OrderWriteClient,
+  ): Promise<OrderWithItems>;
   findOrderById(id: string): Promise<OrderWithItems | null>;
   findOrderByExternalId(externalOrderId: string): Promise<{ id: string } | null>;
   findOrderByBuyerAndClientRequestId(
@@ -40,21 +49,39 @@ export interface IOrderRepository {
 }
 
 const ORDER_ITEMS_INCLUDE = {
-  items: { select: { id: true, mediaItemId: true } },
+  items: {
+    select: {
+      id: true,
+      mediaItemId: true,
+      unitAmountCents: true,
+      currency: true,
+      sellerId: true,
+      feePolicyVersion: true,
+      platformFeeAmount: true,
+      sellerEarningsAmount: true,
+      deliverablePublicId: true,
+      deliverableType: true,
+    },
+  },
 } as const;
 
 export class OrderRepository implements IOrderRepository {
-  createOrder(data: CreateOrderData): Promise<OrderWithItems> {
+  // Passing a transaction client here is what lets the caller create the
+  // order inside the same transaction that holds the buyer lock.
+  createOrder(
+    data: CreateOrderData,
+    db: OrderWriteClient = prisma,
+  ): Promise<OrderWithItems> {
     return runQuery(async () => {
-      return prisma.order.create({
+      return db.order.create({
         data: {
           buyerId: data.buyerId,
           guestEmail: data.guestEmail,
-          totalAmount: data.totalAmount,
+          totalAmount: data.items.reduce((sum, item) => sum + item.unitAmountCents, 0),
           clientRequestId: data.clientRequestId,
           items: {
             createMany: {
-              data: data.itemIds.map((mediaItemId) => ({ mediaItemId })),
+              data: data.items,
             },
           },
         },
@@ -142,4 +169,3 @@ export class OrderRepository implements IOrderRepository {
 }
 
 export const orderRepository = new OrderRepository();
-

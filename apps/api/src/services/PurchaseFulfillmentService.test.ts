@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PurchaseFulfillmentService } from 'server/services/PurchaseFulfillmentService';
 import type { OrderWithItems } from 'server/repositories/OrderRepository';
-import type { MediaFulfillmentItem } from 'server/repositories/MediaRepository';
+import type { PersistedOrderLine } from 'server/domain/OrderEconomics';
 import type { FulfillPurchaseData, FulfillmentPayload } from 'server/repositories/FulfillmentRepository';
 import { logger } from 'server/lib/logger';
 
@@ -20,10 +20,6 @@ const mockOrders = {
   markOrderFailed: vi.fn(),
 };
 
-const mockMedia = {
-  findByIdsForFulfillment: vi.fn(),
-};
-
 const mockCloudinary = {
   tryGeneratePermanentPreviewUrl: vi.fn().mockReturnValue('https://res.cloudinary.com/preview'),
 };
@@ -31,11 +27,8 @@ const mockCloudinary = {
 const service = new PurchaseFulfillmentService(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- partial mock objects in test
   mockOrders as any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mockMedia as any,
   mockFulfillment,
   mockCloudinary,
-  'cryptocloud',
 );
 
 // ---------------------------------------------------------------------------
@@ -52,26 +45,32 @@ beforeEach(() => {
 // Factories
 // ---------------------------------------------------------------------------
 
+function makeLine(overrides: Partial<PersistedOrderLine> = {}): PersistedOrderLine {
+  return {
+    id: 'oi-1',
+    mediaItemId: 'media-1',
+    unitAmountCents: 1000,
+    currency: 'USD',
+    sellerId: 'photographer-1',
+    feePolicyVersion: 'standard-20-v1',
+    platformFeeAmount: 200,
+    sellerEarningsAmount: 800,
+    deliverablePublicId: 'waves/photo-001',
+    deliverableType: 'PHOTO',
+    ...overrides,
+  };
+}
+
 function makeOrder(overrides: Partial<OrderWithItems> = {}): OrderWithItems {
   return {
     id: 'order-1',
     buyerId: 'buyer-1',
     guestEmail: null,
     externalOrderId: null,
-    totalAmount: 10,
+    totalAmount: 1000,
     status: 'PENDING',
     checkoutSessionUrl: null,
-    items: [{ id: 'oi-1', mediaItemId: 'media-1' }],
-    ...overrides,
-  };
-}
-
-function makeMediaItem(overrides: Partial<MediaFulfillmentItem> = {}): MediaFulfillmentItem {
-  return {
-    id: 'media-1',
-    price: 1000,
-    photographerId: 'photographer-1',
-    cloudinaryPublicId: 'waves/photo-001',
+    items: [makeLine()],
     ...overrides,
   };
 }
@@ -84,10 +83,9 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
   const ORDER_ID = 'order-1';
   const EXTERNAL_ID = 'CC-ILRAJE1Q';
 
-  function setupHappyPath(mediaItems: MediaFulfillmentItem[] = [makeMediaItem()]) {
+  function setupHappyPath(order: OrderWithItems = makeOrder()) {
     mockOrders.findOrderByExternalId.mockResolvedValue(null);
-    mockOrders.findOrderById.mockResolvedValue(makeOrder());
-    mockMedia.findByIdsForFulfillment.mockResolvedValue(mediaItems);
+    mockOrders.findOrderById.mockResolvedValue(order);
   }
 
   // -------------------------------------------------------------------------
@@ -111,28 +109,12 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
     expect(mockFulfillment.commitFulfillment).not.toHaveBeenCalled();
   });
 
-  it('rejects the whole fulfillment when an ordered media item is unavailable', async () => {
-    mockOrders.findOrderByExternalId.mockResolvedValue(null);
-    mockOrders.findOrderById.mockResolvedValue(makeOrder({
-      items: [
-        { id: 'oi-1', mediaItemId: 'media-1' },
-        { id: 'oi-2', mediaItemId: 'media-2' },
-      ],
-    }));
-    mockMedia.findByIdsForFulfillment.mockResolvedValue([makeMediaItem({ id: 'media-1' })]);
-
-    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).rejects.toThrow(
-      'Order contains unavailable media items: media-2',
-    );
-    expect(mockFulfillment.commitFulfillment).not.toHaveBeenCalled();
-  });
-
   // -------------------------------------------------------------------------
-  // Purchase data written inside transaction
+  // Purchase data written from the order line, not a catalog read
   // -------------------------------------------------------------------------
 
   it('writes one purchase entry per media item with correct fields', async () => {
-    setupHappyPath([makeMediaItem({ price: 1000 })]);
+    setupHappyPath(makeOrder({ items: [makeLine({ unitAmountCents: 1000, platformFeeAmount: 200, sellerEarningsAmount: 800 })] }));
 
     await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
 
@@ -152,11 +134,7 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
   });
 
   it('writes guestEmail to purchase and null buyerId for guest orders', async () => {
-    mockOrders.findOrderByExternalId.mockResolvedValue(null);
-    mockOrders.findOrderById.mockResolvedValue(
-      makeOrder({ buyerId: null, guestEmail: 'guest@example.com' }),
-    );
-    mockMedia.findByIdsForFulfillment.mockResolvedValue([makeMediaItem()]);
+    setupHappyPath(makeOrder({ buyerId: null, guestEmail: 'guest@example.com' }));
 
     await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
 
@@ -165,23 +143,17 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Earnings credited inside transaction
+  // Earnings credited from the line's sellerId
   // -------------------------------------------------------------------------
 
-  it('credits aggregated earnings when two items share the same photographer', async () => {
-    // (1000 + 2000) * 0.80 = 2400
-    const items = [
-      makeMediaItem({ id: 'media-1', price: 1000, photographerId: 'p-1' }),
-      makeMediaItem({ id: 'media-2', price: 2000, photographerId: 'p-1' }),
-    ];
-    mockOrders.findOrderByExternalId.mockResolvedValue(null);
-    mockOrders.findOrderById.mockResolvedValue(makeOrder({
+  it('credits aggregated earnings when two items share the same seller', async () => {
+    // 200 + 1600 = 1800
+    setupHappyPath(makeOrder({
       items: [
-        { id: 'oi-1', mediaItemId: 'media-1' },
-        { id: 'oi-2', mediaItemId: 'media-2' },
+        makeLine({ id: 'oi-1', mediaItemId: 'media-1', unitAmountCents: 1000, platformFeeAmount: 200, sellerEarningsAmount: 800, sellerId: 'p-1' }),
+        makeLine({ id: 'oi-2', mediaItemId: 'media-2', unitAmountCents: 2000, platformFeeAmount: 400, sellerEarningsAmount: 1600, sellerId: 'p-1' }),
       ],
     }));
-    mockMedia.findByIdsForFulfillment.mockResolvedValue(items);
 
     await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
 
@@ -190,19 +162,13 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
     expect(payload.earnings[0]).toMatchObject({ photographerId: 'p-1', amount: 2400 });
   });
 
-  it('credits separate earnings when photographers differ', async () => {
-    const items = [
-      makeMediaItem({ id: 'media-1', price: 1000, photographerId: 'p-1' }),
-      makeMediaItem({ id: 'media-2', price: 2000, photographerId: 'p-2' }),
-    ];
-    mockOrders.findOrderByExternalId.mockResolvedValue(null);
-    mockOrders.findOrderById.mockResolvedValue(makeOrder({
+  it('credits separate earnings when sellers differ', async () => {
+    setupHappyPath(makeOrder({
       items: [
-        { id: 'oi-1', mediaItemId: 'media-1' },
-        { id: 'oi-2', mediaItemId: 'media-2' },
+        makeLine({ id: 'oi-1', mediaItemId: 'media-1', unitAmountCents: 1000, platformFeeAmount: 200, sellerEarningsAmount: 800, sellerId: 'p-1' }),
+        makeLine({ id: 'oi-2', mediaItemId: 'media-2', unitAmountCents: 2000, platformFeeAmount: 400, sellerEarningsAmount: 1600, sellerId: 'p-2' }),
       ],
     }));
-    mockMedia.findByIdsForFulfillment.mockResolvedValue(items);
 
     await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
 
@@ -211,16 +177,13 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
     expect(ids).toEqual(['p-1', 'p-2']);
   });
 
-  // -------------------------------------------------------------------------
-  // Security: itemIds sourced from DB, not the webhook payload
-  // -------------------------------------------------------------------------
-
-  it('resolves media from DB order items — not from the webhook payload', async () => {
-    setupHappyPath();
+  it("credits earnings under the line's sellerId, not any catalog lookup", async () => {
+    setupHappyPath(makeOrder({ items: [makeLine({ sellerId: 'seller-from-line', sellerEarningsAmount: 800 })] }));
 
     await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
 
-    expect(mockMedia.findByIdsForFulfillment).toHaveBeenCalledWith(['media-1']);
+    const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
+    expect(payload.earnings).toEqual([{ photographerId: 'seller-from-line', amount: 800 }]);
   });
 
   // -------------------------------------------------------------------------
@@ -279,68 +242,64 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
     expect(warnSpy).not.toHaveBeenCalled();
     warnSpy.mockRestore();
   });
-});
 
-// ---------------------------------------------------------------------------
-// Paddle's platform-fee split: fixed $0.50 + 30% (Paddle's own 5% + 0.50 fee,
-// plus a 25% margin) instead of the flat 20%/80% used by other providers —
-// see PurchaseFulfillmentService.ts's computeSplit for the full rationale.
-// ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // R01: economics and the deliverable come from the immutable order line
+  // -------------------------------------------------------------------------
 
-describe('PurchaseFulfillmentService.fulfillOrder — Paddle platform-fee split', () => {
-  const ORDER_ID = 'order-1';
-  const EXTERNAL_ID = 'txn_01paddle';
+  it('economics survive a catalog price edit — the line, not any media repository, decides what gets paid', async () => {
+    setupHappyPath(makeOrder({ items: [makeLine({ unitAmountCents: 1000, platformFeeAmount: 200, sellerEarningsAmount: 800 })] }));
 
-  const paddleService = new PurchaseFulfillmentService(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- partial mock objects in test
-    mockOrders as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockMedia as any,
-    mockFulfillment,
-    mockCloudinary,
-    'paddle',
-  );
-
-  function setupHappyPath(mediaItems: MediaFulfillmentItem[]) {
-    mockOrders.findOrderByExternalId.mockResolvedValue(null);
-    mockOrders.findOrderById.mockResolvedValue(makeOrder());
-    mockMedia.findByIdsForFulfillment.mockResolvedValue(mediaItems);
-  }
-
-  it('takes a fixed $0.50 plus 30% of the price as the platform fee', async () => {
-    setupHappyPath([makeMediaItem({ price: 1000 })]); // $10.00
-
-    await paddleService.fulfillOrder(ORDER_ID, EXTERNAL_ID);
+    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
 
     const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
-    expect(payload.purchases[0]).toMatchObject<Partial<FulfillPurchaseData>>({
-      amountPaid: 1000,
-      platformFee: 350, // 50 + 1000 * 0.30
-      photographerEarned: 650,
-    });
+    expect(payload.purchases[0]).toMatchObject({ amountPaid: 1000, platformFee: 200, photographerEarned: 800 });
   });
 
-  it('never pays the photographer a negative amount when the fee formula would exceed the price', async () => {
-    setupHappyPath([makeMediaItem({ price: 50 })]); // $0.50 — fixed fee alone would exceed this
+  it("the line's fee policy wins over process configuration", async () => {
+    setupHappyPath(makeOrder({
+      items: [
+        makeLine({
+          id: 'oi-paddle',
+          mediaItemId: 'media-paddle',
+          feePolicyVersion: 'paddle-50c-30-v1',
+          unitAmountCents: 1000,
+          platformFeeAmount: 350,
+          sellerEarningsAmount: 650,
+        }),
+        makeLine({
+          id: 'oi-standard',
+          mediaItemId: 'media-standard',
+          feePolicyVersion: 'standard-20-v1',
+          unitAmountCents: 1000,
+          platformFeeAmount: 200,
+          sellerEarningsAmount: 800,
+        }),
+      ],
+    }));
 
-    await paddleService.fulfillOrder(ORDER_ID, EXTERNAL_ID);
+    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
 
     const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
-    expect(payload.purchases[0]).toMatchObject<Partial<FulfillPurchaseData>>({
-      amountPaid: 50,
-      platformFee: 50,
-      photographerEarned: 0,
-    });
+    const paddlePurchase = payload.purchases.find((p) => p.mediaItemId === 'media-paddle');
+    const standardPurchase = payload.purchases.find((p) => p.mediaItemId === 'media-standard');
+    expect(paddlePurchase).toMatchObject({ platformFee: 350, photographerEarned: 650 });
+    expect(standardPurchase).toMatchObject({ platformFee: 200, photographerEarned: 800 });
   });
 
-  it('platformFee and photographerEarned always sum to exactly the item price', async () => {
-    setupHappyPath([makeMediaItem({ price: 333 })]);
+  it('an incomplete line refuses to pay — a null field rejects and never commits', async () => {
+    setupHappyPath(makeOrder({ items: [makeLine({ id: 'oi-1', sellerEarningsAmount: null })] }));
 
-    await paddleService.fulfillOrder(ORDER_ID, EXTERNAL_ID);
+    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).rejects.toThrow('oi-1');
+    expect(mockFulfillment.commitFulfillment).not.toHaveBeenCalled();
+  });
 
-    const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
-    const purchase = payload.purchases[0]!;
-    expect(purchase.platformFee + purchase.photographerEarned).toBe(333);
+  it('a non-conserving line refuses to pay', async () => {
+    setupHappyPath(makeOrder({
+      items: [makeLine({ id: 'oi-1', unitAmountCents: 1000, platformFeeAmount: 200, sellerEarningsAmount: 799 })],
+    }));
+
+    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).rejects.toThrow('oi-1');
+    expect(mockFulfillment.commitFulfillment).not.toHaveBeenCalled();
   });
 });
-

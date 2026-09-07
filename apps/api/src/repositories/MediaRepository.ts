@@ -5,7 +5,13 @@ import { runQuery } from 'server/lib/PrismaErrorMapper';
 import { MEDIA_STATUS } from '@swelldays/contracts/core';
 import { getCapturedMediaCalendarDayKey } from '@swelldays/contracts/core';
 import type { DraftMedia, MediaStatus as DomainMediaStatus, PublicMedia } from '@swelldays/contracts/core';
+import type { CheckoutCatalogItem } from 'server/domain/OrderEconomics';
 import { mapToDraftMedia } from './mappers';
+
+/** The narrow slice of a Prisma client the checkout snapshot read runs through. */
+export type MediaCheckoutReadClient = {
+  mediaItem: Pick<Prisma.TransactionClient['mediaItem'], 'findMany'>;
+};
 
 /** Public projection before the service attaches the viewer's entitlement. */
 export type AttributedPublishedMedia = Omit<PublicMedia, 'viewerEntitlement'>;
@@ -130,13 +136,6 @@ function mapToAttributedPublishedMedia(
 
 export type UpdateMediaData = { price?: number; status?: DomainMediaStatus; capturedAt?: Date; spotId?: string };
 
-export type MediaFulfillmentItem = {
-  id: string;
-  price: number;
-  photographerId: string;
-  cloudinaryPublicId: string;
-};
-
 export interface IMediaRepository {
   findById(id: string): Promise<DraftMedia | null>;
   findByCloudinaryPublicId(publicId: string): Promise<{ id: string; photographerId: string } | null>;
@@ -146,7 +145,10 @@ export interface IMediaRepository {
   hardDelete(id: string): Promise<void>;
   hardDeleteMany(ids: string[]): Promise<void>;
   findByIds(ids: string[]): Promise<{ id: string; sessionId: string; status: DomainMediaStatus; price: number | null; photographerId: string; cloudinaryPublicId: string; type: string }[]>;
-  findByIdsForFulfillment(ids: string[]): Promise<MediaFulfillmentItem[]>;
+  findByIdsForCheckout(
+    ids: string[],
+    db?: MediaCheckoutReadClient,
+  ): Promise<CheckoutCatalogItem[]>;
   findPublishedByPhotographer(photographerId: string): Promise<AttributedPublishedMedia[]>;
   findPublishedBySession(sessionId: string): Promise<AttributedPublishedMedia[]>;
   hasDraftsByUser(photographerId: string): Promise<boolean>;
@@ -208,20 +210,21 @@ export class MediaRepository implements IMediaRepository {
     });
   }
 
-  findByIdsForFulfillment(ids: string[]): Promise<MediaFulfillmentItem[]> {
+  findByIdsForCheckout(
+    ids: string[],
+    db: MediaCheckoutReadClient = prisma,
+  ): Promise<CheckoutCatalogItem[]> {
     return runQuery(async () => {
-      const rows = await prisma.mediaItem.findMany({
-        where: {
-          id: { in: ids },
-          status: MEDIA_STATUS.PUBLISHED,
-          deletedAt: null,
-          price: { not: null },
+      return db.mediaItem.findMany({
+        where: { id: { in: ids } },
+        select: {
+          id: true,
+          status: true,
+          price: true,
+          photographerId: true,
+          cloudinaryPublicId: true,
+          type: true,
         },
-        select: { id: true, price: true, photographerId: true, cloudinaryPublicId: true },
-      });
-      return rows.map(r => {
-        if (r.price === null) throw new Error('Invariant: null price after price filter');
-        return { ...r, price: r.price };
       });
     });
   }

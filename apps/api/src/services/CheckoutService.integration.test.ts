@@ -23,6 +23,7 @@ const service = new CheckoutService(
   mockPayment,
   cloudinaryService,
   'http://localhost:3000',
+  'cryptocloud',
 );
 
 beforeEach(resetDb);
@@ -114,5 +115,92 @@ describe('CheckoutService.createCheckoutSession — concurrent same-key requests
 
     const orders = await prisma.order.findMany({ where: { buyerId: buyer.id, clientRequestId } });
     expect(orders).toHaveLength(1);
+  });
+});
+
+describe('CheckoutService.createCheckoutSession — R01: order lines snapshot economics at checkout', () => {
+  it('persists a complete, conserving snapshot per line, unaffected by a later catalog price edit', async () => {
+    const photographerA = await prisma.user.create({
+      data: { email: `photographer-a-${randomUUID()}@example.com`, balance: 0 },
+    });
+    const photographerB = await prisma.user.create({
+      data: { email: `photographer-b-${randomUUID()}@example.com`, balance: 0 },
+    });
+    const buyer = await prisma.user.create({
+      data: { email: `buyer-${randomUUID()}@example.com` },
+    });
+    const sessionA = await prisma.surfSession.create({
+      data: { photographerId: photographerA.id, status: 'PUBLISHED' },
+    });
+    const sessionB = await prisma.surfSession.create({
+      data: { photographerId: photographerB.id, status: 'PUBLISHED' },
+    });
+    const mediaItemA = await prisma.mediaItem.create({
+      data: {
+        sessionId: sessionA.id,
+        photographerId: photographerA.id,
+        status: 'PUBLISHED',
+        price: 333,
+        type: 'PHOTO',
+        capturedAt: new Date('2026-01-01T06:30:00Z'),
+        lightboxUrl: 'https://res.cloudinary.com/test/r01-a.jpg',
+        thumbnailUrl: 'https://res.cloudinary.com/test/r01-a-thumb.jpg',
+        cloudinaryPublicId: 'swelldays/test/r01-a',
+      },
+    });
+    const mediaItemB = await prisma.mediaItem.create({
+      data: {
+        sessionId: sessionB.id,
+        photographerId: photographerB.id,
+        status: 'PUBLISHED',
+        price: 1000,
+        type: 'VIDEO',
+        capturedAt: new Date('2026-01-01T06:30:00Z'),
+        lightboxUrl: 'https://res.cloudinary.com/test/r01-b.jpg',
+        thumbnailUrl: 'https://res.cloudinary.com/test/r01-b-thumb.jpg',
+        cloudinaryPublicId: 'swelldays/test/r01-b',
+      },
+    });
+
+    const { orderId } = await service.createCheckoutSession(
+      buyer.id,
+      undefined,
+      [mediaItemA.id, mediaItemB.id],
+      randomUUID(),
+    );
+
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+    const orderItems = await prisma.orderItem.findMany({ where: { orderId }, orderBy: { mediaItemId: 'asc' } });
+    expect(orderItems).toHaveLength(2);
+
+    const catalogByMediaId = new Map([
+      [mediaItemA.id, { photographerId: photographerA.id, cloudinaryPublicId: mediaItemA.cloudinaryPublicId, type: mediaItemA.type }],
+      [mediaItemB.id, { photographerId: photographerB.id, cloudinaryPublicId: mediaItemB.cloudinaryPublicId, type: mediaItemB.type }],
+    ]);
+
+    for (const item of orderItems) {
+      const catalog = catalogByMediaId.get(item.mediaItemId)!;
+      expect(item.unitAmountCents).not.toBeNull();
+      expect(item.currency).toBe('USD');
+      expect(item.sellerId).toBe(catalog.photographerId);
+      expect(item.feePolicyVersion).not.toBeNull();
+      expect(item.platformFeeAmount).not.toBeNull();
+      expect(item.sellerEarningsAmount).not.toBeNull();
+      expect(item.deliverablePublicId).toBe(catalog.cloudinaryPublicId);
+      expect(item.deliverableType).toBe(catalog.type);
+      expect(item.platformFeeAmount! + item.sellerEarningsAmount!).toBe(item.unitAmountCents);
+    }
+
+    const sumUnitAmountCents = orderItems.reduce((sum, item) => sum + item.unitAmountCents!, 0);
+    expect(sumUnitAmountCents).toBe(order.totalAmount);
+
+    const snapshotBeforeEdit = orderItems;
+
+    await prisma.mediaItem.update({ where: { id: mediaItemA.id }, data: { price: 10000 } });
+    await prisma.mediaItem.update({ where: { id: mediaItemB.id }, data: { price: 1 } });
+
+    const orderItemsAfterEdit = await prisma.orderItem.findMany({ where: { orderId }, orderBy: { mediaItemId: 'asc' } });
+
+    expect(orderItemsAfterEdit).toEqual(snapshotBeforeEdit);
   });
 });
