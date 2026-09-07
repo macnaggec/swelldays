@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { BadGatewayError } from 'server/errors';
+import { apiConfig } from 'server/config/env';
 import { paddleAdapter } from './PaddleAdapter';
 
 // ---------------------------------------------------------------------------
@@ -70,6 +71,42 @@ describe('PaddleAdapter.verifyWebhook', () => {
 
   it('rejects a header that is missing the ts or h1 part', () => {
     expect(paddleAdapter.verifyWebhook(makeWebhookBody(), { 'paddle-signature': 'ts=123' })).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// verifyWebhook — signature rotation (webhookSecrets accepts more than one)
+// ---------------------------------------------------------------------------
+describe('PaddleAdapter.verifyWebhook signature rotation', () => {
+  const originalWebhookSecrets = apiConfig.paddle!.webhookSecrets;
+
+  function setConfiguredSecrets(secrets: readonly string[]): void {
+    (apiConfig.paddle as { webhookSecrets: readonly string[] }).webhookSecrets = secrets;
+  }
+
+  afterEach(() => {
+    setConfiguredSecrets(originalWebhookSecrets);
+  });
+
+  it('accepts a signature made with the second (older) secret during rotation', () => {
+    setConfiguredSecrets(['newest-secret', TEST_SECRET]);
+    const rawBody = makeWebhookBody();
+    const header = signatureHeader(rawBody, { secret: TEST_SECRET });
+    expect(paddleAdapter.verifyWebhook(rawBody, { 'paddle-signature': header })).toBe(true);
+  });
+
+  it('rejects a signature made with a secret that is not in the configured list', () => {
+    setConfiguredSecrets(['newest-secret', TEST_SECRET]);
+    const rawBody = makeWebhookBody();
+    const header = signatureHeader(rawBody, { secret: 'totally-unknown-secret' });
+    expect(paddleAdapter.verifyWebhook(rawBody, { 'paddle-signature': header })).toBe(false);
+  });
+
+  it('still accepts a valid signature under a single-secret configuration', () => {
+    setConfiguredSecrets([TEST_SECRET]);
+    const rawBody = makeWebhookBody();
+    const header = signatureHeader(rawBody, { secret: TEST_SECRET });
+    expect(paddleAdapter.verifyWebhook(rawBody, { 'paddle-signature': header })).toBe(true);
   });
 });
 
@@ -180,5 +217,196 @@ describe('PaddleAdapter.createCheckoutSession', () => {
     await expect(
       paddleAdapter.createCheckoutSession(validParams)
     ).rejects.toBeInstanceOf(BadGatewayError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// retrieveReceipt
+// ---------------------------------------------------------------------------
+describe('PaddleAdapter.retrieveReceipt', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const identity = {
+    provider: 'paddle' as const,
+    environment: 'sandbox' as const,
+    providerTransactionId: 'txn_01m1v7datrz22kvtvp98mcvytk',
+  };
+
+  function makeTransactionResponse(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      data: {
+        id: identity.providerTransactionId,
+        status: 'completed',
+        currency_code: 'USD',
+        details: {
+          totals: {
+            subtotal: '1200',
+            discount: '0',
+            tax: '300',
+            total: '1500',
+            credit: '0',
+            credit_to_balance: '0',
+            balance: '0',
+            grand_total: '1500',
+            grand_total_tax: '300',
+            fee: '100',
+            earnings: '1400',
+            currency_code: 'USD',
+          },
+          payout_totals: {
+            subtotal: '1200',
+            discount: '0',
+            tax: '300',
+            total: '1500',
+            credit: '0',
+            credit_to_balance: '0',
+            balance: '0',
+            grand_total: '1500',
+            grand_total_tax: '300',
+            fee: '100',
+            earnings: '1350',
+            currency_code: 'USD',
+            exchange_rate: '1',
+            fee_rate: '0.05',
+          },
+        },
+        ...overrides,
+      },
+    };
+  }
+
+  it('maps the documented response shape to the expected receipt, preferring payout_totals.earnings', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => makeTransactionResponse(),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(paddleAdapter.retrieveReceipt(identity)).resolves.toEqual({
+      identity,
+      status: 'paid',
+      paidTotalCents: 1500,
+      paidCurrency: 'USD',
+      subtotalCents: 1200,
+      taxCents: 300,
+      discountCents: 0,
+      settlementNetCents: 1350,
+      providerAccountId: null,
+      providerTestMode: true,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://sandbox-api.paddle.com/transactions/txn_01m1v7datrz22kvtvp98mcvytk',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer test-paddle-api-key' }),
+      }),
+    );
+  });
+
+  it('parses a grand_total string of "1000" as 1000 minor units', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => makeTransactionResponse({
+        details: { totals: { grand_total: '1000', currency_code: 'USD' } },
+      }),
+    }));
+
+    await expect(paddleAdapter.retrieveReceipt(identity)).resolves.toMatchObject({ paidTotalCents: 1000 });
+  });
+
+  it('leaves missing totals fields null, not 0', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => makeTransactionResponse({
+        details: { totals: { grand_total: '1500', currency_code: 'USD' } },
+      }),
+    }));
+
+    await expect(paddleAdapter.retrieveReceipt(identity)).resolves.toEqual({
+      identity,
+      status: 'paid',
+      paidTotalCents: 1500,
+      paidCurrency: 'USD',
+      subtotalCents: null,
+      taxCents: null,
+      discountCents: null,
+      settlementNetCents: null,
+      providerAccountId: null,
+      providerTestMode: true,
+    });
+  });
+
+  it.each([
+    ['completed', 'paid'],
+    ['paid', 'paid'],
+    ['draft', 'unpaid'],
+    ['ready', 'unpaid'],
+    ['billed', 'unpaid'],
+    ['past_due', 'unpaid'],
+    ['canceled', 'cancelled'],
+  ] as const)('maps Paddle status %s to receipt status %s', async (paddleStatus, receiptStatus) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => makeTransactionResponse({ status: paddleStatus }),
+    }));
+
+    await expect(paddleAdapter.retrieveReceipt(identity)).resolves.toMatchObject({ status: receiptStatus });
+  });
+
+  it('throws BadGatewayError for an unrecognised status value', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => makeTransactionResponse({ status: 'unknown-status' }),
+    }));
+
+    await expect(paddleAdapter.retrieveReceipt(identity)).rejects.toBeInstanceOf(BadGatewayError);
+  });
+
+  it('throws when the response id differs from the requested identity', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => makeTransactionResponse({ id: 'txn_different' }),
+    }));
+
+    await expect(paddleAdapter.retrieveReceipt(identity)).rejects.toBeInstanceOf(BadGatewayError);
+  });
+
+  it('throws BadGatewayError for a non-ok HTTP response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      text: async () => 'Service Unavailable',
+    }));
+
+    await expect(paddleAdapter.retrieveReceipt(identity)).rejects.toBeInstanceOf(BadGatewayError);
+  });
+
+  it('throws BadGatewayError when grand_total does not parse to a finite number', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => makeTransactionResponse({
+        details: { totals: { grand_total: 'not-a-number', currency_code: 'USD' } },
+      }),
+    }));
+
+    await expect(paddleAdapter.retrieveReceipt(identity)).rejects.toBeInstanceOf(BadGatewayError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// expectedAccountId
+// ---------------------------------------------------------------------------
+describe('PaddleAdapter.expectedAccountId', () => {
+  it('returns null — Paddle retrieval is already account-scoped by the API key', () => {
+    expect(paddleAdapter.expectedAccountId()).toBeNull();
   });
 });

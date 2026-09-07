@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import type { PaymentEnvironment, PaymentIdentity, PaymentProvider } from 'server/domain/Payment';
+import type { PaymentReceipt } from 'server/domain/PaymentReceipt';
 
 export interface CreateCheckoutParams {
   paymentAttemptId: string;
@@ -60,4 +61,19 @@ export interface PaymentAdapter {
    * Called only after verifyWebhook returns true.
    */
   parseWebhookEvent(rawBody: string, headers: Record<string, string>): PaymentWebhookEvent;
+
+  /**
+   * Fetches authoritative payment facts over an authenticated provider channel.
+   * Called only after verifyWebhook and only for a known stored identity.
+   * Throws BadGatewayError when the provider is unreachable or answers
+   * unusably — never returns a fabricated receipt.
+   */
+  retrieveReceipt(identity: PaymentIdentity): Promise<PaymentReceipt>;
+
+  /**
+   * The provider-side shop/project id this adapter is configured for, or null
+   * when the provider has no such concept and authenticated retrieval is
+   * already account-scoped by the API key.
+   */
+  expectedAccountId(): string | null;
 }

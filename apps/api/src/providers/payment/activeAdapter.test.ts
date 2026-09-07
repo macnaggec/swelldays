@@ -17,7 +17,7 @@ describe('active payment adapter selection', () => {
 
   it('rejects live Paddle sandbox even when the decoder is bypassed', () => {
     expect(() => activeAdapter.selectPaymentAdapter({ commerceMode: 'live', payment: {
-      provider: 'paddle', environment: 'sandbox', apiKey: 'fixture', webhookSecret: 'fixture',
+      provider: 'paddle', environment: 'sandbox', apiKey: 'fixture', webhookSecrets: ['fixture'],
     } })).toThrow(/sandbox/);
   });
 
@@ -25,7 +25,7 @@ describe('active payment adapter selection', () => {
     expect(activeAdapter.selectPaymentAdapter({ commerceMode: 'test', payment: { provider: 'mock' } }))
       .toBe(mockPaymentAdapter);
     expect(activeAdapter.selectPaymentAdapter({ commerceMode: 'live', payment: {
-      provider: 'paddle', environment: 'production', apiKey: 'pdl_live_apikey_fixture', webhookSecret: 'fixture',
+      provider: 'paddle', environment: 'production', apiKey: 'pdl_live_apikey_fixture', webhookSecrets: ['fixture'],
     } })).toBe(paddleAdapter);
     expect(activeAdapter.selectPaymentAdapter({ commerceMode: 'live', payment: {
       provider: 'cryptocloud', apiKey: 'fixture', shopId: 'fixture', secretKey: 'fixture',
@@ -39,7 +39,7 @@ describe('active payment adapter selection', () => {
   it('selects webhook adapters from retained credentials independently of checkout selection', () => {
     expect(activeAdapter.selectPaymentWebhookAdapters({
       cryptoCloud: { apiKey: 'fixture', shopId: 'fixture', secretKey: 'fixture' },
-      paddle: { apiKey: 'fixture', webhookSecret: 'fixture', environment: 'sandbox' },
+      paddle: { apiKey: 'fixture', webhookSecrets: ['fixture'], environment: 'sandbox' },
     })).toEqual([cryptoCloudAdapter, paddleAdapter]);
     expect(activeAdapter.selectPaymentWebhookAdapters({ cryptoCloud: null, paddle: null })).toEqual([]);
   });

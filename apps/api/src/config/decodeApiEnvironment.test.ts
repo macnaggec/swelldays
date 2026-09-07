@@ -263,4 +263,33 @@ describe('live commerce API configuration', () => {
     expect(() => decodeApiEnvironment({ ...liveCryptoCloudEnvironment(), [key]: undefined })).toThrow(/CryptoCloud/);
     expect(() => decodeApiEnvironment({ ...liveCryptoCloudEnvironment(), [key]: 'replace-with-value' })).toThrow(key);
   });
+
+  describe('Paddle webhook secret rotation', () => {
+    it('parses a single secret configuration into a one-element list', () => {
+      const config = decodeApiEnvironment(livePaddleEnvironment());
+      expect(config.paddle?.webhookSecrets).toEqual(['fixture-webhook-signing-key']);
+    });
+
+    it('parses a comma-separated PADDLE_WEBHOOK_SECRET into a trimmed, ordered list', () => {
+      const config = decodeApiEnvironment({
+        ...livePaddleEnvironment(),
+        PADDLE_WEBHOOK_SECRET: 'newest-secret, oldest-secret ,  middle-secret ',
+      });
+      expect(config.paddle?.webhookSecrets).toEqual(['newest-secret', 'oldest-secret', 'middle-secret']);
+    });
+
+    it('rejects a PADDLE_WEBHOOK_SECRET that decodes to an empty list', () => {
+      expect(() => decodeApiEnvironment({
+        ...livePaddleEnvironment(),
+        PADDLE_WEBHOOK_SECRET: ' , ',
+      })).toThrow('Paddle');
+    });
+
+    it('rejects a live secret list containing a placeholder value', () => {
+      expect(() => decodeApiEnvironment({
+        ...livePaddleEnvironment(),
+        PADDLE_WEBHOOK_SECRET: 'fixture-webhook-signing-key,change-me',
+      })).toThrow('PADDLE_WEBHOOK_SECRET');
+    });
+  });
 });

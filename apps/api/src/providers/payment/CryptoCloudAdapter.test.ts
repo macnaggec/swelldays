@@ -38,6 +38,24 @@ function makeJwt({
   return `${header}.${payload}.${sig}`;
 }
 
+// ---------------------------------------------------------------------------
+// JWT factory with an arbitrary payload — used to test malformed/missing exp
+// claims while still producing a correctly signed token.
+// ---------------------------------------------------------------------------
+function makeJwtWithPayload(payload: Record<string, unknown>, secret = TEST_SECRET): string {
+  const header = Buffer.from(
+    JSON.stringify({ alg: 'HS256', typ: 'JWT' })
+  ).toString('base64url');
+
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+
+  const sig = createHmac('sha256', secret)
+    .update(`${header}.${encodedPayload}`)
+    .digest('base64url');
+
+  return `${header}.${encodedPayload}.${sig}`;
+}
+
 function futureExp(offsetSeconds = 300): number {
   return Math.floor(Date.now() / 1000) + offsetSeconds;
 }
@@ -78,6 +96,26 @@ describe('CryptoCloudAdapter.verifyWebhook', () => {
   it('rejects a JWT with an expired exp claim', () => {
     const rawBody = makeWebhookBody(makeJwt({ exp: pastExp() }));
     expect(cryptoCloudAdapter.verifyWebhook(rawBody, {})).toBe(false);
+  });
+
+  it('rejects a JWT whose payload omits exp', () => {
+    const rawBody = makeWebhookBody(makeJwtWithPayload({}));
+    expect(cryptoCloudAdapter.verifyWebhook(rawBody, {})).toBe(false);
+  });
+
+  it('rejects a JWT whose exp is a numeric string', () => {
+    const rawBody = makeWebhookBody(makeJwtWithPayload({ exp: '9999999999' }));
+    expect(cryptoCloudAdapter.verifyWebhook(rawBody, {})).toBe(false);
+  });
+
+  it('rejects a JWT whose exp is null', () => {
+    const rawBody = makeWebhookBody(makeJwtWithPayload({ exp: null }));
+    expect(cryptoCloudAdapter.verifyWebhook(rawBody, {})).toBe(false);
+  });
+
+  it('accepts a JWT with a valid future numeric exp', () => {
+    const rawBody = makeWebhookBody(makeJwt({ exp: futureExp() }));
+    expect(cryptoCloudAdapter.verifyWebhook(rawBody, {})).toBe(true);
   });
 
   it('rejects a JWT with a corrupted signature', () => {
@@ -143,6 +181,31 @@ describe('CryptoCloudAdapter.parseWebhookEvent', () => {
   it('rejects disagreement between the JSON invoice ids', () => {
     const payload = JSON.parse(makeWebhookBody(makeJwt()));
     payload.invoice_info.uuid = 'INV-DIFFERENT';
+    expect(cryptoCloudAdapter.parseWebhookEvent(
+      JSON.stringify(payload),
+      { 'content-type': 'application/json' },
+    )).toEqual({ type: 'order.ignored' });
+  });
+
+  it('ignores (not throws) a body whose invoice_info is a string', () => {
+    const payload = JSON.parse(makeWebhookBody(makeJwt()));
+    payload.invoice_info = 'not-an-object';
+    expect(cryptoCloudAdapter.parseWebhookEvent(
+      JSON.stringify(payload),
+      { 'content-type': 'application/json' },
+    )).toEqual({ type: 'order.ignored' });
+  });
+
+  it('ignores a body that is a bare JSON array', () => {
+    expect(cryptoCloudAdapter.parseWebhookEvent(
+      '[1,2,3]',
+      { 'content-type': 'application/json' },
+    )).toEqual({ type: 'order.ignored' });
+  });
+
+  it('ignores a body whose status is a number', () => {
+    const payload = JSON.parse(makeWebhookBody(makeJwt()));
+    payload.status = 200;
     expect(cryptoCloudAdapter.parseWebhookEvent(
       JSON.stringify(payload),
       { 'content-type': 'application/json' },
@@ -233,5 +296,154 @@ describe('CryptoCloudAdapter.createCheckoutSession', () => {
     await expect(
       cryptoCloudAdapter.createCheckoutSession(validParams)
     ).rejects.toBeInstanceOf(BadGatewayError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// retrieveReceipt
+// ---------------------------------------------------------------------------
+describe('CryptoCloudAdapter.retrieveReceipt', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const identity = {
+    provider: 'cryptocloud' as const,
+    environment: 'production' as const,
+    providerTransactionId: 'INV-89UX09KA',
+  };
+
+  function makeMerchantInfoEntry(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      uuid: 'INV-89UX09KA',
+      created: '2026-09-07T18:00:00Z',
+      address: 'bc1qexample',
+      currency: 'BTC',
+      project: { id: 42, name: 'Swelldays' },
+      amount: 0.001,
+      amount_usd: 15,
+      amount_in_fiat: 15,
+      amount_to_pay: 0.001,
+      amount_paid: 0.001,
+      fee: 0,
+      service_fee: 0,
+      received: 0.001,
+      to_surcharge: 0,
+      status: 'paid',
+      test_mode: true,
+      ...overrides,
+    };
+  }
+
+  it('maps a documented success response to the expected receipt', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'success', result: [makeMerchantInfoEntry()] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(cryptoCloudAdapter.retrieveReceipt(identity)).resolves.toEqual({
+      identity,
+      status: 'paid',
+      paidTotalCents: 1500,
+      paidCurrency: 'USD',
+      subtotalCents: null,
+      taxCents: null,
+      discountCents: null,
+      settlementNetCents: null,
+      providerAccountId: '42',
+      providerTestMode: true,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.cryptocloud.plus/v2/invoice/merchant/info',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Token test-cryptocloud-api-key',
+          'Content-Type': 'application/json',
+        }),
+      }),
+    );
+    const requestBody = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(requestBody).toEqual({ uuids: ['INV-89UX09KA'] });
+  });
+
+  it.each([
+    ['paid', 'paid'],
+    ['overpaid', 'overpaid'],
+    ['created', 'unpaid'],
+    ['partial', 'unpaid'],
+    ['canceled', 'cancelled'],
+  ] as const)('maps CryptoCloud status %s to receipt status %s', async (ccStatus, receiptStatus) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'success', result: [makeMerchantInfoEntry({ status: ccStatus })] }),
+    }));
+
+    await expect(cryptoCloudAdapter.retrieveReceipt(identity)).resolves.toMatchObject({
+      status: receiptStatus,
+    });
+  });
+
+  it('throws BadGatewayError for an unrecognised status value', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'success', result: [makeMerchantInfoEntry({ status: 'unknown-status' })] }),
+    }));
+
+    await expect(cryptoCloudAdapter.retrieveReceipt(identity)).rejects.toBeInstanceOf(BadGatewayError);
+  });
+
+  it('throws when the result entry uuid differs from the requested identity', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'success', result: [makeMerchantInfoEntry({ uuid: 'INV-DIFFERENT' })] }),
+    }));
+
+    await expect(cryptoCloudAdapter.retrieveReceipt(identity)).rejects.toBeInstanceOf(BadGatewayError);
+  });
+
+  it('throws BadGatewayError for a non-ok HTTP response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      text: async () => 'Service Unavailable',
+    }));
+
+    await expect(cryptoCloudAdapter.retrieveReceipt(identity)).rejects.toBeInstanceOf(BadGatewayError);
+  });
+
+  it('throws BadGatewayError when status is error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'error', result: [] }),
+    }));
+
+    await expect(cryptoCloudAdapter.retrieveReceipt(identity)).rejects.toBeInstanceOf(BadGatewayError);
+  });
+
+  it('throws BadGatewayError when amount_usd is not a finite number', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'success', result: [makeMerchantInfoEntry({ amount_usd: 'fifteen' })] }),
+    }));
+
+    await expect(cryptoCloudAdapter.retrieveReceipt(identity)).rejects.toBeInstanceOf(BadGatewayError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// expectedAccountId
+// ---------------------------------------------------------------------------
+describe('CryptoCloudAdapter.expectedAccountId', () => {
+  it('returns the configured shop id', () => {
+    expect(cryptoCloudAdapter.expectedAccountId()).toBe('test-cryptocloud-shop-id');
   });
 });

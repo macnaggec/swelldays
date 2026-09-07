@@ -12,6 +12,12 @@ export type PaymentWebhookRouterDependencies = {
   payments: Pick<IPaymentService, 'acceptVerifiedNotification'>;
 };
 
+// Provider callbacks are small (a JSON notification, or a form-encoded one at
+// most a few KB). An unbounded body is a cheap denial-of-service surface —
+// reject anything implausibly large before it reaches signature verification
+// or JSON parsing.
+const MAX_WEBHOOK_BODY_BYTES = 65_536;
+
 export function createPaymentWebhookRouter(
   dependencies: PaymentWebhookRouterDependencies,
 ): Hono {
@@ -27,6 +33,9 @@ export function createPaymentWebhookRouter(
       }
 
       const rawBody = await c.req.text();
+      if (Buffer.byteLength(rawBody, 'utf8') > MAX_WEBHOOK_BODY_BYTES) {
+        return c.json({ error: 'Payload too large' }, 413);
+      }
       const headers = Object.fromEntries(
         [...c.req.raw.headers.entries()].map(([name, value]) => [name.toLowerCase(), value]),
       );
@@ -41,6 +50,12 @@ export function createPaymentWebhookRouter(
         }
         if (outcome.type === 'unknown-transaction' || outcome.type === 'mismatched-correlation') {
           return c.json({ error: 'Payment association conflict' }, 409);
+        }
+        if (outcome.type === 'rejected-receipt') {
+          return c.json({ error: 'Payment validation failed' }, 409);
+        }
+        if (outcome.type === 'provider-unreachable') {
+          return c.json({ error: 'Payment provider unreachable' }, 502);
         }
         return c.json({ ok: true });
       } catch (err) {

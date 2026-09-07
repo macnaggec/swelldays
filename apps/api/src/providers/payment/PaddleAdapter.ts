@@ -2,6 +2,8 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { BadGatewayError } from 'server/errors';
 import { logger } from 'server/lib/logger';
 import { apiConfig } from 'server/config/env';
+import type { PaymentIdentity } from 'server/domain/Payment';
+import type { PaymentReceipt, ReceiptStatus } from 'server/domain/PaymentReceipt';
 import type {
   PaymentAdapter,
   CreateCheckoutParams,
@@ -25,6 +27,36 @@ interface PaddleWebhookPayload {
   data: {
     id: string;             // txn_... provider transaction identity
     custom_data: { paymentAttemptId?: string } | null;
+  };
+}
+
+interface PaddleTransactionRetrieveResponse {
+  data: {
+    id: string;
+    status: string;
+    currency_code: string;
+    details: {
+      totals: {
+        subtotal?: string;
+        discount?: string;
+        tax?: string;
+        total?: string;
+        credit?: string;
+        credit_to_balance?: string;
+        balance?: string;
+        grand_total: string;
+        grand_total_tax?: string;
+        fee?: string;
+        earnings?: string;
+        currency_code: string;
+      };
+      payout_totals?: {
+        earnings?: string;
+        exchange_rate?: string;
+        fee_rate?: string;
+        [key: string]: unknown;
+      };
+    };
   };
 }
 
@@ -169,16 +201,26 @@ function verifyWebhook(
   );
 }
 
+/**
+ * Accepts the signature when it matches ANY configured secret, so a rotation
+ * can stage a new secret alongside the old one. Every secret is checked
+ * regardless of an earlier match — returning as soon as one matches would
+ * leak, via timing, which secret (old or new) produced the match.
+ */
 function verifyHmacSignature(signingInput: string, receivedSig: string): boolean {
-  const { webhookSecret } = creds();
-  const expectedSig = createHmac('sha256', webhookSecret)
-    .update(signingInput)
-    .digest('hex');
-  try {
-    return timingSafeEqual(Buffer.from(expectedSig), Buffer.from(receivedSig));
-  } catch {
-    return false;
-  }
+  const { webhookSecrets } = creds();
+  return webhookSecrets.reduce((matched, secret) => {
+    const expectedSig = createHmac('sha256', secret)
+      .update(signingInput)
+      .digest('hex');
+    let secretMatches: boolean;
+    try {
+      secretMatches = timingSafeEqual(Buffer.from(expectedSig), Buffer.from(receivedSig));
+    } catch {
+      secretMatches = false;
+    }
+    return matched || secretMatches;
+  }, false);
 }
 
 function isTimestampStale(timestamp: string): boolean {
@@ -207,9 +249,107 @@ function parseWebhookEvent(rawBody: string, _headers: Record<string, string>): P
   };
 }
 
+function mapReceiptStatus(status: string): ReceiptStatus {
+  switch (status) {
+    case 'completed':
+    case 'paid':
+      return 'paid';
+    case 'draft':
+    case 'ready':
+    case 'billed':
+    case 'past_due':
+      return 'unpaid';
+    case 'canceled':
+      return 'cancelled';
+    default:
+      logger.error('[Paddle] Unexpected transaction status in retrieveReceipt', { status });
+      throw new BadGatewayError('Payment provider error');
+  }
+}
+
+/**
+ * Amounts on the transaction retrieval response are strings in the
+ * currency's smallest unit. A field becomes null — never 0 — when it is
+ * absent or does not parse to a finite number, so a missing breakdown field
+ * can never be silently read as "zero".
+ */
+function parseMinorUnitAmount(value: string | undefined): number | null {
+  if (value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/**
+ * Fetches the authoritative transaction facts for `identity` over Paddle's
+ * authenticated transaction-retrieval endpoint. `grand_total` — not
+ * `subtotal` or `total` — is what the customer was actually charged.
+ */
+async function retrieveReceipt(identity: PaymentIdentity): Promise<PaymentReceipt> {
+  const { apiKey } = creds();
+
+  const response = await fetch(
+    `${baseUrl()}/transactions/${encodeURIComponent(identity.providerTransactionId)}`,
+    {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  if (!response.ok) {
+    logger.error('[Paddle] Transaction retrieval failed', { status: response.status });
+    throw new BadGatewayError('Payment provider error');
+  }
+
+  const data = (await response.json()) as PaddleTransactionRetrieveResponse;
+
+  if (data.data?.id !== identity.providerTransactionId) {
+    logger.error('[Paddle] Transaction retrieval id mismatch', {
+      providerTransactionId: identity.providerTransactionId,
+    });
+    throw new BadGatewayError('Payment provider error');
+  }
+
+  const totals = data.data.details.totals;
+  const grandTotal = Number(totals.grand_total);
+  if (!Number.isFinite(grandTotal)) {
+    logger.error('[Paddle] Transaction retrieval grand_total is not a finite number', {
+      providerTransactionId: identity.providerTransactionId,
+    });
+    throw new BadGatewayError('Payment provider error');
+  }
+
+  const payoutTotals = data.data.details.payout_totals;
+  const payoutEarnings = parseMinorUnitAmount(payoutTotals?.earnings);
+  const settlementNetCents = payoutTotals !== undefined && payoutEarnings !== null
+    ? payoutEarnings
+    : parseMinorUnitAmount(totals.earnings);
+
+  return {
+    identity,
+    status: mapReceiptStatus(data.data.status),
+    paidTotalCents: grandTotal,
+    paidCurrency: totals.currency_code,
+    subtotalCents: parseMinorUnitAmount(totals.subtotal),
+    taxCents: parseMinorUnitAmount(totals.tax),
+    discountCents: parseMinorUnitAmount(totals.discount),
+    settlementNetCents,
+    providerAccountId: null,
+    providerTestMode: creds().environment === 'sandbox',
+  };
+}
+
+// Paddle has no shop id and retrieval is already account-scoped by the API
+// key, so there is nothing further to compare — returning a constant here
+// would be a check that cannot fail.
+function expectedAccountId(): string | null {
+  return null;
+}
+
 export const paddleAdapter: PaymentAdapter = {
   provider: 'paddle',
   createCheckoutSession,
   verifyWebhook,
   parseWebhookEvent,
+  retrieveReceipt,
+  expectedAccountId,
 };

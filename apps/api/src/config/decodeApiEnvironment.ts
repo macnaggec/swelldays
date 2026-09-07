@@ -8,7 +8,8 @@ export type CryptoCloudConfig = {
 
 export type PaddleConfig = {
   apiKey: string;
-  webhookSecret: string;
+  /** One or more active webhook secrets, newest first, to support rotation. */
+  webhookSecrets: readonly string[];
   environment: 'sandbox' | 'production';
 };
 
@@ -144,18 +145,26 @@ const parsePaddleConfig = (
   raw: Record<string, string | undefined>,
 ): PaddleConfig | null => {
   const apiKey = optionalValue(raw, 'PADDLE_API_KEY');
-  const webhookSecret = optionalValue(raw, 'PADDLE_WEBHOOK_SECRET');
+  const webhookSecretRaw = optionalValue(raw, 'PADDLE_WEBHOOK_SECRET');
   const environment = optionalValue(raw, 'PADDLE_ENVIRONMENT');
-  const configuredCount = [apiKey, webhookSecret, environment].filter(Boolean).length;
+  const configuredCount = [apiKey, webhookSecretRaw, environment].filter(Boolean).length;
 
   if (configuredCount === 0) return null;
-  if (!apiKey || !webhookSecret || !environment) {
+
+  // PADDLE_WEBHOOK_SECRET accepts one or more comma-separated secrets so a
+  // rotation can be staged: the newest secret leads, older ones stay valid
+  // until every in-flight webhook has been redelivered against the new one.
+  const webhookSecrets = webhookSecretRaw
+    ? webhookSecretRaw.split(',').map((secret) => secret.trim()).filter((secret) => secret.length > 0)
+    : [];
+
+  if (!apiKey || webhookSecrets.length === 0 || !environment) {
     throw new Error('Paddle credentials must be provided together');
   }
   if (environment !== 'sandbox' && environment !== 'production') {
     throw new Error('PADDLE_ENVIRONMENT must be sandbox or production');
   }
-  return { apiKey, webhookSecret, environment };
+  return { apiKey, webhookSecrets, environment };
 };
 
 export function decodeApiEnvironment(
@@ -231,7 +240,9 @@ export function decodeApiEnvironment(
       || (live && !/^pdl_live_apikey_.+/.test(paddle.apiKey))) {
       throw new Error('PADDLE_API_KEY must match PADDLE_ENVIRONMENT');
     }
-    if (live && /(change.?me|replace.?with|your.?secret|placeholder)/i.test(paddle.webhookSecret)) {
+    if (live && paddle.webhookSecrets.some(
+      (secret) => /(change.?me|replace.?with|your.?secret|placeholder)/i.test(secret),
+    )) {
       throw new Error('PADDLE_WEBHOOK_SECRET must be non-placeholder');
     }
   }

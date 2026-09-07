@@ -26,6 +26,8 @@ const adapter: PaymentAdapter = {
   createCheckoutSession: vi.fn(),
   verifyWebhook: vi.fn(),
   parseWebhookEvent: vi.fn(),
+  retrieveReceipt: vi.fn(),
+  expectedAccountId: vi.fn(),
 };
 const fulfillment = { fulfillOrder: vi.fn() };
 const service = new PaymentService(attempts, adapter, fulfillment);
@@ -117,6 +119,19 @@ describe('PaymentService.acceptVerifiedNotification', () => {
     providerTransactionId: 'INV-1',
   };
 
+  const validReceipt = {
+    identity,
+    status: 'paid' as const,
+    paidTotalCents: 1500,
+    paidCurrency: 'USD',
+    subtotalCents: null,
+    taxCents: null,
+    discountCents: null,
+    settlementNetCents: null,
+    providerAccountId: null,
+    providerTestMode: null,
+  };
+
   beforeEach(() => {
     vi.mocked(adapter.verifyWebhook).mockReturnValue(true);
     vi.mocked(adapter.parseWebhookEvent).mockReturnValue({
@@ -125,15 +140,35 @@ describe('PaymentService.acceptVerifiedNotification', () => {
     vi.mocked(attempts.findByIdentity).mockResolvedValue({
       ...attempt, environment: 'production', providerTransactionId: 'INV-1',
     });
+    vi.mocked(adapter.retrieveReceipt).mockResolvedValue(validReceipt);
+    vi.mocked(adapter.expectedAccountId).mockReturnValue(null);
   });
 
-  it('resolves by provider identity and fulfills the stored order id', async () => {
+  it('resolves by provider identity, validates the receipt, and fulfills the stored order id exactly once', async () => {
     await expect(service.acceptVerifiedNotification(adapter, '{}', {}))
       .resolves.toEqual({ type: 'fulfilled' });
     expect(attempts.findByIdentity).toHaveBeenCalledWith(identity);
+    expect(adapter.retrieveReceipt).toHaveBeenCalledWith(identity);
+    expect(fulfillment.fulfillOrder).toHaveBeenCalledTimes(1);
     expect(fulfillment.fulfillOrder).toHaveBeenCalledWith(
       'order-1', '["cryptocloud","production","INV-1"]',
     );
+  });
+
+  it('does not fulfill an invalid signature', async () => {
+    vi.mocked(adapter.verifyWebhook).mockReturnValue(false);
+    await expect(service.acceptVerifiedNotification(adapter, '{}', {}))
+      .resolves.toEqual({ type: 'invalid-signature' });
+    expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
+    expect(adapter.retrieveReceipt).not.toHaveBeenCalled();
+  });
+
+  it('does not fulfill an ignored event', async () => {
+    vi.mocked(adapter.parseWebhookEvent).mockReturnValue({ type: 'order.ignored' });
+    await expect(service.acceptVerifiedNotification(adapter, '{}', {}))
+      .resolves.toEqual({ type: 'ignored' });
+    expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
+    expect(adapter.retrieveReceipt).not.toHaveBeenCalled();
   });
 
   it('rejects swapped correlation metadata without fulfilling', async () => {
@@ -143,12 +178,80 @@ describe('PaymentService.acceptVerifiedNotification', () => {
     await expect(service.acceptVerifiedNotification(adapter, '{}', {}))
       .resolves.toEqual({ type: 'mismatched-correlation' });
     expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
+    expect(adapter.retrieveReceipt).not.toHaveBeenCalled();
   });
 
   it('does not fulfill an unknown provider identity', async () => {
     vi.mocked(attempts.findByIdentity).mockResolvedValue(null);
     await expect(service.acceptVerifiedNotification(adapter, '{}', {}))
       .resolves.toEqual({ type: 'unknown-transaction' });
+    expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
+    expect(adapter.retrieveReceipt).not.toHaveBeenCalled();
+  });
+
+  it('returns provider-unreachable and does not propagate when retrieveReceipt throws', async () => {
+    vi.mocked(adapter.retrieveReceipt).mockRejectedValue(new Error('network down'));
+    await expect(service.acceptVerifiedNotification(adapter, '{}', {}))
+      .resolves.toEqual({ type: 'provider-unreachable' });
+    expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
+  });
+
+  it('rejects status-not-paid without fulfilling', async () => {
+    vi.mocked(adapter.retrieveReceipt).mockResolvedValue({ ...validReceipt, status: 'unpaid' });
+    await expect(service.acceptVerifiedNotification(adapter, '{}', {}))
+      .resolves.toEqual({ type: 'rejected-receipt', reason: 'status-not-paid' });
+    expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
+  });
+
+  it('rejects transaction-mismatch without fulfilling', async () => {
+    vi.mocked(adapter.retrieveReceipt).mockResolvedValue({
+      ...validReceipt,
+      identity: { ...identity, providerTransactionId: 'INV-OTHER' },
+    });
+    await expect(service.acceptVerifiedNotification(adapter, '{}', {}))
+      .resolves.toEqual({ type: 'rejected-receipt', reason: 'transaction-mismatch' });
+    expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
+  });
+
+  it('rejects environment-mismatch without fulfilling', async () => {
+    vi.mocked(adapter.retrieveReceipt).mockResolvedValue({
+      ...validReceipt,
+      identity: { ...identity, environment: 'sandbox' },
+    });
+    await expect(service.acceptVerifiedNotification(adapter, '{}', {}))
+      .resolves.toEqual({ type: 'rejected-receipt', reason: 'environment-mismatch' });
+    expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
+  });
+
+  it('rejects account-mismatch without fulfilling', async () => {
+    vi.mocked(adapter.expectedAccountId).mockReturnValue('shop-expected');
+    vi.mocked(adapter.retrieveReceipt).mockResolvedValue({ ...validReceipt, providerAccountId: 'shop-other' });
+    await expect(service.acceptVerifiedNotification(adapter, '{}', {}))
+      .resolves.toEqual({ type: 'rejected-receipt', reason: 'account-mismatch' });
+    expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
+  });
+
+  it('rejects currency-mismatch without fulfilling', async () => {
+    vi.mocked(adapter.retrieveReceipt).mockResolvedValue({ ...validReceipt, paidCurrency: 'EUR' });
+    await expect(service.acceptVerifiedNotification(adapter, '{}', {}))
+      .resolves.toEqual({ type: 'rejected-receipt', reason: 'currency-mismatch' });
+    expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
+  });
+
+  it('rejects amount-mismatch without fulfilling', async () => {
+    vi.mocked(adapter.retrieveReceipt).mockResolvedValue({ ...validReceipt, paidTotalCents: 1499 });
+    await expect(service.acceptVerifiedNotification(adapter, '{}', {}))
+      .resolves.toEqual({ type: 'rejected-receipt', reason: 'amount-mismatch' });
+    expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
+  });
+
+  it('rejects test-mode-mismatch without fulfilling', async () => {
+    vi.mocked(attempts.findByIdentity).mockResolvedValue({
+      ...attempt, environment: 'production', providerTransactionId: 'INV-1', providerTestMode: false,
+    });
+    vi.mocked(adapter.retrieveReceipt).mockResolvedValue({ ...validReceipt, providerTestMode: true });
+    await expect(service.acceptVerifiedNotification(adapter, '{}', {}))
+      .resolves.toEqual({ type: 'rejected-receipt', reason: 'test-mode-mismatch' });
     expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
   });
 });

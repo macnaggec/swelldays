@@ -17,3 +17,38 @@ describe('MockPaymentAdapter', () => {
     expect(first.providerTransactionId).not.toBe(second.providerTransactionId);
   });
 });
+
+describe('MockPaymentAdapter.retrieveReceipt', () => {
+  it('mirrors the amount from the most recently created session as a paid receipt', async () => {
+    await mockPaymentAdapter.createCheckoutSession({
+      paymentAttemptId: 'attempt-mirror',
+      totalCents: 4200,
+      successUrl: 'https://example.test/success',
+      failUrl: 'https://example.test/fail',
+    });
+    const identity = {
+      provider: 'mock' as const,
+      environment: 'test' as const,
+      providerTransactionId: 'mock-fixture',
+    };
+
+    await expect(mockPaymentAdapter.retrieveReceipt(identity)).resolves.toEqual({
+      identity,
+      status: 'paid',
+      paidTotalCents: 4200,
+      paidCurrency: 'USD',
+      subtotalCents: null,
+      taxCents: null,
+      discountCents: null,
+      settlementNetCents: null,
+      providerAccountId: null,
+      providerTestMode: true,
+    });
+  });
+});
+
+describe('MockPaymentAdapter.expectedAccountId', () => {
+  it('returns null', () => {
+    expect(mockPaymentAdapter.expectedAccountId()).toBeNull();
+  });
+});

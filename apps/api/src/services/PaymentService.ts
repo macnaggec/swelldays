@@ -1,9 +1,12 @@
 import { paymentIdentityKey } from 'server/domain/Payment';
+import type { ReceiptRejection } from 'server/domain/PaymentReceipt';
+import { validateReceiptAgainstAttempt } from 'server/domain/PaymentReceipt';
 import type { PaymentAdapter } from 'server/providers/payment/PaymentAdapter';
 import { paymentAdapter } from 'server/providers/payment/activeAdapter';
 import type { IPaymentAttemptRepository } from 'server/repositories/PaymentAttemptRepository';
 import { paymentAttemptRepository } from 'server/repositories/PaymentAttemptRepository';
 import { PurchaseFulfillmentService, purchaseFulfillmentService } from 'server/services/PurchaseFulfillmentService';
+import { logger } from 'server/lib/logger';
 
 export type CreatePaymentAttemptCommand = {
   orderId: string;
@@ -22,6 +25,8 @@ export type PaymentNotificationOutcome =
   | { type: 'ignored' }
   | { type: 'unknown-transaction' }
   | { type: 'mismatched-correlation' }
+  | { type: 'rejected-receipt'; reason: ReceiptRejection['reason'] }
+  | { type: 'provider-unreachable' }
   | { type: 'fulfilled' };
 
 export interface IPaymentService {
@@ -84,6 +89,23 @@ export class PaymentService implements IPaymentService {
     const attempt = await this.attempts.findByIdentity(event.identity);
     if (attempt === null) return { type: 'unknown-transaction' };
     if (event.correlationAttemptId !== attempt.id) return { type: 'mismatched-correlation' };
+
+    let receipt;
+    try {
+      receipt = await adapter.retrieveReceipt(event.identity);
+    } catch (err) {
+      logger.error('[PaymentService] Receipt retrieval failed', { err, attemptId: attempt.id });
+      return { type: 'provider-unreachable' };
+    }
+
+    const validation = validateReceiptAgainstAttempt(receipt, attempt, adapter.expectedAccountId());
+    if (!validation.ok) {
+      logger.error('[PaymentService] Receipt rejected', {
+        attemptId: attempt.id,
+        reason: validation.rejection.reason,
+      });
+      return { type: 'rejected-receipt', reason: validation.rejection.reason };
+    }
 
     await this.fulfillment.fulfillOrder(attempt.orderId, paymentIdentityKey(event.identity));
     return { type: 'fulfilled' };

@@ -2,12 +2,20 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { BadGatewayError } from 'server/errors';
 import { logger } from 'server/lib/logger';
 import { apiConfig } from 'server/config/env';
+import type { PaymentIdentity } from 'server/domain/Payment';
+import type { PaymentReceipt, ReceiptStatus } from 'server/domain/PaymentReceipt';
 import type {
   PaymentAdapter,
   CreateCheckoutParams,
   CheckoutSessionResult,
   PaymentWebhookEvent,
 } from 'server/providers/payment/PaymentAdapter';
+
+// The vendor's documentation now shows `api.trybit.com`, but this legacy host
+// is kept because R02 verified it responds and the creation call already uses
+// it. R11 owns confirming the host against the configured integration before
+// release.
+const CRYPTOCLOUD_API_BASE = 'https://api.cryptocloud.plus';
 
 // ---------------------------------------------------------------------------
 // CryptoCloud API types
@@ -36,11 +44,52 @@ interface CCWebhookPayload {
   };
 }
 
+interface CCInvoiceInfoResponse {
+  status: string;
+  result?: unknown;
+}
+
+interface CCInvoiceInfoEntry {
+  uuid: string;
+  currency: string;
+  project: { id: number | string; name: string };
+  amount_usd: number;
+  status: string;
+  test_mode: boolean;
+}
+
 function contentType(headers: Record<string, string>): string {
   return headers['content-type']?.split(';')[0]?.toLowerCase() ?? 'application/json';
 }
 
-function parseBody(rawBody: string, headers: Record<string, string>): CCWebhookPayload {
+/**
+ * Decodes a JSON webhook body and checks its shape before it is trusted as a
+ * CCWebhookPayload. Returns null — never throws — for malformed JSON or a
+ * value that does not match the documented shape, so callers can treat an
+ * untrustworthy body the same as any other non-actionable webhook.
+ */
+function parseJsonPayload(rawBody: string): CCWebhookPayload | null {
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(rawBody);
+  } catch {
+    return null;
+  }
+  if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) return null;
+  const value = decoded as Record<string, unknown>;
+
+  if (typeof value.status !== 'string' || typeof value.invoice_id !== 'string') return null;
+  if (typeof value.token !== 'string' && value.token !== null) return null;
+  if (typeof value.order_id !== 'string' && value.order_id !== null) return null;
+
+  const invoiceInfo = value.invoice_info;
+  if (typeof invoiceInfo !== 'object' || invoiceInfo === null || Array.isArray(invoiceInfo)) return null;
+  if (typeof (invoiceInfo as Record<string, unknown>).uuid !== 'string') return null;
+
+  return decoded as CCWebhookPayload;
+}
+
+function parseBody(rawBody: string, headers: Record<string, string>): CCWebhookPayload | null {
   if (contentType(headers) === 'application/x-www-form-urlencoded') {
     const form = new URLSearchParams(rawBody);
     return {
@@ -56,7 +105,7 @@ function parseBody(rawBody: string, headers: Record<string, string>): CCWebhookP
       },
     };
   }
-  return JSON.parse(rawBody) as CCWebhookPayload;
+  return parseJsonPayload(rawBody);
 }
 
 function normalizeInvoiceId(providerId: string): string {
@@ -102,7 +151,7 @@ async function createCheckoutSession(
   };
 
   const response = await fetch(
-    'https://api.cryptocloud.plus/v2/invoice/create', {
+    `${CRYPTOCLOUD_API_BASE}/v2/invoice/create`, {
     method: 'POST',
     signal: AbortSignal.timeout(10_000),
     headers: {
@@ -156,13 +205,8 @@ function verifyWebhook(
   rawBody: string,
   _headers: Record<string, string>
 ): boolean {
-  let body: CCWebhookPayload;
-
-  try {
-    body = parseBody(rawBody, _headers);
-  } catch {
-    return false;
-  }
+  const body = parseBody(rawBody, _headers);
+  if (body === null) return false;
 
   const token = body.token;
   if (!token) return false;
@@ -196,16 +240,21 @@ function verifyHmacSignature(
   }
 }
 
-/** Returns true if the JWT payload cannot be decoded or its exp claim is in the past. */
+/**
+ * Returns true unless the JWT payload decodes to a present, finite, numeric
+ * exp claim that has not yet passed. Fail-closed: a missing or non-numeric
+ * exp is treated as expired rather than accepted.
+ */
 function isTokenExpired(jwtPayload: string): boolean {
   try {
     const decoded = JSON.parse(
       Buffer.from(jwtPayload, 'base64url').toString('utf8')
-    ) as { exp?: number };
+    ) as { exp?: unknown };
 
-    return (
+    return !(
       typeof decoded.exp === 'number'
-      && decoded.exp < Math.floor(Date.now() / 1000)
+      && Number.isFinite(decoded.exp)
+      && decoded.exp >= Math.floor(Date.now() / 1000)
     );
   } catch {
     return true; // fail-closed: undecodable payload treated as expired
@@ -217,6 +266,7 @@ function parseWebhookEvent(
   headers: Record<string, string>,
 ): PaymentWebhookEvent {
   const payload = parseBody(rawBody, headers);
+  if (payload === null) return { type: 'order.ignored' };
 
   if (payload.status !== 'success') {
     logger.warn('[CryptoCloud] Non-actionable webhook status — ignoring', { status: payload.status });
@@ -243,9 +293,99 @@ function parseWebhookEvent(
   };
 }
 
+function mapReceiptStatus(status: string): ReceiptStatus {
+  switch (status) {
+    case 'paid':
+      return 'paid';
+    case 'overpaid':
+      return 'overpaid';
+    case 'created':
+    case 'partial':
+      return 'unpaid';
+    case 'canceled':
+      return 'cancelled';
+    default:
+      logger.error('[CryptoCloud] Unexpected invoice status in retrieveReceipt', { status });
+      throw new BadGatewayError('Payment provider error');
+  }
+}
+
+/**
+ * Fetches the authoritative invoice facts for `identity` over CryptoCloud's
+ * authenticated merchant-info endpoint. We always create USD invoices, so
+ * `amount_usd` — not the crypto `amount` — is the fiat total to compare.
+ */
+async function retrieveReceipt(identity: PaymentIdentity): Promise<PaymentReceipt> {
+  const { apiKey } = creds();
+
+  const response = await fetch(`${CRYPTOCLOUD_API_BASE}/v2/invoice/merchant/info`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(10_000),
+    headers: {
+      Authorization: `Token ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ uuids: [identity.providerTransactionId] }),
+  });
+
+  if (!response.ok) {
+    logger.error('[CryptoCloud] Invoice retrieval failed', { status: response.status });
+    throw new BadGatewayError('Payment provider error');
+  }
+
+  const data = (await response.json()) as CCInvoiceInfoResponse;
+
+  if (data.status !== 'success' || !Array.isArray(data.result)) {
+    logger.error('[CryptoCloud] Unexpected invoice retrieval response', { status: data.status });
+    throw new BadGatewayError('Payment provider error');
+  }
+
+  const matches = (data.result as unknown[]).filter((entry) => (
+    typeof entry === 'object' && entry !== null
+    && (entry as { uuid?: unknown }).uuid === identity.providerTransactionId
+  )) as CCInvoiceInfoEntry[];
+
+  if (matches.length !== 1) {
+    logger.error('[CryptoCloud] Invoice retrieval did not return exactly one matching entry', {
+      providerTransactionId: identity.providerTransactionId,
+      matchCount: matches.length,
+    });
+    throw new BadGatewayError('Payment provider error');
+  }
+  const entry = matches[0]!;
+
+  if (typeof entry.amount_usd !== 'number' || !Number.isFinite(entry.amount_usd)) {
+    logger.error('[CryptoCloud] Invoice retrieval amount_usd is not a finite number', {
+      providerTransactionId: identity.providerTransactionId,
+    });
+    throw new BadGatewayError('Payment provider error');
+  }
+
+  return {
+    identity,
+    status: mapReceiptStatus(entry.status),
+    paidTotalCents: Math.round(entry.amount_usd * 100),
+    paidCurrency: 'USD',
+    // A crypto invoice reports no fiat tax breakdown and no fiat settlement
+    // net — do not derive one from the crypto `received`/`service_fee` fields.
+    subtotalCents: null,
+    taxCents: null,
+    discountCents: null,
+    settlementNetCents: null,
+    providerAccountId: String(entry.project.id),
+    providerTestMode: typeof entry.test_mode === 'boolean' ? entry.test_mode : null,
+  };
+}
+
+function expectedAccountId(): string | null {
+  return creds().shopId;
+}
+
 export const cryptoCloudAdapter: PaymentAdapter = {
   provider: 'cryptocloud',
   createCheckoutSession,
   verifyWebhook,
   parseWebhookEvent,
+  retrieveReceipt,
+  expectedAccountId,
 };
