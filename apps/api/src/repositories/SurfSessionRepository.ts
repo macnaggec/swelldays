@@ -78,7 +78,7 @@ export class SurfSessionRepository implements ISurfSessionRepository {
         },
         take: filter.limit + 1,
         ...(filter.cursor ? { cursor: { id: filter.cursor }, skip: 1 } : {}),
-        orderBy: { createdAt: 'desc' },
+        orderBy: { startsAt: 'desc' },
         include: sessionProjectionInclude,
       });
 
@@ -100,7 +100,7 @@ export class SurfSessionRepository implements ISurfSessionRepository {
     return runQuery(async () => {
       const rows = await prisma.surfSession.findMany({
         where: { photographerId, status: SurfSessionStatus.PUBLISHED },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { startsAt: 'desc' },
         include: sessionProjectionInclude,
       });
 
