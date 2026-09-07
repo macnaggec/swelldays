@@ -35,4 +35,12 @@ describe('active payment adapter selection', () => {
   it('uses the guarded selector for the exported active singleton', () => {
     expect(activeAdapter.paymentAdapter).toBe(activeAdapter.selectPaymentAdapter(apiConfig));
   });
+
+  it('selects webhook adapters from retained credentials independently of checkout selection', () => {
+    expect(activeAdapter.selectPaymentWebhookAdapters({
+      cryptoCloud: { apiKey: 'fixture', shopId: 'fixture', secretKey: 'fixture' },
+      paddle: { apiKey: 'fixture', webhookSecret: 'fixture', environment: 'sandbox' },
+    })).toEqual([cryptoCloudAdapter, paddleAdapter]);
+    expect(activeAdapter.selectPaymentWebhookAdapters({ cryptoCloud: null, paddle: null })).toEqual([]);
+  });
 });

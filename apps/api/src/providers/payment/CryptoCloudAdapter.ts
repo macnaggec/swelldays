@@ -18,20 +18,54 @@ interface CCInvoiceResponse {
   result?: {
     uuid: string;
     link: string;
+    expiry_date: string;
+    test_mode: boolean;
   };
 }
 
 interface CCWebhookPayload {
   status: string;          // 'success' | 'fail' | 'overpaid' | etc.
-  invoice_id: string;      // e.g. "ILRAJE1Q" — our externalOrderId
+  invoice_id: string;      // documented short provider id, without INV-
   amount_crypto: number;
   currency: string;
-  order_id: string | null; // our orderId (from add_fields.order_id at creation)
+  order_id: string | null; // our payment-attempt correlation id
   token: string | null;    // HS256 JWT signed with SECRET_KEY; null in some configurations
   invoice_info: {
     uuid: string;
     [key: string]: unknown;
   };
+}
+
+function contentType(headers: Record<string, string>): string {
+  return headers['content-type']?.split(';')[0]?.toLowerCase() ?? 'application/json';
+}
+
+function parseBody(rawBody: string, headers: Record<string, string>): CCWebhookPayload {
+  if (contentType(headers) === 'application/x-www-form-urlencoded') {
+    const form = new URLSearchParams(rawBody);
+    return {
+      status: form.get('status') ?? '',
+      invoice_id: form.get('invoice_id') ?? '',
+      amount_crypto: Number(form.get('amount_crypto')),
+      currency: form.get('currency') ?? '',
+      order_id: form.get('order_id'),
+      token: form.get('token'),
+      invoice_info: {
+        uuid: normalizeInvoiceId(form.get('invoice_id') ?? ''),
+        test_mode: form.get('test_mode') === null ? null : form.get('test_mode') === 'true',
+      },
+    };
+  }
+  return JSON.parse(rawBody) as CCWebhookPayload;
+}
+
+function normalizeInvoiceId(providerId: string): string {
+  return providerId.startsWith('INV-') ? providerId : `INV-${providerId}`;
+}
+
+function parseUtcExpiry(value: string): Date {
+  const hasTimeZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value);
+  return new Date(hasTimeZone ? value : `${value.replace(' ', 'T')}Z`);
 }
 
 // ---------------------------------------------------------------------------
@@ -62,9 +96,7 @@ async function createCheckoutSession(
     amount: params.totalCents / 100,
     shop_id: shopId,
     currency: 'USD',
-    add_fields: {
-      order_id: params.orderId,
-    },
+    order_id: params.paymentAttemptId,
     success_url: params.successUrl,
     fail_url: params.failUrl,
   };
@@ -81,19 +113,30 @@ async function createCheckoutSession(
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    logger.error('[CryptoCloud] Invoice creation failed', { status: response.status, body: text });
+    logger.error('[CryptoCloud] Invoice creation failed', { status: response.status });
     throw new BadGatewayError('Payment provider error');
   }
 
   const data = (await response.json()) as CCInvoiceResponse;
 
-  if (data.status !== 'success' || !data.result?.link) {
-    logger.error('[CryptoCloud] Unexpected invoice response', { data });
+  if (data.status !== 'success' || !data.result?.link || !data.result.uuid) {
+    logger.error('[CryptoCloud] Unexpected invoice response', { status: data.status });
     throw new BadGatewayError('Payment provider error');
   }
 
-  return { checkoutUrl: data.result.link };
+  const expiresAt = parseUtcExpiry(data.result.expiry_date);
+  if (Number.isNaN(expiresAt.getTime())) {
+    logger.error('[CryptoCloud] Invalid invoice expiry', { providerTransactionId: data.result.uuid });
+    throw new BadGatewayError('Payment provider error');
+  }
+  return {
+    providerTransactionId: data.result.uuid,
+    environment: 'production',
+    checkoutUrl: data.result.link,
+    expiresAt,
+    settlement: 'pending',
+    providerTestMode: data.result.test_mode,
+  };
 }
 
 /**
@@ -116,7 +159,7 @@ function verifyWebhook(
   let body: CCWebhookPayload;
 
   try {
-    body = JSON.parse(rawBody) as CCWebhookPayload;
+    body = parseBody(rawBody, _headers);
   } catch {
     return false;
   }
@@ -169,26 +212,39 @@ function isTokenExpired(jwtPayload: string): boolean {
   }
 }
 
-function parseWebhookEvent(rawBody: string): PaymentWebhookEvent {
-  const payload = JSON.parse(rawBody) as CCWebhookPayload;
+function parseWebhookEvent(
+  rawBody: string,
+  headers: Record<string, string>,
+): PaymentWebhookEvent {
+  const payload = parseBody(rawBody, headers);
 
   if (payload.status !== 'success') {
     logger.warn('[CryptoCloud] Non-actionable webhook status — ignoring', { status: payload.status });
     return { type: 'order.ignored' };
   }
 
+  const normalizedTopLevelId = normalizeInvoiceId(payload.invoice_id);
+  if (contentType(headers) !== 'application/x-www-form-urlencoded'
+    && payload.invoice_info.uuid !== normalizedTopLevelId) {
+    return { type: 'order.ignored' };
+  }
+
   return {
     type: 'order.completed',
-    // invoice_id is the short CryptoCloud invoice ID (e.g. "ILRAJE1Q")
-    externalOrderId: payload.invoice_id,
-    customData: {
-      // order_id is our Swelldays orderId passed via add_fields at creation
-      orderId: payload.order_id ?? '',
+    identity: {
+      provider: 'cryptocloud',
+      environment: 'production',
+      providerTransactionId: payload.invoice_info.uuid,
     },
+    correlationAttemptId: payload.order_id ?? '',
+    providerTestMode: typeof payload.invoice_info.test_mode === 'boolean'
+      ? payload.invoice_info.test_mode
+      : null,
   };
 }
 
 export const cryptoCloudAdapter: PaymentAdapter = {
+  provider: 'cryptocloud',
   createCheckoutSession,
   verifyWebhook,
   parseWebhookEvent,

@@ -24,4 +24,14 @@ export function selectPaymentAdapter(config: Pick<ApiConfig, 'commerceMode' | 'p
       : paddleAdapter;
 }
 
+export function selectPaymentWebhookAdapters(
+  config: Pick<ApiConfig, 'cryptoCloud' | 'paddle'>,
+): readonly PaymentAdapter[] {
+  return [
+    ...(config.cryptoCloud ? [cryptoCloudAdapter] : []),
+    ...(config.paddle ? [paddleAdapter] : []),
+  ];
+}
+
 export const paymentAdapter: PaymentAdapter = selectPaymentAdapter(apiConfig);
+export const paymentWebhookAdapters: readonly PaymentAdapter[] = selectPaymentWebhookAdapters(apiConfig);

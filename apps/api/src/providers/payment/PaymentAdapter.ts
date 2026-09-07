@@ -5,29 +5,34 @@
 // Swap providers by swapping the adapter — zero changes to business logic.
 // ---------------------------------------------------------------------------
 
+import type { PaymentEnvironment, PaymentIdentity, PaymentProvider } from 'server/domain/Payment';
+
 export interface CreateCheckoutParams {
-  orderId: string;
+  paymentAttemptId: string;
   totalCents: number;
   successUrl: string;
   failUrl: string;
 }
 
 export interface CheckoutSessionResult {
+  providerTransactionId: string;
+  environment: PaymentEnvironment;
   checkoutUrl: string;
+  expiresAt: Date | null;
+  settlement: 'pending' | 'completed';
+  providerTestMode: boolean | null;
 }
 
 /**
- * Normalised webhook event — provider-agnostic shape.
- * customData carries the orderId we embedded at checkout time.
+ * Normalised webhook event — provider-agnostic identity plus a correlation
+ * hint that must never select the stored attempt or order.
  */
 export type PaymentWebhookEvent =
   | {
     type: 'order.completed';
-    /** Provider's own order identifier — stored as externalOrderId in our DB. */
-    externalOrderId: string;
-    customData: {
-      orderId: string;
-    };
+    identity: PaymentIdentity;
+    correlationAttemptId: string;
+    providerTestMode: boolean | null;
   }
   | {
     /** Non-actionable event (e.g. failed payment, overpaid) — safely ignored. */
@@ -35,6 +40,7 @@ export type PaymentWebhookEvent =
   };
 
 export interface PaymentAdapter {
+  readonly provider: PaymentProvider;
   /**
    * Creates a hosted checkout session and returns a redirect URL.
    * All pricing must be passed in — provider must not be queried for prices.
@@ -53,5 +59,5 @@ export interface PaymentAdapter {
    * Parses the raw webhook body into a normalised PaymentWebhookEvent.
    * Called only after verifyWebhook returns true.
    */
-  parseWebhookEvent(rawBody: string): PaymentWebhookEvent;
+  parseWebhookEvent(rawBody: string, headers: Record<string, string>): PaymentWebhookEvent;
 }

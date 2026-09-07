@@ -1,9 +1,10 @@
 import type { MediaType } from '@prisma/client';
-import type { ApiConfig } from 'server/config/decodeApiEnvironment';
+import type { PaymentProvider } from 'server/domain/Payment';
+
+export type { PaymentProvider } from 'server/domain/Payment';
 
 export const ORDER_CURRENCY = 'USD' as const;
 export type OrderCurrency = typeof ORDER_CURRENCY;
-export type PaymentProvider = ApiConfig['payment']['provider'];
 
 export const FEE_POLICY_VERSIONS = ['standard-20-v1', 'paddle-50c-30-v1'] as const;
 export type FeePolicyVersion = (typeof FEE_POLICY_VERSIONS)[number];

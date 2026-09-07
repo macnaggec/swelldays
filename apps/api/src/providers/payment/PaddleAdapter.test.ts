@@ -30,7 +30,7 @@ function makeWebhookBody(eventType = 'transaction.completed', overrides: Record<
     event_type: eventType,
     data: {
       id: 'txn_01m1v7datrz22kvtvp98mcvytk',
-      custom_data: { orderId: 'order-abc-123' },
+      custom_data: { paymentAttemptId: 'attempt-abc-123' },
       ...overrides,
     },
   });
@@ -80,18 +80,22 @@ describe('PaddleAdapter.parseWebhookEvent', () => {
   it('returns a normalised order.completed event for a transaction.completed payload', () => {
     const rawBody = makeWebhookBody('transaction.completed');
 
-    const event = paddleAdapter.parseWebhookEvent(rawBody);
+    const event = paddleAdapter.parseWebhookEvent(rawBody, {});
 
     expect(event.type).toBe('order.completed');
     if (event.type !== 'order.completed') return;
-    expect(event.externalOrderId).toBe('txn_01m1v7datrz22kvtvp98mcvytk');
-    expect(event.customData.orderId).toBe('order-abc-123');
+    expect(event.identity).toEqual({
+      provider: 'paddle',
+      environment: 'sandbox',
+      providerTransactionId: 'txn_01m1v7datrz22kvtvp98mcvytk',
+    });
+    expect(event.correlationAttemptId).toBe('attempt-abc-123');
   });
 
   it('returns order.ignored (not throws) for any other event type', () => {
     const rawBody = makeWebhookBody('transaction.payment_failed');
 
-    const event = paddleAdapter.parseWebhookEvent(rawBody);
+    const event = paddleAdapter.parseWebhookEvent(rawBody, {});
 
     expect(event.type).toBe('order.ignored');
   });
@@ -106,7 +110,7 @@ describe('PaddleAdapter.createCheckoutSession', () => {
   });
 
   const validParams = {
-    orderId: 'order-123',
+    paymentAttemptId: 'attempt-123',
     totalCents: 1500,
     successUrl: 'https://example.com/success',
     failUrl: 'https://example.com/fail',
@@ -127,7 +131,14 @@ describe('PaddleAdapter.createCheckoutSession', () => {
 
     const result = await paddleAdapter.createCheckoutSession(validParams);
 
-    expect(result.checkoutUrl).toBe('https://example.com/checkout/paddle?_ptxn=txn_01');
+    expect(result).toEqual({
+      providerTransactionId: 'txn_01',
+      environment: 'sandbox',
+      checkoutUrl: 'https://example.com/checkout/paddle?_ptxn=txn_01',
+      expiresAt: null,
+      settlement: 'pending',
+      providerTestMode: true,
+    });
     expect(fetchMock).toHaveBeenCalledWith(
       'https://sandbox-api.paddle.com/transactions',
       expect.objectContaining({
@@ -137,7 +148,7 @@ describe('PaddleAdapter.createCheckoutSession', () => {
     );
 
     const requestBody = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
-    expect(requestBody.custom_data).toEqual({ orderId: 'order-123' });
+    expect(requestBody.custom_data).toEqual({ paymentAttemptId: 'attempt-123' });
     expect(requestBody.items[0].price.unit_price).toEqual({ amount: '1500', currency_code: 'USD' });
     expect(requestBody.items[0].price.quantity).toEqual({ minimum: 1, maximum: 1 });
     expect(requestBody.checkout.url).toBe(

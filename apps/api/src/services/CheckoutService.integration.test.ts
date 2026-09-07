@@ -7,13 +7,14 @@ import { orderRepository } from 'server/repositories/OrderRepository';
 import { mediaRepository } from 'server/repositories/MediaRepository';
 import { purchaseRepository } from 'server/repositories/PurchaseRepository';
 import { cloudinaryService } from 'server/services/CloudinaryService';
-import type { PaymentAdapter } from 'server/providers/payment/PaymentAdapter';
+import type { IPaymentService } from 'server/services/PaymentService';
 import { BadRequestError } from 'server/errors';
 
-const mockPayment: PaymentAdapter = {
-  createCheckoutSession: vi.fn().mockResolvedValue({ checkoutUrl: 'https://example.test/checkout' }),
-  verifyWebhook: vi.fn(),
-  parseWebhookEvent: vi.fn(),
+const mockPayment: Pick<IPaymentService, 'createAttempt'> = {
+  createAttempt: vi.fn().mockResolvedValue({
+    checkoutUrl: 'https://example.test/checkout',
+    expiresAt: null,
+  }),
 };
 
 const service = new CheckoutService(

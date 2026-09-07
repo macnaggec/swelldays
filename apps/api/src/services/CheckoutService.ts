@@ -7,8 +7,8 @@ import type { IPurchaseRepository } from 'server/repositories/PurchaseRepository
 import { orderRepository } from 'server/repositories/OrderRepository';
 import { mediaRepository } from 'server/repositories/MediaRepository';
 import { purchaseRepository } from 'server/repositories/PurchaseRepository';
-import type { PaymentAdapter } from 'server/providers/payment/PaymentAdapter';
-import { paymentAdapter } from 'server/providers/payment/activeAdapter';
+import type { IPaymentService } from 'server/services/PaymentService';
+import { paymentService } from 'server/services/PaymentService';
 import type { ICloudinaryService } from 'server/services/CloudinaryService';
 import { cloudinaryService } from 'server/services/CloudinaryService';
 import { BadRequestError, BadGatewayError, ForbiddenError, ConflictError } from 'server/errors';
@@ -40,7 +40,7 @@ export class CheckoutService {
     private orders: IOrderRepository,
     private media: IMediaRepository,
     private purchases: IPurchaseRepository,
-    private payment: PaymentAdapter,
+    private payment: Pick<IPaymentService, 'createAttempt'>,
     private cloudinary: ICloudinaryService,
     private frontendOrigin: string,
     private paymentProvider: PaymentProvider,
@@ -317,7 +317,7 @@ export class CheckoutService {
       : `${this.frontendOrigin}/order-success?orderId=${orderId}`;
 
     try {
-      const { checkoutUrl } = await this.payment.createCheckoutSession({
+      const { checkoutUrl } = await this.payment.createAttempt({
         orderId,
         totalCents,
         successUrl,
@@ -338,7 +338,7 @@ export const checkoutService = new CheckoutService(
   orderRepository,
   mediaRepository,
   purchaseRepository,
-  paymentAdapter,
+  paymentService,
   cloudinaryService,
   apiConfig.frontendOrigin,
   apiConfig.payment.provider,

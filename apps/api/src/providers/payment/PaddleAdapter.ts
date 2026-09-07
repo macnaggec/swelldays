@@ -23,8 +23,8 @@ interface PaddleTransactionResponse {
 interface PaddleWebhookPayload {
   event_type: string;
   data: {
-    id: string;             // txn_... — our externalOrderId
-    custom_data: { orderId?: string } | null;
+    id: string;             // txn_... provider transaction identity
+    custom_data: { paymentAttemptId?: string } | null;
   };
 }
 
@@ -97,7 +97,7 @@ async function createCheckoutSession(
         },
       },
     ],
-    custom_data: { orderId: params.orderId },
+    custom_data: { paymentAttemptId: params.paymentAttemptId },
     checkout: { url: checkoutPageUrl },
   };
 
@@ -112,19 +112,27 @@ async function createCheckoutSession(
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    logger.error('[Paddle] Transaction creation failed', { status: response.status, body: text });
+    logger.error('[Paddle] Transaction creation failed', { status: response.status });
     throw new BadGatewayError('Payment provider error');
   }
 
   const data = (await response.json()) as PaddleTransactionResponse;
 
-  if (!data.data?.checkout?.url) {
-    logger.error('[Paddle] Unexpected transaction response', { data });
+  if (!data.data?.id || !data.data.checkout?.url) {
+    logger.error('[Paddle] Unexpected transaction response');
     throw new BadGatewayError('Payment provider error');
   }
 
-  return { checkoutUrl: data.data.checkout.url };
+  return {
+    providerTransactionId: data.data.id,
+    environment: creds().environment,
+    checkoutUrl: data.data.checkout.url,
+    // Paddle transactions do not expose an authoritative expiry timestamp.
+    // R05 owns any later provider-backed cancellation/lifetime policy.
+    expiresAt: null,
+    settlement: 'pending',
+    providerTestMode: creds().environment === 'sandbox',
+  };
 }
 
 const SIGNATURE_TOLERANCE_SECONDS = 5;
@@ -179,7 +187,7 @@ function isTimestampStale(timestamp: string): boolean {
   return Math.abs(Math.floor(Date.now() / 1000) - ts) > SIGNATURE_TOLERANCE_SECONDS;
 }
 
-function parseWebhookEvent(rawBody: string): PaymentWebhookEvent {
+function parseWebhookEvent(rawBody: string, _headers: Record<string, string>): PaymentWebhookEvent {
   const payload = JSON.parse(rawBody) as PaddleWebhookPayload;
 
   if (payload.event_type !== 'transaction.completed') {
@@ -189,14 +197,18 @@ function parseWebhookEvent(rawBody: string): PaymentWebhookEvent {
 
   return {
     type: 'order.completed',
-    externalOrderId: payload.data.id,
-    customData: {
-      orderId: payload.data.custom_data?.orderId ?? '',
+    identity: {
+      provider: 'paddle',
+      environment: creds().environment,
+      providerTransactionId: payload.data.id,
     },
+    correlationAttemptId: payload.data.custom_data?.paymentAttemptId ?? '',
+    providerTestMode: creds().environment === 'sandbox',
   };
 }
 
 export const paddleAdapter: PaymentAdapter = {
+  provider: 'paddle',
   createCheckoutSession,
   verifyWebhook,
   parseWebhookEvent,
