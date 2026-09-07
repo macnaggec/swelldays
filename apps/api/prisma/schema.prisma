@@ -245,6 +245,7 @@ model Order {
   items              OrderItem[]
   buyer              User?       @relation(fields: [buyerId], references: [id])
   purchases          Purchase[]
+  paymentAttempts    PaymentAttempt[]
 
   // Postgres does not treat two NULL buyer_id values as equal, so this
   // constraint gives no duplicate protection for a guest (buyerId: null)
@@ -253,6 +254,26 @@ model Order {
   // checkout route ships.
   @@unique([buyerId, clientRequestId], map: "orders_buyer_client_request_key")
   @@map("orders")
+}
+
+model PaymentAttempt {
+  id                    String             @id @default(uuid())
+  orderId               String             @map("order_id")
+  provider              PaymentProvider
+  environment           PaymentEnvironment?
+  providerTransactionId String?            @map("provider_transaction_id")
+  checkoutUrl           String?            @map("checkout_url")
+  expiresAt             DateTime?          @map("expires_at")
+  expectedAmountCents   Int                @map("expected_amount_cents")
+  expectedCurrency      String             @map("expected_currency")
+  providerTestMode      Boolean?           @map("provider_test_mode")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+  order                 Order              @relation(fields: [orderId], references: [id])
+
+  @@index([orderId], map: "payment_attempts_order_id_idx")
+  @@unique([provider, environment, providerTransactionId], map: "payment_attempts_provider_environment_transaction_key")
+  @@map("payment_attempts")
 }
 
 model OrderItem {
@@ -421,6 +442,18 @@ enum OrderStatus {
   PENDING
   COMPLETED
   FAILED
+}
+
+enum PaymentProvider {
+  MOCK        @map("mock")
+  CRYPTOCLOUD @map("cryptocloud")
+  PADDLE      @map("paddle")
+}
+
+enum PaymentEnvironment {
+  TEST       @map("test")
+  SANDBOX    @map("sandbox")
+  PRODUCTION @map("production")
 }
 
 enum TransactionType {
