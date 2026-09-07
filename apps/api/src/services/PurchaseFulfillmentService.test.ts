@@ -120,6 +120,7 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
 
     const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
     expect(payload.orderId).toBe(ORDER_ID);
+    expect(payload.buyerId).toBe('buyer-1');
     expect(payload.externalOrderId).toBe(EXTERNAL_ID);
     expect(payload.purchases).toHaveLength(1);
     expect(payload.purchases[0]).toMatchObject<Partial<FulfillPurchaseData>>({
@@ -139,6 +140,7 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
     await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
 
     const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
+    expect(payload.buyerId).toBeNull();
     expect(payload.purchases[0]).toMatchObject({ buyerId: null, guestEmail: 'guest@example.com' });
   });
 

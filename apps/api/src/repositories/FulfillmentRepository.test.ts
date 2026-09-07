@@ -15,6 +15,7 @@ vi.mock('server/repositories/LedgerRepository', () => ({
 import { OrderStatus } from '@prisma/client';
 import { prisma } from 'server/db';
 import { ledgerRepository } from 'server/repositories/LedgerRepository';
+import { SERIALIZATION_NAMESPACE } from 'server/lib/TransactionSerialization';
 import { FulfillmentRepository } from './FulfillmentRepository';
 import type { FulfillmentPayload } from './FulfillmentRepository';
 
@@ -26,6 +27,7 @@ beforeEach(() => vi.clearAllMocks());
 
 const payload: FulfillmentPayload = {
   orderId: 'order-1',
+  buyerId: 'buyer-1',
   externalOrderId: 'CC-ILRAJE1Q',
   purchases: [{
     orderId: 'order-1',
@@ -41,12 +43,17 @@ const payload: FulfillmentPayload = {
   earnings: [{ photographerId: 'photographer-1', amount: 800 }],
 };
 
+function makeTx() {
+  return {
+    $executeRaw: vi.fn().mockResolvedValue(undefined),
+    order: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    purchase: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+  };
+}
+
 describe('FulfillmentRepository.commitFulfillment', () => {
   it('completes the order, writes purchases, and records earnings when the guard passes', async () => {
-    const tx = {
-      order: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
-      purchase: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
-    };
+    const tx = makeTx();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockTransaction.mockImplementation((fn: any) => fn(tx));
 
@@ -74,7 +81,7 @@ describe('FulfillmentRepository.commitFulfillment', () => {
       ],
     };
     const tx = {
-      order: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      ...makeTx(),
       purchase: {
         createMany: vi.fn().mockResolvedValue({ count: 1 }),
         findMany: vi.fn().mockResolvedValue([{ mediaItemId: 'media-2' }]),
@@ -95,10 +102,7 @@ describe('FulfillmentRepository.commitFulfillment', () => {
   });
 
   it('skips purchase/ledger writes and resolves { applied: false } when the guard misses', async () => {
-    const tx = {
-      order: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
-      purchase: { createMany: vi.fn() },
-    };
+    const tx = { ...makeTx(), order: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) } };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockTransaction.mockImplementation((fn: any) => fn(tx));
 
@@ -106,5 +110,59 @@ describe('FulfillmentRepository.commitFulfillment', () => {
 
     expect(tx.purchase.createMany).not.toHaveBeenCalled();
     expect(mockRecordSale).not.toHaveBeenCalled();
+  });
+
+  it('acquires the advisory lock before the order claim', async () => {
+    const tx = makeTx();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockTransaction.mockImplementation((fn: any) => fn(tx));
+
+    await repo.commitFulfillment(payload);
+
+    const lockCallOrder = tx.$executeRaw.mock.invocationCallOrder[0]!;
+    const claimCallOrder = tx.order.updateMany.mock.invocationCallOrder[0]!;
+    expect(lockCallOrder).toBeLessThan(claimCallOrder);
+  });
+
+  it('locks on the buyer namespace with the buyerId as key for a buyer-owned order', async () => {
+    const tx = makeTx();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockTransaction.mockImplementation((fn: any) => fn(tx));
+
+    await repo.commitFulfillment(payload);
+
+    const [, ...values] = tx.$executeRaw.mock.calls[0]!;
+    expect(values).toEqual([SERIALIZATION_NAMESPACE.buyer, 'buyer-1']);
+  });
+
+  it('locks on the order namespace for a guest payload (buyerId: null)', async () => {
+    const guestPayload: FulfillmentPayload = { ...payload, buyerId: null };
+    const tx = makeTx();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockTransaction.mockImplementation((fn: any) => fn(tx));
+
+    await repo.commitFulfillment(guestPayload);
+
+    const [, ...values] = tx.$executeRaw.mock.calls[0]!;
+    expect(values).toEqual([SERIALIZATION_NAMESPACE.order, guestPayload.orderId]);
+  });
+
+  it('records earnings for sellers supplied in reverse alphabetical order sequentially, ascending by photographerId', async () => {
+    const reversedPayload: FulfillmentPayload = {
+      ...payload,
+      earnings: [
+        { photographerId: 'zeta', amount: 100 },
+        { photographerId: 'alpha', amount: 200 },
+      ],
+    };
+    const tx = makeTx();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockTransaction.mockImplementation((fn: any) => fn(tx));
+
+    await repo.commitFulfillment(reversedPayload);
+
+    expect(mockRecordSale).toHaveBeenCalledTimes(2);
+    const recordedOrder = mockRecordSale.mock.calls.map((call) => call[1].photographerId);
+    expect(recordedOrder).toEqual(['alpha', 'zeta']);
   });
 });

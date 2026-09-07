@@ -55,6 +55,7 @@ describe('FulfillmentRepository.commitFulfillment', () => {
 
     await repo.commitFulfillment({
       orderId: order.id,
+      buyerId: buyer.id,
       externalOrderId,
       purchases: [{
         orderId: order.id,
@@ -106,6 +107,7 @@ describe('FulfillmentRepository.commitFulfillment', () => {
     const externalOrderId = `CC-${randomUUID()}`;
     const fulfillmentPayload = {
       orderId: order.id,
+      buyerId: buyer.id,
       externalOrderId,
       purchases: [{
         orderId: order.id,
@@ -165,6 +167,7 @@ describe('FulfillmentRepository.commitFulfillment', () => {
     const externalOrderId = `CC-${randomUUID()}`;
     const result = await repo.commitFulfillment({
       orderId: order.id,
+      buyerId: buyer.id,
       externalOrderId,
       purchases: [
         {

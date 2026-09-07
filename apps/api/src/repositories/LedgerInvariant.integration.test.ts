@@ -52,6 +52,7 @@ async function recordSale(photographerId: string, amount: number) {
 
   await fulfillment.commitFulfillment({
     orderId: order.id,
+    buyerId: buyer.id,
     externalOrderId: `CC-${randomUUID()}`,
     purchases: [{
       orderId: order.id,

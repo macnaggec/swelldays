@@ -418,6 +418,34 @@ describe('CheckoutService.createCheckoutSession', () => {
     );
   });
 
+  // ---
+  // R04: shared serialization protocol
+  // ---
+
+  it('acquires the advisory lock before the purchased/pending queries inside the transaction', async () => {
+    setupHappyPath();
+
+    await service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID);
+
+    const lockCallOrder = mockTx.$executeRaw.mock.invocationCallOrder[0]!;
+    const purchaseCallOrder = mockTx.purchase.findMany.mock.invocationCallOrder[0]!;
+    const pendingCallOrder = mockTx.orderItem.findMany.mock.invocationCallOrder[0]!;
+
+    expect(lockCallOrder).toBeLessThan(purchaseCallOrder);
+    expect(lockCallOrder).toBeLessThan(pendingCallOrder);
+  });
+
+  it('does not retry a BadRequestError from the pending check — the transaction body runs once', async () => {
+    mockMedia.findByIdsForCheckout.mockResolvedValue([makeMediaItem()]);
+    mockTx.orderItem.findMany.mockResolvedValue([{ mediaItemId: 'media-1' }]);
+
+    await expect(
+      service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID),
+    ).rejects.toThrow(BadRequestError);
+
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+  });
+
   it('excludes the current clientRequestId from the pending-order collision check — a same-key resubmission is not a pending-order conflict', async () => {
     setupHappyPath();
 

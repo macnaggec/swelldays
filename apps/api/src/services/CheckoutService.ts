@@ -13,6 +13,7 @@ import type { ICloudinaryService } from 'server/services/CloudinaryService';
 import { cloudinaryService } from 'server/services/CloudinaryService';
 import { BadRequestError, BadGatewayError, ForbiddenError, ConflictError } from 'server/errors';
 import { logger } from 'server/lib/logger';
+import { acquireSerializationLock, buyerScope, withTransactionRetry } from 'server/lib/TransactionSerialization';
 import { MEDIA_STATUS } from '@swelldays/contracts/core';
 import { apiConfig } from 'server/config/env';
 import type { OrderLineSnapshot, PaymentProvider, PricedCheckoutCatalogItem } from 'server/domain/OrderEconomics';
@@ -126,6 +127,10 @@ export class CheckoutService {
   /**
    * Price validation: prices are always read from DB — never from the client.
    * Items must be PUBLISHED and not already purchased by this buyer.
+   *
+   * openPaymentSession's provider network call happens after this method's
+   * order-creation transaction has already committed and released its lock —
+   * deliberately, since a lock must never be held across a network call.
    */
   async createCheckoutSession(
     buyerId: string | null,
@@ -245,13 +250,22 @@ export class CheckoutService {
 
   /**
    * Creates the Order (+ its OrderItems) for an authenticated buyer inside one
-   * DB transaction, serialized per-buyer via a Postgres advisory lock
-   * (pg_advisory_xact_lock, scoped to hashtext(buyerId)). The lock and the
-   * pending/purchased-item checks MUST run inside this same transaction as
-   * the order INSERT — that's what closes P02a's own check-then-act race: a
-   * second concurrent call blocks on the lock until the first commits, then
-   * re-runs its check and now sees the first call's already-committed order.
-   * The lock self-releases on commit or rollback — no cleanup path needed.
+   * DB transaction, serialized per-buyer via the shared advisory-lock
+   * protocol in server/lib/TransactionSerialization (acquireSerializationLock
+   * / buyerScope). The lock and the pending/purchased-item checks MUST run
+   * inside this same transaction as the order INSERT — that's what closes
+   * P02a's own check-then-act race: a second concurrent call blocks on the
+   * lock until the first commits, then re-runs its check and now sees the
+   * first call's already-committed order. The lock self-releases on commit
+   * or rollback — no cleanup path needed.
+   *
+   * Documented lock order (see TransactionSerialization): 1) the buyer (or,
+   * for a guest order, the order) advisory lock; 2) the order row, via the
+   * conditional PENDING claim; 3) seller balance rows, ascending by
+   * photographerId. FulfillmentRepository.commitFulfillment now takes the
+   * same buyer-scoped lock, which is what closes CON-02's cross-snapshot gap:
+   * checkout and fulfillment can no longer read their two checks on different
+   * PostgreSQL snapshots of the same buyer's purchases.
    *
    * createOrder and findByIdsForCheckout accept this transaction's client, so
    * the catalog read, the snapshot, and the order INSERT all commit under the
@@ -264,46 +278,48 @@ export class CheckoutService {
     clientRequestId: string,
   ): Promise<OrderWithItems> {
     return runQuery(() =>
-      prisma.$transaction(async (tx) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${buyerId}))`;
+      withTransactionRetry(() =>
+        prisma.$transaction(async (tx) => {
+          await acquireSerializationLock(tx, buyerScope(buyerId));
 
-        const purchasedRows = await tx.purchase.findMany({
-          where: { buyerId, mediaItemId: { in: itemIds } },
-          select: { mediaItemId: true },
-        });
-        if (purchasedRows.length > 0) {
-          throw new BadRequestError(
-            `Some items already purchased: ${purchasedRows.map((r) => r.mediaItemId).join(', ')}`,
-          );
-        }
+          const purchasedRows = await tx.purchase.findMany({
+            where: { buyerId, mediaItemId: { in: itemIds } },
+            select: { mediaItemId: true },
+          });
+          if (purchasedRows.length > 0) {
+            throw new BadRequestError(
+              `Some items already purchased: ${purchasedRows.map((r) => r.mediaItemId).join(', ')}`,
+            );
+          }
 
-        const sinceCreatedAt = new Date(Date.now() - PENDING_ORDER_WINDOW_MS);
-        const pendingRows = await tx.orderItem.findMany({
-          where: {
-            mediaItemId: { in: itemIds },
-            order: {
-              buyerId,
-              status: OrderStatus.PENDING,
-              createdAt: { gte: sinceCreatedAt },
-              // Exclude this same clientRequestId: a same-key resubmission (e.g. a
-              // double-click) is the identical logical attempt, not a different
-              // pending order — it must fall through to the unique-constraint
-              // ConflictError path (resolveRacedCheckoutSession) below, not be
-              // misreported here as a pending-item conflict. See roadmap P04.
-              clientRequestId: { not: clientRequestId },
+          const sinceCreatedAt = new Date(Date.now() - PENDING_ORDER_WINDOW_MS);
+          const pendingRows = await tx.orderItem.findMany({
+            where: {
+              mediaItemId: { in: itemIds },
+              order: {
+                buyerId,
+                status: OrderStatus.PENDING,
+                createdAt: { gte: sinceCreatedAt },
+                // Exclude this same clientRequestId: a same-key resubmission (e.g. a
+                // double-click) is the identical logical attempt, not a different
+                // pending order — it must fall through to the unique-constraint
+                // ConflictError path (resolveRacedCheckoutSession) below, not be
+                // misreported here as a pending-item conflict. See roadmap P04.
+                clientRequestId: { not: clientRequestId },
+              },
             },
-          },
-          select: { mediaItemId: true },
-        });
-        if (pendingRows.length > 0) {
-          throw new BadRequestError(
-            `Some items already have a pending order: ${pendingRows.map((r) => r.mediaItemId).join(', ')}`,
-          );
-        }
+            select: { mediaItemId: true },
+          });
+          if (pendingRows.length > 0) {
+            throw new BadRequestError(
+              `Some items already have a pending order: ${pendingRows.map((r) => r.mediaItemId).join(', ')}`,
+            );
+          }
 
-        const items = await this.snapshotCartLines(buyerId, itemIds, tx);
-        return this.orders.createOrder({ buyerId, guestEmail, clientRequestId, items }, tx);
-      })
+          const items = await this.snapshotCartLines(buyerId, itemIds, tx);
+          return this.orders.createOrder({ buyerId, guestEmail, clientRequestId, items }, tx);
+        })
+      )
     );
   }
 

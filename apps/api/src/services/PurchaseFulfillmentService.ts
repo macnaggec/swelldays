@@ -64,6 +64,7 @@ export class PurchaseFulfillmentService {
     try {
       const result = await this.fulfillment.commitFulfillment({
         orderId,
+        buyerId: order.buyerId,
         externalOrderId,
         purchases: purchaseData,
         earnings: Array.from(earningsMap, ([photographerId, amount]) => ({ photographerId, amount })),

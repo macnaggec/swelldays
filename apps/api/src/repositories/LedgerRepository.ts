@@ -242,21 +242,21 @@ export class LedgerRepository implements ILedgerRepository {
   // Transaction row. Callers pass their own transaction client so multi-table
   // commits (fulfillment, account deletion) stay atomic.
   async recordSale(tx: Prisma.TransactionClient, input: RecordSaleInput): Promise<void> {
-    await Promise.all([
-      tx.user.update({
-        where: { id: input.photographerId },
-        data: { balance: { increment: input.amount } },
-      }),
-      tx.transaction.create({
-        data: {
-          userId: input.photographerId,
-          amount: input.amount,
-          type: TransactionType.SALE,
-          externalOrderId: input.externalOrderId,
-          status: TransactionStatus.COMPLETED,
-        },
-      }),
-    ]);
+    // Sequential, not Promise.all: the balance row is taken first so every
+    // writer touches it in the same order.
+    await tx.user.update({
+      where: { id: input.photographerId },
+      data: { balance: { increment: input.amount } },
+    });
+    await tx.transaction.create({
+      data: {
+        userId: input.photographerId,
+        amount: input.amount,
+        type: TransactionType.SALE,
+        externalOrderId: input.externalOrderId,
+        status: TransactionStatus.COMPLETED,
+      },
+    });
   }
 
   async forfeitBalance(tx: Prisma.TransactionClient, userId: string): Promise<void> {
