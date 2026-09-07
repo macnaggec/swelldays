@@ -12,6 +12,7 @@ export {
   useDrawerDragging,
   useDrawerMoving,
   useDrawerGeometry,
+  useDrawerPanelState,
   useDrawerSheetSnap,
   useDrawerTargetGeometry,
   type DrawerGeometry,

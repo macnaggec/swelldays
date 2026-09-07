@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { useViewportMetrics } from 'shared/model/viewportMetrics';
+import type { DrawerShellState } from './DrawerShell';
 import type { SheetSnap } from './sheetSnapPolicy';
 
 export interface DrawerGeometry {
@@ -84,6 +85,34 @@ export function useDrawerTargetGeometry() {
       return () => targetGeometryListeners.delete(listener);
     },
     () => targetGeometrySnapshot,
+    () => null,
+  );
+}
+
+let panelStateSnapshot: DrawerShellState | null = null;
+const panelStateListeners = new Set<() => void>();
+
+/**
+ * Which of its two widths the side panel is presenting, or null when the mounted drawer
+ * isn't a panel. Published in the same commit as the target geometry above, and for the
+ * same reason the snap below is: a consumer that instead reads the *preference* driving
+ * the change sees it a render earlier than the bounds it implies, and would pair
+ * "collapsed" with the still-expanded bounds. The map camera did exactly that and
+ * recentred onto the expanded width for one frame before settling back.
+ */
+export function publishDrawerPanelState(state: DrawerShellState | null) {
+  if (panelStateSnapshot === state) return;
+  panelStateSnapshot = state;
+  panelStateListeners.forEach((listener) => listener());
+}
+
+export function useDrawerPanelState() {
+  return useSyncExternalStore(
+    (listener) => {
+      panelStateListeners.add(listener);
+      return () => panelStateListeners.delete(listener);
+    },
+    () => panelStateSnapshot,
     () => null,
   );
 }

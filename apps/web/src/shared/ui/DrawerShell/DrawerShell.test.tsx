@@ -3,12 +3,13 @@ import { readFileSync } from 'node:fs';
 import { createRef, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
-import { PANEL_WIDTH_VW } from 'shared/model/panelExpansionStore';
+import { PANEL_WIDTH_VW, resolvePanelWidthPx } from 'shared/model/panelExpansionStore';
 import type { NavigationRailGeometry } from 'shared/model/navigationRailGeometry';
 import {
   DrawerShell,
   useDrawerGeometry,
   useDrawerMoving,
+  useDrawerPanelState,
   useDrawerTargetGeometry,
   useRegisterSheetScrollOwner,
   useSheetContentScrollable,
@@ -80,6 +81,21 @@ function SettledWidthProbe() {
   return (
     <output data-testid="settled-destination-width">
       {settled ? settled.destinationWidth : 'none'}
+    </output>
+  );
+}
+
+/**
+ * Reports the published panel width report and the published destination bounds
+ * together, so a test can prove they never describe different states.
+ */
+function PanelStateProbe() {
+  const panelState = useDrawerPanelState();
+  const geometry = useDrawerTargetGeometry();
+
+  return (
+    <output data-testid="drawer-panel-state">
+      {`${panelState ?? 'none'}:${geometry ? geometry.width : 'unmeasured'}`}
     </output>
   );
 }
@@ -514,6 +530,54 @@ describe('DrawerShell bottom-sheet geometry', () => {
     expect(screen.getByTestId('drawer-target-geometry').textContent).toBe(
       `${viewportWidthPx - expandedWidthPx}:0:${viewportWidthPx}:${viewportHeightPx}:${expandedWidthPx}:${viewportHeightPx}`,
     );
+  });
+
+  it('reports the width the persistent panel presents in step with the bounds it implies', () => {
+    const viewportWidthPx = window.innerWidth;
+    const renderPanel = (state: 'compact' | 'expanded') => (
+      <>
+        <DrawerShell
+          presentation="persistent"
+          state={state}
+          modality="nonmodal"
+        >
+          Panel content
+        </DrawerShell>
+        <PanelStateProbe />
+      </>
+    );
+    const widthFor = (state: 'compact' | 'expanded') => resolvePanelWidthPx(state, viewportWidthPx);
+
+    // Never `expanded:<compact width>` or `compact:<expanded width>` at any step: a
+    // consumer that pairs the two — the map camera does — would otherwise centre
+    // against a width the panel is not presenting. GlobeScene's own regression test
+    // covers what that looked like on screen.
+    const { rerender } = render(renderPanel('compact'));
+    expect(screen.getByTestId('drawer-panel-state').textContent).toBe(`compact:${widthFor('compact')}`);
+
+    rerender(renderPanel('expanded'));
+    expect(screen.getByTestId('drawer-panel-state').textContent).toBe(`expanded:${widthFor('expanded')}`);
+
+    rerender(renderPanel('compact'));
+    expect(screen.getByTestId('drawer-panel-state').textContent).toBe(`compact:${widthFor('compact')}`);
+  });
+
+  it('reports no panel width for a bottom sheet, which has snaps instead', () => {
+    render(
+      <>
+        <DrawerShell
+          presentation="bottomSheet"
+          modality="nonmodal"
+          snap="peek"
+          onSnapChange={() => {}}
+        >
+          Sheet content
+        </DrawerShell>
+        <PanelStateProbe />
+      </>,
+    );
+
+    expect(screen.getByTestId('drawer-panel-state').textContent).toMatch(/^none:/);
   });
 });
 

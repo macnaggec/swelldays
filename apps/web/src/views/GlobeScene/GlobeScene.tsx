@@ -19,13 +19,14 @@ import { materialClasses } from 'shared/ui/design-system';
 import {
   useBrowseSurface,
   useDrawerGeometry,
+  useDrawerPanelState,
   useDrawerSheetSnap,
   useDrawerTargetGeometry,
 } from 'shared/ui/DrawerShell';
 import classes from './GlobeScene.module.css';
 import { deriveGlobeMotionPolicy } from './model/globeMotionPolicy';
 import { deriveGlobeSceneMode } from './model/globeSceneMode';
-import { deriveMapCameraInsets, resolveFrozenBottomInsetPx } from './model/mapCameraInsets';
+import { deriveMapCameraInsets, resolveFrozenInsetPx } from './model/mapCameraInsets';
 import { getOverviewMapBounds } from './model/overviewBoundsStrategy';
 
 function subscribeDocumentVisibility(onStoreChange: () => void) {
@@ -126,7 +127,19 @@ export function GlobeScene() {
   const drawerGeometry = useDrawerGeometry();
   const drawerTargetGeometry = useDrawerTargetGeometry();
   const sheetSnap = useDrawerSheetSnap();
-  const canCompactPersistentDrawer = layoutPolicy.drawer.presentation === 'persistent'
+  // The width the panel reports it is presenting — deliberately not the layout policy's
+  // state, which is the *preference* that asked it to change. The preference flips a
+  // render before the panel publishes the bounds it implies, so reading it here paired
+  // "collapsed" with the still-expanded bounds for one frame and threw the camera onto
+  // the expanded width before it settled back.
+  const drawerPanelState = useDrawerPanelState();
+  const isPersistentDrawer = layoutPolicy.drawer.presentation === 'persistent';
+  const isPersistentDrawerExpanded = isPersistentDrawer && drawerPanelState === 'expanded';
+  // Reads the preference rather than the panel's report, unlike the camera above: this
+  // one *writes* the preference back (auto-compacting when the user grabs the map), so
+  // it has to answer "is the preference expanded right now", and must hold even before
+  // any panel has mounted and published a width.
+  const canCompactPersistentDrawer = isPersistentDrawer
     && (layoutPolicy.drawer.state === 'expanded' || layoutPolicy.drawer.state === 'full');
   const cameraDrawerBounds = drawerTargetGeometry ?? drawerGeometry;
   const rawCameraInsetsPx = deriveMapCameraInsets({
@@ -139,22 +152,40 @@ export function GlobeScene() {
     viewportHeightPx,
   });
   // The sheet's `full` snap covers nearly the whole viewport, so recentering the map as
-  // it crosses into `full` is motion with no payoff (see resolveFrozenBottomInsetPx).
+  // it crosses into `full` is motion with no payoff (see resolveFrozenInsetPx).
   // Content-fitted sheets have no snap and use their live inset directly; feeding their
   // changing measured height into this render-time snap transition state can otherwise
   // make the scene schedule a new render for every measurement.
   const [frozenBottomInsetPx, setFrozenBottomInsetPx] = useState(rawCameraInsetsPx.bottom);
-  const nextFrozenBottomInsetPx = resolveFrozenBottomInsetPx(
-    sheetSnap,
+  const nextFrozenBottomInsetPx = resolveFrozenInsetPx(
+    sheetSnap === 'full',
     rawCameraInsetsPx.bottom,
     frozenBottomInsetPx,
   );
   if (sheetSnap !== null && nextFrozenBottomInsetPx !== frozenBottomInsetPx) {
     setFrozenBottomInsetPx(nextFrozenBottomInsetPx);
   }
-  const cameraInsetsPx = sheetSnap === 'full'
-    ? { ...rawCameraInsetsPx, bottom: frozenBottomInsetPx }
-    : rawCameraInsetsPx;
+  // Desktop's persistent side panel has no sheet snap of its own, so it hits the same
+  // "motion with no payoff" case above by expanding to its full width instead of crossing
+  // into a `full` snap — held still while it presents that width instead. Null until a
+  // collapsed width has actually been measured: loading straight into the expanded panel
+  // has no earlier width to hold, and holding the pre-measurement zero would centre the
+  // globe behind the panel rather than in the strip left beside it.
+  const [frozenRightInsetPx, setFrozenRightInsetPx] = useState<number | null>(null);
+  const holdCameraForPersistentDrawer = isPersistentDrawerExpanded && frozenRightInsetPx !== null;
+  const nextFrozenRightInsetPx = resolveFrozenInsetPx(
+    holdCameraForPersistentDrawer,
+    rawCameraInsetsPx.right,
+    frozenRightInsetPx ?? rawCameraInsetsPx.right,
+  );
+  if (isPersistentDrawer && cameraDrawerBounds !== null && nextFrozenRightInsetPx !== frozenRightInsetPx) {
+    setFrozenRightInsetPx(nextFrozenRightInsetPx);
+  }
+  const cameraInsetsPx = {
+    ...rawCameraInsetsPx,
+    bottom: sheetSnap === 'full' ? frozenBottomInsetPx : rawCameraInsetsPx.bottom,
+    right: nextFrozenRightInsetPx,
+  };
 
   const handleSpotSelect = useCallback(async (spot: MapSpotProjection) => {
     if (isUpdatingWorkspace) return;
@@ -232,7 +263,7 @@ export function GlobeScene() {
         onSpotSelect={handleSpotSelect}
         motionPolicy={motionPolicy}
         interactionPolicy={interactionPolicy}
-        selectedSpotFocusEnabled={sheetSnap !== 'full' && !canCompactPersistentDrawer}
+        selectedSpotFocusEnabled={sheetSnap !== 'full' && !isPersistentDrawerExpanded}
         cameraInsetsPx={cameraInsetsPx}
         isCoordinatePickerActive={isImmersiveMapInput}
         tempPin={tempPin}

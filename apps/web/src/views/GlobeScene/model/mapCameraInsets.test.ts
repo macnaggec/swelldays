@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveMapCameraInsets, resolveFrozenBottomInsetPx } from './mapCameraInsets';
+import { deriveMapCameraInsets, resolveFrozenInsetPx } from './mapCameraInsets';
 
 describe('deriveMapCameraInsets', () => {
   it('reports no insets before the drawer has rendered', () => {
@@ -58,20 +58,12 @@ describe('deriveMapCameraInsets', () => {
   });
 });
 
-describe('resolveFrozenBottomInsetPx', () => {
-  it('holds the previous inset once the sheet reaches its full snap', () => {
-    expect(resolveFrozenBottomInsetPx('full', 820, 400)).toBe(400);
+describe('resolveFrozenInsetPx', () => {
+  it('holds the previous inset while frozen', () => {
+    expect(resolveFrozenInsetPx(true, 820, 400)).toBe(400);
   });
 
-  it('follows the raw inset at the peek snap', () => {
-    expect(resolveFrozenBottomInsetPx('peek', 116, 400)).toBe(116);
-  });
-
-  it('follows the raw inset at the half snap', () => {
-    expect(resolveFrozenBottomInsetPx('half', 306, 400)).toBe(306);
-  });
-
-  it('follows the raw inset when there is no bottom sheet mounted', () => {
-    expect(resolveFrozenBottomInsetPx(null, 0, 400)).toBe(0);
+  it('follows the raw inset while not frozen', () => {
+    expect(resolveFrozenInsetPx(false, 116, 400)).toBe(116);
   });
 });

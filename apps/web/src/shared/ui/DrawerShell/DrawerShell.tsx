@@ -26,6 +26,7 @@ import {
   publishDrawerDragging,
   publishDrawerGeometry,
   publishDrawerMotion,
+  publishDrawerPanelState,
   publishDrawerSheetSnap,
   publishDrawerTargetGeometry,
   type DrawerGeometry,
@@ -156,6 +157,7 @@ export function DrawerShell(props: DrawerShellProps) {
   const isSheetDraggable = props.presentation === 'bottomSheet' && !isContentSizedSheet
     && (availableSnaps === undefined || availableSnaps.length > 1);
   const panelOpen = props.presentation === 'bottomSheet' ? true : (props.open ?? true);
+  const panelState = props.presentation === 'bottomSheet' ? null : props.state;
   const positionKey: DrawerShellPositionKey = isContentSizedSheet
     ? 'content'
     : props.presentation === 'bottomSheet'
@@ -311,9 +313,13 @@ export function DrawerShell(props: DrawerShellProps) {
     }
 
     publishDrawerTargetGeometry(target);
+    // After the geometry, never before: a consumer woken by the state alone would pair
+    // the new state with the bounds still describing the old one.
+    publishDrawerPanelState(panelState);
     publishDrawerSheetSnap(snap ?? null);
   }, [
     panelOpen,
+    panelState,
     props.presentation,
     snap,
     targetWidthPx,
@@ -368,6 +374,7 @@ export function DrawerShell(props: DrawerShellProps) {
       if (pendingFrame !== null) cancelAnimationFrame(pendingFrame);
       publishDrawerGeometry(null);
       publishDrawerTargetGeometry(null);
+      publishDrawerPanelState(null);
       publishDrawerMotion(false);
       publishDrawerDragging(false);
       publishDrawerSheetSnap(null);

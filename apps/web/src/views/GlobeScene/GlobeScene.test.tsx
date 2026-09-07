@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   alternateDrawerTargetGeometry: false,
   drawerTargetGeometryReadCount: 0,
   sheetSnap: null as SheetSnap | null,
+  drawerPanelState: null as 'compact' | 'expanded' | null,
   setBrowsingPanelExpanded: vi.fn(),
   setGalleryPanelExpanded: vi.fn(),
   matches: [{ routeId: '/_panel/upload', staticData: { appRouteIntent: 'mapInput' }, search: { workspaceId: 'workspace-1' } }] as Array<{
@@ -129,6 +130,7 @@ vi.mock('shared/ui/DrawerShell', () => ({
     };
   },
   useDrawerSheetSnap: () => mocks.sheetSnap,
+  useDrawerPanelState: () => mocks.drawerPanelState,
   useBrowseSurface: () => ({
     mode: mocks.browseSurfaceMode,
     showResults: mocks.showBrowseResults,
@@ -173,6 +175,7 @@ beforeEach(() => {
   mocks.alternateDrawerTargetGeometry = false;
   mocks.drawerTargetGeometryReadCount = 0;
   mocks.sheetSnap = null;
+  mocks.drawerPanelState = null;
   mocks.browseSurfaceMode = 'results';
 });
 
@@ -711,6 +714,101 @@ describe('GlobeScene map camera insets', () => {
 
     expect(screen.getByText('Select Pipeline').parentElement)
       .toHaveAttribute('data-camera-inset-bottom-px', '116');
+  });
+
+  it('holds the desktop side panel inset still while it expands to full width', () => {
+    mocks.browsingExpanded = false;
+    mocks.drawerPanelState = 'compact';
+    mocks.drawerGeometry = {
+      left: 1600, top: 0, right: 2000, bottom: 900, width: 400, height: 900,
+    };
+
+    const { rerender } = renderGlobeScene();
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-right-px', '400');
+
+    // The panel widens to its expanded (full-width) state, but the map should not follow it.
+    mocks.browsingExpanded = true;
+    mocks.drawerPanelState = 'expanded';
+    mocks.drawerGeometry = {
+      left: 1200, top: 0, right: 2000, bottom: 900, width: 800, height: 900,
+    };
+    rerender(globeSceneTree());
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-right-px', '400');
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-selected-spot-focus-enabled', 'false');
+
+    // Collapsing back to compact resumes following its real width.
+    mocks.browsingExpanded = false;
+    mocks.drawerPanelState = 'compact';
+    mocks.drawerGeometry = {
+      left: 1650, top: 0, right: 2000, bottom: 900, width: 350, height: 900,
+    };
+    rerender(globeSceneTree());
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-right-px', '350');
+  });
+
+  it('ignores the collapse preference until the panel reports the width it is presenting', () => {
+    mocks.browsingExpanded = false;
+    mocks.drawerPanelState = 'compact';
+    mocks.drawerGeometry = {
+      left: 1600, top: 0, right: 2000, bottom: 900, width: 400, height: 900,
+    };
+
+    const { rerender } = renderGlobeScene();
+
+    mocks.browsingExpanded = true;
+    mocks.drawerPanelState = 'expanded';
+    mocks.drawerGeometry = {
+      left: 1200, top: 0, right: 2000, bottom: 900, width: 800, height: 900,
+    };
+    rerender(globeSceneTree());
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-right-px', '400');
+
+    // The preference flips a render before the panel publishes anything, so for that
+    // render the panel still reports — and still measures — its expanded width. Reading
+    // the preference here instead threw the camera onto that 800 before it settled back.
+    mocks.browsingExpanded = false;
+    rerender(globeSceneTree());
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-right-px', '400');
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-selected-spot-focus-enabled', 'false');
+
+    // The panel's own report and the bounds it implies arrive together.
+    mocks.drawerPanelState = 'compact';
+    mocks.drawerGeometry = {
+      left: 1600, top: 0, right: 2000, bottom: 900, width: 400, height: 900,
+    };
+    rerender(globeSceneTree());
+
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-right-px', '400');
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-selected-spot-focus-enabled', 'true');
+  });
+
+  it('centers beside an already-expanded panel when the page loads into it', () => {
+    mocks.browsingExpanded = true;
+    mocks.drawerPanelState = 'expanded';
+    mocks.drawerGeometry = {
+      left: 1200, top: 0, right: 2000, bottom: 900, width: 800, height: 900,
+    };
+
+    renderGlobeScene();
+
+    // No earlier compact width was ever measured, so there is nothing to hold and the
+    // globe centers in the strip the panel leaves rather than behind the panel itself.
+    expect(screen.getByText('Select Pipeline').parentElement)
+      .toHaveAttribute('data-camera-inset-right-px', '800');
   });
 
   it('does not schedule render-phase updates while a content-fitted sheet changes height', () => {

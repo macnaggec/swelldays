@@ -1,5 +1,5 @@
 import type { AppShellLayoutPolicy } from 'shared/model/appShellLayoutPolicy';
-import type { DrawerGeometry, SheetSnap } from 'shared/ui/DrawerShell';
+import type { DrawerGeometry } from 'shared/ui/DrawerShell';
 import { NO_MAP_CAMERA_INSETS, type MapCameraInsets } from 'widgets/GlobeMap';
 
 export interface MapCameraInsetsInput {
@@ -63,11 +63,16 @@ export function deriveMapCameraInsets({
  * recentering as the sheet crosses into `full` is motion with no payoff, immediately
  * undone by the sheet covering it. Holding the prior inset keeps the map still through
  * that crossing; leaving `full` (back to `half` or `peek`) resumes following it.
+ *
+ * Desktop's persistent side panel has no sheet snap of its own, but hits the same
+ * "motion with no payoff" case when it expands to its full width — so its `right`
+ * inset is frozen through the same function, gated on the width the panel reports it
+ * is presenting instead of a snap value.
  */
-export function resolveFrozenBottomInsetPx(
-  sheetSnap: SheetSnap | null,
-  rawBottomInsetPx: number,
-  previousFrozenBottomInsetPx: number,
+export function resolveFrozenInsetPx(
+  shouldFreeze: boolean,
+  rawInsetPx: number,
+  previousFrozenInsetPx: number,
 ): number {
-  return sheetSnap === 'full' ? previousFrozenBottomInsetPx : rawBottomInsetPx;
+  return shouldFreeze ? previousFrozenInsetPx : rawInsetPx;
 }
