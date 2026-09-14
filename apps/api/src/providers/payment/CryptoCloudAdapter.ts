@@ -310,21 +310,30 @@ function parseWebhookEvent(
   headers: Record<string, string>,
 ): PaymentWebhookEvent {
   const payload = parseBody(rawBody, headers);
-  if (payload === null) return { type: 'order.ignored' };
+  if (payload === null) return {
+    type: 'order.ignored', provider: 'cryptocloud', sourceEventId: null, occurredAt: null, identity: null,
+  };
+
+  const normalizedTopLevelId = normalizeInvoiceId(payload.invoice_id);
+  const identity: PaymentIdentity = {
+    provider: 'cryptocloud', environment: 'production', providerTransactionId: normalizedTopLevelId,
+  };
 
   if (payload.status !== 'success') {
     logger.warn('[CryptoCloud] Non-actionable webhook status — ignoring', { status: payload.status });
-    return { type: 'order.ignored' };
+    return { type: 'order.ignored', provider: 'cryptocloud', sourceEventId: null, occurredAt: null, identity };
   }
 
-  const normalizedTopLevelId = normalizeInvoiceId(payload.invoice_id);
   if (contentType(headers) !== 'application/x-www-form-urlencoded'
     && payload.invoice_info.uuid !== normalizedTopLevelId) {
-    return { type: 'order.ignored' };
+    return { type: 'order.ignored', provider: 'cryptocloud', sourceEventId: null, occurredAt: null, identity };
   }
 
   return {
     type: 'order.completed',
+    provider: 'cryptocloud',
+    sourceEventId: null,
+    occurredAt: null,
     identity: {
       provider: 'cryptocloud',
       environment: 'production',

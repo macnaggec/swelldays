@@ -95,7 +95,7 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
   it('exits early without writing if externalOrderId already recorded', async () => {
     mockOrders.findOrderByExternalId.mockResolvedValue({ id: ORDER_ID });
 
-    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
+    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toEqual({ type: 'completed-duplicate' });
 
     expect(mockFulfillment.commitFulfillment).not.toHaveBeenCalled();
   });
@@ -104,7 +104,7 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
     mockOrders.findOrderByExternalId.mockResolvedValue(null);
     mockOrders.findOrderById.mockResolvedValue(null);
 
-    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
+    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toEqual({ type: 'unknown-order' });
 
     expect(mockFulfillment.commitFulfillment).not.toHaveBeenCalled();
   });
@@ -116,7 +116,7 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
   it('writes one purchase entry per media item with correct fields', async () => {
     setupHappyPath(makeOrder({ items: [makeLine({ unitAmountCents: 1000, platformFeeAmount: 200, sellerEarningsAmount: 800 })] }));
 
-    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
+    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toEqual({ type: 'fulfilled' });
 
     const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
     expect(payload.orderId).toBe(ORDER_ID);
@@ -200,14 +200,14 @@ describe('PurchaseFulfillmentService.fulfillOrder', () => {
       new ConflictError('external_order_id already exists'),
     );
 
-    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toBeUndefined();
+    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toEqual({ type: 'completed-duplicate' });
   });
 
   it('treats commitFulfillment resolving { applied: false } as idempotent success', async () => {
     setupHappyPath();
     mockFulfillment.commitFulfillment.mockResolvedValue({ applied: false });
 
-    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toBeUndefined();
+    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toEqual({ type: 'order-not-pending' });
   });
 
   it('rethrows non-ConflictError from commitFulfillment — does not swallow real failures', async () => {

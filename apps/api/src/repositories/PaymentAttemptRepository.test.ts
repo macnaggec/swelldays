@@ -125,4 +125,26 @@ describe('PaymentAttemptRepository', () => {
       },
     } });
   });
+
+  it('finds bounded pending attempts for reconciliation oldest first', async () => {
+    vi.mocked(prisma.paymentAttempt.findMany).mockResolvedValue([row]);
+    const now = new Date('2026-09-14T18:00:00Z');
+    const staleBefore = new Date('2026-09-14T17:55:00Z');
+    await repository.findForReconciliation(now, staleBefore, 500);
+    expect(prisma.paymentAttempt.findMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        OR: expect.not.arrayContaining([{ creationState: PaymentAttemptCreationState.UNKNOWN }]),
+      }),
+      orderBy: { updatedAt: 'asc' }, take: 100,
+    });
+  });
+
+  it('lists unresolved attempts separately for operator visibility', async () => {
+    vi.mocked(prisma.paymentAttempt.findMany).mockResolvedValue([row]);
+    await expect(repository.listUnresolved(500)).resolves.toEqual([expect.objectContaining({ id: 'attempt-1' })]);
+    expect(prisma.paymentAttempt.findMany).toHaveBeenCalledWith({
+      where: { creationState: { in: [PaymentAttemptCreationState.CREATING, PaymentAttemptCreationState.UNKNOWN] } },
+      orderBy: { updatedAt: 'desc' }, take: 100,
+    });
+  });
 });

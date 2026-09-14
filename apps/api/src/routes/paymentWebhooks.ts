@@ -3,8 +3,6 @@ import type { PaymentAdapter } from 'server/providers/payment/PaymentAdapter';
 import { paymentWebhookAdapters } from 'server/providers/payment/activeAdapter';
 import type { IPaymentService } from 'server/services/PaymentService';
 import { paymentService } from 'server/services/PaymentService';
-import { createRateLimiter } from 'server/lib/rateLimiter';
-import { getClientIp } from 'server/lib/getClientIp';
 import { logger } from 'server/lib/logger';
 
 export type PaymentWebhookRouterDependencies = {
@@ -22,16 +20,8 @@ export function createPaymentWebhookRouter(
   dependencies: PaymentWebhookRouterDependencies,
 ): Hono {
   const router = new Hono();
-  const limiter = createRateLimiter({ windowMs: 60_000, max: 20 });
-
   for (const adapter of dependencies.adapters) {
     router.post(`/${adapter.provider}`, async (c) => {
-      try {
-        limiter(getClientIp(c));
-      } catch {
-        return c.json({ error: 'Too many requests' }, 429);
-      }
-
       const rawBody = await c.req.text();
       if (Buffer.byteLength(rawBody, 'utf8') > MAX_WEBHOOK_BODY_BYTES) {
         return c.json({ error: 'Payload too large' }, 413);
@@ -47,15 +37,6 @@ export function createPaymentWebhookRouter(
         );
         if (outcome.type === 'invalid-signature') {
           return c.json({ error: 'Invalid signature' }, 401);
-        }
-        if (outcome.type === 'unknown-transaction' || outcome.type === 'mismatched-correlation') {
-          return c.json({ error: 'Payment association conflict' }, 409);
-        }
-        if (outcome.type === 'rejected-receipt') {
-          return c.json({ error: 'Payment validation failed' }, 409);
-        }
-        if (outcome.type === 'provider-unreachable') {
-          return c.json({ error: 'Payment provider unreachable' }, 502);
         }
         return c.json({ ok: true });
       } catch (err) {

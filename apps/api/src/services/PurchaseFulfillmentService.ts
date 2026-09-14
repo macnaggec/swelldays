@@ -9,6 +9,12 @@ import { requireOrderLineSnapshot } from 'server/domain/OrderEconomics';
 import { ConflictError } from 'server/errors';
 import { logger } from 'server/lib/logger';
 
+export type FulfillmentOutcome =
+  | { type: 'fulfilled' }
+  | { type: 'completed-duplicate' }
+  | { type: 'unknown-order' }
+  | { type: 'order-not-pending' };
+
 /**
  * Fulfills a paid order by turning its immutable order lines into Purchase
  * rows and seller earnings credits. Every amount and the deliverable itself
@@ -28,12 +34,12 @@ export class PurchaseFulfillmentService {
    * P2002 (@@unique externalOrderId race) is caught via BaseRepository.run → mapPrismaError → ConflictError,
    * which callers treat as idempotent success.
    */
-  async fulfillOrder(orderId: string, externalOrderId: string): Promise<void> {
+  async fulfillOrder(orderId: string, externalOrderId: string): Promise<FulfillmentOutcome> {
     const existing = await this.orders.findOrderByExternalId(externalOrderId);
-    if (existing) return;
+    if (existing) return { type: 'completed-duplicate' };
 
     const order = await this.orders.findOrderById(orderId);
-    if (!order) return;
+    if (!order) return { type: 'unknown-order' };
 
     // Each line's snapshot is the single source of truth for what was agreed
     // at checkout — see requireOrderLineSnapshot's own guard for why an
@@ -69,7 +75,7 @@ export class PurchaseFulfillmentService {
         purchases: purchaseData,
         earnings: Array.from(earningsMap, ([photographerId, amount]) => ({ photographerId, amount })),
       });
-      if (!result.applied) return; // order already left PENDING — idempotent no-op, same as the ConflictError branch below
+      if (!result.applied) return { type: 'order-not-pending' };
       if (result.skippedMediaItemIds.length > 0) {
         logger.warn('[PurchaseFulfillmentService] Skipped duplicate Purchase insert(s) on (buyerId, mediaItemId)', {
           orderId,
@@ -78,9 +84,10 @@ export class PurchaseFulfillmentService {
       }
     } catch (err) {
       // P2002 on externalOrderId unique constraint — concurrent webhook delivered the same event
-      if (err instanceof ConflictError) return;
+      if (err instanceof ConflictError) return { type: 'completed-duplicate' };
       throw err;
     }
+    return { type: 'fulfilled' };
   }
 }
 

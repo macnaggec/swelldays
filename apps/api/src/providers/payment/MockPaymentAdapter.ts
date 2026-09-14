@@ -42,7 +42,7 @@ function verifyWebhook(_rawBody: string, _headers: Record<string, string>): bool
 }
 
 function parseWebhookEvent(_rawBody: string, _headers: Record<string, string>): PaymentWebhookEvent {
-  return { type: 'order.ignored' };
+  return { type: 'order.ignored', provider: 'mock', sourceEventId: null, occurredAt: null, identity: null };
 }
 
 async function retrieveReceipt(identity: PaymentIdentity): Promise<PaymentReceipt> {

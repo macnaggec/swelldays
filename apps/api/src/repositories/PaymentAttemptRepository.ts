@@ -2,6 +2,7 @@ import {
   PaymentAttemptCreationState as PrismaPaymentAttemptCreationState,
   PaymentEnvironment as PrismaPaymentEnvironment,
   PaymentProvider as PrismaPaymentProvider,
+  OrderStatus as PrismaOrderStatus,
   type Prisma,
 } from '@prisma/client';
 import type {
@@ -61,6 +62,8 @@ export interface IPaymentAttemptRepository {
   findById(attemptId: string): Promise<PaymentAttemptRecord | null>;
   findByOrderId(orderId: string): Promise<PaymentAttemptRecord | null>;
   findByIdentity(identity: PaymentIdentity): Promise<PaymentAttemptRecord | null>;
+  findForReconciliation(now: Date, staleBefore: Date, limit: number): Promise<PaymentAttemptRecord[]>;
+  listUnresolved(limit: number): Promise<PaymentAttemptRecord[]>;
 }
 
 const PROVIDER_TO_PRISMA: Record<PaymentProvider, PrismaPaymentProvider> = {
@@ -236,6 +239,33 @@ export class PaymentAttemptRepository implements IPaymentAttemptRepository {
       });
       return row === null ? null : toRecord(row);
     });
+  }
+
+  findForReconciliation(now: Date, staleBefore: Date, limit: number): Promise<PaymentAttemptRecord[]> {
+    return runQuery(async () => (await prisma.paymentAttempt.findMany({
+      where: {
+        order: { status: PrismaOrderStatus.PENDING },
+        OR: [
+          { creationState: STATE_TO_PRISMA.creating, updatedAt: { lte: staleBefore } },
+          { creationState: STATE_TO_PRISMA.unknown, environment: { not: null },
+            providerTransactionId: { not: null }, checkoutUrl: { not: null } },
+          { creationState: STATE_TO_PRISMA.ready, OR: [
+            { updatedAt: { lte: staleBefore } },
+            { expiresAt: { lte: now } },
+          ] },
+        ],
+      },
+      orderBy: { updatedAt: 'asc' },
+      take: Math.max(1, Math.min(100, limit)),
+    })).map(toRecord));
+  }
+
+  listUnresolved(limit: number): Promise<PaymentAttemptRecord[]> {
+    return runQuery(async () => (await prisma.paymentAttempt.findMany({
+      where: { creationState: { in: [STATE_TO_PRISMA.creating, STATE_TO_PRISMA.unknown] } },
+      orderBy: { updatedAt: 'desc' },
+      take: Math.max(1, Math.min(100, limit)),
+    })).map(toRecord));
   }
 }
 

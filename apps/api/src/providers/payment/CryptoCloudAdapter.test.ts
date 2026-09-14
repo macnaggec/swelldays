@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { BadGatewayError } from 'server/errors';
 import { PaymentCreationError } from './PaymentAdapter';
 import { cryptoCloudAdapter } from './CryptoCloudAdapter';
+import { toStoredPaymentEvent } from 'server/domain/PaymentNotification';
 
 // ---------------------------------------------------------------------------
 // These values match the safe configuration installed by the server test setup.
@@ -179,13 +180,24 @@ describe('CryptoCloudAdapter.parseWebhookEvent', () => {
     expect(event.type).toBe('order.ignored');
   });
 
+  it('deduplicates regenerated JWT and form/JSON delivery by normalized invoice facts', () => {
+    const jsonEvent = cryptoCloudAdapter.parseWebhookEvent(
+      makeWebhookBody(makeJwt()), { 'content-type': 'application/json' },
+    );
+    const formEvent = cryptoCloudAdapter.parseWebhookEvent(
+      'status=success&invoice_id=89UX09KA&order_id=order-abc-123&token=a.different.jwt&test_mode=false',
+      { 'content-type': 'application/x-www-form-urlencoded' },
+    );
+    expect(toStoredPaymentEvent(jsonEvent).eventKey).toBe(toStoredPaymentEvent(formEvent).eventKey);
+  });
+
   it('rejects disagreement between the JSON invoice ids', () => {
     const payload = JSON.parse(makeWebhookBody(makeJwt()));
     payload.invoice_info.uuid = 'INV-DIFFERENT';
     expect(cryptoCloudAdapter.parseWebhookEvent(
       JSON.stringify(payload),
       { 'content-type': 'application/json' },
-    )).toEqual({ type: 'order.ignored' });
+    )).toEqual(expect.objectContaining({ type: 'order.ignored', provider: 'cryptocloud' }));
   });
 
   it('ignores (not throws) a body whose invoice_info is a string', () => {
@@ -194,14 +206,14 @@ describe('CryptoCloudAdapter.parseWebhookEvent', () => {
     expect(cryptoCloudAdapter.parseWebhookEvent(
       JSON.stringify(payload),
       { 'content-type': 'application/json' },
-    )).toEqual({ type: 'order.ignored' });
+    )).toEqual(expect.objectContaining({ type: 'order.ignored', provider: 'cryptocloud' }));
   });
 
   it('ignores a body that is a bare JSON array', () => {
     expect(cryptoCloudAdapter.parseWebhookEvent(
       '[1,2,3]',
       { 'content-type': 'application/json' },
-    )).toEqual({ type: 'order.ignored' });
+    )).toEqual(expect.objectContaining({ type: 'order.ignored', provider: 'cryptocloud' }));
   });
 
   it('ignores a body whose status is a number', () => {
@@ -210,7 +222,7 @@ describe('CryptoCloudAdapter.parseWebhookEvent', () => {
     expect(cryptoCloudAdapter.parseWebhookEvent(
       JSON.stringify(payload),
       { 'content-type': 'application/json' },
-    )).toEqual({ type: 'order.ignored' });
+    )).toEqual(expect.objectContaining({ type: 'order.ignored', provider: 'cryptocloud' }));
   });
 });
 
@@ -265,6 +277,9 @@ describe('CryptoCloudAdapter.createCheckoutSession', () => {
     );
     expect(event).toEqual({
       type: 'order.completed',
+      provider: 'cryptocloud',
+      sourceEventId: null,
+      occurredAt: null,
       identity: {
         provider: 'cryptocloud',
         environment: 'production',

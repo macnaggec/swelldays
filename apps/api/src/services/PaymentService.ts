@@ -1,7 +1,11 @@
 import type { PaymentCreationFailureCode, PaymentIdentity, PaymentProvider } from 'server/domain/Payment';
 import { paymentIdentityKey } from 'server/domain/Payment';
-import type { ReceiptRejection } from 'server/domain/PaymentReceipt';
 import { validateReceiptAgainstAttempt } from 'server/domain/PaymentReceipt';
+import { paymentNotificationRetryAt, toStoredPaymentEvent } from 'server/domain/PaymentNotification';
+import type {
+  PaymentNotificationResolution,
+  StoredPaymentEvent,
+} from 'server/domain/PaymentNotification';
 import type { PaymentAdapter } from 'server/providers/payment/PaymentAdapter';
 import { PaymentCreationError } from 'server/providers/payment/PaymentAdapter';
 import { paymentAdapter, paymentWebhookAdapters } from 'server/providers/payment/activeAdapter';
@@ -11,10 +15,20 @@ import type {
   PaymentAttemptWriteClient,
 } from 'server/repositories/PaymentAttemptRepository';
 import { paymentAttemptRepository } from 'server/repositories/PaymentAttemptRepository';
+import type {
+  IPaymentNotificationRepository,
+  PaymentNotificationClaim,
+  PaymentNotificationListInput,
+  PaymentNotificationListResult,
+  PaymentNotificationRecord,
+} from 'server/repositories/PaymentNotificationRepository';
+import { paymentNotificationRepository } from 'server/repositories/PaymentNotificationRepository';
 import { PurchaseFulfillmentService, purchaseFulfillmentService } from 'server/services/PurchaseFulfillmentService';
-import { logger } from 'server/lib/logger';
 
 export const PAYMENT_CREATION_LEASE_MS = 30_000;
+export const PAYMENT_NOTIFICATION_CLAIM_LEASE_MS = 30_000;
+export const PAYMENT_NOTIFICATION_MAX_ATTEMPTS = 10;
+export const PAYMENT_RECONCILIATION_STALE_MS = 5 * 60_000;
 
 export type PreparePaymentAttemptCommand = { orderId: string; totalCents: number };
 export type OpenPreparedPaymentAttemptCommand = {
@@ -30,14 +44,20 @@ export type PaymentCheckoutOutcome =
   | { type: 'definitively-failed'; reason: PaymentCreationFailureCode }
   | { type: 'payment-received' };
 
-export type PaymentNotificationOutcome =
+export type PaymentNotificationAcceptance =
   | { type: 'invalid-signature' }
-  | { type: 'ignored' }
-  | { type: 'unknown-transaction' }
-  | { type: 'mismatched-correlation' }
-  | { type: 'rejected-receipt'; reason: ReceiptRejection['reason'] }
-  | { type: 'provider-unreachable' }
-  | { type: 'fulfilled' };
+  | { type: 'accepted'; notificationId: string; duplicate: boolean };
+
+export type PaymentNotificationRunSummary = {
+  claimed: number; completed: number; rejected: number; retried: number; exhausted: number;
+};
+export type PaymentReconciliationSummary = {
+  inspected: number; enqueuedPaid: number; markedUnknown: number; markedFailed: number; providerErrors: number;
+};
+export type PaymentOperatorStatus = {
+  notifications: PaymentNotificationListResult;
+  unresolvedAttempts: PaymentAttemptRecord[];
+};
 
 export interface IPaymentService {
   prepareAttempt(command: PreparePaymentAttemptCommand, db?: PaymentAttemptWriteClient): Promise<PaymentAttemptRecord>;
@@ -47,7 +67,11 @@ export interface IPaymentService {
     adapter: PaymentAdapter,
     rawBody: string,
     headers: Record<string, string>,
-  ): Promise<PaymentNotificationOutcome>;
+  ): Promise<PaymentNotificationAcceptance>;
+  processPendingNotifications(limit?: number): Promise<PaymentNotificationRunSummary>;
+  reconcilePaymentAttempts(limit?: number): Promise<PaymentReconciliationSummary>;
+  getOperatorStatus(input: PaymentNotificationListInput): Promise<PaymentOperatorStatus>;
+  replayNotification(notificationId: string): Promise<PaymentNotificationRecord | null>;
 }
 
 export class PaymentService implements IPaymentService {
@@ -55,6 +79,7 @@ export class PaymentService implements IPaymentService {
 
   constructor(
     private attempts: IPaymentAttemptRepository,
+    private notifications: IPaymentNotificationRepository,
     private checkoutAdapter: PaymentAdapter,
     knownAdapters: readonly PaymentAdapter[],
     private fulfillment: Pick<PurchaseFulfillmentService, 'fulfillOrder'>,
@@ -204,34 +229,137 @@ export class PaymentService implements IPaymentService {
     adapter: PaymentAdapter,
     rawBody: string,
     headers: Record<string, string>,
-  ): Promise<PaymentNotificationOutcome> {
+  ): Promise<PaymentNotificationAcceptance> {
     if (!adapter.verifyWebhook(rawBody, headers)) return { type: 'invalid-signature' };
     const event = adapter.parseWebhookEvent(rawBody, headers);
-    if (event.type === 'order.ignored') return { type: 'ignored' };
+    const stored = await this.notifications.store(toStoredPaymentEvent(event), this.now());
+    return { type: 'accepted', notificationId: stored.record.id, duplicate: !stored.inserted };
+  }
 
-    const attempt = await this.attempts.findByIdentity(event.identity);
-    if (attempt === null) return { type: 'unknown-transaction' };
-    if (event.correlationAttemptId !== attempt.id) return { type: 'mismatched-correlation' };
-
-    let receipt;
-    try {
-      receipt = await adapter.retrieveReceipt(event.identity);
-    } catch (err) {
-      logger.error('[PaymentService] Receipt retrieval failed', { err, attemptId: attempt.id });
-      return { type: 'provider-unreachable' };
+  async processPendingNotifications(limit = 20): Promise<PaymentNotificationRunSummary> {
+    const summary: PaymentNotificationRunSummary = { claimed: 0, completed: 0, rejected: 0, retried: 0, exhausted: 0 };
+    const boundedLimit = Math.max(1, Math.min(100, limit));
+    while (summary.claimed < boundedLimit) {
+      const claim = await this.notifications.claimNext(
+        this.now(), PAYMENT_NOTIFICATION_CLAIM_LEASE_MS, PAYMENT_NOTIFICATION_MAX_ATTEMPTS,
+      );
+      if (claim === null) break;
+      summary.claimed += 1;
+      if (claim.eventType === 'order.ignored') {
+        if (await this.notifications.complete(claim, 'ignored', this.now())) summary.completed += 1;
+        continue;
+      }
+      await this.processClaim(claim, summary);
     }
+    return summary;
+  }
 
+  async reconcilePaymentAttempts(limit = 50): Promise<PaymentReconciliationSummary> {
+    const boundedLimit = Math.max(1, Math.min(100, limit));
+    const now = this.now();
+    const candidates = await this.attempts.findForReconciliation(
+      now, new Date(now.getTime() - PAYMENT_RECONCILIATION_STALE_MS), boundedLimit,
+    );
+    const summary: PaymentReconciliationSummary = {
+      inspected: candidates.length, enqueuedPaid: 0, markedUnknown: 0, markedFailed: 0, providerErrors: 0,
+    };
+    for (const attempt of candidates) {
+      if (!hasBinding(attempt)) {
+        if (attempt.creationState === 'creating' && !hasAnyBindingFact(attempt)) {
+          await this.attempts.markCreationUnknown(attempt.id, 'stale-creating');
+          summary.markedUnknown += 1;
+        }
+        continue;
+      }
+      const adapter = this.adapters.get(attempt.provider);
+      if (adapter === undefined) { summary.providerErrors += 1; continue; }
+      let receipt;
+      try { receipt = await adapter.retrieveReceipt(identityFor(attempt)); }
+      catch { summary.providerErrors += 1; continue; }
+      if (receipt.status === 'paid' || receipt.status === 'overpaid') {
+        const event: StoredPaymentEvent = {
+          eventKey: `reconciliation:${paymentIdentityKey(identityFor(attempt))}`,
+          eventType: 'order.completed', provider: attempt.provider, sourceEventId: null, occurredAt: null,
+          environment: attempt.environment, providerTransactionId: attempt.providerTransactionId,
+          correlationAttemptId: attempt.id, providerTestMode: receipt.providerTestMode,
+        };
+        const stored = await this.notifications.store(event, now);
+        if (stored.inserted) summary.enqueuedPaid += 1;
+      } else if (receipt.status === 'cancelled'
+        || (receipt.status === 'unpaid' && attempt.expiresAt !== null && attempt.expiresAt <= now)) {
+        await this.attempts.markCreationFailed(attempt.id,
+          receipt.status === 'cancelled' ? 'provider-cancelled' : 'authoritative-expiry');
+        summary.markedFailed += 1;
+      }
+    }
+    return summary;
+  }
+
+  async getOperatorStatus(input: PaymentNotificationListInput): Promise<PaymentOperatorStatus> {
+    const [notifications, unresolvedAttempts] = await Promise.all([
+      this.notifications.list(input),
+      this.attempts.listUnresolved(100),
+    ]);
+    return { notifications, unresolvedAttempts };
+  }
+
+  replayNotification(notificationId: string): Promise<PaymentNotificationRecord | null> {
+    return this.notifications.replay(notificationId, this.now());
+  }
+
+  private async processClaim(claim: PaymentNotificationClaim, summary: PaymentNotificationRunSummary): Promise<void> {
+    if (claim.environment === null || claim.providerTransactionId === null || claim.correlationAttemptId === null) {
+      await this.recordRetry(claim, 'unknown-transaction', summary); return;
+    }
+    const identity: PaymentIdentity = { provider: claim.provider, environment: claim.environment,
+      providerTransactionId: claim.providerTransactionId };
+    const attempt = await this.attempts.findByIdentity(identity);
+    if (attempt === null) { await this.recordRetry(claim, 'unknown-transaction', summary); return; }
+    if (claim.correlationAttemptId !== attempt.id) {
+      if (await this.notifications.reject(claim, 'mismatched-transaction', this.now())) summary.rejected += 1;
+      return;
+    }
+    if (!await this.notifications.bind(claim, attempt.id, attempt.orderId)) return;
+    const adapter = this.adapters.get(claim.provider);
+    if (adapter === undefined) { await this.recordRetry(claim, 'provider-unreachable', summary); return; }
+    let receipt;
+    try { receipt = await adapter.retrieveReceipt(identity); }
+    catch { await this.recordRetry(claim, 'provider-unreachable', summary); return; }
     const validation = validateReceiptAgainstAttempt(receipt, attempt, adapter.expectedAccountId());
     if (!validation.ok) {
-      logger.error('[PaymentService] Receipt rejected', {
-        attemptId: attempt.id,
-        reason: validation.rejection.reason,
-      });
-      return { type: 'rejected-receipt', reason: validation.rejection.reason };
+      if (await this.notifications.reject(claim, 'rejected-receipt', this.now())) summary.rejected += 1;
+      return;
     }
+    let resolution: PaymentNotificationResolution;
+    try {
+      const outcome = await this.fulfillment.fulfillOrder(attempt.orderId, paymentIdentityKey(identity));
+      if (outcome.type === 'unknown-order') {
+        if (await this.notifications.reject(claim, 'unknown-order', this.now())) summary.rejected += 1;
+        return;
+      }
+      if (outcome.type === 'order-not-pending') {
+        if (await this.notifications.reject(claim, 'order-not-pending', this.now())) summary.rejected += 1;
+        return;
+      }
+      resolution = outcome.type === 'fulfilled' ? 'fulfilled' : 'completed-duplicate';
+    } catch {
+      await this.recordRetry(claim, 'fulfillment-failed', summary); return;
+    }
+    if (await this.notifications.complete(claim, resolution, this.now())) summary.completed += 1;
+  }
 
-    await this.fulfillment.fulfillOrder(attempt.orderId, paymentIdentityKey(event.identity));
-    return { type: 'fulfilled' };
+  private async recordRetry(
+    claim: PaymentNotificationClaim,
+    code: 'unknown-transaction' | 'provider-unreachable' | 'fulfillment-failed',
+    summary: PaymentNotificationRunSummary,
+  ): Promise<void> {
+    const now = this.now();
+    const result = await this.notifications.retry(
+      claim, code, now, paymentNotificationRetryAt(now, claim.processingAttempts),
+      PAYMENT_NOTIFICATION_MAX_ATTEMPTS,
+    );
+    if (result === 'retry-wait') summary.retried += 1;
+    if (result === 'exhausted') summary.exhausted += 1;
   }
 }
 
@@ -279,6 +407,7 @@ function outcomeFromTerminalRecord(
 
 export const paymentService = new PaymentService(
   paymentAttemptRepository,
+  paymentNotificationRepository,
   paymentAdapter,
   paymentWebhookAdapters,
   purchaseFulfillmentService,

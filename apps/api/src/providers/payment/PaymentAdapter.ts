@@ -12,6 +12,7 @@ import type {
   PaymentProvider,
 } from 'server/domain/Payment';
 import type { PaymentReceipt } from 'server/domain/PaymentReceipt';
+import type { NormalizedPaymentWebhookEvent } from 'server/domain/PaymentNotification';
 
 export interface CreateCheckoutParams {
   paymentAttemptId: string;
@@ -52,17 +53,7 @@ export class PaymentCreationError extends Error {
  * Normalised webhook event — provider-agnostic identity plus a correlation
  * hint that must never select the stored attempt or order.
  */
-export type PaymentWebhookEvent =
-  | {
-    type: 'order.completed';
-    identity: PaymentIdentity;
-    correlationAttemptId: string;
-    providerTestMode: boolean | null;
-  }
-  | {
-    /** Non-actionable event (e.g. failed payment, overpaid) — safely ignored. */
-    type: 'order.ignored';
-  };
+export type PaymentWebhookEvent = NormalizedPaymentWebhookEvent;
 
 export interface PaymentAdapter {
   readonly provider: PaymentProvider;

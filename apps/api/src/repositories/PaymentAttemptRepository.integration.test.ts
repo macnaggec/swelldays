@@ -7,9 +7,17 @@ import { PaymentAttemptRepository } from './PaymentAttemptRepository';
 
 const repository = new PaymentAttemptRepository();
 
-beforeEach(resetDb);
-afterEach(() => prisma.paymentAttempt.deleteMany());
+beforeEach(async () => {
+  await prisma.paymentNotification.deleteMany();
+  await prisma.paymentAttempt.deleteMany();
+  await resetDb();
+});
+afterEach(async () => {
+  await prisma.paymentNotification.deleteMany();
+  await prisma.paymentAttempt.deleteMany();
+});
 afterAll(async () => {
+  await prisma.paymentNotification.deleteMany();
   await prisma.paymentAttempt.deleteMany();
   await resetDb();
   await prisma.$disconnect();
@@ -59,5 +67,30 @@ describe('PaymentAttemptRepository provider identity uniqueness', () => {
       attemptId: production.id, environment: 'production', providerTransactionId: 'txn_shared',
       checkoutUrl: 'https://example/txn_shared', expiresAt: null, providerTestMode: false,
     })).resolves.toEqual(expect.objectContaining({ environment: 'production' }));
+  });
+
+  it('returns unknown and stale pending attempts without mutating them', async () => {
+    const orderId = await createOrder();
+    const candidate = await repository.prepareAttempt({
+      orderId, provider: 'cryptocloud', expectedAmountCents: 1000, expectedCurrency: 'USD',
+    });
+    await repository.markCreationUnknown(candidate.id, 'provider-timeout');
+    const bound = await repository.prepareAttempt({
+      orderId, provider: 'paddle', expectedAmountCents: 1000, expectedCurrency: 'USD',
+    });
+    await repository.bindProviderSession({
+      attemptId: bound.id, environment: 'sandbox', providerTransactionId: 'txn_reconcile',
+      checkoutUrl: 'https://example.test/pay', expiresAt: null, providerTestMode: true,
+    });
+    await prisma.paymentAttempt.update({ where: { id: bound.id }, data: {
+      creationState: 'UNKNOWN', creationFailureCode: 'local-persistence-failed',
+    } });
+    const records = await repository.findForReconciliation(new Date(), new Date(), 10);
+    expect(records.map((record) => record.id)).not.toContain(candidate.id);
+    expect(records.map((record) => record.id)).toContain(bound.id);
+    const unresolved = await repository.listUnresolved(10);
+    expect(unresolved.map((record) => record.id)).toContain(candidate.id);
+    expect(unresolved.map((record) => record.id)).toContain(bound.id);
+    expect((await repository.findById(candidate.id))?.creationState).toBe('unknown');
   });
 });

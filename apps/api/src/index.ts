@@ -9,6 +9,7 @@ import { auth } from 'server/auth';
 import { appRouter } from 'server/router';
 import { createContext } from 'server/trpc';
 import { reconcileUploadAttempts } from 'server/jobs/reconcileUploadAttempts';
+import { reconcilePayments } from 'server/jobs/reconcilePayments';
 import { logger } from 'server/lib/logger';
 import { apiConfig } from 'server/config/env';
 import { publicPagesRouter } from 'server/routes/publicPages';
@@ -64,7 +65,22 @@ app.route('/', publicPagesRouter);
 const RECONCILE_INTERVAL_MS = 15 * 60_000;
 const runReconciler = () => reconcileUploadAttempts().catch((err) => logger.error('[reconciler] run failed', { err }));
 runReconciler();
-setInterval(runReconciler, RECONCILE_INTERVAL_MS);
+setInterval(runReconciler, RECONCILE_INTERVAL_MS).unref?.();
+
+let paymentReconciliationRunning = false;
+const runPaymentReconciler = async () => {
+  if (paymentReconciliationRunning) return;
+  paymentReconciliationRunning = true;
+  try {
+    await reconcilePayments();
+  } catch (err) {
+    logger.error('[payment-reconciler] run failed', { err });
+  } finally {
+    paymentReconciliationRunning = false;
+  }
+};
+void runPaymentReconciler();
+setInterval(() => { void runPaymentReconciler(); }, 15_000).unref?.();
 
 // Configurable so a second instance (e.g. the visual-capture run, which needs a
 // different database) can run alongside an ordinary dev server. Default unchanged.

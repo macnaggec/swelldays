@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PaymentAdapter } from 'server/providers/payment/PaymentAdapter';
 import { PaymentCreationError } from 'server/providers/payment/PaymentAdapter';
 import type { IPaymentAttemptRepository, PaymentAttemptRecord } from 'server/repositories/PaymentAttemptRepository';
+import type {
+  IPaymentNotificationRepository,
+  PaymentNotificationClaim,
+  PaymentNotificationRecord,
+} from 'server/repositories/PaymentNotificationRepository';
 import { PAYMENT_CREATION_LEASE_MS, PaymentService } from 'server/services/PaymentService';
 
 const NOW = new Date('2026-09-14T16:00:00Z');
@@ -17,6 +22,12 @@ const attempts: IPaymentAttemptRepository = {
   prepareAttempt: vi.fn(), bindProviderSession: vi.fn(),
   markCreationUnknown: vi.fn(), markCreationFailed: vi.fn(),
   findById: vi.fn(), findByOrderId: vi.fn(), findByIdentity: vi.fn(),
+  findForReconciliation: vi.fn(),
+  listUnresolved: vi.fn(),
+};
+const notifications: IPaymentNotificationRepository = {
+  store: vi.fn(), claimNext: vi.fn(), bind: vi.fn(), complete: vi.fn(), reject: vi.fn(), retry: vi.fn(),
+  list: vi.fn(), replay: vi.fn(),
 };
 const adapter: PaymentAdapter = {
   provider: 'cryptocloud', createCheckoutSession: vi.fn(),
@@ -43,9 +54,21 @@ const receipt = {
   subtotalCents: null, taxCents: null, discountCents: null, settlementNetCents: null,
   providerAccountId: null, providerTestMode: false,
 };
+const notification: PaymentNotificationRecord = {
+  id: 'notification-1', eventKey: 'event:cryptocloud:evt-1', eventType: 'order.completed',
+  provider: 'cryptocloud', sourceEventId: 'evt-1', occurredAt: NOW, environment: 'production',
+  providerTransactionId: 'INV-1', correlationAttemptId: 'attempt-1', providerTestMode: false,
+  paymentAttemptId: null, orderId: null, status: 'received', resolution: null, processingAttempts: 0,
+  availableAt: NOW, claimToken: null, claimExpiresAt: null, lastErrorCode: null,
+  receivedAt: NOW, updatedAt: NOW, completedAt: null,
+};
+const claim: PaymentNotificationClaim = {
+  ...notification, status: 'processing', processingAttempts: 1, claimToken: 'claim-1',
+  claimExpiresAt: new Date(NOW.getTime() + 30_000),
+};
 
 function service(checkout = adapter, known: readonly PaymentAdapter[] = [adapter]): PaymentService {
-  return new PaymentService(attempts, checkout, known, fulfillment, () => NOW);
+  return new PaymentService(attempts, notifications, checkout, known, fulfillment, () => NOW);
 }
 
 beforeEach(() => {
@@ -63,6 +86,19 @@ beforeEach(() => {
   vi.mocked(adapter.createCheckoutSession).mockResolvedValue(session);
   vi.mocked(adapter.retrieveReceipt).mockResolvedValue(receipt);
   vi.mocked(adapter.expectedAccountId).mockReturnValue(null);
+  vi.mocked(fulfillment.fulfillOrder).mockResolvedValue({ type: 'fulfilled' });
+  vi.mocked(notifications.store).mockResolvedValue({
+    inserted: true,
+    record: notification,
+  });
+  vi.mocked(notifications.claimNext).mockResolvedValue(null);
+  vi.mocked(notifications.bind).mockResolvedValue(true);
+  vi.mocked(notifications.complete).mockResolvedValue(true);
+  vi.mocked(notifications.reject).mockResolvedValue(true);
+  vi.mocked(notifications.retry).mockResolvedValue('retry-wait');
+  vi.mocked(notifications.list).mockResolvedValue({ items: [], nextCursor: null });
+  vi.mocked(attempts.findForReconciliation).mockResolvedValue([]);
+  vi.mocked(attempts.listUnresolved).mockResolvedValue([]);
 });
 
 describe('PaymentService preparation and creation', () => {
@@ -217,11 +253,12 @@ describe('PaymentService resume policy', () => {
   });
 });
 
-describe('PaymentService notification compatibility', () => {
+describe('PaymentService durable notification acceptance', () => {
   beforeEach(() => {
     vi.mocked(adapter.verifyWebhook).mockReturnValue(true);
     vi.mocked(adapter.parseWebhookEvent).mockReturnValue({
-      type: 'order.completed', identity, correlationAttemptId: 'attempt-1', providerTestMode: false,
+      type: 'order.completed', provider: 'cryptocloud', sourceEventId: null, occurredAt: null,
+      identity, correlationAttemptId: 'attempt-1', providerTestMode: false,
     });
     vi.mocked(attempts.findByIdentity).mockResolvedValue({
       ...readyAttempt, creationState: 'unknown', creationFailureCode: 'provider-timeout',
@@ -229,31 +266,117 @@ describe('PaymentService notification compatibility', () => {
     vi.mocked(adapter.retrieveReceipt).mockResolvedValue({ ...receipt, status: 'paid' });
   });
 
-  it('still fulfills a validated late payment after creation became unknown', async () => {
-    await expect(service().acceptVerifiedNotification(adapter, '{}', {})).resolves.toEqual({ type: 'fulfilled' });
-    expect(fulfillment.fulfillOrder).toHaveBeenCalledWith(
-      'order-1', '["cryptocloud","production","INV-1"]',
-    );
-  });
-
-  it('still fulfills a validated late payment after creation definitively failed', async () => {
-    vi.mocked(attempts.findByIdentity).mockResolvedValue({
-      ...readyAttempt,
-      creationState: 'definitively-failed',
-      creationFailureCode: 'provider-cancelled',
+  it('stores normalized facts and acknowledges without provider or fulfillment work', async () => {
+    await expect(service().acceptVerifiedNotification(adapter, '{}', {})).resolves.toEqual({
+      type: 'accepted', notificationId: 'notification-1', duplicate: false,
     });
-    await expect(service().acceptVerifiedNotification(adapter, '{}', {})).resolves.toEqual({ type: 'fulfilled' });
-    expect(fulfillment.fulfillOrder).toHaveBeenCalledWith(
-      'order-1', '["cryptocloud","production","INV-1"]',
-    );
-  });
-
-  it('keeps identity-first and correlation checks', async () => {
-    vi.mocked(adapter.parseWebhookEvent).mockReturnValue({
-      type: 'order.completed', identity, correlationAttemptId: 'swapped', providerTestMode: false,
-    });
-    await expect(service().acceptVerifiedNotification(adapter, '{}', {}))
-      .resolves.toEqual({ type: 'mismatched-correlation' });
+    expect(notifications.store).toHaveBeenCalledOnce();
+    expect(adapter.retrieveReceipt).not.toHaveBeenCalled();
     expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
+  });
+
+  it('reports a duplicate only after the durable read succeeds', async () => {
+    vi.mocked(notifications.store).mockResolvedValue({ inserted: false, record: notification });
+    await expect(service().acceptVerifiedNotification(adapter, '{}', {})).resolves.toEqual({
+      type: 'accepted', notificationId: 'notification-1', duplicate: true,
+    });
+  });
+
+  it('rejects an invalid signature before parsing or persistence', async () => {
+    vi.mocked(adapter.verifyWebhook).mockReturnValue(false);
+    await expect(service().acceptVerifiedNotification(adapter, '{}', {})).resolves.toEqual({ type: 'invalid-signature' });
+    expect(adapter.parseWebhookEvent).not.toHaveBeenCalled();
+    expect(notifications.store).not.toHaveBeenCalled();
+  });
+
+  it('propagates persistence failure so the route cannot acknowledge', async () => {
+    vi.mocked(notifications.store).mockRejectedValue(new Error('database unavailable'));
+    await expect(service().acceptVerifiedNotification(adapter, '{}', {})).rejects.toThrow('database unavailable');
+  });
+});
+
+describe('PaymentService notification worker', () => {
+  beforeEach(() => {
+    vi.mocked(notifications.claimNext).mockResolvedValueOnce(claim).mockResolvedValue(null);
+    vi.mocked(attempts.findByIdentity).mockResolvedValue(readyAttempt);
+    vi.mocked(adapter.retrieveReceipt).mockResolvedValue({ ...receipt, status: 'paid' });
+  });
+
+  it('binds, validates, fulfills, and completes a claimed notification', async () => {
+    await expect(service().processPendingNotifications()).resolves.toEqual({
+      claimed: 1, completed: 1, rejected: 0, retried: 0, exhausted: 0,
+    });
+    expect(notifications.bind).toHaveBeenCalledWith(claim, 'attempt-1', 'order-1');
+    expect(fulfillment.fulfillOrder).toHaveBeenCalledWith('order-1', '["cryptocloud","production","INV-1"]');
+    expect(notifications.complete).toHaveBeenCalledWith(claim, 'fulfilled', NOW);
+  });
+
+  it('retries early callbacks and provider failures instead of rejecting them', async () => {
+    vi.mocked(attempts.findByIdentity).mockResolvedValue(null);
+    await expect(service().processPendingNotifications()).resolves.toEqual(expect.objectContaining({ retried: 1 }));
+    expect(notifications.retry).toHaveBeenCalledWith(
+      claim, 'unknown-transaction', NOW, new Date(NOW.getTime() + 60_000), 10,
+    );
+  });
+
+  it('rejects a correlation mismatch before receipt retrieval', async () => {
+    const mismatch = { ...claim, correlationAttemptId: 'attempt-swapped' };
+    vi.mocked(notifications.claimNext).mockReset().mockResolvedValueOnce(mismatch).mockResolvedValue(null);
+    await expect(service().processPendingNotifications()).resolves.toEqual(expect.objectContaining({ rejected: 1 }));
+    expect(notifications.reject).toHaveBeenCalledWith(mismatch, 'mismatched-transaction', NOW);
+    expect(adapter.retrieveReceipt).not.toHaveBeenCalled();
+  });
+
+  it('retries thrown fulfillment and exhausts the final attempt', async () => {
+    const finalClaim = { ...claim, processingAttempts: 10 };
+    vi.mocked(notifications.claimNext).mockReset().mockResolvedValueOnce(finalClaim).mockResolvedValue(null);
+    vi.mocked(fulfillment.fulfillOrder).mockRejectedValue(new Error('commit interrupted'));
+    vi.mocked(notifications.retry).mockResolvedValue('exhausted');
+    await expect(service().processPendingNotifications()).resolves.toEqual(expect.objectContaining({ exhausted: 1 }));
+    expect(notifications.retry).toHaveBeenCalledWith(finalClaim, 'fulfillment-failed', NOW, expect.any(Date), 10);
+  });
+
+  it('rejects order-not-pending with its own paid-exception resolution', async () => {
+    vi.mocked(fulfillment.fulfillOrder).mockResolvedValue({ type: 'order-not-pending' });
+    await expect(service().processPendingNotifications()).resolves.toEqual(expect.objectContaining({ rejected: 1 }));
+    expect(notifications.reject).toHaveBeenCalledWith(claim, 'order-not-pending', NOW);
+    expect(notifications.complete).not.toHaveBeenCalled();
+  });
+});
+
+describe('PaymentService payment reconciliation', () => {
+  it('uses the stored provider and enqueues a paid bound attempt without creating payment', async () => {
+    vi.mocked(attempts.findForReconciliation).mockResolvedValue([readyAttempt]);
+    vi.mocked(adapter.retrieveReceipt).mockResolvedValue({ ...receipt, status: 'paid' });
+    await expect(service().reconcilePaymentAttempts()).resolves.toEqual({
+      inspected: 1, enqueuedPaid: 1, markedUnknown: 0, markedFailed: 0, providerErrors: 0,
+    });
+    expect(notifications.store).toHaveBeenCalledWith(expect.objectContaining({
+      eventKey: 'reconciliation:["cryptocloud","production","INV-1"]', correlationAttemptId: 'attempt-1',
+    }), NOW);
+    expect(adapter.createCheckoutSession).not.toHaveBeenCalled();
+  });
+
+  it('marks stale unbound creation unknown and preserves unbound unknown attempts', async () => {
+    vi.mocked(attempts.findForReconciliation).mockResolvedValue([
+      attempt, { ...attempt, id: 'attempt-2', creationState: 'unknown', creationFailureCode: 'provider-timeout' },
+    ]);
+    await expect(service().reconcilePaymentAttempts()).resolves.toEqual(expect.objectContaining({
+      inspected: 2, markedUnknown: 1,
+    }));
+    expect(attempts.markCreationUnknown).toHaveBeenCalledWith('attempt-1', 'stale-creating');
+    expect(adapter.retrieveReceipt).not.toHaveBeenCalled();
+  });
+
+  it('lists unbound unknown attempts for operators without feeding them into recurring reconciliation', async () => {
+    const unresolved: PaymentAttemptRecord = {
+      ...attempt, creationState: 'unknown', creationFailureCode: 'provider-timeout',
+    };
+    vi.mocked(attempts.listUnresolved).mockResolvedValue([unresolved]);
+    await expect(service().getOperatorStatus({ limit: 50 })).resolves.toEqual({
+      notifications: { items: [], nextCursor: null }, unresolvedAttempts: [unresolved],
+    });
+    expect(attempts.listUnresolved).toHaveBeenCalledWith(100);
+    expect(attempts.findForReconciliation).not.toHaveBeenCalled();
   });
 });

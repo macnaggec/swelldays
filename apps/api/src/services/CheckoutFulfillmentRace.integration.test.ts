@@ -131,7 +131,7 @@ describe('CheckoutFulfillmentRace — R04: checkout and fulfillment share the bu
     const originalTransaction = prisma.$transaction.bind(prisma);
     let interceptNextTransaction = true;
     let barrierReached = false;
-    let fulfillmentPromise: Promise<void> = Promise.resolve();
+    let fulfillmentPromise: ReturnType<PurchaseFulfillmentService['fulfillOrder']> = Promise.resolve({ type: 'fulfilled' });
     const transactionSpy = vi.spyOn(prisma, '$transaction');
     const wrappedTransaction = async (operation: (tx: Prisma.TransactionClient) => Promise<unknown>) => {
       const interceptThisTransaction = interceptNextTransaction;

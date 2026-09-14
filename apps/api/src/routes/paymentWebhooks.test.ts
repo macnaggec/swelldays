@@ -17,7 +17,7 @@ describe('payment webhook router', () => {
   it('routes each provider URL only to its retained provider adapter', async () => {
     const cryptoCloud = adapter('cryptocloud');
     const paddle = adapter('paddle');
-    const payments = { acceptVerifiedNotification: vi.fn().mockResolvedValue({ type: 'fulfilled' }) };
+    const payments = { acceptVerifiedNotification: vi.fn().mockResolvedValue({ type: 'accepted', notificationId: 'n1', duplicate: false }) };
     const router = createPaymentWebhookRouter({ adapters: [cryptoCloud, paddle], payments });
 
     expect((await router.request('/cryptocloud', { method: 'POST', body: '{}' })).status).toBe(200);
@@ -30,44 +30,26 @@ describe('payment webhook router', () => {
     );
   });
 
-  it.each([
-    ['invalid-signature', 401],
-    ['unknown-transaction', 409],
-    ['mismatched-correlation', 409],
-    ['ignored', 200],
-    ['fulfilled', 200],
-    ['rejected-receipt', 409],
-    ['provider-unreachable', 502],
-  ] as const)('maps %s to %s', async (type, status) => {
+  it('maps invalid signatures to 401', async () => {
     const cryptoCloud = adapter('cryptocloud');
-    const payments = { acceptVerifiedNotification: vi.fn().mockResolvedValue({ type }) };
+    const payments = { acceptVerifiedNotification: vi.fn().mockResolvedValue({ type: 'invalid-signature' }) };
     const router = createPaymentWebhookRouter({ adapters: [cryptoCloud], payments });
-    expect((await router.request('/cryptocloud', { method: 'POST', body: '{}' })).status).toBe(status);
+    expect((await router.request('/cryptocloud', { method: 'POST', body: '{}' })).status).toBe(401);
   });
 
-  it('returns 409 with the validation-failed message for a rejected receipt', async () => {
+  it('does not rate-limit a valid provider burst', async () => {
     const cryptoCloud = adapter('cryptocloud');
-    const payments = {
-      acceptVerifiedNotification: vi.fn().mockResolvedValue({ type: 'rejected-receipt', reason: 'amount-mismatch' }),
-    };
+    const payments = { acceptVerifiedNotification: vi.fn().mockResolvedValue({ type: 'accepted', notificationId: 'n1', duplicate: false }) };
     const router = createPaymentWebhookRouter({ adapters: [cryptoCloud], payments });
-    const response = await router.request('/cryptocloud', { method: 'POST', body: '{}' });
-    expect(response.status).toBe(409);
-    await expect(response.json()).resolves.toEqual({ error: 'Payment validation failed' });
-  });
-
-  it('returns 502 with the provider-unreachable message', async () => {
-    const cryptoCloud = adapter('cryptocloud');
-    const payments = { acceptVerifiedNotification: vi.fn().mockResolvedValue({ type: 'provider-unreachable' }) };
-    const router = createPaymentWebhookRouter({ adapters: [cryptoCloud], payments });
-    const response = await router.request('/cryptocloud', { method: 'POST', body: '{}' });
-    expect(response.status).toBe(502);
-    await expect(response.json()).resolves.toEqual({ error: 'Payment provider unreachable' });
+    const responses = await Promise.all(Array.from({ length: 25 }, () =>
+      router.request('/cryptocloud', { method: 'POST', body: '{}' })));
+    expect(responses.every((response) => response.status === 200)).toBe(true);
+    expect(payments.acceptVerifiedNotification).toHaveBeenCalledTimes(25);
   });
 
   it('rejects an oversized body with 413 without calling the service', async () => {
     const cryptoCloud = adapter('cryptocloud');
-    const payments = { acceptVerifiedNotification: vi.fn().mockResolvedValue({ type: 'fulfilled' }) };
+    const payments = { acceptVerifiedNotification: vi.fn().mockResolvedValue({ type: 'accepted', notificationId: 'n1', duplicate: false }) };
     const router = createPaymentWebhookRouter({ adapters: [cryptoCloud], payments });
     const oversizedBody = 'a'.repeat(65_537);
 
@@ -78,7 +60,7 @@ describe('payment webhook router', () => {
     expect(payments.acceptVerifiedNotification).not.toHaveBeenCalled();
   });
 
-  it('keeps processing errors generic', async () => {
+  it('never acknowledges a persistence failure and keeps its response generic', async () => {
     const cryptoCloud = adapter('cryptocloud');
     const payments = { acceptVerifiedNotification: vi.fn().mockRejectedValue(new Error('private detail')) };
     const router = createPaymentWebhookRouter({ adapters: [cryptoCloud], payments });

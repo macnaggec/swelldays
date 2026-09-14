@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { BadGatewayError } from 'server/errors';
+import { BadGatewayError, BadRequestError } from 'server/errors';
 import { logger } from 'server/lib/logger';
 import { apiConfig } from 'server/config/env';
 import type { PaymentIdentity } from 'server/domain/Payment';
@@ -20,14 +20,6 @@ interface PaddleTransactionResponse {
   data: {
     id: string;
     checkout: { url: string };
-  };
-}
-
-interface PaddleWebhookPayload {
-  event_type: string;
-  data: {
-    id: string;             // txn_... provider transaction identity
-    custom_data: { paymentAttemptId?: string } | null;
   };
 }
 
@@ -271,22 +263,48 @@ function isTimestampStale(timestamp: string): boolean {
   return Math.abs(Math.floor(Date.now() / 1000) - ts) > SIGNATURE_TOLERANCE_SECONDS;
 }
 
-function parseWebhookEvent(rawBody: string, _headers: Record<string, string>): PaymentWebhookEvent {
-  const payload = JSON.parse(rawBody) as PaddleWebhookPayload;
+function isWebhookRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
-  if (payload.event_type !== 'transaction.completed') {
-    logger.warn('[Paddle] Non-actionable webhook event — ignoring', { eventType: payload.event_type });
-    return { type: 'order.ignored' };
+function parseWebhookEvent(rawBody: string, _headers: Record<string, string>): PaymentWebhookEvent {
+  let decoded: unknown;
+  try { decoded = JSON.parse(rawBody); } catch { throw new BadRequestError('Malformed Paddle webhook'); }
+  if (!isWebhookRecord(decoded)) {
+    throw new BadRequestError('Malformed Paddle webhook');
+  }
+  const { event_id: eventId, event_type: eventType, occurred_at: occurredAtValue } = decoded;
+  if (typeof eventId !== 'string' || typeof eventType !== 'string' || typeof occurredAtValue !== 'string') {
+    throw new BadRequestError('Malformed Paddle webhook');
+  }
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(occurredAtValue)) {
+    throw new BadRequestError('Malformed Paddle webhook date');
+  }
+  const occurredAt = new Date(occurredAtValue);
+  if (Number.isNaN(occurredAt.getTime())) throw new BadRequestError('Malformed Paddle webhook date');
+
+  if (eventType !== 'transaction.completed') {
+    logger.warn('[Paddle] Non-actionable webhook event — ignoring', { eventType });
+    return { type: 'order.ignored', provider: 'paddle', sourceEventId: eventId, occurredAt, identity: null };
+  }
+
+  const data = decoded.data;
+  if (!isWebhookRecord(data) || typeof data.id !== 'string' || !isWebhookRecord(data.custom_data)
+    || typeof data.custom_data.paymentAttemptId !== 'string') {
+    throw new BadRequestError('Malformed Paddle transaction webhook');
   }
 
   return {
     type: 'order.completed',
+    provider: 'paddle',
+    sourceEventId: eventId,
+    occurredAt,
     identity: {
       provider: 'paddle',
       environment: creds().environment,
-      providerTransactionId: payload.data.id,
+      providerTransactionId: data.id,
     },
-    correlationAttemptId: payload.data.custom_data?.paymentAttemptId ?? '',
+    correlationAttemptId: data.custom_data.paymentAttemptId,
     providerTestMode: creds().environment === 'sandbox',
   };
 }

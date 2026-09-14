@@ -4,6 +4,7 @@ import { BadGatewayError } from 'server/errors';
 import { PaymentCreationError } from './PaymentAdapter';
 import { apiConfig } from 'server/config/env';
 import { paddleAdapter } from './PaddleAdapter';
+import { BadRequestError } from 'server/errors';
 
 // ---------------------------------------------------------------------------
 // Matches the safe configuration installed by the server test setup
@@ -30,6 +31,7 @@ function makeWebhookBody(eventType = 'transaction.completed', overrides: Record<
   return JSON.stringify({
     event_id: 'evt_01',
     event_type: eventType,
+    occurred_at: '2026-09-14T16:00:00Z',
     data: {
       id: 'txn_01m1v7datrz22kvtvp98mcvytk',
       custom_data: { paymentAttemptId: 'attempt-abc-123' },
@@ -128,6 +130,8 @@ describe('PaddleAdapter.parseWebhookEvent', () => {
       providerTransactionId: 'txn_01m1v7datrz22kvtvp98mcvytk',
     });
     expect(event.correlationAttemptId).toBe('attempt-abc-123');
+    expect(event.sourceEventId).toBe('evt_01');
+    expect(event.occurredAt).toEqual(new Date('2026-09-14T16:00:00Z'));
   });
 
   it('returns order.ignored (not throws) for any other event type', () => {
@@ -136,6 +140,15 @@ describe('PaddleAdapter.parseWebhookEvent', () => {
     const event = paddleAdapter.parseWebhookEvent(rawBody, {});
 
     expect(event.type).toBe('order.ignored');
+  });
+
+  it('rejects missing event ids and invalid occurrence dates', () => {
+    const missingId = JSON.parse(makeWebhookBody());
+    delete missingId.event_id;
+    expect(() => paddleAdapter.parseWebhookEvent(JSON.stringify(missingId), {})).toThrow(BadRequestError);
+    const invalidDate = JSON.parse(makeWebhookBody());
+    invalidDate.occurred_at = 'not-a-date';
+    expect(() => paddleAdapter.parseWebhookEvent(JSON.stringify(invalidDate), {})).toThrow(BadRequestError);
   });
 });
 
