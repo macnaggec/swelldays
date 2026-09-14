@@ -246,6 +246,7 @@ model Order {
   buyer              User?       @relation(fields: [buyerId], references: [id])
   purchases          Purchase[]
   paymentAttempts    PaymentAttempt[]
+  paymentNotifications PaymentNotification[]
 
   // Postgres does not treat two NULL buyer_id values as equal, so this
   // constraint gives no duplicate protection for a guest (buyerId: null)
@@ -272,11 +273,44 @@ model PaymentAttempt {
   createdAt             DateTime           @default(now()) @map("created_at")
   updatedAt             DateTime           @updatedAt @map("updated_at")
   order                 Order              @relation(fields: [orderId], references: [id])
+  notifications         PaymentNotification[]
 
   @@index([orderId], map: "payment_attempts_order_id_idx")
   @@index([orderId, creationState, expiresAt], map: "payment_attempts_order_state_expiry_idx")
   @@unique([provider, environment, providerTransactionId], map: "payment_attempts_provider_environment_transaction_key")
   @@map("payment_attempts")
+}
+
+model PaymentNotification {
+  id                    String                        @id @default(uuid())
+  eventKey              String                        @unique @map("event_key")
+  eventType             String                        @map("event_type")
+  provider              PaymentProvider
+  sourceEventId         String?                       @map("source_event_id")
+  occurredAt            DateTime?                     @map("occurred_at")
+  environment           PaymentEnvironment?
+  providerTransactionId String?                       @map("provider_transaction_id")
+  correlationAttemptId  String?                       @map("correlation_attempt_id")
+  providerTestMode      Boolean?                      @map("provider_test_mode")
+  paymentAttemptId      String?                       @map("payment_attempt_id")
+  orderId               String?                       @map("order_id")
+  status                PaymentNotificationStatus     @default(RECEIVED)
+  resolution            PaymentNotificationResolution?
+  processingAttempts    Int                           @default(0) @map("processing_attempts")
+  availableAt           DateTime                      @default(now()) @map("available_at")
+  claimToken            String?                       @map("claim_token")
+  claimExpiresAt        DateTime?                     @map("claim_expires_at")
+  lastErrorCode         String?                       @map("last_error_code")
+  receivedAt            DateTime                      @default(now()) @map("received_at")
+  updatedAt             DateTime                      @updatedAt @map("updated_at")
+  completedAt           DateTime?                     @map("completed_at")
+  paymentAttempt        PaymentAttempt?               @relation(fields: [paymentAttemptId], references: [id], onDelete: SetNull)
+  order                 Order?                        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([status, availableAt, claimExpiresAt], map: "payment_notifications_claim_idx")
+  @@index([status, receivedAt(sort: Desc), id(sort: Desc)], map: "payment_notifications_status_received_idx")
+  @@index([receivedAt(sort: Desc), id(sort: Desc)], map: "payment_notifications_received_idx")
+  @@map("payment_notifications")
 }
 
 model OrderItem {
@@ -464,6 +498,25 @@ enum PaymentAttemptCreationState {
   READY
   UNKNOWN
   DEFINITIVELY_FAILED
+}
+
+enum PaymentNotificationStatus {
+  RECEIVED
+  PROCESSING
+  RETRY_WAIT
+  COMPLETED
+  REJECTED
+  EXHAUSTED
+}
+
+enum PaymentNotificationResolution {
+  FULFILLED
+  COMPLETED_DUPLICATE
+  IGNORED
+  UNKNOWN_ORDER
+  ORDER_NOT_PENDING
+  MISMATCHED_TRANSACTION
+  REJECTED_RECEIPT
 }
 
 enum TransactionType {
