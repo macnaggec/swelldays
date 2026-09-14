@@ -10,6 +10,7 @@ import type {
   CheckoutSessionResult,
   PaymentWebhookEvent,
 } from 'server/providers/payment/PaymentAdapter';
+import { PaymentCreationError } from 'server/providers/payment/PaymentAdapter';
 
 // The vendor's documentation now shows `api.trybit.com`, but this legacy host
 // is kept because R02 verified it responds and the creation call already uses
@@ -56,6 +57,14 @@ interface CCInvoiceInfoEntry {
   amount_usd: number;
   status: string;
   test_mode: boolean;
+}
+
+function isInvoiceResponse(value: unknown): value is CCInvoiceResponse {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const response = value as Record<string, unknown>;
+  if (response.status !== 'success' && response.status !== 'error') return false;
+  return response.result === undefined
+    || (typeof response.result === 'object' && response.result !== null && !Array.isArray(response.result));
 }
 
 function contentType(headers: Record<string, string>): string {
@@ -150,33 +159,68 @@ async function createCheckoutSession(
     fail_url: params.failUrl,
   };
 
-  const response = await fetch(
-    `${CRYPTOCLOUD_API_BASE}/v2/invoice/create`, {
-    method: 'POST',
-    signal: AbortSignal.timeout(10_000),
-    headers: {
-      Authorization: `Token ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(
+      `${CRYPTOCLOUD_API_BASE}/v2/invoice/create`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(10_000),
+        headers: {
+          Authorization: `Token ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+  } catch (err) {
+    if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      throw new PaymentCreationError('unknown', 'provider-timeout', 'Payment provider timed out');
+    }
+    throw new PaymentCreationError('unknown', 'provider-unreachable', 'Payment provider is unreachable');
+  }
 
   if (!response.ok) {
     logger.error('[CryptoCloud] Invoice creation failed', { status: response.status });
-    throw new BadGatewayError('Payment provider error');
+    const ambiguous = response.status === 408
+      || response.status === 409
+      || response.status === 425
+      || response.status === 429
+      || response.status >= 500;
+    const definitelyRejected = response.status >= 400 && response.status < 500 && !ambiguous;
+    throw new PaymentCreationError(
+      definitelyRejected ? 'definitively-failed' : 'unknown',
+      definitelyRejected ? 'provider-rejected' : 'provider-unreachable',
+      'Payment provider rejected invoice creation',
+    );
   }
 
-  const data = (await response.json()) as CCInvoiceResponse;
+  let decoded: unknown;
+  try {
+    decoded = await response.json();
+  } catch {
+    throw new PaymentCreationError('unknown', 'provider-response-invalid', 'Payment provider response was invalid');
+  }
+  if (!isInvoiceResponse(decoded)) {
+    throw new PaymentCreationError('unknown', 'provider-response-invalid', 'Payment provider response was invalid');
+  }
+  const data = decoded;
 
-  if (data.status !== 'success' || !data.result?.link || !data.result.uuid) {
+  if (
+    data.status !== 'success'
+    || typeof data.result?.link !== 'string'
+    || data.result.link.length === 0
+    || typeof data.result.uuid !== 'string'
+    || data.result.uuid.length === 0
+    || typeof data.result.expiry_date !== 'string'
+    || typeof data.result.test_mode !== 'boolean'
+  ) {
     logger.error('[CryptoCloud] Unexpected invoice response', { status: data.status });
-    throw new BadGatewayError('Payment provider error');
+    throw new PaymentCreationError('unknown', 'provider-response-invalid', 'Payment provider response was invalid');
   }
 
   const expiresAt = parseUtcExpiry(data.result.expiry_date);
   if (Number.isNaN(expiresAt.getTime())) {
     logger.error('[CryptoCloud] Invalid invoice expiry', { providerTransactionId: data.result.uuid });
-    throw new BadGatewayError('Payment provider error');
+    throw new PaymentCreationError('unknown', 'provider-response-invalid', 'Payment provider response was invalid');
   }
   return {
     providerTransactionId: data.result.uuid,

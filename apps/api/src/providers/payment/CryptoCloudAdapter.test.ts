@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { BadGatewayError } from 'server/errors';
+import { PaymentCreationError } from './PaymentAdapter';
 import { cryptoCloudAdapter } from './CryptoCloudAdapter';
 
 // ---------------------------------------------------------------------------
@@ -274,7 +275,7 @@ describe('CryptoCloudAdapter.createCheckoutSession', () => {
     });
   });
 
-  it('throws BadGatewayError when the API returns a non-ok HTTP response', async () => {
+  it('classifies an ambiguous 5xx response as unknown', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
       status: 503,
@@ -283,10 +284,12 @@ describe('CryptoCloudAdapter.createCheckoutSession', () => {
 
     await expect(
       cryptoCloudAdapter.createCheckoutSession(validParams)
-    ).rejects.toBeInstanceOf(BadGatewayError);
+    ).rejects.toMatchObject({
+      certainty: 'unknown', failureCode: 'provider-unreachable',
+    });
   });
 
-  it('throws BadGatewayError when the API returns a non-success response body', async () => {
+  it('classifies an unusable success response as unknown', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -295,7 +298,37 @@ describe('CryptoCloudAdapter.createCheckoutSession', () => {
 
     await expect(
       cryptoCloudAdapter.createCheckoutSession(validParams)
-    ).rejects.toBeInstanceOf(BadGatewayError);
+    ).rejects.toMatchObject({
+      certainty: 'unknown', failureCode: 'provider-response-invalid',
+    });
+  });
+
+  it('classifies a definite 4xx rejection and timeout separately', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 422 }));
+    await expect(cryptoCloudAdapter.createCheckoutSession(validParams)).rejects.toMatchObject({
+      certainty: 'definitively-failed', failureCode: 'provider-rejected',
+    });
+
+    const timeout = new Error('timed out');
+    timeout.name = 'TimeoutError';
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(timeout));
+    await expect(cryptoCloudAdapter.createCheckoutSession(validParams)).rejects.toMatchObject({
+      certainty: 'unknown', failureCode: 'provider-timeout',
+    });
+  });
+
+  it('classifies transport and malformed JSON failures conservatively', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('connection reset')));
+    await expect(cryptoCloudAdapter.createCheckoutSession(validParams)).rejects.toBeInstanceOf(PaymentCreationError);
+    await expect(cryptoCloudAdapter.createCheckoutSession(validParams)).rejects.toMatchObject({
+      certainty: 'unknown', failureCode: 'provider-unreachable',
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, status: 200, json: async () => { throw new SyntaxError('bad json'); },
+    }));
+    await expect(cryptoCloudAdapter.createCheckoutSession(validParams)).rejects.toMatchObject({
+      certainty: 'unknown', failureCode: 'provider-response-invalid',
+    });
   });
 });
 

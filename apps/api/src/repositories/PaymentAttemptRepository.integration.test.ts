@@ -25,10 +25,10 @@ async function createOrder(): Promise<string> {
 describe('PaymentAttemptRepository provider identity uniqueness', () => {
   it('rejects binding the same provider/environment transaction to two attempts', async () => {
     const orderId = await createOrder();
-    const first = await repository.createAttempt({
+    const first = await repository.prepareAttempt({
       orderId, provider: 'cryptocloud', expectedAmountCents: 1000, expectedCurrency: 'USD',
     });
-    const second = await repository.createAttempt({
+    const second = await repository.prepareAttempt({
       orderId, provider: 'cryptocloud', expectedAmountCents: 1000, expectedCurrency: 'USD',
     });
     const binding = {
@@ -45,10 +45,10 @@ describe('PaymentAttemptRepository provider identity uniqueness', () => {
 
   it('allows the same provider transaction id in different environments', async () => {
     const orderId = await createOrder();
-    const sandbox = await repository.createAttempt({
+    const sandbox = await repository.prepareAttempt({
       orderId, provider: 'paddle', expectedAmountCents: 1000, expectedCurrency: 'USD',
     });
-    const production = await repository.createAttempt({
+    const production = await repository.prepareAttempt({
       orderId, provider: 'paddle', expectedAmountCents: 1000, expectedCurrency: 'USD',
     });
     await expect(repository.bindProviderSession({

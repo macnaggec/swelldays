@@ -1,4 +1,4 @@
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, PaymentAttemptCreationState } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
 import type { IOrderRepository, OrderWithItems } from 'server/repositories/OrderRepository';
@@ -8,24 +8,17 @@ import { orderRepository } from 'server/repositories/OrderRepository';
 import { mediaRepository } from 'server/repositories/MediaRepository';
 import { purchaseRepository } from 'server/repositories/PurchaseRepository';
 import type { IPaymentService } from 'server/services/PaymentService';
+import type { PaymentCheckoutOutcome } from 'server/services/PaymentService';
 import { paymentService } from 'server/services/PaymentService';
 import type { ICloudinaryService } from 'server/services/CloudinaryService';
 import { cloudinaryService } from 'server/services/CloudinaryService';
-import { BadRequestError, BadGatewayError, ForbiddenError, ConflictError } from 'server/errors';
-import { logger } from 'server/lib/logger';
+import { BadRequestError, BadGatewayError, ForbiddenError, ConflictError, ServiceUnavailableError } from 'server/errors';
 import { acquireSerializationLock, buyerScope, withTransactionRetry } from 'server/lib/TransactionSerialization';
 import { MEDIA_STATUS } from '@swelldays/contracts/core';
 import { apiConfig } from 'server/config/env';
 import type { OrderLineSnapshot, PaymentProvider, PricedCheckoutCatalogItem } from 'server/domain/OrderEconomics';
 import { snapshotOrderLine } from 'server/domain/OrderEconomics';
 
-// A buyer plausibly needs up to this long to complete a CryptoCloud payment.
-// Order has no expiresAt column to derive this from structurally, so the
-// window is picked explicitly here. A PENDING order older than the window
-// is not expired or transitioned — it simply stops being considered by the
-// pending-order check below (see roadmap Non-goals: no reservation/expiry
-// system).
-const PENDING_ORDER_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const RACED_ORDER_RETRY_ATTEMPTS = 3;
 const RACED_ORDER_RETRY_DELAY_MS = 250; // ms
 
@@ -41,7 +34,7 @@ export class CheckoutService {
     private orders: IOrderRepository,
     private media: IMediaRepository,
     private purchases: IPurchaseRepository,
-    private payment: Pick<IPaymentService, 'createAttempt'>,
+    private payment: Pick<IPaymentService, 'prepareAttempt' | 'openPreparedAttempt' | 'resumeAttempt'>,
     private cloudinary: ICloudinaryService,
     private frontendOrigin: string,
     private paymentProvider: PaymentProvider,
@@ -55,11 +48,11 @@ export class CheckoutService {
    * client" posture as the price validation below — applied to idempotency
    * keys, not just prices; see roadmap P05).
    */
-  private async findCachedCheckoutSession(
+  private async findCachedOrder(
     buyerId: string | null,
     clientRequestId: string,
     itemIds: string[],
-  ): Promise<{ checkoutUrl: string; orderId: string } | null> {
+  ): Promise<OrderWithItems | null> {
     const existing = await this.orders.findOrderByBuyerAndClientRequestId(buyerId, clientRequestId);
     if (!existing) return null;
 
@@ -69,19 +62,15 @@ export class CheckoutService {
       );
     }
 
-    if (existing.status === OrderStatus.PENDING && existing.checkoutSessionUrl) {
-      return { checkoutUrl: existing.checkoutSessionUrl, orderId: existing.id };
-    }
-    return null;
+    return existing;
   }
 
   /**
    * Called when createOrderForBuyer's/createOrder's unique-constraint INSERT
    * lost a race against a concurrent call under the same (buyerId,
    * clientRequestId) — the winner's Order row already exists (that's why we
-   * got ConflictError here), but it may not have saved its checkoutSessionUrl
-   * yet (openPaymentSession is still running for the winner). Poll briefly for
-   * the winner to finish instead of surfacing the raw ConflictError for what
+   * got ConflictError here), but its prepared PaymentAttempt may still be in
+   * the short creation lease. Poll briefly for the winner to finish instead of surfacing the raw ConflictError for what
    * should be a transparently deduplicated request (AD2/roadmap P04).
    *
    * If the winning order is FAILED, that's a real terminal failure under this
@@ -105,13 +94,11 @@ export class CheckoutService {
           'This request\'s idempotency key was already used for a different set of items — please retry with a new request.',
         );
       }
-      if (order?.status === OrderStatus.PENDING && order.checkoutSessionUrl) {
-        return { checkoutUrl: order.checkoutSessionUrl, orderId: order.id };
-      }
-      if (order?.status === OrderStatus.FAILED) {
-        throw new BadRequestError(
-          'This checkout attempt failed — please retry with a new request.',
-        );
+      if (order !== null) {
+        const outcome = await this.payment.resumeAttempt(order.id);
+        if (outcome.type !== 'creating') {
+          return this.requireCheckoutUrl(order.id, outcome);
+        }
       }
 
       if (attempt < RACED_ORDER_RETRY_ATTEMPTS - 1) {
@@ -119,8 +106,8 @@ export class CheckoutService {
       }
     }
 
-    throw new BadRequestError(
-      'This checkout attempt is still being processed — please wait a moment and retry.',
+    throw new ServiceUnavailableError(
+      'This checkout attempt is still being created — please wait a moment and retry.',
     );
   }
 
@@ -138,19 +125,16 @@ export class CheckoutService {
     itemIds: string[],
     clientRequestId: string,
   ): Promise<{ checkoutUrl: string; orderId: string }> {
-    const cached = await this.findCachedCheckoutSession(buyerId, clientRequestId, itemIds);
-    if (cached) return cached;
+    const cached = await this.findCachedOrder(buyerId, clientRequestId, itemIds);
+    if (cached) {
+      return this.requireCheckoutUrl(cached.id, await this.payment.resumeAttempt(cached.id));
+    }
 
-    let order: Awaited<ReturnType<IOrderRepository['createOrder']>>;
+    let prepared: Awaited<ReturnType<CheckoutService['createOrderForBuyer']>>;
     try {
-      order = buyerId !== null
+      prepared = buyerId !== null
         ? await this.createOrderForBuyer(buyerId, guestEmail, itemIds, clientRequestId)
-        : await this.orders.createOrder({
-          buyerId,
-          guestEmail,
-          clientRequestId,
-          items: await this.snapshotCartLines(buyerId, itemIds),
-        });
+        : await this.createOrderForGuest(guestEmail, itemIds, clientRequestId);
     } catch (err) {
       if (err instanceof ConflictError) {
         return await this.resolveRacedCheckoutSession(buyerId, clientRequestId, itemIds);
@@ -158,10 +142,11 @@ export class CheckoutService {
       throw err;
     }
 
-    const checkoutUrl = await this.openPaymentSession(order.id, buyerId, order.totalAmount);
-    await this.orders.saveCheckoutSessionUrl(order.id, checkoutUrl);
-
-    return { checkoutUrl, orderId: order.id };
+    return this.openPaymentSession(
+      prepared.order.id,
+      prepared.attempt.id,
+      buyerId,
+    );
   }
 
   async getPurchases(buyerId: string): Promise<{
@@ -276,7 +261,10 @@ export class CheckoutService {
     guestEmail: string | undefined,
     itemIds: string[],
     clientRequestId: string,
-  ): Promise<OrderWithItems> {
+  ): Promise<{
+    order: OrderWithItems;
+    attempt: Awaited<ReturnType<IPaymentService['prepareAttempt']>>;
+  }> {
     return runQuery(() =>
       withTransactionRetry(() =>
         prisma.$transaction(async (tx) => {
@@ -292,14 +280,12 @@ export class CheckoutService {
             );
           }
 
-          const sinceCreatedAt = new Date(Date.now() - PENDING_ORDER_WINDOW_MS);
           const pendingRows = await tx.orderItem.findMany({
             where: {
               mediaItemId: { in: itemIds },
               order: {
                 buyerId,
                 status: OrderStatus.PENDING,
-                createdAt: { gte: sinceCreatedAt },
                 // Exclude this same clientRequestId: a same-key resubmission (e.g. a
                 // double-click) is the identical logical attempt, not a different
                 // pending order — it must fall through to the unique-constraint
@@ -308,46 +294,129 @@ export class CheckoutService {
                 clientRequestId: { not: clientRequestId },
               },
             },
-            select: { mediaItemId: true },
+            select: {
+              mediaItemId: true,
+              order: {
+                select: {
+                  paymentAttempts: {
+                    orderBy: { createdAt: 'asc' },
+                    take: 2,
+                    select: {
+                      creationState: true,
+                      environment: true,
+                      providerTransactionId: true,
+                      checkoutUrl: true,
+                      expiresAt: true,
+                    },
+                  },
+                },
+              },
+            },
           });
-          if (pendingRows.length > 0) {
+          const blockingRows = pendingRows.filter((row) => isPendingPaymentBlocking(
+            row.order.paymentAttempts,
+            new Date(),
+          ));
+          if (blockingRows.length > 0) {
             throw new BadRequestError(
-              `Some items already have a pending order: ${pendingRows.map((r) => r.mediaItemId).join(', ')}`,
+              `Some items already have a pending order: ${blockingRows.map((r) => r.mediaItemId).join(', ')}`,
             );
           }
 
           const items = await this.snapshotCartLines(buyerId, itemIds, tx);
-          return this.orders.createOrder({ buyerId, guestEmail, clientRequestId, items }, tx);
+          const order = await this.orders.createOrder({ buyerId, guestEmail, clientRequestId, items }, tx);
+          const attempt = await this.payment.prepareAttempt({
+            orderId: order.id,
+            totalCents: order.totalAmount,
+          }, tx);
+          return { order, attempt };
         })
       )
     );
   }
 
+  private async createOrderForGuest(
+    guestEmail: string | undefined,
+    itemIds: string[],
+    clientRequestId: string,
+  ): Promise<{
+    order: OrderWithItems;
+    attempt: Awaited<ReturnType<IPaymentService['prepareAttempt']>>;
+  }> {
+    return runQuery(() => prisma.$transaction(async (tx) => {
+      const items = await this.snapshotCartLines(null, itemIds, tx);
+      const order = await this.orders.createOrder({
+        buyerId: null,
+        guestEmail,
+        clientRequestId,
+        items,
+      }, tx);
+      const attempt = await this.payment.prepareAttempt({
+        orderId: order.id,
+        totalCents: order.totalAmount,
+      }, tx);
+      return { order, attempt };
+    }));
+  }
+
   private async openPaymentSession(
     orderId: string,
+    attemptId: string,
     buyerId: string | null,
-    totalCents: number,
-  ): Promise<string> {
+  ): Promise<{ checkoutUrl: string; orderId: string }> {
     const successUrl = buyerId
       ? `${this.frontendOrigin}/me/collections/purchases?order=${orderId}`
       : `${this.frontendOrigin}/order-success?orderId=${orderId}`;
 
-    try {
-      const { checkoutUrl } = await this.payment.createAttempt({
-        orderId,
-        totalCents,
-        successUrl,
-        failUrl: `${this.frontendOrigin}/cart`,
-      });
-
-      return checkoutUrl;
-    } catch (err) {
-      logger.error('[CheckoutService] Payment gateway error', { err, orderId });
-      await this.orders.markOrderFailed(orderId);
-
-      throw new BadGatewayError('Failed to create checkout session');
-    }
+    const outcome = await this.payment.openPreparedAttempt({
+      attemptId,
+      successUrl,
+      failUrl: `${this.frontendOrigin}/cart`,
+    });
+    return this.requireCheckoutUrl(orderId, outcome);
   }
+
+  private async requireCheckoutUrl(
+    orderId: string,
+    outcome: PaymentCheckoutOutcome,
+  ): Promise<{ checkoutUrl: string; orderId: string }> {
+    if (outcome.type === 'ready') return { checkoutUrl: outcome.checkoutUrl, orderId };
+    if (outcome.type === 'definitively-failed') {
+      await this.orders.markOrderFailed(orderId);
+      throw new BadGatewayError('Failed to create checkout session; retry with a new request');
+    }
+    if (outcome.type === 'payment-received') {
+      throw new ServiceUnavailableError('Payment received and is being processed');
+    }
+    if (outcome.type === 'creating') {
+      throw new ServiceUnavailableError('Checkout session is still being created');
+    }
+    throw new ServiceUnavailableError('Checkout session outcome is unknown; retry later');
+  }
+}
+
+type PendingPaymentAttempt = {
+  creationState: PaymentAttemptCreationState;
+  environment: unknown | null;
+  providerTransactionId: string | null;
+  checkoutUrl: string | null;
+  expiresAt: Date | null;
+};
+
+function isPendingPaymentBlocking(attempts: PendingPaymentAttempt[], now: Date): boolean {
+  if (attempts.length !== 1) return true;
+  const attempt = attempts[0]!;
+  const bound = attempt.environment !== null
+    && attempt.providerTransactionId !== null
+    && attempt.checkoutUrl !== null;
+  const state = attempt.creationState === PaymentAttemptCreationState.CREATING && bound
+    ? PaymentAttemptCreationState.READY
+    : attempt.creationState;
+  if (state === PaymentAttemptCreationState.DEFINITIVELY_FAILED) return false;
+  return !(state === PaymentAttemptCreationState.READY
+    && bound
+    && attempt.expiresAt !== null
+    && attempt.expiresAt.getTime() <= now.getTime());
 }
 
 export const checkoutService = new CheckoutService(

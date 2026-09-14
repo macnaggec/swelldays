@@ -6,14 +6,23 @@ import { CheckoutService } from './CheckoutService';
 import { orderRepository } from 'server/repositories/OrderRepository';
 import { mediaRepository } from 'server/repositories/MediaRepository';
 import { purchaseRepository } from 'server/repositories/PurchaseRepository';
+import { paymentAttemptRepository } from 'server/repositories/PaymentAttemptRepository';
 import { cloudinaryService } from 'server/services/CloudinaryService';
 import type { IPaymentService } from 'server/services/PaymentService';
 import { BadRequestError } from 'server/errors';
 
-const mockPayment: Pick<IPaymentService, 'createAttempt'> = {
-  createAttempt: vi.fn().mockResolvedValue({
+const mockPayment: Pick<IPaymentService, 'prepareAttempt' | 'openPreparedAttempt' | 'resumeAttempt'> = {
+  prepareAttempt: vi.fn().mockImplementation(({ orderId, totalCents }, db) =>
+    paymentAttemptRepository.prepareAttempt({
+      orderId, provider: 'cryptocloud', expectedAmountCents: totalCents, expectedCurrency: 'USD',
+    }, db)),
+  openPreparedAttempt: vi.fn().mockResolvedValue({
+    type: 'ready',
     checkoutUrl: 'https://example.test/checkout',
     expiresAt: null,
+  }),
+  resumeAttempt: vi.fn().mockResolvedValue({
+    type: 'ready', checkoutUrl: 'https://example.test/checkout', expiresAt: null,
   }),
 };
 
@@ -27,8 +36,12 @@ const service = new CheckoutService(
   'cryptocloud',
 );
 
-beforeEach(resetDb);
+beforeEach(async () => {
+  await prisma.paymentAttempt.deleteMany();
+  await resetDb();
+});
 afterAll(async () => {
+  await prisma.paymentAttempt.deleteMany();
   await resetDb();
   await prisma.$disconnect();
 });
@@ -74,6 +87,9 @@ describe('CheckoutService.createCheckoutSession — concurrent buyer requests', 
       where: { buyerId: buyer.id, status: 'PENDING' },
     });
     expect(pendingOrders).toHaveLength(1);
+    await expect(prisma.paymentAttempt.count({
+      where: { orderId: pendingOrders[0]!.id },
+    })).resolves.toBe(1);
   });
 });
 
@@ -171,6 +187,8 @@ describe('CheckoutService.createCheckoutSession — R01: order lines snapshot ec
     );
 
     const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+    await expect(prisma.paymentAttempt.count({ where: { orderId } })).resolves.toBe(1);
+    expect(order.checkoutSessionUrl).toBeNull();
     const orderItems = await prisma.orderItem.findMany({ where: { orderId }, orderBy: { mediaItemId: 'asc' } });
     expect(orderItems).toHaveLength(2);
 
@@ -203,5 +221,47 @@ describe('CheckoutService.createCheckoutSession — R01: order lines snapshot ec
     const orderItemsAfterEdit = await prisma.orderItem.findMany({ where: { orderId }, orderBy: { mediaItemId: 'asc' } });
 
     expect(orderItemsAfterEdit).toEqual(snapshotBeforeEdit);
+  });
+});
+
+describe('CheckoutService.createCheckoutSession — R05 atomic preparation', () => {
+  it('rolls back the Order when preparing its PaymentAttempt fails', async () => {
+    const photographer = await prisma.user.create({
+      data: { email: `photographer-${randomUUID()}@example.com`, balance: 0 },
+    });
+    const buyer = await prisma.user.create({
+      data: { email: `buyer-${randomUUID()}@example.com` },
+    });
+    const session = await prisma.surfSession.create({
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
+    });
+    const mediaItem = await prisma.mediaItem.create({
+      data: {
+        sessionId: session.id,
+        photographerId: photographer.id,
+        status: 'PUBLISHED',
+        price: 1000,
+        capturedAt: new Date('2026-01-01T06:30:00Z'),
+        lightboxUrl: 'https://res.cloudinary.com/test/r05-rollback.jpg',
+        thumbnailUrl: 'https://res.cloudinary.com/test/r05-rollback-thumb.jpg',
+        cloudinaryPublicId: 'swelldays/test/r05-rollback',
+      },
+    });
+    const failingPayment = {
+      ...mockPayment,
+      prepareAttempt: vi.fn().mockRejectedValue(new Error('attempt write failed')),
+      openPreparedAttempt: vi.fn(),
+    };
+    const failingService = new CheckoutService(
+      orderRepository, mediaRepository, purchaseRepository, failingPayment,
+      cloudinaryService, 'http://localhost:3000', 'cryptocloud',
+    );
+
+    await expect(failingService.createCheckoutSession(
+      buyer.id, undefined, [mediaItem.id], randomUUID(),
+    )).rejects.toThrow('attempt write failed');
+    await expect(prisma.order.count({ where: { buyerId: buyer.id } })).resolves.toBe(0);
+    await expect(prisma.paymentAttempt.count()).resolves.toBe(0);
+    expect(failingPayment.openPreparedAttempt).not.toHaveBeenCalled();
   });
 });

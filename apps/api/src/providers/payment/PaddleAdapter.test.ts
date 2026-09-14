@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { BadGatewayError } from 'server/errors';
+import { PaymentCreationError } from './PaymentAdapter';
 import { apiConfig } from 'server/config/env';
 import { paddleAdapter } from './PaddleAdapter';
 
@@ -195,7 +196,7 @@ describe('PaddleAdapter.createCheckoutSession', () => {
     );
   });
 
-  it('throws BadGatewayError when the API returns a non-ok HTTP response', async () => {
+  it('classifies an ambiguous 5xx response as unknown', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
       status: 503,
@@ -204,10 +205,10 @@ describe('PaddleAdapter.createCheckoutSession', () => {
 
     await expect(
       paddleAdapter.createCheckoutSession(validParams)
-    ).rejects.toBeInstanceOf(BadGatewayError);
+    ).rejects.toMatchObject({ certainty: 'unknown', failureCode: 'provider-unreachable' });
   });
 
-  it('throws BadGatewayError when the response has no checkout URL', async () => {
+  it('classifies an unusable success response as unknown', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       status: 201,
@@ -216,7 +217,28 @@ describe('PaddleAdapter.createCheckoutSession', () => {
 
     await expect(
       paddleAdapter.createCheckoutSession(validParams)
-    ).rejects.toBeInstanceOf(BadGatewayError);
+    ).rejects.toMatchObject({ certainty: 'unknown', failureCode: 'provider-response-invalid' });
+  });
+
+  it('classifies definite 4xx, timeout, transport, and malformed JSON creation failures', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 400 }));
+    await expect(paddleAdapter.createCheckoutSession(validParams)).rejects.toMatchObject({
+      certainty: 'definitively-failed', failureCode: 'provider-rejected',
+    });
+    const timeout = new Error('timed out');
+    timeout.name = 'AbortError';
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(timeout));
+    await expect(paddleAdapter.createCheckoutSession(validParams)).rejects.toMatchObject({
+      certainty: 'unknown', failureCode: 'provider-timeout',
+    });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+    await expect(paddleAdapter.createCheckoutSession(validParams)).rejects.toBeInstanceOf(PaymentCreationError);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, status: 201, json: async () => { throw new SyntaxError('bad json'); },
+    }));
+    await expect(paddleAdapter.createCheckoutSession(validParams)).rejects.toMatchObject({
+      certainty: 'unknown', failureCode: 'provider-response-invalid',
+    });
   });
 });
 

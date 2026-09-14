@@ -10,6 +10,7 @@ import { mediaRepository } from 'server/repositories/MediaRepository';
 import { purchaseRepository } from 'server/repositories/PurchaseRepository';
 import { fulfillmentRepository } from 'server/repositories/FulfillmentRepository';
 import { ledgerRepository } from 'server/repositories/LedgerRepository';
+import { paymentAttemptRepository } from 'server/repositories/PaymentAttemptRepository';
 import { cloudinaryService } from 'server/services/CloudinaryService';
 import type { IPaymentService } from 'server/services/PaymentService';
 import { BadRequestError } from 'server/errors';
@@ -24,9 +25,13 @@ import { BadRequestError } from 'server/errors';
 // purchased?" and "already pending?" checks.
 // ---------------------------------------------------------------------------
 
-beforeEach(resetDb);
+beforeEach(async () => {
+  await prisma.paymentAttempt.deleteMany();
+  await resetDb();
+});
 afterEach(() => vi.restoreAllMocks());
 afterAll(async () => {
+  await prisma.paymentAttempt.deleteMany();
   await resetDb();
   await prisma.$disconnect();
 });
@@ -71,10 +76,18 @@ async function createPublishedMedia(photographerId: string, sessionId: string, p
  * (orders, fulfillment, cloudinary) with no media repository.
  */
 function makeServices() {
-  const mockPayment: Pick<IPaymentService, 'createAttempt'> = {
-    createAttempt: vi.fn().mockResolvedValue({
+  const mockPayment: Pick<IPaymentService, 'prepareAttempt' | 'openPreparedAttempt' | 'resumeAttempt'> = {
+    prepareAttempt: vi.fn().mockImplementation(({ orderId, totalCents }, db) =>
+      paymentAttemptRepository.prepareAttempt({
+        orderId, provider: 'cryptocloud', expectedAmountCents: totalCents, expectedCurrency: 'USD',
+      }, db)),
+    openPreparedAttempt: vi.fn().mockResolvedValue({
+      type: 'ready',
       checkoutUrl: 'https://example.test/checkout',
       expiresAt: null,
+    }),
+    resumeAttempt: vi.fn().mockResolvedValue({
+      type: 'ready', checkoutUrl: 'https://example.test/checkout', expiresAt: null,
     }),
   };
   const checkout = new CheckoutService(
@@ -106,6 +119,9 @@ describe('CheckoutFulfillmentRace — R04: checkout and fulfillment share the bu
     // carries a real, conserving R01 economics snapshot — fulfillment's
     // requireOrderLineSnapshot needs that to pay anyone.
     const first = await checkout.createCheckoutSession(buyer.id, undefined, [media.id], randomUUID());
+    const preparedOrder = await prisma.order.findUniqueOrThrow({ where: { id: first.orderId } });
+    expect(preparedOrder.checkoutSessionUrl).toBeNull();
+    await expect(prisma.paymentAttempt.count({ where: { orderId: first.orderId } })).resolves.toBe(1);
 
     // Instrument only scheduling: every transaction and query below executes
     // in PostgreSQL. After the second checkout's real Purchase SELECT returns
@@ -187,7 +203,7 @@ describe('CheckoutFulfillmentRace — R04: checkout and fulfillment share the bu
 
     // The one call is for the original order; the duplicate attempt was
     // rejected before it ever reached the payment provider.
-    expect(mockPayment.createAttempt).toHaveBeenCalledTimes(1);
+    expect(mockPayment.openPreparedAttempt).toHaveBeenCalledTimes(1);
   });
 
   it('same-order duplicate events: two concurrent fulfillments of one order under the same external id apply once', async () => {

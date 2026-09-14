@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PaymentEnvironment, PaymentProvider } from '@prisma/client';
+import { PaymentAttemptCreationState, PaymentEnvironment, PaymentProvider } from '@prisma/client';
 
 vi.mock('server/db', () => ({
   prisma: {
@@ -8,6 +8,7 @@ vi.mock('server/db', () => ({
       updateMany: vi.fn(),
       findUniqueOrThrow: vi.fn(),
       findUnique: vi.fn(),
+      findMany: vi.fn(),
     },
   },
 }));
@@ -19,6 +20,7 @@ import { PaymentAttemptRepository } from './PaymentAttemptRepository';
 const repository = new PaymentAttemptRepository();
 const row = {
   id: 'attempt-1', orderId: 'order-1', provider: PaymentProvider.CRYPTOCLOUD,
+  creationState: PaymentAttemptCreationState.READY, creationFailureCode: null,
   environment: PaymentEnvironment.PRODUCTION, providerTransactionId: 'INV-1',
   checkoutUrl: 'https://pay.example/INV-1', expiresAt: null,
   expectedAmountCents: 1500, expectedCurrency: 'USD', providerTestMode: false,
@@ -30,15 +32,60 @@ beforeEach(() => vi.clearAllMocks());
 describe('PaymentAttemptRepository', () => {
   it('maps lowercase domain provider values explicitly when creating', async () => {
     vi.mocked(prisma.paymentAttempt.create).mockResolvedValue({
-      ...row, environment: null, providerTransactionId: null, checkoutUrl: null, providerTestMode: null,
+      ...row, creationState: PaymentAttemptCreationState.CREATING,
+      environment: null, providerTransactionId: null, checkoutUrl: null, providerTestMode: null,
     });
-    await repository.createAttempt({
+    await repository.prepareAttempt({
       orderId: 'order-1', provider: 'cryptocloud', expectedAmountCents: 1500, expectedCurrency: 'USD',
     });
     expect(prisma.paymentAttempt.create).toHaveBeenCalledWith({ data: {
       orderId: 'order-1', provider: PaymentProvider.CRYPTOCLOUD,
+      creationState: PaymentAttemptCreationState.CREATING,
       expectedAmountCents: 1500, expectedCurrency: 'USD',
     } });
+  });
+
+  it('normalizes a legacy CREATING row with a complete binding to ready', async () => {
+    vi.mocked(prisma.paymentAttempt.findUnique).mockResolvedValue({
+      ...row, creationState: PaymentAttemptCreationState.CREATING,
+    });
+    await expect(repository.findById('attempt-1')).resolves.toEqual(
+      expect.objectContaining({ creationState: 'ready' }),
+    );
+  });
+
+  it('preserves a bound row when an unknown transition loses a race', async () => {
+    vi.mocked(prisma.paymentAttempt.updateMany).mockResolvedValue({ count: 0 });
+    vi.mocked(prisma.paymentAttempt.findUniqueOrThrow).mockResolvedValue(row);
+    await expect(repository.markCreationUnknown('attempt-1', 'provider-timeout')).resolves.toEqual(
+      expect.objectContaining({ creationState: 'ready', providerTransactionId: 'INV-1' }),
+    );
+  });
+
+  it('marks ready attempts failed without clearing provider facts', async () => {
+    vi.mocked(prisma.paymentAttempt.updateMany).mockResolvedValue({ count: 1 });
+    vi.mocked(prisma.paymentAttempt.findUniqueOrThrow).mockResolvedValue({
+      ...row,
+      creationState: PaymentAttemptCreationState.DEFINITIVELY_FAILED,
+      creationFailureCode: 'authoritative-expiry',
+    });
+    await repository.markCreationFailed('attempt-1', 'authoritative-expiry');
+    expect(prisma.paymentAttempt.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: {
+        creationState: PaymentAttemptCreationState.DEFINITIVELY_FAILED,
+        creationFailureCode: 'authoritative-expiry',
+      },
+    }));
+  });
+
+  it('finds one attempt oldest-first and refuses to guess between two', async () => {
+    vi.mocked(prisma.paymentAttempt.findMany).mockResolvedValue([row]);
+    await expect(repository.findByOrderId('order-1')).resolves.toEqual(expect.objectContaining({ id: 'attempt-1' }));
+    expect(prisma.paymentAttempt.findMany).toHaveBeenCalledWith({
+      where: { orderId: 'order-1' }, orderBy: { createdAt: 'asc' }, take: 2,
+    });
+    vi.mocked(prisma.paymentAttempt.findMany).mockResolvedValue([row, { ...row, id: 'attempt-2' }]);
+    await expect(repository.findByOrderId('order-1')).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('binds only an unbound row with an atomic conditional update', async () => {

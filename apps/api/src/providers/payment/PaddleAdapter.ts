@@ -10,6 +10,7 @@ import type {
   CheckoutSessionResult,
   PaymentWebhookEvent,
 } from 'server/providers/payment/PaymentAdapter';
+import { PaymentCreationError } from 'server/providers/payment/PaymentAdapter';
 
 // ---------------------------------------------------------------------------
 // Paddle API types
@@ -58,6 +59,19 @@ interface PaddleTransactionRetrieveResponse {
       };
     };
   };
+}
+
+function isTransactionResponse(value: unknown): value is PaddleTransactionResponse {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const data = (value as Record<string, unknown>).data;
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return false;
+  const transaction = data as Record<string, unknown>;
+  const checkout = transaction.checkout;
+  return typeof transaction.id === 'string'
+    && typeof checkout === 'object'
+    && checkout !== null
+    && !Array.isArray(checkout)
+    && typeof (checkout as Record<string, unknown>).url === 'string';
 }
 
 // ---------------------------------------------------------------------------
@@ -133,26 +147,54 @@ async function createCheckoutSession(
     checkout: { url: checkoutPageUrl },
   };
 
-  const response = await fetch(`${baseUrl()}/transactions`, {
-    method: 'POST',
-    signal: AbortSignal.timeout(10_000),
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl()}/transactions`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(10_000),
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      throw new PaymentCreationError('unknown', 'provider-timeout', 'Payment provider timed out');
+    }
+    throw new PaymentCreationError('unknown', 'provider-unreachable', 'Payment provider is unreachable');
+  }
 
   if (!response.ok) {
     logger.error('[Paddle] Transaction creation failed', { status: response.status });
-    throw new BadGatewayError('Payment provider error');
+    const ambiguous = response.status === 408
+      || response.status === 409
+      || response.status === 425
+      || response.status === 429
+      || response.status >= 500;
+    const definitelyRejected = response.status >= 400 && response.status < 500 && !ambiguous;
+    throw new PaymentCreationError(
+      definitelyRejected ? 'definitively-failed' : 'unknown',
+      definitelyRejected ? 'provider-rejected' : 'provider-unreachable',
+      'Payment provider rejected transaction creation',
+    );
   }
 
-  const data = (await response.json()) as PaddleTransactionResponse;
-
-  if (!data.data?.id || !data.data.checkout?.url) {
+  let decoded: unknown;
+  try {
+    decoded = await response.json();
+  } catch {
+    throw new PaymentCreationError('unknown', 'provider-response-invalid', 'Payment provider response was invalid');
+  }
+  if (!isTransactionResponse(decoded)) {
     logger.error('[Paddle] Unexpected transaction response');
-    throw new BadGatewayError('Payment provider error');
+    throw new PaymentCreationError('unknown', 'provider-response-invalid', 'Payment provider response was invalid');
+  }
+  const data = decoded;
+
+  if (!data.data.id || !data.data.checkout.url) {
+    logger.error('[Paddle] Unexpected transaction response');
+    throw new PaymentCreationError('unknown', 'provider-response-invalid', 'Payment provider response was invalid');
   }
 
   return {

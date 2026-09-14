@@ -5,7 +5,12 @@
 // Swap providers by swapping the adapter — zero changes to business logic.
 // ---------------------------------------------------------------------------
 
-import type { PaymentEnvironment, PaymentIdentity, PaymentProvider } from 'server/domain/Payment';
+import type {
+  PaymentCreationFailureCode,
+  PaymentEnvironment,
+  PaymentIdentity,
+  PaymentProvider,
+} from 'server/domain/Payment';
 import type { PaymentReceipt } from 'server/domain/PaymentReceipt';
 
 export interface CreateCheckoutParams {
@@ -22,6 +27,25 @@ export interface CheckoutSessionResult {
   expiresAt: Date | null;
   settlement: 'pending' | 'completed';
   providerTestMode: boolean | null;
+}
+
+export type PaymentCreationCertainty = 'unknown' | 'definitively-failed';
+
+export class PaymentCreationError extends Error {
+  constructor(
+    public readonly certainty: PaymentCreationCertainty,
+    public readonly failureCode: Extract<
+      PaymentCreationFailureCode,
+      | 'provider-rejected'
+      | 'provider-timeout'
+      | 'provider-unreachable'
+      | 'provider-response-invalid'
+    >,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'PaymentCreationError';
+  }
 }
 
 /**
