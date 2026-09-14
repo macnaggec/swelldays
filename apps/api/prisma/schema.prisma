@@ -260,6 +260,8 @@ model PaymentAttempt {
   id                    String             @id @default(uuid())
   orderId               String             @map("order_id")
   provider              PaymentProvider
+  creationState         PaymentAttemptCreationState @default(CREATING) @map("creation_state")
+  creationFailureCode   String?                      @map("creation_failure_code")
   environment           PaymentEnvironment?
   providerTransactionId String?            @map("provider_transaction_id")
   checkoutUrl           String?            @map("checkout_url")
@@ -272,6 +274,7 @@ model PaymentAttempt {
   order                 Order              @relation(fields: [orderId], references: [id])
 
   @@index([orderId], map: "payment_attempts_order_id_idx")
+  @@index([orderId, creationState, expiresAt], map: "payment_attempts_order_state_expiry_idx")
   @@unique([provider, environment, providerTransactionId], map: "payment_attempts_provider_environment_transaction_key")
   @@map("payment_attempts")
 }
@@ -454,6 +457,13 @@ enum PaymentEnvironment {
   TEST       @map("test")
   SANDBOX    @map("sandbox")
   PRODUCTION @map("production")
+}
+
+enum PaymentAttemptCreationState {
+  CREATING
+  READY
+  UNKNOWN
+  DEFINITIVELY_FAILED
 }
 
 enum TransactionType {
