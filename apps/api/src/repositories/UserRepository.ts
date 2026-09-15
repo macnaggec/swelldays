@@ -1,7 +1,9 @@
-import { MediaStatus, SurfSessionStatus } from '@prisma/client';
+import { MediaStatus, PaymentAdjustmentResolution, PayoutStatus, SurfSessionStatus } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
 import { ledgerRepository } from 'server/repositories/LedgerRepository';
+import { acquireActiveAccountLock } from 'server/lib/TransactionSerialization';
+import { BadRequestError } from 'server/errors';
 
 export interface IUserRepository {
   anonymizeAndDelete(userId: string): Promise<void>;
@@ -11,6 +13,24 @@ export class UserRepository implements IUserRepository {
   anonymizeAndDelete(userId: string): Promise<void> {
     return runQuery(() =>
       prisma.$transaction(async (tx) => {
+        await acquireActiveAccountLock(tx, userId);
+        const activePayout = await tx.payoutRequest.findFirst({
+          where: { photographerId: userId, status: { in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING] } },
+          select: { id: true },
+        });
+        if (activePayout !== null) {
+          throw new BadRequestError('Your payout is still being processed. You can delete your account once it completes.');
+        }
+        const pendingAdjustment = await tx.paymentAdjustment.findFirst({
+          where: {
+            resolution: PaymentAdjustmentResolution.PENDING_REVIEW,
+            paymentAttempt: { paidOrderLines: { some: { sellerId: userId } } },
+          },
+          select: { id: true },
+        });
+        if (pendingAdjustment !== null) {
+          throw new BadRequestError('Your account has a payment adjustment awaiting resolution.');
+        }
         const deletedAt = new Date();
 
         // Forfeit any remaining balance through the ledger's one write path

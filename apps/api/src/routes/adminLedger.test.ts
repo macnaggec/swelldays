@@ -85,7 +85,8 @@ describe('admin ledger router', () => {
         name: 'Pipeline Shooter',
       },
     }];
-    mocks.listOperatorPayouts.mockResolvedValue(payouts);
+    const page = { items: payouts, nextCursor: null };
+    mocks.listOperatorPayouts.mockResolvedValue(page);
     mocks.markPayoutProcessing.mockResolvedValue(undefined);
     mocks.completePayout.mockResolvedValue(undefined);
     mocks.rejectPayout.mockResolvedValue(undefined);
@@ -95,14 +96,47 @@ describe('admin ledger router', () => {
       user: { id: 'admin-1', role: 'ADMIN' } as never,
     });
 
-    await expect(caller.admin.ledger.listPayouts()).resolves.toEqual(payouts);
+    await expect(caller.admin.ledger.listPayouts()).resolves.toEqual(page);
     await caller.admin.ledger.markProcessing({ payoutRequestId });
     await caller.admin.ledger.complete({ payoutRequestId, externalTransferId: 'manual-1' });
     await caller.admin.ledger.reject({ payoutRequestId, note: 'Bank details invalid' });
 
-    expect(mocks.listOperatorPayouts).toHaveBeenCalledWith();
+    expect(mocks.listOperatorPayouts).toHaveBeenCalledWith({ limit: 50 });
     expect(mocks.markPayoutProcessing).toHaveBeenCalledWith(payoutRequestId);
     expect(mocks.completePayout).toHaveBeenCalledWith(payoutRequestId, 'manual-1');
     expect(mocks.rejectPayout).toHaveBeenCalledWith(payoutRequestId, 'Bank details invalid');
+  });
+
+  it('passes an explicit cursor and one or more statuses to the service', async () => {
+    mocks.listOperatorPayouts.mockResolvedValue({ items: [], nextCursor: null });
+    const caller = appRouter.createCaller({
+      session: {} as never,
+      user: { id: 'admin-1', role: 'ADMIN' } as never,
+    });
+
+    await caller.admin.ledger.listPayouts({
+      limit: 10,
+      cursor: payoutRequestId,
+      statuses: ['PENDING', 'PROCESSING'],
+    });
+
+    expect(mocks.listOperatorPayouts).toHaveBeenCalledWith({
+      limit: 10,
+      cursor: payoutRequestId,
+      statuses: ['PENDING', 'PROCESSING'],
+    });
+  });
+
+  it('rejects empty and oversized status filters and invalid cursors', async () => {
+    const caller = appRouter.createCaller({
+      session: {} as never,
+      user: { id: 'admin-1', role: 'ADMIN' } as never,
+    });
+
+    await expect(caller.admin.ledger.listPayouts({ statuses: [] })).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await expect(caller.admin.ledger.listPayouts({
+      statuses: ['PENDING', 'PROCESSING', 'COMPLETED', 'REJECTED', 'PENDING'],
+    })).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await expect(caller.admin.ledger.listPayouts({ cursor: 'not-a-uuid' })).rejects.toMatchObject({ code: 'BAD_REQUEST' });
   });
 });

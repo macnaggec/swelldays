@@ -1,7 +1,12 @@
 import { OrderStatus, PaidOrderLineDeliveryStatus } from '@prisma/client';
 import { prisma } from 'server/db';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
-import { acquireSerializationLock, fulfillmentScope, withTransactionRetry } from 'server/lib/TransactionSerialization';
+import {
+  acquireActiveAccountLocks,
+  acquireSerializationLock,
+  fulfillmentScope,
+  withTransactionRetry,
+} from 'server/lib/TransactionSerialization';
 import { ledgerRepository } from 'server/repositories/LedgerRepository';
 
 export type PaidLineCandidate = {
@@ -25,6 +30,7 @@ export class FulfillmentRepository implements IFulfillmentRepository {
   commitFulfillment(payload: FulfillmentPayload): Promise<CommitFulfillmentResult> {
     return runQuery(() => withTransactionRetry(() => prisma.$transaction(async (tx) => {
       await acquireSerializationLock(tx, fulfillmentScope(payload.buyerId, payload.orderId));
+      await acquireActiveAccountLocks(tx, payload.paidLines.map((line) => line.sellerId));
       const claimed = await tx.order.updateMany({
         where: { id: payload.orderId, status: OrderStatus.PENDING },
         data: { status: OrderStatus.COMPLETED, externalOrderId: payload.externalOrderId },

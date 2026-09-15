@@ -13,7 +13,8 @@ const payload: FulfillmentPayload = { orderId: 'order-1', paymentAttemptId: 'att
     sellerEarnings: 800, currency: 'USD', deliverablePublicId: 'asset-1', deliverableType: 'PHOTO', previewUrl: 'preview' }] };
 
 function makeTx() {
-  return { $executeRaw: vi.fn(), order: { updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+  return { $executeRaw: vi.fn(), user: { findUnique: vi.fn().mockResolvedValue({ deletedAt: null }) },
+    order: { updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     findUniqueOrThrow: vi.fn().mockResolvedValue({ buyerId: 'buyer-1', guestEmail: null, totalAmount: 1000,
       items: [{ id: 'item-1', mediaItemId: 'media-1', sellerId: 'seller-1', unitAmountCents: 1000,
         currency: 'USD', platformFeeAmount: 200, sellerEarningsAmount: 800,
@@ -74,6 +75,35 @@ describe('FulfillmentRepository', () => {
     await repository.commitFulfillment(payload);
 
     expect(tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.order.updateMany.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('acquires sorted distinct seller locks after the buyer lock and before the order claim', async () => {
+    const tx = makeTx();
+    tx.order.findUniqueOrThrow.mockResolvedValue({ buyerId: 'buyer-1', guestEmail: null, totalAmount: 2000, items: [
+      { id: 'item-z', mediaItemId: 'media-z', sellerId: 'zeta', unitAmountCents: 1000, currency: 'USD',
+        platformFeeAmount: 200, sellerEarningsAmount: 800, deliverablePublicId: 'asset-z', deliverableType: 'PHOTO' },
+      { id: 'item-a', mediaItemId: 'media-a', sellerId: 'alpha', unitAmountCents: 1000, currency: 'USD',
+        platformFeeAmount: 200, sellerEarningsAmount: 800, deliverablePublicId: 'asset-a', deliverableType: 'PHOTO' },
+    ] });
+    tx.paymentAttempt.findUnique.mockResolvedValue({ orderId: 'order-1', expectedAmountCents: 2000,
+      expectedCurrency: 'USD' });
+    runWith(tx);
+
+    await repository.commitFulfillment({ ...payload, paidLines: [
+      { ...payload.paidLines[0]!, orderItemId: 'item-z', mediaItemId: 'media-z', sellerId: 'zeta',
+        deliverablePublicId: 'asset-z' },
+      { ...payload.paidLines[0]!, orderItemId: 'item-a', mediaItemId: 'media-a', sellerId: 'alpha',
+        deliverablePublicId: 'asset-a' },
+    ] });
+
+    expect(tx.$executeRaw.mock.calls.map((call) => call.slice(1))).toEqual([
+      [SERIALIZATION_NAMESPACE.buyer, 'buyer-1'],
+      [SERIALIZATION_NAMESPACE.account, 'alpha'],
+      [SERIALIZATION_NAMESPACE.account, 'zeta'],
+    ]);
+    expect(tx.$executeRaw.mock.invocationCallOrder[2]).toBeLessThan(
       tx.order.updateMany.mock.invocationCallOrder[0]!,
     );
   });

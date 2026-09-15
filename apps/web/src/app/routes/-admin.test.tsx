@@ -131,7 +131,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         return { data: mocks.spots, isLoading: mocks.isLoadingSpots };
       }
       return {
-        data: mocks.payouts,
+        data: { items: mocks.payouts, nextCursor: null },
         isError: mocks.isForbidden,
         isLoading: mocks.isLoadingPayouts,
       };
@@ -161,7 +161,7 @@ vi.mock('shared/lib/trpc', () => ({
         complete: { mutationOptions: () => ({ mutationKey: ['admin', 'ledger', 'complete'] }) },
         listPayouts: {
           queryKey: () => ['admin', 'ledger', 'listPayouts'],
-          queryOptions: () => ({ queryKey: ['admin', 'ledger', 'listPayouts'] }),
+          queryOptions: (input: { limit: number }) => ({ queryKey: ['admin', 'ledger', 'listPayouts', input] }),
         },
         markProcessing: { mutationOptions: () => ({ mutationKey: ['admin', 'ledger', 'markProcessing'] }) },
         reject: { mutationOptions: () => ({ mutationKey: ['admin', 'ledger', 'reject'] }) },

@@ -1,10 +1,13 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from 'server/db';
 import { UserRepository } from './UserRepository';
+import { LedgerRepository } from './LedgerRepository';
 
 const repository = new UserRepository();
+const ledger = new LedgerRepository();
 
 async function clearTestData() {
+  await prisma.payoutRequest.deleteMany();
   await prisma.transaction.deleteMany();
   await prisma.mediaItem.deleteMany();
   await prisma.surfSession.deleteMany();
@@ -120,4 +123,33 @@ describe('UserRepository.anonymizeAndDelete', () => {
     const orphaned = await prisma.spot.findUniqueOrThrow({ where: { id: spot.id } });
     expect(orphaned.creatorId).toBeNull();
   });
+
+  it.each(['PENDING', 'PROCESSING'] as const)(
+    'blocks closure for an active %s payout hidden behind newer display history',
+    async (status) => {
+      const { photographer } = await fixture({ balance: 4500 });
+      const reservation = await ledger.reservePayout({ photographerId: photographer.id, amountCents: 4500 });
+      if (status === 'PROCESSING') await ledger.markPayoutProcessing(reservation.payoutRequest.id);
+      for (let index = 0; index < 21; index += 1) {
+        const transaction = await prisma.transaction.create({
+          data: { userId: photographer.id, amount: -1, type: 'PAYOUT', status: 'FAILED' },
+        });
+        await prisma.payoutRequest.create({
+          data: {
+            photographerId: photographer.id,
+            transactionId: transaction.id,
+            amount: 1,
+            status: 'REJECTED',
+            requestedAt: new Date(Date.now() + index + 1),
+          },
+        });
+      }
+
+      await expect(repository.anonymizeAndDelete(photographer.id)).rejects.toThrow(
+        'Your payout is still being processed. You can delete your account once it completes.',
+      );
+      await expect(prisma.user.findUniqueOrThrow({ where: { id: photographer.id } }))
+        .resolves.toMatchObject({ deletedAt: null });
+    },
+  );
 });

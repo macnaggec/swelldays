@@ -166,3 +166,81 @@ describe('LedgerRepository payout lifecycle', () => {
     expect(user.balance).toBe(4500);
   });
 });
+
+describe('LedgerRepository payout projections', () => {
+  it('aggregates active payouts independently of the 20-row display history', async () => {
+    const photographer = await prisma.user.create({
+      data: { email: 'ledger-summary-history@example.com' },
+    });
+    const oldTransaction = await prisma.transaction.create({
+      data: { userId: photographer.id, amount: -700, type: 'PAYOUT', status: 'PENDING' },
+    });
+    await prisma.payoutRequest.create({
+      data: {
+        photographerId: photographer.id,
+        transactionId: oldTransaction.id,
+        amount: 700,
+        status: 'PENDING',
+        requestedAt: new Date('2026-01-01T00:00:00Z'),
+      },
+    });
+    for (let index = 0; index < 21; index += 1) {
+      const transaction = await prisma.transaction.create({
+        data: { userId: photographer.id, amount: -1, type: 'PAYOUT', status: 'FAILED' },
+      });
+      await prisma.payoutRequest.create({
+        data: {
+          photographerId: photographer.id,
+          transactionId: transaction.id,
+          amount: 1,
+          status: 'REJECTED',
+          requestedAt: new Date(Date.UTC(2026, 1, index + 1)),
+        },
+      });
+    }
+
+    const summary = await repo.getSummaryRecords(photographer.id);
+
+    expect(summary.payoutRequests).toHaveLength(20);
+    expect(summary.payoutRequests).not.toContainEqual(expect.objectContaining({ status: 'PENDING' }));
+    expect(summary.pendingPayoutCents).toBe(700);
+  });
+
+  it('paginates every operator payout newest-first with stable id ties and status filters', async () => {
+    const photographer = await prisma.user.create({
+      data: { email: 'ledger-operator-pages@example.com' },
+    });
+    const requestedAt = new Date('2026-08-01T00:00:00Z');
+    const payoutIds: string[] = [];
+    for (let index = 0; index < 105; index += 1) {
+      const transaction = await prisma.transaction.create({
+        data: { userId: photographer.id, amount: -1, type: 'PAYOUT', status: 'FAILED' },
+      });
+      const payout = await prisma.payoutRequest.create({
+        data: {
+          photographerId: photographer.id,
+          transactionId: transaction.id,
+          amount: index + 1,
+          status: index === 104 ? 'PENDING' : 'REJECTED',
+          requestedAt,
+        },
+      });
+      payoutIds.push(payout.id);
+    }
+
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await repo.listOperatorPayouts({ limit: 40, cursor });
+      seen.push(...page.items.map((item) => item.id));
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor !== undefined);
+
+    expect(seen).toEqual([...payoutIds].sort((left, right) => right.localeCompare(left)));
+    expect(new Set(seen).size).toBe(105);
+    await expect(repo.listOperatorPayouts({ limit: 100, statuses: ['PENDING'] })).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: payoutIds.at(-1), status: 'PENDING' })],
+      nextCursor: null,
+    });
+  });
+});

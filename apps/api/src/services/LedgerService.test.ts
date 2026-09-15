@@ -9,6 +9,7 @@ import type { ILedgerRepository } from 'server/repositories/LedgerRepository';
 
 const mockLedgerRepository = {
   getSummaryRecords: vi.fn(),
+  listOperatorPayouts: vi.fn(),
   reservePayout: vi.fn(),
 };
 
@@ -21,6 +22,16 @@ beforeEach(() => {
 });
 
 describe('LedgerService.getSummary', () => {
+  it('uses the complete pending payout aggregate instead of the display rows', async () => {
+    mockLedgerRepository.getSummaryRecords.mockResolvedValue({
+      user: { id: 'photographer-1', balance: 0 },
+      recentTransactions: [],
+      payoutRequests: [],
+      pendingPayoutCents: 4500,
+    });
+
+    await expect(service.getSummary('photographer-1')).resolves.toMatchObject({ pendingPayoutCents: 4500 });
+  });
   it('returns a photographer-specific ledger summary from existing ledger records', async () => {
     const firstSaleAt = new Date('2026-07-05T09:00:00.000Z');
     const secondSaleAt = new Date('2026-07-05T10:00:00.000Z');
@@ -82,6 +93,7 @@ describe('LedgerService.getSummary', () => {
           processedAt: completedRequestAt,
         },
       ],
+      pendingPayoutCents: 2200,
     });
 
     const summary = await service.getSummary('photographer-1');
@@ -144,6 +156,17 @@ describe('LedgerService.getSummary', () => {
   });
 });
 
+describe('LedgerService.listOperatorPayouts', () => {
+  it('delegates pagination and status filtering to the repository', async () => {
+    const input = { limit: 25, cursor: 'cursor-1', statuses: [PayoutStatus.PENDING] };
+    const page = { items: [], nextCursor: null };
+    mockLedgerRepository.listOperatorPayouts.mockResolvedValue(page);
+
+    await expect(service.listOperatorPayouts(input)).resolves.toBe(page);
+    expect(mockLedgerRepository.listOperatorPayouts).toHaveBeenCalledWith(input);
+  });
+});
+
 describe('LedgerService.requestPayout', () => {
   it('reserves the full available balance and returns a refreshed summary', async () => {
     const requestedAt = new Date('2026-07-05T12:00:00.000Z');
@@ -153,6 +176,7 @@ describe('LedgerService.requestPayout', () => {
         user: { id: 'photographer-1', balance: 4500 },
         recentTransactions: [],
         payoutRequests: [],
+        pendingPayoutCents: 0,
       })
       .mockResolvedValueOnce({
         user: { id: 'photographer-1', balance: 0 },
@@ -180,6 +204,7 @@ describe('LedgerService.requestPayout', () => {
             processedAt: null,
           },
         ],
+        pendingPayoutCents: 4500,
       });
     mockLedgerRepository.reservePayout.mockResolvedValue({
       payoutRequest: { id: 'payout-1' },
@@ -201,6 +226,7 @@ describe('LedgerService.requestPayout', () => {
       user: { id: 'photographer-1', balance: 1999 },
       recentTransactions: [],
       payoutRequests: [],
+      pendingPayoutCents: 0,
     });
 
     await expect(service.requestPayout('photographer-1')).rejects.toThrow(

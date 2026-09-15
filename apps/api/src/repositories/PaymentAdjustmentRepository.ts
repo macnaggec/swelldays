@@ -1,6 +1,6 @@
 import {
   PaymentAdjustmentAction as DbAction, PaymentAdjustmentProviderStatus as DbStatus,
-  PaymentAdjustmentResolution, TransactionStatus, TransactionType,
+  PaymentAdjustmentResolution,
   PaymentProvider, PaymentEnvironment,
   Prisma,
 } from '@prisma/client';
@@ -9,6 +9,8 @@ import { BadRequestError, NotFoundError } from 'server/errors';
 import type { ApplyPaymentAdjustmentCommand, NormalizedPaymentAdjustment, RecordManualPaymentAdjustmentCommand } from 'server/domain/PaymentAdjustment';
 import { sellerReversalAmount } from 'server/domain/PaymentAdjustment';
 import { runQuery } from 'server/lib/PrismaErrorMapper';
+import { acquireActiveAccountLocks } from 'server/lib/TransactionSerialization';
+import { ledgerRepository } from 'server/repositories/LedgerRepository';
 
 const ACTION: Record<NormalizedPaymentAdjustment['action'], DbAction> = {
   refund: DbAction.REFUND, credit: DbAction.CREDIT, dispute: DbAction.DISPUTE,
@@ -128,6 +130,7 @@ export class PaymentAdjustmentRepository {
         include: { allocations: { include: { paymentAdjustment: true } } } });
       if (lines.length !== command.allocations.length || lines.some((line) => line.paymentAttemptId !== adjustment.paymentAttemptId
         || line.currency !== adjustment.currency)) throw new BadRequestError('Adjustment allocation does not match payment');
+      await acquireActiveAccountLocks(tx, lines.map((line) => line.sellerId));
       for (const allocation of command.allocations.sort((a, b) => a.paidOrderLineId.localeCompare(b.paidOrderLineId))) {
         const line = lines.find((candidate) => candidate.id === allocation.paidOrderLineId)!;
         const prior = line.allocations.filter((item) => item.paymentAdjustment.resolution === PaymentAdjustmentResolution.APPLIED);
@@ -145,11 +148,11 @@ export class PaymentAdjustmentRepository {
           amountCents: allocation.amountCents, sellerLedgerAmount,
         } });
         if (sellerLedgerAmount !== 0) {
-          await tx.user.update({ where: { id: line.sellerId }, data: { balance: { increment: sellerLedgerAmount } } });
-          const transaction = await tx.transaction.create({ data: { userId: line.sellerId, amount: sellerLedgerAmount,
-            type: TransactionType.ADJUSTMENT, status: TransactionStatus.COMPLETED,
-            paymentAdjustmentAllocationId: created.id } });
-          if (transaction.paymentAdjustmentAllocationId !== created.id) throw new Error('Adjustment ledger source link failed');
+          await ledgerRepository.recordAdjustment(tx, {
+            photographerId: line.sellerId,
+            amount: sellerLedgerAmount,
+            paymentAdjustmentAllocationId: created.id,
+          });
         }
       }
       const resolved = await tx.paymentAdjustment.update({ where: { id: adjustment.id }, data: {
@@ -208,6 +211,8 @@ export class PaymentAdjustmentRepository {
     if (sourceLineIds.length === 0) throw new BadRequestError('Reversal source has no allocations');
     await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "paid_order_lines"
       WHERE "id" IN (${Prisma.join(sourceLineIds)}) ORDER BY "id" FOR UPDATE`);
+    const sourceLines = await tx.paidOrderLine.findMany({ where: { id: { in: sourceLineIds } } });
+    await acquireActiveAccountLocks(tx, sourceLines.map((line) => line.sellerId));
     const requested = [...command.allocations].sort((a, b) => a.paidOrderLineId.localeCompare(b.paidOrderLineId));
     const original = [...source.allocations].sort((a, b) => a.paidOrderLineId.localeCompare(b.paidOrderLineId));
     if (requested.length !== original.length || requested.some((item, index) => {
@@ -219,11 +224,12 @@ export class PaymentAdjustmentRepository {
       const created = await tx.paymentAdjustmentAllocation.create({ data: { paymentAdjustmentId: adjustment.id,
         paidOrderLineId: item.paidOrderLineId, amountCents: item.amountCents, sellerLedgerAmount: -item.sellerLedgerAmount } });
       if (item.sellerLedgerAmount !== 0) {
-        const line = await tx.paidOrderLine.findUniqueOrThrow({ where: { id: item.paidOrderLineId } });
-        await tx.user.update({ where: { id: line.sellerId }, data: { balance: { increment: -item.sellerLedgerAmount } } });
-        await tx.transaction.create({ data: { userId: line.sellerId, amount: -item.sellerLedgerAmount,
-          type: TransactionType.ADJUSTMENT, status: TransactionStatus.COMPLETED,
-          paymentAdjustmentAllocationId: created.id } });
+        const line = sourceLines.find((candidate) => candidate.id === item.paidOrderLineId)!;
+        await ledgerRepository.recordAdjustment(tx, {
+          photographerId: line.sellerId,
+          amount: -item.sellerLedgerAmount,
+          paymentAdjustmentAllocationId: created.id,
+        });
       }
     }
     return tx.paymentAdjustment.update({ where: { id: adjustment.id }, data: { resolution: PaymentAdjustmentResolution.APPLIED,

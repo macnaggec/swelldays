@@ -1,5 +1,4 @@
 import {
-  PayoutStatus,
   type PayoutRequest,
   type Transaction,
 } from '@prisma/client';
@@ -7,7 +6,8 @@ import {
   ledgerRepository,
   type ILedgerRepository,
   type LedgerInvariantViolation,
-  type OperatorPayoutRequest,
+  type ListOperatorPayoutsInput,
+  type OperatorPayoutPage,
   type PayoutReservation,
 } from 'server/repositories/LedgerRepository';
 import { BadRequestError, NotFoundError } from 'server/errors';
@@ -45,15 +45,7 @@ export class LedgerService {
       availableBalanceCents: Math.max(0, records.user.balance - (records.heldForReviewCents ?? 0)),
       heldForReviewCents: records.heldForReviewCents ?? 0,
       deficitCents: Math.max(0, -records.user.balance),
-      pendingPayoutCents: records.payoutRequests.reduce((total, request) => {
-        if (
-          request.status === PayoutStatus.PENDING ||
-          request.status === PayoutStatus.PROCESSING
-        ) {
-          return total + request.amount;
-        }
-        return total;
-      }, 0),
+      pendingPayoutCents: records.pendingPayoutCents,
       payoutThresholdCents: PAYOUT_THRESHOLD_CENTS,
       recentTransactions: records.recentTransactions.map((transaction) => ({
         id: transaction.id,
@@ -90,8 +82,8 @@ export class LedgerService {
     return this.getSummary(photographerId);
   }
 
-  listOperatorPayouts(): Promise<OperatorPayoutRequest[]> {
-    return this.ledger.listOperatorPayouts();
+  listOperatorPayouts(input: ListOperatorPayoutsInput): Promise<OperatorPayoutPage> {
+    return this.ledger.listOperatorPayouts(input);
   }
 
   markPayoutProcessing(payoutRequestId: string): Promise<PayoutReservation> {

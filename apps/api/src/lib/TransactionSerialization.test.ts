@@ -1,12 +1,16 @@
-import { describe, it, expect, vi } from 'vitest';
-import { Prisma } from '@prisma/client';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { Prisma, UserRole } from '@prisma/client';
 import { BadRequestError, ConflictError } from 'server/errors';
+import { prisma } from 'server/db';
 import {
   SERIALIZATION_NAMESPACE,
   buyerScope,
+  accountScope,
   orderScope,
   fulfillmentScope,
   acquireSerializationLock,
+  acquireActiveAccountLock,
+  acquireActiveAccountLocks,
   isTransientTransactionConflict,
   TRANSACTION_RETRY_ATTEMPTS,
   withTransactionRetry,
@@ -19,7 +23,30 @@ function makeP2034(): Prisma.PrismaClientKnownRequestError {
   });
 }
 
+function accountRecord(deletedAt: Date | null) {
+  const now = new Date();
+  return {
+    id: 'account-1',
+    name: null,
+    email: 'account@example.com',
+    password: null,
+    role: UserRole.USER,
+    balance: 0,
+    createdAt: now,
+    emailVerified: false,
+    image: null,
+    updatedAt: now,
+    deletedAt,
+    externalCustomerId: null,
+  };
+}
+
+beforeEach(() => vi.clearAllMocks());
+
 describe('buyerScope / orderScope / fulfillmentScope', () => {
+  it('accountScope scopes to the account namespace with the account id as key', () => {
+    expect(accountScope('account-1')).toEqual({ namespace: SERIALIZATION_NAMESPACE.account, key: 'account-1' });
+  });
   it('buyerScope scopes to the buyer namespace with the buyerId as key', () => {
     expect(buyerScope('buyer-1')).toEqual({ namespace: SERIALIZATION_NAMESPACE.buyer, key: 'buyer-1' });
   });
@@ -34,6 +61,45 @@ describe('buyerScope / orderScope / fulfillmentScope', () => {
 
   it('fulfillmentScope falls back to the order scope for a guest order (buyerId null)', () => {
     expect(fulfillmentScope(null, 'order-1')).toEqual(orderScope('order-1'));
+  });
+});
+
+describe('active account serialization', () => {
+  it('locks before confirming the account is active', async () => {
+    const executeRaw = vi.mocked(prisma.$executeRaw).mockResolvedValue(0);
+    const findUnique = vi.mocked(prisma.user.findUnique).mockResolvedValue(accountRecord(null));
+
+    await acquireActiveAccountLock(prisma, 'account-1');
+
+    expect(executeRaw).toHaveBeenCalledTimes(1);
+    expect(findUnique).toHaveBeenCalledWith({ where: { id: 'account-1' }, select: { deletedAt: true } });
+  });
+
+  it('rejects a closed account after acquiring its lock', async () => {
+    vi.mocked(prisma.$executeRaw).mockResolvedValue(0);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(accountRecord(new Date()));
+
+    await expect(acquireActiveAccountLock(prisma, 'account-1')).rejects.toThrow('Account is closed');
+  });
+
+  it('rejects a missing account after acquiring its lock', async () => {
+    vi.mocked(prisma.$executeRaw).mockResolvedValue(0);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+
+    await expect(acquireActiveAccountLock(prisma, 'account-1')).rejects.toThrow('User not found');
+  });
+
+  it('deduplicates and lexicographically sorts account locks', async () => {
+    const executeRaw = vi.mocked(prisma.$executeRaw).mockResolvedValue(0);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(accountRecord(null));
+
+    await acquireActiveAccountLocks(prisma, ['seller-b', 'seller-a', 'seller-b']);
+
+    expect(executeRaw).toHaveBeenCalledTimes(2);
+    expect(executeRaw.mock.calls.map((call) => call.slice(1))).toEqual([
+      [SERIALIZATION_NAMESPACE.account, 'seller-a'],
+      [SERIALIZATION_NAMESPACE.account, 'seller-b'],
+    ]);
   });
 });
 

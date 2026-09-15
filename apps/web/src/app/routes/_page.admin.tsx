@@ -62,7 +62,7 @@ function AdminPage() {
   // FORBIDDEN error here before ever seeing the admin shell below. Adding a
   // dedicated "am I admin" endpoint isn't warranted for a single admin feature.
   const { isError: isForbidden, isLoading: isCheckingAccess } = useQuery({
-    ...trpc.admin.ledger.listPayouts.queryOptions(),
+    ...trpc.admin.ledger.listPayouts.queryOptions({ limit: 100 }),
     enabled: isAuthenticated,
   });
 
@@ -126,7 +126,10 @@ function AdminPage() {
 function AdminPayoutsPanel() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const { data: payouts = [], isError, isLoading } = useQuery(trpc.admin.ledger.listPayouts.queryOptions());
+  const { data: payoutPage, isError, isLoading } = useQuery(
+    trpc.admin.ledger.listPayouts.queryOptions({ limit: 100 }),
+  );
+  const payouts = payoutPage?.items ?? [];
   const markProcessing = useMutation(trpc.admin.ledger.markProcessing.mutationOptions());
   const complete = useMutation(trpc.admin.ledger.complete.mutationOptions());
   const reject = useMutation(trpc.admin.ledger.reject.mutationOptions());
