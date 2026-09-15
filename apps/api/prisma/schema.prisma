@@ -34,6 +34,8 @@ model User {
   favoriteMedia      UserFavoriteMedia[]
   uploadWorkspaces   UploadWorkspace[]
   uploadWorkspaceAssets UploadWorkspaceAsset[]
+  paidOrderLines      PaidOrderLine[]      @relation("PaidLineSeller")
+  operatedAdjustments PaymentAdjustment[]  @relation("AdjustmentOperator")
 
   @@map("users")
 }
@@ -111,6 +113,7 @@ model MediaItem {
   uploadAttemptId    String?        @unique @map("upload_attempt_id")
   uploadAttempt      UploadAttempt? @relation(fields: [uploadAttemptId], references: [id])
   favoritedBy        UserFavoriteMedia[]
+  paidOrderLines     PaidOrderLine[]
 
   @@index([sessionId], map: "media_items_session_id_idx")
   @@index([photographerId, status, deletedAt, createdAt], map: "media_items_photographer_status_deleted_created_idx")
@@ -247,6 +250,7 @@ model Order {
   purchases          Purchase[]
   paymentAttempts    PaymentAttempt[]
   paymentNotifications PaymentNotification[]
+  paidOrderLines       PaidOrderLine[]
 
   // Postgres does not treat two NULL buyer_id values as equal, so this
   // constraint gives no duplicate protection for a guest (buyerId: null)
@@ -274,6 +278,8 @@ model PaymentAttempt {
   updatedAt             DateTime           @updatedAt @map("updated_at")
   order                 Order              @relation(fields: [orderId], references: [id])
   notifications         PaymentNotification[]
+  paidOrderLines         PaidOrderLine[]
+  adjustments           PaymentAdjustment[]
 
   @@index([orderId], map: "payment_attempts_order_id_idx")
   @@index([orderId, creationState, expiresAt], map: "payment_attempts_order_state_expiry_idx")
@@ -304,6 +310,12 @@ model PaymentNotification {
   receivedAt            DateTime                      @default(now()) @map("received_at")
   updatedAt             DateTime                      @updatedAt @map("updated_at")
   completedAt           DateTime?                     @map("completed_at")
+  adjustmentProviderId  String?                       @map("adjustment_provider_id")
+  adjustmentAction      String?                       @map("adjustment_action")
+  adjustmentStatus      String?                       @map("adjustment_status")
+  adjustmentAmountCents Int?                          @map("adjustment_amount_cents")
+  adjustmentCurrency    String?                       @map("adjustment_currency")
+  adjustmentUpdatedAt   DateTime?                     @map("adjustment_updated_at")
   paymentAttempt        PaymentAttempt?               @relation(fields: [paymentAttemptId], references: [id], onDelete: SetNull)
   order                 Order?                        @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
@@ -334,6 +346,7 @@ model OrderItem {
   sellerEarningsAmount Int?       @map("seller_earnings_amount")
   deliverablePublicId  String?    @map("deliverable_public_id")
   deliverableType      MediaType? @map("deliverable_type")
+  paidOrderLines       PaidOrderLine[]
 
   @@map("order_items")
 }
@@ -345,6 +358,7 @@ model Purchase {
   platformFee        Int       @map("platform_fee")
   photographerEarned Int       @map("photographer_earned")
   purchasedAt        DateTime  @default(now()) @map("purchased_at")
+  revokedAt          DateTime? @map("revoked_at")
   mediaItemId        String    @map("media_item_id")
   orderId            String?   @map("order_id")
   previewUrl         String?   @map("preview_url")
@@ -353,8 +367,8 @@ model Purchase {
   buyer              User?     @relation(fields: [buyerId], references: [id])
   mediaItem          MediaItem @relation(fields: [mediaItemId], references: [id])
   order              Order?    @relation(fields: [orderId], references: [id])
+  paidOrderLines     PaidOrderLine[]
 
-  @@unique([buyerId, mediaItemId], map: "purchases_buyer_media_key")
   @@map("purchases")
 }
 
@@ -364,12 +378,101 @@ model Transaction {
   amount          Int
   createdAt       DateTime          @default(now()) @map("created_at")
   externalOrderId String?           @map("external_order_id")
+  paidOrderLineId String?           @unique @map("paid_order_line_id")
+  paymentAdjustmentAllocationId String? @unique @map("payment_adjustment_allocation_id")
   type            TransactionType
   status          TransactionStatus @default(PENDING)
   payoutRequest   PayoutRequest?    @relation("PayoutRequestTransaction")
   user            User              @relation(fields: [userId], references: [id])
+  paidOrderLine    PaidOrderLine?    @relation(fields: [paidOrderLineId], references: [id])
+  paymentAdjustmentAllocation PaymentAdjustmentAllocation? @relation(fields: [paymentAdjustmentAllocationId], references: [id])
 
   @@map("transactions")
+}
+
+model PaidOrderLine {
+  id                  String                 @id @default(uuid())
+  paymentAttemptId    String                 @map("payment_attempt_id")
+  orderItemId         String                 @map("order_item_id")
+  orderId             String                 @map("order_id")
+  mediaItemId         String                 @map("media_item_id")
+  sellerId            String                 @map("seller_id")
+  buyerId             String?                @map("buyer_id")
+  guestEmail          String?                @map("guest_email")
+  amountPaid          Int                    @map("amount_paid")
+  platformFee         Int                    @map("platform_fee")
+  sellerEarnings      Int                    @map("seller_earnings")
+  currency            String
+  deliverablePublicId String                 @map("deliverable_public_id")
+  deliverableType     MediaType              @map("deliverable_type")
+  deliveryStatus      PaidOrderLineDeliveryStatus @map("delivery_status")
+  purchaseId          String?                @map("purchase_id")
+  exceptionReason     String?                @map("exception_reason")
+  resolvedAt          DateTime?              @map("resolved_at")
+  createdAt           DateTime               @default(now()) @map("created_at")
+  updatedAt           DateTime               @updatedAt @map("updated_at")
+  paymentAttempt      PaymentAttempt         @relation(fields: [paymentAttemptId], references: [id])
+  orderItem           OrderItem              @relation(fields: [orderItemId], references: [id])
+  order               Order                  @relation(fields: [orderId], references: [id])
+  mediaItem           MediaItem              @relation(fields: [mediaItemId], references: [id])
+  seller              User                   @relation("PaidLineSeller", fields: [sellerId], references: [id])
+  purchase            Purchase?              @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  saleTransaction     Transaction?
+  allocations         PaymentAdjustmentAllocation[]
+
+  @@unique([paymentAttemptId, orderItemId], map: "paid_order_lines_attempt_order_item_key")
+  @@index([paymentAttemptId], map: "paid_order_lines_attempt_idx")
+  @@index([orderId], map: "paid_order_lines_order_idx")
+  @@index([sellerId, deliveryStatus], map: "paid_order_lines_seller_status_idx")
+  @@index([buyerId, mediaItemId], map: "paid_order_lines_buyer_media_idx")
+  @@map("paid_order_lines")
+}
+
+model PaymentAdjustment {
+  id                   String                            @id @default(uuid())
+  provider             PaymentProvider
+  environment          PaymentEnvironment
+  providerAdjustmentId String                            @map("provider_adjustment_id")
+  paymentAttemptId     String                            @map("payment_attempt_id")
+  action               PaymentAdjustmentAction
+  providerStatus       PaymentAdjustmentProviderStatus  @map("provider_status")
+  amountCents          Int                               @map("amount_cents")
+  currency             String
+  occurredAt           DateTime                          @map("occurred_at")
+  providerUpdatedAt    DateTime                          @map("provider_updated_at")
+  resolution           PaymentAdjustmentResolution      @default(PENDING_REVIEW)
+  reversesAdjustmentId String?                           @unique @map("reverses_adjustment_id")
+  operatorNote         String?                           @map("operator_note")
+  operatorId           String?                           @map("operator_id")
+  resolvedAt           DateTime?                         @map("resolved_at")
+  createdAt            DateTime                          @default(now()) @map("created_at")
+  updatedAt            DateTime                          @updatedAt @map("updated_at")
+  paymentAttempt       PaymentAttempt                    @relation(fields: [paymentAttemptId], references: [id])
+  operator             User?                             @relation("AdjustmentOperator", fields: [operatorId], references: [id])
+  reversesAdjustment   PaymentAdjustment?                @relation("AdjustmentReversal", fields: [reversesAdjustmentId], references: [id])
+  reversedByAdjustment PaymentAdjustment?                @relation("AdjustmentReversal")
+  allocations          PaymentAdjustmentAllocation[]
+
+  @@unique([provider, environment, providerAdjustmentId], map: "payment_adjustments_provider_environment_id_key")
+  @@index([paymentAttemptId, resolution], map: "payment_adjustments_attempt_resolution_idx")
+  @@index([providerUpdatedAt], map: "payment_adjustments_provider_updated_idx")
+  @@map("payment_adjustments")
+}
+
+model PaymentAdjustmentAllocation {
+  id                  String            @id @default(uuid())
+  paymentAdjustmentId String            @map("payment_adjustment_id")
+  paidOrderLineId     String            @map("paid_order_line_id")
+  amountCents         Int               @map("amount_cents")
+  sellerLedgerAmount  Int               @map("seller_ledger_amount")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  paymentAdjustment   PaymentAdjustment @relation(fields: [paymentAdjustmentId], references: [id])
+  paidOrderLine       PaidOrderLine     @relation(fields: [paidOrderLineId], references: [id])
+  transaction         Transaction?
+
+  @@unique([paymentAdjustmentId, paidOrderLineId], map: "payment_adjustment_allocations_adjustment_line_key")
+  @@map("payment_adjustment_allocations")
 }
 
 model PayoutRequest {
@@ -511,6 +614,8 @@ enum PaymentNotificationStatus {
 
 enum PaymentNotificationResolution {
   FULFILLED
+  FULFILLED_WITH_EXCEPTIONS
+  ADJUSTMENT_RECORDED
   COMPLETED_DUPLICATE
   IGNORED
   UNKNOWN_ORDER
@@ -521,8 +626,37 @@ enum PaymentNotificationResolution {
 
 enum TransactionType {
   SALE
+  ADJUSTMENT
   PAYOUT
   FORFEIT
+}
+
+enum PaidOrderLineDeliveryStatus {
+  DELIVERED
+  COMPENSATION_REQUIRED
+}
+
+enum PaymentAdjustmentAction {
+  REFUND
+  CREDIT
+  DISPUTE
+  DISPUTE_REVERSAL
+  WARNING
+  WARNING_REVERSAL
+  CREDIT_REVERSAL
+}
+
+enum PaymentAdjustmentProviderStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  REVERSED
+}
+
+enum PaymentAdjustmentResolution {
+  PENDING_REVIEW
+  APPLIED
+  DISMISSED
 }
 
 enum TransactionStatus {

@@ -15,6 +15,7 @@ const mockMedia = {
   softDelete: vi.fn(),
   hardDelete: vi.fn(),
   hardDeleteMany: vi.fn(),
+  findFinanciallyReferencedIds: vi.fn(),
   findDraftsBySpot: vi.fn(),
   findByIds: vi.fn(),
   findByCloudinaryPublicId: vi.fn(),
@@ -45,6 +46,7 @@ const service = new (MediaService as unknown as new (
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockMedia.findFinanciallyReferencedIds.mockResolvedValue([]);
 });
 
 // ---------------------------------------------------------------------------
@@ -160,6 +162,18 @@ describe('MediaService.deleteMedia — cleanup semantics', () => {
 
   it('soft-deletes published media without Cloudinary cleanup', async () => {
     mockMedia.findById.mockResolvedValue({ ...unpublishedMedia, status: MEDIA_STATUS.PUBLISHED });
+    mockMedia.softDelete.mockResolvedValue(undefined);
+
+    await service.deleteMedia('user-1', 'media-1');
+
+    expect(mockMedia.softDelete).toHaveBeenCalledWith('media-1');
+    expect(mockMedia.hardDelete).not.toHaveBeenCalled();
+    expect(mockCloudinary.deleteAsset).not.toHaveBeenCalled();
+  });
+
+  it('retains a draft asset when an immutable order line references it', async () => {
+    mockMedia.findById.mockResolvedValue(unpublishedMedia);
+    mockMedia.findFinanciallyReferencedIds.mockResolvedValue(['media-1']);
     mockMedia.softDelete.mockResolvedValue(undefined);
 
     await service.deleteMedia('user-1', 'media-1');

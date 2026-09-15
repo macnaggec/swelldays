@@ -24,6 +24,9 @@ import type {
 } from 'server/repositories/PaymentNotificationRepository';
 import { paymentNotificationRepository } from 'server/repositories/PaymentNotificationRepository';
 import { PurchaseFulfillmentService, purchaseFulfillmentService } from 'server/services/PurchaseFulfillmentService';
+import type { PaymentAdjustmentRepository } from 'server/repositories/PaymentAdjustmentRepository';
+import { paymentAdjustmentRepository } from 'server/repositories/PaymentAdjustmentRepository';
+import { isPaymentAdjustmentAction, isPaymentAdjustmentProviderStatus } from 'server/domain/PaymentAdjustment';
 
 export const PAYMENT_CREATION_LEASE_MS = 30_000;
 export const PAYMENT_NOTIFICATION_CLAIM_LEASE_MS = 30_000;
@@ -84,6 +87,7 @@ export class PaymentService implements IPaymentService {
     knownAdapters: readonly PaymentAdapter[],
     private fulfillment: Pick<PurchaseFulfillmentService, 'fulfillOrder'>,
     private now: () => Date = () => new Date(),
+    private adjustments: Pick<PaymentAdjustmentRepository, 'record'> = paymentAdjustmentRepository,
   ) {
     for (const adapter of [checkoutAdapter, ...knownAdapters]) {
       const existing = this.adapters.get(adapter.provider);
@@ -163,7 +167,7 @@ export class PaymentService implements IPaymentService {
         provider: bound.provider,
         environment: session.environment,
         providerTransactionId: session.providerTransactionId,
-      }));
+      }), bound.id);
     }
     return { type: 'ready', checkoutUrl: session.checkoutUrl, expiresAt: session.expiresAt };
   }
@@ -282,6 +286,8 @@ export class PaymentService implements IPaymentService {
           eventType: 'order.completed', provider: attempt.provider, sourceEventId: null, occurredAt: null,
           environment: attempt.environment, providerTransactionId: attempt.providerTransactionId,
           correlationAttemptId: attempt.id, providerTestMode: receipt.providerTestMode,
+          adjustmentProviderId: null, adjustmentAction: null, adjustmentStatus: null,
+          adjustmentAmountCents: null, adjustmentCurrency: null, adjustmentUpdatedAt: null,
         };
         const stored = await this.notifications.store(event, now);
         if (stored.inserted) summary.enqueuedPaid += 1;
@@ -308,18 +314,36 @@ export class PaymentService implements IPaymentService {
   }
 
   private async processClaim(claim: PaymentNotificationClaim, summary: PaymentNotificationRunSummary): Promise<void> {
-    if (claim.environment === null || claim.providerTransactionId === null || claim.correlationAttemptId === null) {
+    if (claim.environment === null || claim.providerTransactionId === null
+      || (claim.eventType !== 'payment.adjustment' && claim.correlationAttemptId === null)) {
       await this.recordRetry(claim, 'unknown-transaction', summary); return;
     }
     const identity: PaymentIdentity = { provider: claim.provider, environment: claim.environment,
       providerTransactionId: claim.providerTransactionId };
     const attempt = await this.attempts.findByIdentity(identity);
     if (attempt === null) { await this.recordRetry(claim, 'unknown-transaction', summary); return; }
-    if (claim.correlationAttemptId !== attempt.id) {
+    if (claim.eventType !== 'payment.adjustment' && claim.correlationAttemptId !== attempt.id) {
       if (await this.notifications.reject(claim, 'mismatched-transaction', this.now())) summary.rejected += 1;
       return;
     }
     if (!await this.notifications.bind(claim, attempt.id, attempt.orderId)) return;
+    if (claim.eventType === 'payment.adjustment') {
+      if (claim.adjustmentProviderId == null || claim.adjustmentAction == null
+        || claim.adjustmentStatus == null || claim.adjustmentAmountCents == null
+        || claim.adjustmentCurrency == null || claim.adjustmentUpdatedAt == null || claim.occurredAt === null
+        || !isPaymentAdjustmentAction(claim.adjustmentAction)
+        || !isPaymentAdjustmentProviderStatus(claim.adjustmentStatus)) {
+        await this.recordRetry(claim, 'adjustment-failed', summary); return;
+      }
+      try {
+        await this.adjustments.record({ providerAdjustmentId: claim.adjustmentProviderId, identity,
+          action: claim.adjustmentAction, status: claim.adjustmentStatus,
+          amountCents: claim.adjustmentAmountCents, currency: claim.adjustmentCurrency,
+          occurredAt: claim.occurredAt, updatedAt: claim.adjustmentUpdatedAt }, attempt.id);
+      } catch { await this.recordRetry(claim, 'adjustment-failed', summary); return; }
+      if (await this.notifications.complete(claim, 'adjustment-recorded', this.now())) summary.completed += 1;
+      return;
+    }
     const adapter = this.adapters.get(claim.provider);
     if (adapter === undefined) { await this.recordRetry(claim, 'provider-unreachable', summary); return; }
     let receipt;
@@ -332,7 +356,7 @@ export class PaymentService implements IPaymentService {
     }
     let resolution: PaymentNotificationResolution;
     try {
-      const outcome = await this.fulfillment.fulfillOrder(attempt.orderId, paymentIdentityKey(identity));
+      const outcome = await this.fulfillment.fulfillOrder(attempt.orderId, paymentIdentityKey(identity), attempt.id);
       if (outcome.type === 'unknown-order') {
         if (await this.notifications.reject(claim, 'unknown-order', this.now())) summary.rejected += 1;
         return;
@@ -341,7 +365,8 @@ export class PaymentService implements IPaymentService {
         if (await this.notifications.reject(claim, 'order-not-pending', this.now())) summary.rejected += 1;
         return;
       }
-      resolution = outcome.type === 'fulfilled' ? 'fulfilled' : 'completed-duplicate';
+      resolution = outcome.type === 'fulfilled' ? 'fulfilled'
+        : outcome.type === 'fulfilled-with-exceptions' ? 'fulfilled-with-exceptions' : 'completed-duplicate';
     } catch {
       await this.recordRetry(claim, 'fulfillment-failed', summary); return;
     }
@@ -350,7 +375,7 @@ export class PaymentService implements IPaymentService {
 
   private async recordRetry(
     claim: PaymentNotificationClaim,
-    code: 'unknown-transaction' | 'provider-unreachable' | 'fulfillment-failed',
+    code: 'unknown-transaction' | 'provider-unreachable' | 'fulfillment-failed' | 'adjustment-failed',
     summary: PaymentNotificationRunSummary,
   ): Promise<void> {
     const now = this.now();

@@ -35,6 +35,7 @@ const adapter: PaymentAdapter = {
   retrieveReceipt: vi.fn(), expectedAccountId: vi.fn(),
 };
 const fulfillment = { fulfillOrder: vi.fn() };
+const adjustments = { record: vi.fn() };
 const session = {
   providerTransactionId: 'INV-1', environment: 'production' as const,
   checkoutUrl: 'https://pay.example/INV-1', expiresAt: new Date('2026-09-14T17:00:00Z'),
@@ -58,6 +59,8 @@ const notification: PaymentNotificationRecord = {
   id: 'notification-1', eventKey: 'event:cryptocloud:evt-1', eventType: 'order.completed',
   provider: 'cryptocloud', sourceEventId: 'evt-1', occurredAt: NOW, environment: 'production',
   providerTransactionId: 'INV-1', correlationAttemptId: 'attempt-1', providerTestMode: false,
+  adjustmentProviderId: null, adjustmentAction: null, adjustmentStatus: null,
+  adjustmentAmountCents: null, adjustmentCurrency: null, adjustmentUpdatedAt: null,
   paymentAttemptId: null, orderId: null, status: 'received', resolution: null, processingAttempts: 0,
   availableAt: NOW, claimToken: null, claimExpiresAt: null, lastErrorCode: null,
   receivedAt: NOW, updatedAt: NOW, completedAt: null,
@@ -68,7 +71,7 @@ const claim: PaymentNotificationClaim = {
 };
 
 function service(checkout = adapter, known: readonly PaymentAdapter[] = [adapter]): PaymentService {
-  return new PaymentService(attempts, notifications, checkout, known, fulfillment, () => NOW);
+  return new PaymentService(attempts, notifications, checkout, known, fulfillment, () => NOW, adjustments);
 }
 
 beforeEach(() => {
@@ -307,8 +310,25 @@ describe('PaymentService notification worker', () => {
       claimed: 1, completed: 1, rejected: 0, retried: 0, exhausted: 0,
     });
     expect(notifications.bind).toHaveBeenCalledWith(claim, 'attempt-1', 'order-1');
-    expect(fulfillment.fulfillOrder).toHaveBeenCalledWith('order-1', '["cryptocloud","production","INV-1"]');
+    expect(fulfillment.fulfillOrder).toHaveBeenCalledWith('order-1', '["cryptocloud","production","INV-1"]', 'attempt-1');
     expect(notifications.complete).toHaveBeenCalledWith(claim, 'fulfilled', NOW);
+  });
+
+  it('records but does not apply an adjustment notification', async () => {
+    const adjustmentClaim: PaymentNotificationClaim = { ...claim, eventType: 'payment.adjustment', provider: 'paddle',
+      environment: 'sandbox', providerTransactionId: 'txn-1', correlationAttemptId: null,
+      adjustmentProviderId: 'adj-1', adjustmentAction: 'refund', adjustmentStatus: 'approved',
+      adjustmentAmountCents: 500, adjustmentCurrency: 'USD', adjustmentUpdatedAt: NOW };
+    vi.mocked(notifications.claimNext).mockReset().mockResolvedValueOnce(adjustmentClaim).mockResolvedValue(null);
+    vi.mocked(attempts.findByIdentity).mockResolvedValue({ ...readyAttempt, provider: 'paddle', environment: 'sandbox',
+      providerTransactionId: 'txn-1' });
+
+    await expect(service().processPendingNotifications()).resolves.toEqual(expect.objectContaining({ completed: 1 }));
+
+    expect(adjustments.record).toHaveBeenCalledWith(expect.objectContaining({ providerAdjustmentId: 'adj-1',
+      action: 'refund', status: 'approved', amountCents: 500 }), 'attempt-1');
+    expect(fulfillment.fulfillOrder).not.toHaveBeenCalled();
+    expect(notifications.complete).toHaveBeenCalledWith(adjustmentClaim, 'adjustment-recorded', NOW);
   });
 
   it('retries early callbacks and provider failures instead of rejecting them', async () => {

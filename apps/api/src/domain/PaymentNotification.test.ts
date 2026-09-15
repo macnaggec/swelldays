@@ -41,4 +41,23 @@ describe('payment notification normalization', () => {
   it('keeps paid non-pending orders visible as their own resolution', () => {
     expect(PAYMENT_NOTIFICATION_RESOLUTIONS).toContain('order-not-pending');
   });
+
+  it('stores only normalized adjustment facts and includes changing provider state in fallback identity', () => {
+    const adjustment = {
+      type: 'payment.adjustment' as const, provider: 'paddle' as const, sourceEventId: '',
+      occurredAt: new Date('2026-09-14T16:00:00Z'),
+      identity: { provider: 'paddle' as const, environment: 'sandbox' as const, providerTransactionId: 'txn_1' },
+      adjustment: { providerAdjustmentId: 'adj_1',
+        identity: { provider: 'paddle' as const, environment: 'sandbox' as const, providerTransactionId: 'txn_1' },
+        action: 'refund' as const, status: 'pending-approval' as const, amountCents: 100, currency: 'USD',
+        occurredAt: new Date('2026-09-14T16:00:00Z'), updatedAt: new Date('2026-09-14T16:00:00Z') },
+    };
+    const pending = toStoredPaymentEvent(adjustment);
+    const approved = toStoredPaymentEvent({ ...adjustment, adjustment: { ...adjustment.adjustment,
+      status: 'approved', updatedAt: new Date('2026-09-14T17:00:00Z') } });
+    expect(pending).toMatchObject({ adjustmentProviderId: 'adj_1', adjustmentAction: 'refund',
+      adjustmentStatus: 'pending-approval', adjustmentAmountCents: 100, adjustmentCurrency: 'USD' });
+    expect(pending.eventKey).not.toBe(approved.eventKey);
+    expect(pending).not.toHaveProperty('rawBody');
+  });
 });

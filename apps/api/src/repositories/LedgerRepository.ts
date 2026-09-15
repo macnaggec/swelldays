@@ -17,6 +17,7 @@ export type LedgerSummaryRecords = {
   user: Pick<User, 'id' | 'balance'> | null;
   recentTransactions: Transaction[];
   payoutRequests: PayoutRequest[];
+  heldForReviewCents?: number;
 };
 
 export type ReservePayoutInput = {
@@ -47,6 +48,7 @@ export type RecordSaleInput = {
   photographerId: string;
   amount: number;
   externalOrderId: string;
+  paidOrderLineId: string;
 };
 
 export interface ILedgerRepository {
@@ -81,13 +83,31 @@ export class LedgerRepository implements ILedgerRepository {
         }),
       ]);
 
-      return { user, recentTransactions, payoutRequests };
+      const heldRows = await prisma.paidOrderLine.findMany({
+        where: { sellerId: photographerId, deliveryStatus: 'DELIVERED',
+          paymentAttempt: { adjustments: { some: { resolution: 'PENDING_REVIEW' } } } },
+        distinct: ['id'], select: { sellerEarnings: true,
+          allocations: { where: { paymentAdjustment: { resolution: 'APPLIED' } }, select: { sellerLedgerAmount: true } } },
+      });
+      return { user, recentTransactions, payoutRequests,
+        heldForReviewCents: heldRows.reduce((sum, row) => sum + Math.max(0, row.sellerEarnings
+          + row.allocations.reduce((adjusted, allocation) => adjusted + allocation.sellerLedgerAmount, 0)), 0) };
     });
   }
 
   reservePayout(input: ReservePayoutInput): Promise<PayoutReservation> {
     return runQuery(() =>
       prisma.$transaction(async (tx) => {
+        const user = await tx.user.findUnique({ where: { id: input.photographerId }, select: { balance: true } });
+        const held = await tx.paidOrderLine.findMany({ where: { sellerId: input.photographerId,
+          deliveryStatus: 'DELIVERED', paymentAttempt: { adjustments: { some: { resolution: 'PENDING_REVIEW' } } } },
+          distinct: ['id'], select: { sellerEarnings: true,
+            allocations: { where: { paymentAdjustment: { resolution: 'APPLIED' } }, select: { sellerLedgerAmount: true } } } });
+        const heldForReview = held.reduce((sum, row) => sum + Math.max(0, row.sellerEarnings
+          + row.allocations.reduce((adjusted, allocation) => adjusted + allocation.sellerLedgerAmount, 0)), 0);
+        if (user === null || input.amountCents > user.balance - heldForReview) {
+          throw new BadRequestError('Insufficient available balance');
+        }
         const reserved = await tx.user.updateMany({
           where: {
             id: input.photographerId,
@@ -254,6 +274,7 @@ export class LedgerRepository implements ILedgerRepository {
         amount: input.amount,
         type: TransactionType.SALE,
         externalOrderId: input.externalOrderId,
+        paidOrderLineId: input.paidOrderLineId,
         status: TransactionStatus.COMPLETED,
       },
     });

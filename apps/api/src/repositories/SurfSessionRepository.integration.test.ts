@@ -6,11 +6,15 @@ import { randomUUID } from 'node:crypto';
 const repository = new SurfSessionRepository();
 
 async function clearTestData() {
+  await prisma.payoutRequest.deleteMany(); await prisma.transaction.deleteMany();
+  await prisma.paymentAdjustmentAllocation.deleteMany(); await prisma.paymentAdjustment.deleteMany();
+  await prisma.paidOrderLine.deleteMany(); await prisma.paymentNotification.deleteMany(); await prisma.paymentAttempt.deleteMany();
   await prisma.uploadAttempt.deleteMany();
   await prisma.uploadWorkspaceAsset.deleteMany();
   await prisma.uploadWorkspaceMediaChange.deleteMany();
   await prisma.uploadWorkspace.deleteMany();
   await prisma.purchase.deleteMany();
+  await prisma.orderItem.deleteMany(); await prisma.order.deleteMany();
   await prisma.mediaItem.deleteMany();
   await prisma.surfSession.deleteMany();
   await prisma.spot.deleteMany();
@@ -154,6 +158,33 @@ describe('SurfSessionRepository.retire', () => {
       status: 'DELETED',
     });
     expect(result.hardDeletedAssets).toEqual([]);
+  });
+
+  it('retains the Cloudinary asset for a paid compensation exception without a Purchase entitlement', async () => {
+    const photographer = await prisma.user.create({ data: { email: 'exception-seller@example.com' } });
+    const buyer = await prisma.user.create({ data: { email: 'exception-buyer@example.com' } });
+    const session = await prisma.surfSession.create({ data: { photographerId: photographer.id, status: 'PUBLISHED' } });
+    const media = await prisma.mediaItem.create({ data: { sessionId: session.id, photographerId: photographer.id,
+      type: 'PHOTO', status: 'PUBLISHED', price: 700, capturedAt: new Date(), lightboxUrl: 'exception-lightbox',
+      thumbnailUrl: 'exception-thumb', cloudinaryPublicId: 'exception-asset' } });
+    const order = await prisma.order.create({ data: { buyerId: buyer.id, clientRequestId: randomUUID(), totalAmount: 700,
+      status: 'COMPLETED', externalOrderId: randomUUID(), items: { create: { mediaItemId: media.id,
+        unitAmountCents: 700, currency: 'USD', sellerId: photographer.id, feePolicyVersion: 'standard-20-v1',
+        platformFeeAmount: 140, sellerEarningsAmount: 560, deliverablePublicId: media.cloudinaryPublicId,
+        deliverableType: 'PHOTO' } } }, include: { items: true } });
+    const attempt = await prisma.paymentAttempt.create({ data: { orderId: order.id, provider: 'PADDLE',
+      environment: 'SANDBOX', providerTransactionId: randomUUID(), creationState: 'READY',
+      expectedAmountCents: 700, expectedCurrency: 'USD' } });
+    await prisma.paidOrderLine.create({ data: { paymentAttemptId: attempt.id, orderItemId: order.items[0]!.id,
+      orderId: order.id, mediaItemId: media.id, sellerId: photographer.id, buyerId: buyer.id,
+      amountPaid: 700, platformFee: 140, sellerEarnings: 560, currency: 'USD',
+      deliverablePublicId: media.cloudinaryPublicId, deliverableType: 'PHOTO',
+      deliveryStatus: 'COMPENSATION_REQUIRED', exceptionReason: 'duplicate-entitlement' } });
+
+    const result = await repository.retire(session.id, photographer.id);
+
+    expect(result.hardDeletedAssets).toEqual([]);
+    expect(await prisma.mediaItem.findUniqueOrThrow({ where: { id: media.id } })).toMatchObject({ status: 'DELETED' });
   });
 });
 

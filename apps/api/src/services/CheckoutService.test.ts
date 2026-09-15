@@ -436,6 +436,11 @@ describe('CheckoutService.createCheckoutSession', () => {
     await expect(service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID)).rejects.toThrow(
       'Some items already purchased',
     );
+
+    expect(mockTx.purchase.findMany).toHaveBeenCalledWith({
+      where: { buyerId: BUYER_ID, mediaItemId: { in: ITEM_IDS }, revokedAt: null },
+      select: { mediaItemId: true },
+    });
   });
 
   it('throws BadRequestError when buyer already has a pending order for an item', async () => {

@@ -3,6 +3,7 @@ import { BadGatewayError, BadRequestError } from 'server/errors';
 import { logger } from 'server/lib/logger';
 import { apiConfig } from 'server/config/env';
 import type { PaymentIdentity } from 'server/domain/Payment';
+import { mapPaddleAdjustmentAction, mapPaddleAdjustmentStatus, parsePositiveMinorUnits } from 'server/domain/PaymentAdjustment';
 import type { PaymentReceipt, ReceiptStatus } from 'server/domain/PaymentReceipt';
 import type {
   PaymentAdapter,
@@ -267,6 +268,15 @@ function isWebhookRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function parseWebhookDate(value: string): Date {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) {
+    throw new BadRequestError('Malformed Paddle webhook date');
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) throw new BadRequestError('Malformed Paddle webhook date');
+  return parsed;
+}
+
 function parseWebhookEvent(rawBody: string, _headers: Record<string, string>): PaymentWebhookEvent {
   let decoded: unknown;
   try { decoded = JSON.parse(rawBody); } catch { throw new BadRequestError('Malformed Paddle webhook'); }
@@ -277,11 +287,32 @@ function parseWebhookEvent(rawBody: string, _headers: Record<string, string>): P
   if (typeof eventId !== 'string' || typeof eventType !== 'string' || typeof occurredAtValue !== 'string') {
     throw new BadRequestError('Malformed Paddle webhook');
   }
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(occurredAtValue)) {
-    throw new BadRequestError('Malformed Paddle webhook date');
+  const occurredAt = parseWebhookDate(occurredAtValue);
+
+  if (eventType === 'adjustment.created' || eventType === 'adjustment.updated') {
+    const data = decoded.data;
+    if (!isWebhookRecord(data) || typeof data.id !== 'string' || data.id.length === 0 || data.id.length > 200
+      || typeof data.transaction_id !== 'string' || data.transaction_id.length === 0 || data.transaction_id.length > 200
+      || typeof data.action !== 'string' || typeof data.status !== 'string'
+      || typeof data.currency_code !== 'string' || !/^[A-Za-z]{3}$/.test(data.currency_code)
+      || typeof data.updated_at !== 'string' || !isWebhookRecord(data.totals)
+      || typeof data.totals.total !== 'string') {
+      throw new BadRequestError('Malformed Paddle adjustment webhook');
+    }
+    const updatedAt = parseWebhookDate(data.updated_at);
+    const adjustment = {
+      providerAdjustmentId: data.id,
+      identity: { provider: 'paddle' as const, environment: creds().environment, providerTransactionId: data.transaction_id },
+      action: mapPaddleAdjustmentAction(data.action),
+      status: mapPaddleAdjustmentStatus(data.status),
+      amountCents: parsePositiveMinorUnits(data.totals.total),
+      currency: data.currency_code.toUpperCase(),
+      occurredAt,
+      updatedAt,
+    };
+    return { type: 'payment.adjustment', provider: 'paddle', sourceEventId: eventId,
+      occurredAt, identity: adjustment.identity, adjustment };
   }
-  const occurredAt = new Date(occurredAtValue);
-  if (Number.isNaN(occurredAt.getTime())) throw new BadRequestError('Malformed Paddle webhook date');
 
   if (eventType !== 'transaction.completed') {
     logger.warn('[Paddle] Non-actionable webhook event — ignoring', { eventType });

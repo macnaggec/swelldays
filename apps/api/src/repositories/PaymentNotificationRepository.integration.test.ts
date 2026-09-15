@@ -21,11 +21,16 @@ function event(suffix: string): StoredPaymentEvent {
     eventKey: `event:paddle:${suffix}`, eventType: 'order.completed', provider: 'paddle',
     sourceEventId: suffix, occurredAt: NOW, environment: 'sandbox', providerTransactionId: `txn_${suffix}`,
     correlationAttemptId: `attempt_${suffix}`, providerTestMode: true,
+    adjustmentProviderId: null, adjustmentAction: null, adjustmentStatus: null,
+    adjustmentAmountCents: null, adjustmentCurrency: null, adjustmentUpdatedAt: null,
   };
 }
 
 async function clear(): Promise<void> {
   await prisma.paymentNotification.deleteMany();
+  await prisma.payoutRequest.deleteMany(); await prisma.transaction.deleteMany();
+  await prisma.paymentAdjustmentAllocation.deleteMany(); await prisma.paymentAdjustment.deleteMany();
+  await prisma.paidOrderLine.deleteMany();
   await prisma.paymentAttempt.deleteMany();
   await resetDb();
 }

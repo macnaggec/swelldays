@@ -6,10 +6,14 @@ const mockCleanup = { deleteStoredAsset: vi.fn().mockResolvedValue(undefined) };
 const service = new UploadWorkspaceService(mockCleanup);
 
 async function clearTestData() {
+  await prisma.payoutRequest.deleteMany(); await prisma.transaction.deleteMany();
+  await prisma.paymentAdjustmentAllocation.deleteMany(); await prisma.paymentAdjustment.deleteMany();
+  await prisma.paidOrderLine.deleteMany(); await prisma.paymentNotification.deleteMany(); await prisma.paymentAttempt.deleteMany();
   await prisma.uploadWorkspaceMediaChange.deleteMany();
   await prisma.uploadWorkspaceAsset.deleteMany();
   await prisma.uploadAttempt.deleteMany();
   await prisma.purchase.deleteMany();
+  await prisma.orderItem.deleteMany(); await prisma.order.deleteMany();
   await prisma.mediaItem.deleteMany();
   await prisma.uploadWorkspace.deleteMany();
   await prisma.surfSession.deleteMany();

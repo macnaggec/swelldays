@@ -78,6 +78,8 @@ const RESOLUTION_TO_PRISMA: Record<PaymentNotificationResolution, PrismaPaymentN
   'order-not-pending': PrismaPaymentNotificationResolution.ORDER_NOT_PENDING,
   'mismatched-transaction': PrismaPaymentNotificationResolution.MISMATCHED_TRANSACTION,
   'rejected-receipt': PrismaPaymentNotificationResolution.REJECTED_RECEIPT,
+  'fulfilled-with-exceptions': PrismaPaymentNotificationResolution.FULFILLED_WITH_EXCEPTIONS,
+  'adjustment-recorded': PrismaPaymentNotificationResolution.ADJUSTMENT_RECORDED,
 };
 const RESOLUTION_FROM_PRISMA: Record<PrismaPaymentNotificationResolution, PaymentNotificationResolution> = {
   [PrismaPaymentNotificationResolution.FULFILLED]: 'fulfilled',
@@ -86,11 +88,15 @@ const RESOLUTION_FROM_PRISMA: Record<PrismaPaymentNotificationResolution, Paymen
   [PrismaPaymentNotificationResolution.ORDER_NOT_PENDING]: 'order-not-pending',
   [PrismaPaymentNotificationResolution.MISMATCHED_TRANSACTION]: 'mismatched-transaction',
   [PrismaPaymentNotificationResolution.REJECTED_RECEIPT]: 'rejected-receipt',
+  [PrismaPaymentNotificationResolution.FULFILLED_WITH_EXCEPTIONS]: 'fulfilled-with-exceptions',
+  [PrismaPaymentNotificationResolution.ADJUSTMENT_RECORDED]: 'adjustment-recorded',
 };
 
 function toRecord(row: PrismaPaymentNotification): PaymentNotificationRecord {
   return {
-    id: row.id, eventKey: row.eventKey, eventType: row.eventType === 'order.completed' ? 'order.completed' : 'order.ignored',
+    id: row.id, eventKey: row.eventKey,
+    eventType: row.eventType === 'order.completed' ? 'order.completed'
+      : row.eventType === 'payment.adjustment' ? 'payment.adjustment' : 'order.ignored',
     provider: PROVIDER_FROM_PRISMA[row.provider], sourceEventId: row.sourceEventId, occurredAt: row.occurredAt,
     environment: row.environment === null ? null : ENV_FROM_PRISMA[row.environment],
     providerTransactionId: row.providerTransactionId, correlationAttemptId: row.correlationAttemptId,
@@ -99,11 +105,14 @@ function toRecord(row: PrismaPaymentNotification): PaymentNotificationRecord {
     processingAttempts: row.processingAttempts, availableAt: row.availableAt, claimToken: row.claimToken,
     claimExpiresAt: row.claimExpiresAt, lastErrorCode: errorCode(row.lastErrorCode), receivedAt: row.receivedAt,
     updatedAt: row.updatedAt, completedAt: row.completedAt,
+    adjustmentProviderId: row.adjustmentProviderId, adjustmentAction: row.adjustmentAction,
+    adjustmentStatus: row.adjustmentStatus, adjustmentAmountCents: row.adjustmentAmountCents,
+    adjustmentCurrency: row.adjustmentCurrency, adjustmentUpdatedAt: row.adjustmentUpdatedAt,
   };
 }
 
 function errorCode(value: string | null): PaymentNotificationErrorCode | null {
-  if (value === 'unknown-transaction' || value === 'provider-unreachable' || value === 'fulfillment-failed' || value === 'claim-lost') return value;
+  if (value === 'unknown-transaction' || value === 'provider-unreachable' || value === 'fulfillment-failed' || value === 'claim-lost' || value === 'adjustment-failed') return value;
   return null;
 }
 

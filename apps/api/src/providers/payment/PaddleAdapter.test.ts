@@ -117,6 +117,35 @@ describe('PaddleAdapter.verifyWebhook signature rotation', () => {
 // parseWebhookEvent
 // ---------------------------------------------------------------------------
 describe('PaddleAdapter.parseWebhookEvent', () => {
+  it('normalizes an approved refund adjustment using transaction identity', () => {
+    const body = makeWebhookBody('adjustment.updated', {
+      id: 'adj_01', transaction_id: 'txn_01', action: 'refund', status: 'approved',
+      currency_code: 'usd', totals: { total: '250' }, updated_at: '2026-09-14T17:00:00Z',
+    });
+    expect(paddleAdapter.parseWebhookEvent(body, {})).toMatchObject({
+      type: 'payment.adjustment', sourceEventId: 'evt_01',
+      identity: { provider: 'paddle', providerTransactionId: 'txn_01' },
+      adjustment: { providerAdjustmentId: 'adj_01', action: 'refund', status: 'approved',
+        amountCents: 250, currency: 'USD' },
+    });
+  });
+
+  it('rejects malformed adjustment financial facts', () => {
+    const body = makeWebhookBody('adjustment.created', {
+      id: 'adj_01', transaction_id: 'txn_01', action: 'refund', status: 'approved',
+      currency_code: 'USD', totals: { total: '2.5' }, updated_at: 'not-a-date',
+    });
+    expect(() => paddleAdapter.parseWebhookEvent(body, {})).toThrow(BadRequestError);
+  });
+
+  it('rejects blank adjustment identity and malformed currency', () => {
+    const body = makeWebhookBody('adjustment.created', {
+      id: '', transaction_id: 'txn_01', action: 'refund', status: 'approved',
+      currency_code: 'USDX', totals: { total: '250' }, updated_at: '2026-09-14T17:00:00Z',
+    });
+    expect(() => paddleAdapter.parseWebhookEvent(body, {})).toThrow(BadRequestError);
+  });
+
   it('returns a normalised order.completed event for a transaction.completed payload', () => {
     const rawBody = makeWebhookBody('transaction.completed');
 

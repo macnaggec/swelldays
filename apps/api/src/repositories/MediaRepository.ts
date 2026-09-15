@@ -144,6 +144,7 @@ export interface IMediaRepository {
   softDelete(id: string): Promise<DraftMedia>;
   hardDelete(id: string): Promise<void>;
   hardDeleteMany(ids: string[]): Promise<void>;
+  findFinanciallyReferencedIds(ids: string[]): Promise<string[]>;
   findByIds(ids: string[]): Promise<{ id: string; sessionId: string; status: DomainMediaStatus; price: number | null; photographerId: string; cloudinaryPublicId: string; type: string }[]>;
   findByIdsForCheckout(
     ids: string[],
@@ -271,6 +272,12 @@ export class MediaRepository implements IMediaRepository {
     return runQuery(async () => {
       await prisma.mediaItem.deleteMany({ where: { id: { in: ids } } });
     });
+  }
+
+  findFinanciallyReferencedIds(ids: string[]): Promise<string[]> {
+    return runQuery(async () => (await prisma.mediaItem.findMany({ where: { id: { in: ids }, OR: [
+      { purchases: { some: {} } }, { orderItems: { some: {} } }, { paidOrderLines: { some: {} } },
+    ] }, select: { id: true } })).map((row) => row.id));
   }
 
   /** True when legacy unpublished media rows still exist for a photographer. */

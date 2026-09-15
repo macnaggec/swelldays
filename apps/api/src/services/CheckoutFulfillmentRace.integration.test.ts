@@ -26,11 +26,17 @@ import { BadRequestError } from 'server/errors';
 // ---------------------------------------------------------------------------
 
 beforeEach(async () => {
+  await prisma.payoutRequest.deleteMany(); await prisma.transaction.deleteMany();
+  await prisma.paymentAdjustmentAllocation.deleteMany(); await prisma.paymentAdjustment.deleteMany();
+  await prisma.paidOrderLine.deleteMany();
   await prisma.paymentAttempt.deleteMany();
   await resetDb();
 });
 afterEach(() => vi.restoreAllMocks());
 afterAll(async () => {
+  await prisma.payoutRequest.deleteMany(); await prisma.transaction.deleteMany();
+  await prisma.paymentAdjustmentAllocation.deleteMany(); await prisma.paymentAdjustment.deleteMany();
+  await prisma.paidOrderLine.deleteMany();
   await prisma.paymentAttempt.deleteMany();
   await resetDb();
   await prisma.$disconnect();
@@ -46,6 +52,10 @@ async function createBuyer() {
   return prisma.user.create({
     data: { email: `buyer-${randomUUID()}@example.com` },
   });
+}
+
+async function attemptIdFor(orderId: string): Promise<string> {
+  return (await prisma.paymentAttempt.findFirstOrThrow({ where: { orderId }, orderBy: { createdAt: 'desc' } })).id;
 }
 
 async function createSession(photographerId: string) {
@@ -131,7 +141,7 @@ describe('CheckoutFulfillmentRace — R04: checkout and fulfillment share the bu
     const originalTransaction = prisma.$transaction.bind(prisma);
     let interceptNextTransaction = true;
     let barrierReached = false;
-    let fulfillmentPromise: ReturnType<PurchaseFulfillmentService['fulfillOrder']> = Promise.resolve({ type: 'fulfilled' });
+    let fulfillmentPromise: ReturnType<PurchaseFulfillmentService['fulfillOrder']> = Promise.resolve({ type: 'fulfilled', paidLineIds: [] });
     const transactionSpy = vi.spyOn(prisma, '$transaction');
     const wrappedTransaction = async (operation: (tx: Prisma.TransactionClient) => Promise<unknown>) => {
       const interceptThisTransaction = interceptNextTransaction;
@@ -148,7 +158,7 @@ describe('CheckoutFulfillmentRace — R04: checkout and fulfillment share the bu
               // Started, not awaited: with the fix, fulfillment blocks on the
               // same buyer lock this (checkout) transaction currently holds —
               // awaiting it here would deadlock the test rather than fail it.
-              fulfillmentPromise = fulfillment.fulfillOrder(first.orderId, `race-${first.orderId}`);
+              fulfillmentPromise = fulfillment.fulfillOrder(first.orderId, `race-${first.orderId}`, await attemptIdFor(first.orderId));
               // Yield so fulfillment's async work (its two plain reads, then
               // its own $transaction call) reaches and blocks on the lock
               // before this transaction is allowed to continue past it.
@@ -217,8 +227,8 @@ describe('CheckoutFulfillmentRace — R04: checkout and fulfillment share the bu
     const externalOrderId = `race-dup-${randomUUID()}`;
 
     await Promise.all([
-      fulfillment.fulfillOrder(order.orderId, externalOrderId),
-      fulfillment.fulfillOrder(order.orderId, externalOrderId),
+      fulfillment.fulfillOrder(order.orderId, externalOrderId, await attemptIdFor(order.orderId)),
+      fulfillment.fulfillOrder(order.orderId, externalOrderId, await attemptIdFor(order.orderId)),
     ]);
 
     const purchases = await prisma.purchase.findMany({ where: { buyerId: buyer.id, mediaItemId: media.id } });
@@ -270,8 +280,8 @@ describe('CheckoutFulfillmentRace — R04: checkout and fulfillment share the bu
     const order2 = await checkout.createCheckoutSession(buyer2.id, undefined, [mediaB.id, mediaA.id], randomUUID());
 
     const results = await Promise.allSettled([
-      fulfillment.fulfillOrder(order1.orderId, `race-multi-1-${randomUUID()}`),
-      fulfillment.fulfillOrder(order2.orderId, `race-multi-2-${randomUUID()}`),
+      fulfillment.fulfillOrder(order1.orderId, `race-multi-1-${randomUUID()}`, await attemptIdFor(order1.orderId)),
+      fulfillment.fulfillOrder(order2.orderId, `race-multi-2-${randomUUID()}`, await attemptIdFor(order2.orderId)),
     ]);
 
     for (const result of results) {
@@ -314,7 +324,7 @@ describe('CheckoutFulfillmentRace — R04: checkout and fulfillment share the bu
     });
 
     await expect(
-      fulfillment.fulfillOrder(order.orderId, `race-ledger-fail-${randomUUID()}`),
+      fulfillment.fulfillOrder(order.orderId, `race-ledger-fail-${randomUUID()}`, await attemptIdFor(order.orderId)),
     ).rejects.toThrow('Injected ledger failure');
 
     expect(recordSaleSpy).toHaveBeenCalledTimes(1);

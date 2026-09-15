@@ -271,7 +271,8 @@ export class UploadWorkspaceService {
           include: {
             assets: { where: { status: 'READY' }, orderBy: { createdAt: 'asc' } },
             mediaChanges: {
-              include: { mediaItem: { include: { purchases: { select: { id: true }, take: 1 } } } },
+              include: { mediaItem: { include: { purchases: { select: { id: true }, take: 1 },
+                orderItems: { select: { id: true }, take: 1 }, paidOrderLines: { select: { id: true }, take: 1 } } } },
             },
             attempts: { where: { status: { in: [...ATTEMPT_BLOCKING_STATUSES] } }, select: { id: true } },
           },
@@ -357,14 +358,16 @@ export class UploadWorkspaceService {
 
         await tx.uploadWorkspaceMediaChange.deleteMany({ where: { workspaceId } });
         const hardDeleteChanges = workspace.mediaChanges
-          .filter((change) => change.mediaItem.purchases.length === 0);
+          .filter((change) => change.mediaItem.purchases.length === 0
+            && change.mediaItem.orderItems.length === 0 && change.mediaItem.paidOrderLines.length === 0);
         const hardDeleteIds = hardDeleteChanges.map((change) => change.mediaItemId);
         const hardDeletedAssets: StoredAssetIdentity[] = hardDeleteChanges.map((change) => ({
           cloudinaryPublicId: change.mediaItem.cloudinaryPublicId,
           resourceType: change.mediaItem.type,
         }));
         const softDeleteIds = workspace.mediaChanges
-          .filter((change) => change.mediaItem.purchases.length > 0)
+          .filter((change) => change.mediaItem.purchases.length > 0
+            || change.mediaItem.orderItems.length > 0 || change.mediaItem.paidOrderLines.length > 0)
           .map((change) => change.mediaItemId);
 
         if (hardDeleteIds.length > 0) {

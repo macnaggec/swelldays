@@ -271,7 +271,7 @@ export class CheckoutService {
           await acquireSerializationLock(tx, buyerScope(buyerId));
 
           const purchasedRows = await tx.purchase.findMany({
-            where: { buyerId, mediaItemId: { in: itemIds } },
+            where: { buyerId, mediaItemId: { in: itemIds }, revokedAt: null },
             select: { mediaItemId: true },
           });
           if (purchasedRows.length > 0) {

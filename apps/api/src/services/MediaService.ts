@@ -52,7 +52,8 @@ export class MediaService {
 
   async deleteMedia(userId: string, mediaId: string): Promise<void> {
     const media = await this.assertOwns(userId, mediaId);
-    if (media.status === MEDIA_STATUS.DRAFT) {
+    const referenced = (await this.media.findFinanciallyReferencedIds([mediaId])).length > 0;
+    if (media.status === MEDIA_STATUS.DRAFT && !referenced) {
       await this.media.hardDelete(mediaId);
       this.cloudinary.deleteAsset(
         media.cloudinaryPublicId,
@@ -76,8 +77,12 @@ export class MediaService {
     if (sessionIds.size !== 1) {
       throw new BadRequestError('Unpublished media must belong to one session');
     }
-    await this.media.hardDeleteMany(mediaIds);
-    for (const item of items) {
+    const referenced = new Set(await this.media.findFinanciallyReferencedIds(mediaIds));
+    const hardDeleteIds = mediaIds.filter((id) => !referenced.has(id));
+    const softDeleteIds = mediaIds.filter((id) => referenced.has(id));
+    if (hardDeleteIds.length > 0) await this.media.hardDeleteMany(hardDeleteIds);
+    for (const id of softDeleteIds) await this.media.softDelete(id);
+    for (const item of items.filter((candidate) => !referenced.has(candidate.id))) {
       void this.cloudinary.deleteAsset(
         item.cloudinaryPublicId,
         item.type === 'VIDEO' ? 'video' : 'image',

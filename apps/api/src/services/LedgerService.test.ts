@@ -89,6 +89,8 @@ describe('LedgerService.getSummary', () => {
     expect(mockLedgerRepository.getSummaryRecords).toHaveBeenCalledWith('photographer-1');
     expect(summary).toEqual({
       availableBalanceCents: 4500,
+      heldForReviewCents: 0,
+      deficitCents: 0,
       pendingPayoutCents: 2200,
       payoutThresholdCents: 2000,
       recentTransactions: [

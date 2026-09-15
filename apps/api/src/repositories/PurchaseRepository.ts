@@ -40,7 +40,7 @@ export class PurchaseRepository implements IPurchaseRepository {
   findByBuyer(buyerId: string): Promise<PurchaseWithMedia[]> {
     return runQuery(() =>
       prisma.purchase.findMany({
-        where: { buyerId },
+        where: { buyerId, revokedAt: null },
         take: PURCHASES_PAGE_LIMIT,
         select: PURCHASE_WITH_MEDIA_SELECT,
         orderBy: { purchasedAt: 'desc' },
@@ -51,7 +51,7 @@ export class PurchaseRepository implements IPurchaseRepository {
   findByBuyerAndMedia(buyerId: string, mediaItemId: string): Promise<PurchaseWithMedia | null> {
     return runQuery(() =>
       prisma.purchase.findFirst({
-        where: { buyerId, mediaItemId },
+        where: { buyerId, mediaItemId, revokedAt: null },
         select: PURCHASE_WITH_MEDIA_SELECT,
       })
     );
@@ -59,8 +59,8 @@ export class PurchaseRepository implements IPurchaseRepository {
 
   findByDownloadToken(token: string): Promise<PurchaseWithMedia | null> {
     return runQuery(() =>
-      prisma.purchase.findUnique({
-        where: { downloadToken: token },
+      prisma.purchase.findFirst({
+        where: { downloadToken: token, revokedAt: null },
         select: PURCHASE_WITH_MEDIA_SELECT,
       })
     );
@@ -69,7 +69,7 @@ export class PurchaseRepository implements IPurchaseRepository {
   findByIdAndOrder(purchaseId: string, orderId: string): Promise<PurchaseWithMedia | null> {
     return runQuery(() =>
       prisma.purchase.findFirst({
-        where: { id: purchaseId, orderId },
+        where: { id: purchaseId, orderId, revokedAt: null },
         select: PURCHASE_WITH_MEDIA_SELECT,
       })
     );
@@ -78,7 +78,7 @@ export class PurchaseRepository implements IPurchaseRepository {
   findByOrder(orderId: string): Promise<{ id: string; previewUrl: string | null; mediaItem: { id: string; thumbnailUrl: string } }[]> {
     return runQuery(() =>
       prisma.purchase.findMany({
-        where: { orderId },
+        where: { orderId, revokedAt: null },
         select: {
           id: true,
           previewUrl: true,
@@ -91,7 +91,7 @@ export class PurchaseRepository implements IPurchaseRepository {
   findPurchasedItemIds(buyerId: string, itemIds: string[]): Promise<string[]> {
     return runQuery(async () => {
       const rows = await prisma.purchase.findMany({
-        where: { buyerId, mediaItemId: { in: itemIds } },
+        where: { buyerId, mediaItemId: { in: itemIds }, revokedAt: null },
         select: { mediaItemId: true },
       });
       return rows.map((r) => r.mediaItemId);

@@ -28,6 +28,8 @@ export type LedgerSummary = {
   availableBalanceCents: number;
   pendingPayoutCents: number;
   payoutThresholdCents: number;
+  heldForReviewCents?: number;
+  deficitCents?: number;
   recentTransactions: LedgerTransactionSummary[];
   payoutRequests: LedgerPayoutRequestSummary[];
 };
@@ -40,7 +42,9 @@ export class LedgerService {
     if (!records.user) throw new NotFoundError('User');
 
     return {
-      availableBalanceCents: records.user.balance,
+      availableBalanceCents: Math.max(0, records.user.balance - (records.heldForReviewCents ?? 0)),
+      heldForReviewCents: records.heldForReviewCents ?? 0,
+      deficitCents: Math.max(0, -records.user.balance),
       pendingPayoutCents: records.payoutRequests.reduce((total, request) => {
         if (
           request.status === PayoutStatus.PENDING ||

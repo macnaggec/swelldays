@@ -134,11 +134,13 @@ export class SurfSessionRepository implements ISurfSessionRepository {
 
         const liveMedia = await tx.mediaItem.findMany({
           where: { sessionId, photographerId, deletedAt: null },
-          include: { purchases: { select: { id: true }, take: 1 } },
+          include: { purchases: { select: { id: true }, take: 1 },
+            orderItems: { select: { id: true }, take: 1 }, paidOrderLines: { select: { id: true }, take: 1 } },
         });
-        const hardDelete = liveMedia.filter((item) => item.purchases.length === 0);
+        const hardDelete = liveMedia.filter((item) => item.purchases.length === 0
+          && (item.orderItems?.length ?? 0) === 0 && (item.paidOrderLines?.length ?? 0) === 0);
         const softDeleteIds = liveMedia
-          .filter((item) => item.purchases.length > 0)
+          .filter((item) => item.purchases.length > 0 || (item.orderItems?.length ?? 0) > 0 || (item.paidOrderLines?.length ?? 0) > 0)
           .map((item) => item.id);
 
         if (hardDelete.length > 0) {

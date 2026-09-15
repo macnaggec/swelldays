@@ -1,16 +1,16 @@
 import { randomBytes } from 'crypto';
 import type { IOrderRepository } from 'server/repositories/OrderRepository';
-import type { IFulfillmentRepository, PurchaseInsertData } from 'server/repositories/FulfillmentRepository';
+import type { IFulfillmentRepository, PaidLineCandidate } from 'server/repositories/FulfillmentRepository';
 import { orderRepository } from 'server/repositories/OrderRepository';
 import { fulfillmentRepository } from 'server/repositories/FulfillmentRepository';
 import type { ICloudinaryService } from 'server/services/CloudinaryService';
 import { cloudinaryService } from 'server/services/CloudinaryService';
 import { requireOrderLineSnapshot } from 'server/domain/OrderEconomics';
 import { ConflictError } from 'server/errors';
-import { logger } from 'server/lib/logger';
 
 export type FulfillmentOutcome =
-  | { type: 'fulfilled' }
+  | { type: 'fulfilled'; paidLineIds: string[] }
+  | { type: 'fulfilled-with-exceptions'; paidLineIds: string[] }
   | { type: 'completed-duplicate' }
   | { type: 'unknown-order' }
   | { type: 'order-not-pending' };
@@ -34,7 +34,7 @@ export class PurchaseFulfillmentService {
    * P2002 (@@unique externalOrderId race) is caught via BaseRepository.run → mapPrismaError → ConflictError,
    * which callers treat as idempotent success.
    */
-  async fulfillOrder(orderId: string, externalOrderId: string): Promise<FulfillmentOutcome> {
+  async fulfillOrder(orderId: string, externalOrderId: string, paymentAttemptId: string): Promise<FulfillmentOutcome> {
     const existing = await this.orders.findOrderByExternalId(externalOrderId);
     if (existing) return { type: 'completed-duplicate' };
 
@@ -46,48 +46,43 @@ export class PurchaseFulfillmentService {
     // incomplete or non-conserving line refuses to pay anyone.
     const lines = order.items.map(requireOrderLineSnapshot);
 
-    const purchaseData: PurchaseInsertData[] = [];
-    const earningsMap = new Map<string, number>();
+    const paidLines: PaidLineCandidate[] = [];
 
     for (const line of lines) {
-      purchaseData.push({
-        orderId,
+      paidLines.push({
+        orderItemId: line.id,
         mediaItemId: line.mediaItemId,
+        sellerId: line.sellerId,
         buyerId: order.buyerId,
         guestEmail: order.guestEmail,
         downloadToken: randomBytes(32).toString('hex'),
         amountPaid: line.unitAmountCents,
         platformFee: line.platformFeeAmount,
-        photographerEarned: line.sellerEarningsAmount,
+        sellerEarnings: line.sellerEarningsAmount,
+        currency: line.currency,
+        deliverablePublicId: line.deliverablePublicId,
+        deliverableType: line.deliverableType,
         previewUrl: this.cloudinary.tryGeneratePermanentPreviewUrl(line.deliverablePublicId),
       });
-      earningsMap.set(
-        line.sellerId,
-        (earningsMap.get(line.sellerId) ?? 0) + line.sellerEarningsAmount,
-      );
     }
 
     try {
       const result = await this.fulfillment.commitFulfillment({
         orderId,
+        paymentAttemptId,
         buyerId: order.buyerId,
         externalOrderId,
-        purchases: purchaseData,
-        earnings: Array.from(earningsMap, ([photographerId, amount]) => ({ photographerId, amount })),
+        paidLines,
       });
       if (!result.applied) return { type: 'order-not-pending' };
-      if (result.skippedMediaItemIds.length > 0) {
-        logger.warn('[PurchaseFulfillmentService] Skipped duplicate Purchase insert(s) on (buyerId, mediaItemId)', {
-          orderId,
-          mediaItemIds: result.skippedMediaItemIds,
-        });
-      }
+      return result.hasExceptions
+        ? { type: 'fulfilled-with-exceptions', paidLineIds: result.paidLineIds }
+        : { type: 'fulfilled', paidLineIds: result.paidLineIds };
     } catch (err) {
       // P2002 on externalOrderId unique constraint — concurrent webhook delivered the same event
       if (err instanceof ConflictError) return { type: 'completed-duplicate' };
       throw err;
     }
-    return { type: 'fulfilled' };
   }
 }
 

@@ -1,307 +1,121 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PurchaseFulfillmentService } from 'server/services/PurchaseFulfillmentService';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PurchaseFulfillmentService } from './PurchaseFulfillmentService';
 import type { OrderWithItems } from 'server/repositories/OrderRepository';
-import type { PersistedOrderLine } from 'server/domain/OrderEconomics';
-import type { FulfillPurchaseData, FulfillmentPayload } from 'server/repositories/FulfillmentRepository';
-import { logger } from 'server/lib/logger';
+import { ConflictError } from 'server/errors';
+import type { PaidLineCandidate } from 'server/repositories/FulfillmentRepository';
 
-// ---------------------------------------------------------------------------
-// Inline mocks — no vi.mock() needed with constructor injection
-// ---------------------------------------------------------------------------
-
-const mockFulfillment = {
-  commitFulfillment: vi.fn().mockResolvedValue({ applied: true, skippedMediaItemIds: [] }),
-};
-
-const mockOrders = {
-  findOrderByExternalId: vi.fn(),
-  findOrderById: vi.fn(),
-  createOrder: vi.fn(),
-  markOrderFailed: vi.fn(),
-};
-
-const mockCloudinary = {
-  tryGeneratePermanentPreviewUrl: vi.fn().mockReturnValue('https://res.cloudinary.com/preview'),
-};
-
-const service = new PurchaseFulfillmentService(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- partial mock objects in test
-  mockOrders as any,
-  mockFulfillment,
-  mockCloudinary,
-);
-
-// ---------------------------------------------------------------------------
-// Setup
-// ---------------------------------------------------------------------------
+const orders = { findOrderByExternalId: vi.fn(), findOrderById: vi.fn(), createOrder: vi.fn(),
+  findOrderByBuyerAndClientRequestId: vi.fn(), findPendingMediaItemIds: vi.fn(), markOrderFailed: vi.fn(),
+  saveGuestEmail: vi.fn(), saveCheckoutSessionUrl: vi.fn() };
+const fulfillment = { commitFulfillment: vi.fn() };
+const cloudinary = { tryGeneratePermanentPreviewUrl: vi.fn() };
+const service = new PurchaseFulfillmentService(orders, fulfillment, cloudinary);
+const line = { id: 'oi-1', mediaItemId: 'media-1', unitAmountCents: 1000, currency: 'USD',
+  sellerId: 'seller-1', feePolicyVersion: 'standard-20-v1', platformFeeAmount: 200,
+  sellerEarningsAmount: 800, deliverablePublicId: 'asset-1', deliverableType: 'PHOTO' as const };
+const order: OrderWithItems = { id: 'order-1', buyerId: 'buyer-1', guestEmail: null, externalOrderId: null,
+  totalAmount: 1000, status: 'PENDING', checkoutSessionUrl: null, items: [line] };
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  mockFulfillment.commitFulfillment.mockResolvedValue({ applied: true, skippedMediaItemIds: [] });
-  mockCloudinary.tryGeneratePermanentPreviewUrl.mockReturnValue('https://res.cloudinary.com/preview');
+  vi.clearAllMocks(); orders.findOrderByExternalId.mockResolvedValue(null); orders.findOrderById.mockResolvedValue(order);
+  fulfillment.commitFulfillment.mockResolvedValue({ applied: true, paidLineIds: ['paid-1'], hasExceptions: false });
+  cloudinary.tryGeneratePermanentPreviewUrl.mockReturnValue('https://example.com/preview');
 });
 
-// ---------------------------------------------------------------------------
-// Factories
-// ---------------------------------------------------------------------------
-
-function makeLine(overrides: Partial<PersistedOrderLine> = {}): PersistedOrderLine {
-  return {
-    id: 'oi-1',
-    mediaItemId: 'media-1',
-    unitAmountCents: 1000,
-    currency: 'USD',
-    sellerId: 'photographer-1',
-    feePolicyVersion: 'standard-20-v1',
-    platformFeeAmount: 200,
-    sellerEarningsAmount: 800,
-    deliverablePublicId: 'waves/photo-001',
-    deliverableType: 'PHOTO',
-    ...overrides,
-  };
-}
-
-function makeOrder(overrides: Partial<OrderWithItems> = {}): OrderWithItems {
-  return {
-    id: 'order-1',
-    buyerId: 'buyer-1',
-    guestEmail: null,
-    externalOrderId: null,
-    totalAmount: 1000,
-    status: 'PENDING',
-    checkoutSessionUrl: null,
-    items: [makeLine()],
-    ...overrides,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// fulfillOrder
-// ---------------------------------------------------------------------------
-
-describe('PurchaseFulfillmentService.fulfillOrder', () => {
-  const ORDER_ID = 'order-1';
-  const EXTERNAL_ID = 'CC-ILRAJE1Q';
-
-  function setupHappyPath(order: OrderWithItems = makeOrder()) {
-    mockOrders.findOrderByExternalId.mockResolvedValue(null);
-    mockOrders.findOrderById.mockResolvedValue(order);
-  }
-
-  // -------------------------------------------------------------------------
-  // Idempotency
-  // -------------------------------------------------------------------------
-
-  it('exits early without writing if externalOrderId already recorded', async () => {
-    mockOrders.findOrderByExternalId.mockResolvedValue({ id: ORDER_ID });
-
-    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toEqual({ type: 'completed-duplicate' });
-
-    expect(mockFulfillment.commitFulfillment).not.toHaveBeenCalled();
-  });
-
-  it('exits early without writing if the order does not exist', async () => {
-    mockOrders.findOrderByExternalId.mockResolvedValue(null);
-    mockOrders.findOrderById.mockResolvedValue(null);
-
-    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toEqual({ type: 'unknown-order' });
-
-    expect(mockFulfillment.commitFulfillment).not.toHaveBeenCalled();
-  });
-
-  // -------------------------------------------------------------------------
-  // Purchase data written from the order line, not a catalog read
-  // -------------------------------------------------------------------------
-
-  it('writes one purchase entry per media item with correct fields', async () => {
-    setupHappyPath(makeOrder({ items: [makeLine({ unitAmountCents: 1000, platformFeeAmount: 200, sellerEarningsAmount: 800 })] }));
-
-    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toEqual({ type: 'fulfilled' });
-
-    const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
-    expect(payload.orderId).toBe(ORDER_ID);
-    expect(payload.buyerId).toBe('buyer-1');
-    expect(payload.externalOrderId).toBe(EXTERNAL_ID);
-    expect(payload.purchases).toHaveLength(1);
-    expect(payload.purchases[0]).toMatchObject<Partial<FulfillPurchaseData>>({
-      mediaItemId: 'media-1',
-      buyerId: 'buyer-1',
-      amountPaid: 1000,
-      platformFee: 200,
-      photographerEarned: 800,
-      previewUrl: 'https://res.cloudinary.com/preview',
+describe('PurchaseFulfillmentService', () => {
+  it('carries the exact payment attempt and immutable line facts into fulfillment', async () => {
+    await expect(service.fulfillOrder('order-1', 'external-1', 'attempt-1')).resolves.toEqual({
+      type: 'fulfilled', paidLineIds: ['paid-1'],
     });
-    expect(payload.purchases[0]?.downloadToken).toMatch(/^[0-9a-f]{64}$/);
+    expect(fulfillment.commitFulfillment).toHaveBeenCalledWith({ orderId: 'order-1', paymentAttemptId: 'attempt-1',
+      buyerId: 'buyer-1', externalOrderId: 'external-1', paidLines: [expect.objectContaining({ orderItemId: 'oi-1',
+        sellerId: 'seller-1', amountPaid: 1000, platformFee: 200, sellerEarnings: 800,
+        currency: 'USD', deliverablePublicId: 'asset-1', deliverableType: 'PHOTO' })] });
   });
 
-  it('writes guestEmail to purchase and null buyerId for guest orders', async () => {
-    setupHappyPath(makeOrder({ buyerId: null, guestEmail: 'guest@example.com' }));
-
-    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
-
-    const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
-    expect(payload.buyerId).toBeNull();
-    expect(payload.purchases[0]).toMatchObject({ buyerId: null, guestEmail: 'guest@example.com' });
-  });
-
-  // -------------------------------------------------------------------------
-  // Earnings credited from the line's sellerId
-  // -------------------------------------------------------------------------
-
-  it('credits aggregated earnings when two items share the same seller', async () => {
-    // 200 + 1600 = 1800
-    setupHappyPath(makeOrder({
-      items: [
-        makeLine({ id: 'oi-1', mediaItemId: 'media-1', unitAmountCents: 1000, platformFeeAmount: 200, sellerEarningsAmount: 800, sellerId: 'p-1' }),
-        makeLine({ id: 'oi-2', mediaItemId: 'media-2', unitAmountCents: 2000, platformFeeAmount: 400, sellerEarningsAmount: 1600, sellerId: 'p-1' }),
-      ],
-    }));
-
-    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
-
-    const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
-    expect(payload.earnings).toHaveLength(1);
-    expect(payload.earnings[0]).toMatchObject({ photographerId: 'p-1', amount: 2400 });
-  });
-
-  it('credits separate earnings when sellers differ', async () => {
-    setupHappyPath(makeOrder({
-      items: [
-        makeLine({ id: 'oi-1', mediaItemId: 'media-1', unitAmountCents: 1000, platformFeeAmount: 200, sellerEarningsAmount: 800, sellerId: 'p-1' }),
-        makeLine({ id: 'oi-2', mediaItemId: 'media-2', unitAmountCents: 2000, platformFeeAmount: 400, sellerEarningsAmount: 1600, sellerId: 'p-2' }),
-      ],
-    }));
-
-    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
-
-    const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
-    const ids = payload.earnings.map((e) => e.photographerId).sort();
-    expect(ids).toEqual(['p-1', 'p-2']);
-  });
-
-  it("credits earnings under the line's sellerId, not any catalog lookup", async () => {
-    setupHappyPath(makeOrder({ items: [makeLine({ sellerId: 'seller-from-line', sellerEarningsAmount: 800 })] }));
-
-    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
-
-    const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
-    expect(payload.earnings).toEqual([{ photographerId: 'seller-from-line', amount: 800 }]);
-  });
-
-  // -------------------------------------------------------------------------
-  // Race-condition idempotency: ConflictError from commitFulfillment
-  // Guards the catch block that makes the DB unique-constraint race safe.
-  // -------------------------------------------------------------------------
-
-  it('swallows ConflictError from commitFulfillment — treats it as idempotent success', async () => {
-    const { ConflictError } = await import('server/errors');
-    setupHappyPath();
-    mockFulfillment.commitFulfillment.mockRejectedValue(
-      new ConflictError('external_order_id already exists'),
-    );
-
-    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toEqual({ type: 'completed-duplicate' });
-  });
-
-  it('treats commitFulfillment resolving { applied: false } as idempotent success', async () => {
-    setupHappyPath();
-    mockFulfillment.commitFulfillment.mockResolvedValue({ applied: false });
-
-    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).resolves.toEqual({ type: 'order-not-pending' });
-  });
-
-  it('rethrows non-ConflictError from commitFulfillment — does not swallow real failures', async () => {
-    setupHappyPath();
-    const boom = new Error('DB connection lost');
-    mockFulfillment.commitFulfillment.mockRejectedValue(boom);
-
-    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).rejects.toThrow('DB connection lost');
-  });
-
-  it('logs a warning naming the skipped media items when commitFulfillment reports a collision', async () => {
-    setupHappyPath();
-    mockFulfillment.commitFulfillment.mockResolvedValue({
-      applied: true,
-      skippedMediaItemIds: ['media-1'],
+  it('returns visible fulfillment exceptions with durable paid-line IDs', async () => {
+    fulfillment.commitFulfillment.mockResolvedValue({ applied: true, paidLineIds: ['paid-2'], hasExceptions: true });
+    await expect(service.fulfillOrder('order-1', 'external-2', 'attempt-2')).resolves.toEqual({
+      type: 'fulfilled-with-exceptions', paidLineIds: ['paid-2'],
     });
-    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
-
-    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Skipped duplicate Purchase'),
-      { orderId: ORDER_ID, mediaItemIds: ['media-1'] },
-    );
-    warnSpy.mockRestore();
   });
 
-  it('does not log when commitFulfillment reports no skipped items', async () => {
-    setupHappyPath();
-    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
-
-    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
-
-    expect(warnSpy).not.toHaveBeenCalled();
-    warnSpy.mockRestore();
+  it('does not commit an unknown or already externally fulfilled order', async () => {
+    orders.findOrderByExternalId.mockResolvedValueOnce({ id: 'existing' });
+    await expect(service.fulfillOrder('order-1', 'external-1', 'attempt-1')).resolves.toEqual({ type: 'completed-duplicate' });
+    orders.findOrderByExternalId.mockResolvedValueOnce(null); orders.findOrderById.mockResolvedValueOnce(null);
+    await expect(service.fulfillOrder('missing', 'external-2', 'attempt-2')).resolves.toEqual({ type: 'unknown-order' });
+    expect(fulfillment.commitFulfillment).not.toHaveBeenCalled();
   });
 
-  // -------------------------------------------------------------------------
-  // R01: economics and the deliverable come from the immutable order line
-  // -------------------------------------------------------------------------
-
-  it('economics survive a catalog price edit — the line, not any media repository, decides what gets paid', async () => {
-    setupHappyPath(makeOrder({ items: [makeLine({ unitAmountCents: 1000, platformFeeAmount: 200, sellerEarningsAmount: 800 })] }));
-
-    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
-
-    const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
-    expect(payload.purchases[0]).toMatchObject({ amountPaid: 1000, platformFee: 200, photographerEarned: 800 });
+  it('returns order-not-pending for a transaction loser', async () => {
+    fulfillment.commitFulfillment.mockResolvedValue({ applied: false });
+    await expect(service.fulfillOrder('order-1', 'external-1', 'attempt-1')).resolves.toEqual({ type: 'order-not-pending' });
   });
 
-  it("the line's fee policy wins over process configuration", async () => {
-    setupHappyPath(makeOrder({
-      items: [
-        makeLine({
-          id: 'oi-paddle',
-          mediaItemId: 'media-paddle',
-          feePolicyVersion: 'paddle-50c-30-v1',
-          unitAmountCents: 1000,
-          platformFeeAmount: 350,
-          sellerEarningsAmount: 650,
-        }),
-        makeLine({
-          id: 'oi-standard',
-          mediaItemId: 'media-standard',
-          feePolicyVersion: 'standard-20-v1',
-          unitAmountCents: 1000,
-          platformFeeAmount: 200,
-          sellerEarningsAmount: 800,
-        }),
-      ],
-    }));
-
-    await service.fulfillOrder(ORDER_ID, EXTERNAL_ID);
-
-    const payload = mockFulfillment.commitFulfillment.mock.calls[0]![0] as FulfillmentPayload;
-    const paddlePurchase = payload.purchases.find((p) => p.mediaItemId === 'media-paddle');
-    const standardPurchase = payload.purchases.find((p) => p.mediaItemId === 'media-standard');
-    expect(paddlePurchase).toMatchObject({ platformFee: 350, photographerEarned: 650 });
-    expect(standardPurchase).toMatchObject({ platformFee: 200, photographerEarned: 800 });
+  it('rejects incomplete or non-conserving historical line economics', async () => {
+    orders.findOrderById.mockResolvedValueOnce({ ...order, items: [{ ...line, sellerEarningsAmount: null }] });
+    await expect(service.fulfillOrder('order-1', 'external-1', 'attempt-1')).rejects.toThrow('oi-1');
+    orders.findOrderById.mockResolvedValueOnce({ ...order, items: [{ ...line, sellerEarningsAmount: 799 }] });
+    await expect(service.fulfillOrder('order-1', 'external-1', 'attempt-1')).rejects.toThrow('oi-1');
+    expect(fulfillment.commitFulfillment).not.toHaveBeenCalled();
   });
 
-  it('an incomplete line refuses to pay — a null field rejects and never commits', async () => {
-    setupHappyPath(makeOrder({ items: [makeLine({ id: 'oi-1', sellerEarningsAmount: null })] }));
+  it('preserves guest identity and creates a random download token', async () => {
+    orders.findOrderById.mockResolvedValue({ ...order, buyerId: null, guestEmail: 'guest@example.com' });
 
-    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).rejects.toThrow('oi-1');
-    expect(mockFulfillment.commitFulfillment).not.toHaveBeenCalled();
+    await service.fulfillOrder('order-1', 'external-1', 'attempt-1');
+
+    const payload = fulfillment.commitFulfillment.mock.calls[0]![0];
+    expect(payload).toMatchObject({ buyerId: null, paymentAttemptId: 'attempt-1' });
+    expect(payload.paidLines[0]).toMatchObject({ buyerId: null, guestEmail: 'guest@example.com' });
+    expect(payload.paidLines[0].downloadToken).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it('a non-conserving line refuses to pay', async () => {
-    setupHappyPath(makeOrder({
-      items: [makeLine({ id: 'oi-1', unitAmountCents: 1000, platformFeeAmount: 200, sellerEarningsAmount: 799 })],
-    }));
+  it('keeps each immutable line and seller separate in a mixed order', async () => {
+    orders.findOrderById.mockResolvedValue({ ...order, totalAmount: 3000, items: [
+      { ...line, id: 'oi-1', mediaItemId: 'media-1', sellerId: 'seller-b' },
+      { ...line, id: 'oi-2', mediaItemId: 'media-2', sellerId: 'seller-a', unitAmountCents: 2000,
+        platformFeeAmount: 400, sellerEarningsAmount: 1600 },
+    ] });
 
-    await expect(service.fulfillOrder(ORDER_ID, EXTERNAL_ID)).rejects.toThrow('oi-1');
-    expect(mockFulfillment.commitFulfillment).not.toHaveBeenCalled();
+    await service.fulfillOrder('order-1', 'external-1', 'attempt-1');
+
+    expect(fulfillment.commitFulfillment.mock.calls[0]![0].paidLines).toEqual([
+      expect.objectContaining({ orderItemId: 'oi-1', mediaItemId: 'media-1', sellerId: 'seller-b',
+        amountPaid: 1000, platformFee: 200, sellerEarnings: 800 }),
+      expect.objectContaining({ orderItemId: 'oi-2', mediaItemId: 'media-2', sellerId: 'seller-a',
+        amountPaid: 2000, platformFee: 400, sellerEarnings: 1600 }),
+    ]);
+  });
+
+  it('uses each line fee snapshot rather than current provider configuration', async () => {
+    orders.findOrderById.mockResolvedValue({ ...order, totalAmount: 2000, items: [
+      { ...line, id: 'oi-paddle', mediaItemId: 'media-paddle', feePolicyVersion: 'paddle-50c-30-v1',
+        platformFeeAmount: 350, sellerEarningsAmount: 650 },
+      { ...line, id: 'oi-standard', mediaItemId: 'media-standard' },
+    ] });
+
+    await service.fulfillOrder('order-1', 'external-1', 'attempt-1');
+
+    const paidLines = fulfillment.commitFulfillment.mock.calls[0]![0].paidLines;
+    expect(paidLines.find((paidLine: PaidLineCandidate) => paidLine.mediaItemId === 'media-paddle'))
+      .toMatchObject({ platformFee: 350, sellerEarnings: 650 });
+    expect(paidLines.find((paidLine: PaidLineCandidate) => paidLine.mediaItemId === 'media-standard'))
+      .toMatchObject({ platformFee: 200, sellerEarnings: 800 });
+  });
+
+  it('maps a unique-identity conflict to completed-duplicate', async () => {
+    fulfillment.commitFulfillment.mockRejectedValue(new ConflictError('external identity already used'));
+
+    await expect(service.fulfillOrder('order-1', 'external-1', 'attempt-1'))
+      .resolves.toEqual({ type: 'completed-duplicate' });
+  });
+
+  it('propagates non-conflict fulfillment failures', async () => {
+    fulfillment.commitFulfillment.mockRejectedValue(new Error('database unavailable'));
+
+    await expect(service.fulfillOrder('order-1', 'external-1', 'attempt-1'))
+      .rejects.toThrow('database unavailable');
   });
 });

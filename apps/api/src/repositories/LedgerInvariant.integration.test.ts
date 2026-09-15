@@ -5,13 +5,21 @@ import { prisma } from 'server/db';
 import { resetDb } from 'test/helpers/resetDb';
 import { LedgerRepository } from './LedgerRepository';
 import { FulfillmentRepository } from './FulfillmentRepository';
+import { PaymentAdjustmentRepository } from './PaymentAdjustmentRepository';
 
 const ledger = new LedgerRepository();
 const fulfillment = new FulfillmentRepository();
+const adjustments = new PaymentAdjustmentRepository();
 
-beforeEach(resetDb);
+async function resetR07Db() {
+  await prisma.payoutRequest.deleteMany(); await prisma.transaction.deleteMany();
+  await prisma.paymentAdjustmentAllocation.deleteMany(); await prisma.paymentAdjustment.deleteMany();
+  await prisma.paidOrderLine.deleteMany(); await prisma.paymentNotification.deleteMany();
+  await prisma.paymentAttempt.deleteMany(); await resetDb();
+}
+beforeEach(resetR07Db);
 afterAll(async () => {
-  await resetDb();
+  await resetR07Db();
   await prisma.$disconnect();
 });
 
@@ -46,30 +54,59 @@ async function recordSale(photographerId: string, amount: number) {
       clientRequestId: randomUUID(),
       totalAmount: amount,
       status: OrderStatus.PENDING,
-      items: { create: [{ mediaItemId: mediaItem.id }] },
-    },
+      items: { create: [{ mediaItemId: mediaItem.id, unitAmountCents: amount, currency: 'USD',
+        sellerId: photographerId, feePolicyVersion: 'test-zero-fee-v1', platformFeeAmount: 0,
+        sellerEarningsAmount: amount, deliverablePublicId: mediaItem.cloudinaryPublicId,
+        deliverableType: 'PHOTO' }] },
+    }, include: { items: true },
   });
+  const attempt = await prisma.paymentAttempt.create({ data: { orderId: order.id, provider: 'PADDLE',
+    environment: 'SANDBOX', providerTransactionId: randomUUID(), creationState: 'READY',
+    expectedAmountCents: amount, expectedCurrency: 'USD' } });
 
   await fulfillment.commitFulfillment({
     orderId: order.id,
+    paymentAttemptId: attempt.id,
     buyerId: buyer.id,
     externalOrderId: `CC-${randomUUID()}`,
-    purchases: [{
-      orderId: order.id,
+    paidLines: [{
+      orderItemId: order.items[0]!.id,
       mediaItemId: mediaItem.id,
+      sellerId: photographerId,
       buyerId: buyer.id,
       guestEmail: null,
       downloadToken: randomUUID(),
       amountPaid: amount,
       platformFee: 0,
-      photographerEarned: amount,
+      sellerEarnings: amount,
+      currency: 'USD', deliverablePublicId: mediaItem.cloudinaryPublicId, deliverableType: 'PHOTO',
       previewUrl: null,
     }],
-    earnings: [{ photographerId, amount }],
   });
+  return { attempt, line: await prisma.paidOrderLine.findFirstOrThrow({ where: { paymentAttemptId: attempt.id } }) };
 }
 
 describe('Ledger invariant: balance == Σ amount over {COMPLETED, PENDING} transactions', () => {
+  it('holds only remaining credited earnings once despite multiple pending adjustments and leaves unrelated earnings payable', async () => {
+    const photographer = await createPhotographer();
+    const first = await recordSale(photographer.id, 1000); await recordSale(photographer.id, 1000);
+    const identity = { provider: 'paddle' as const, environment: 'sandbox' as const,
+      providerTransactionId: first.attempt.providerTransactionId! };
+    const applied = await adjustments.record({ providerAdjustmentId: 'applied-part', identity, action: 'refund', status: 'approved',
+      amountCents: 400, currency: 'USD', occurredAt: new Date(), updatedAt: new Date() }, first.attempt.id);
+    const operator = await prisma.user.create({ data: { email: `admin-${randomUUID()}@example.com`, role: 'ADMIN' } });
+    await adjustments.apply({ adjustmentId: applied.id, allocations: [{ paidOrderLineId: first.line.id, amountCents: 400 }],
+      revokeEntitlements: false, note: 'partial', operatorId: operator.id });
+    await adjustments.record({ providerAdjustmentId: 'pending-one', identity, action: 'refund', status: 'pending-approval',
+      amountCents: 100, currency: 'USD', occurredAt: new Date(), updatedAt: new Date() }, first.attempt.id);
+    await adjustments.record({ providerAdjustmentId: 'pending-two', identity, action: 'dispute', status: 'pending-approval',
+      amountCents: 100, currency: 'USD', occurredAt: new Date(), updatedAt: new Date() }, first.attempt.id);
+    const summary = await ledger.getSummaryRecords(photographer.id);
+    expect(summary.heldForReviewCents).toBe(600);
+    await expect(ledger.reservePayout({ photographerId: photographer.id, amountCents: 1001 })).rejects.toThrow('Insufficient');
+    await expect(ledger.reservePayout({ photographerId: photographer.id, amountCents: 1000 })).resolves.toBeDefined();
+  });
+
   it('holds across a sale, a payout reservation, and a payout rejection', async () => {
     const photographer = await createPhotographer();
 

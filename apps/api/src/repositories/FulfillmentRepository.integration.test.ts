@@ -1,211 +1,121 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { OrderStatus, TransactionStatus, TransactionType } from '@prisma/client';
 import { prisma } from 'server/db';
 import { resetDb } from 'test/helpers/resetDb';
-import { FulfillmentRepository } from './FulfillmentRepository';
+import { FulfillmentRepository, type PaidLineCandidate } from './FulfillmentRepository';
 
-const repo = new FulfillmentRepository();
+const repository = new FulfillmentRepository();
+async function clear() { await prisma.payoutRequest.deleteMany(); await prisma.transaction.deleteMany();
+  await prisma.paymentAdjustmentAllocation.deleteMany(); await prisma.paymentAdjustment.deleteMany();
+  await prisma.paidOrderLine.deleteMany(); await prisma.paymentNotification.deleteMany(); await prisma.paymentAttempt.deleteMany();
+  await resetDb(); }
+beforeEach(clear); afterAll(async () => { await clear(); await prisma.$disconnect(); });
 
-beforeEach(resetDb);
-afterAll(async () => {
-  await resetDb();
-  await prisma.$disconnect();
-});
-
-async function createOrderFixture() {
-  const photographer = await prisma.user.create({
-    data: { email: `photographer-${randomUUID()}@example.com`, balance: 0 },
-  });
-  const buyer = await prisma.user.create({
-    data: { email: `buyer-${randomUUID()}@example.com` },
-  });
-  const session = await prisma.surfSession.create({
-    data: { photographerId: photographer.id, status: 'PUBLISHED' },
-  });
-  const mediaItem = await prisma.mediaItem.create({
-    data: {
-      sessionId: session.id,
-      photographerId: photographer.id,
-      status: 'PUBLISHED',
-      price: 1000,
-      capturedAt: new Date('2026-01-01T06:30:00Z'),
-      lightboxUrl: 'https://res.cloudinary.com/test/fulfillment.jpg',
-      thumbnailUrl: 'https://res.cloudinary.com/test/fulfillment-thumb.jpg',
-      cloudinaryPublicId: 'swelldays/test/fulfillment',
-    },
-  });
-  const order = await prisma.order.create({
-    data: {
-      buyerId: buyer.id,
-      clientRequestId: randomUUID(),
-      totalAmount: 1000,
-      status: OrderStatus.PENDING,
-      items: { create: [{ mediaItemId: mediaItem.id }] },
-    },
-  });
-
-  return { photographer, buyer, session, mediaItem, order };
+async function fixture() {
+  const seller = await prisma.user.create({ data: { email: `seller-${randomUUID()}@example.com` } });
+  const buyer = await prisma.user.create({ data: { email: `buyer-${randomUUID()}@example.com` } });
+  const session = await prisma.surfSession.create({ data: { photographerId: seller.id, status: 'PUBLISHED' } });
+  const media = await prisma.mediaItem.create({ data: { sessionId: session.id, photographerId: seller.id,
+    capturedAt: new Date(), lightboxUrl: 'lightbox', thumbnailUrl: 'thumb', cloudinaryPublicId: randomUUID(),
+    status: 'PUBLISHED', price: 1000 } });
+  const order = await prisma.order.create({ data: { buyerId: buyer.id, clientRequestId: randomUUID(), totalAmount: 1000,
+    items: { create: { mediaItemId: media.id, unitAmountCents: 1000, currency: 'USD', sellerId: seller.id,
+      feePolicyVersion: 'standard-20-v1', platformFeeAmount: 200, sellerEarningsAmount: 800,
+      deliverablePublicId: media.cloudinaryPublicId, deliverableType: 'PHOTO' } } }, include: { items: true } });
+  const attempt = await prisma.paymentAttempt.create({ data: { orderId: order.id, provider: 'PADDLE', environment: 'SANDBOX',
+    providerTransactionId: randomUUID(), creationState: 'READY', expectedAmountCents: 1000, expectedCurrency: 'USD' } });
+  const paidLine: PaidLineCandidate = { orderItemId: order.items[0]!.id, mediaItemId: media.id, sellerId: seller.id,
+    buyerId: buyer.id, guestEmail: null, downloadToken: randomUUID(), amountPaid: 1000, platformFee: 200,
+    sellerEarnings: 800, currency: 'USD', deliverablePublicId: media.cloudinaryPublicId,
+    deliverableType: 'PHOTO', previewUrl: 'preview' };
+  return { seller, buyer, media, order, attempt, paidLine };
 }
 
 describe('FulfillmentRepository.commitFulfillment', () => {
-  it('completes the order, writes the purchase, and credits photographer earnings through the ledger', async () => {
-    const { photographer, buyer, mediaItem, order } = await createOrderFixture();
-    const externalOrderId = `CC-${randomUUID()}`;
-
-    await repo.commitFulfillment({
-      orderId: order.id,
-      buyerId: buyer.id,
-      externalOrderId,
-      purchases: [{
-        orderId: order.id,
-        mediaItemId: mediaItem.id,
-        buyerId: buyer.id,
-        guestEmail: null,
-        downloadToken: randomUUID(),
-        amountPaid: 1000,
-        platformFee: 200,
-        photographerEarned: 800,
-        previewUrl: 'https://res.cloudinary.com/test/fulfillment-preview.jpg',
-      }],
-      earnings: [{ photographerId: photographer.id, amount: 800 }],
-    });
-
-    const [updatedOrder, purchases, updatedPhotographer, transactions] = await Promise.all([
-      prisma.order.findUniqueOrThrow({ where: { id: order.id } }),
-      prisma.purchase.findMany({ where: { orderId: order.id } }),
-      prisma.user.findUniqueOrThrow({ where: { id: photographer.id } }),
-      prisma.transaction.findMany({ where: { userId: photographer.id } }),
-    ]);
-
-    expect(updatedOrder.status).toBe(OrderStatus.COMPLETED);
-    expect(updatedOrder.externalOrderId).toBe(externalOrderId);
-
-    expect(purchases).toHaveLength(1);
-    expect(purchases[0]).toMatchObject({
-      mediaItemId: mediaItem.id,
-      buyerId: buyer.id,
-      amountPaid: 1000,
-      platformFee: 200,
-      photographerEarned: 800,
-    });
-
-    expect(updatedPhotographer.balance).toBe(800);
-
-    expect(transactions).toHaveLength(1);
-    expect(transactions[0]).toMatchObject({
-      userId: photographer.id,
-      amount: 800,
-      type: TransactionType.SALE,
-      status: TransactionStatus.COMPLETED,
-      externalOrderId,
-    });
+  it('atomically creates one entitlement, paid line, source-linked sale, and balance', async () => {
+    const f = await fixture();
+    const result = await repository.commitFulfillment({ orderId: f.order.id, paymentAttemptId: f.attempt.id,
+      buyerId: f.buyer.id, externalOrderId: randomUUID(), paidLines: [f.paidLine] });
+    expect(result).toMatchObject({ applied: true, hasExceptions: false });
+    const line = await prisma.paidOrderLine.findFirstOrThrow();
+    expect(line).toMatchObject({ deliveryStatus: 'DELIVERED', purchaseId: expect.any(String) });
+    expect(await prisma.transaction.findFirstOrThrow()).toMatchObject({ amount: 800, paidOrderLineId: line.id });
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: f.seller.id } })).balance).toBe(800);
   });
 
-  it('does not double-insert Purchase/Transaction rows when called twice for the same order', async () => {
-    const { photographer, buyer, mediaItem, order } = await createOrderFixture();
-    const externalOrderId = `CC-${randomUUID()}`;
-    const fulfillmentPayload = {
-      orderId: order.id,
-      buyerId: buyer.id,
-      externalOrderId,
-      purchases: [{
-        orderId: order.id,
-        mediaItemId: mediaItem.id,
-        buyerId: buyer.id,
-        guestEmail: null,
-        downloadToken: randomUUID(),
-        amountPaid: 1000,
-        platformFee: 200,
-        photographerEarned: 800,
-        previewUrl: 'https://res.cloudinary.com/test/fulfillment-preview.jpg',
-      }],
-      earnings: [{ photographerId: photographer.id, amount: 800 }],
-    };
-
-    await repo.commitFulfillment(fulfillmentPayload);
-    await expect(repo.commitFulfillment(fulfillmentPayload)).resolves.toEqual({ applied: false });
-
-    const [purchases, transactions] = await Promise.all([
-      prisma.purchase.findMany({ where: { orderId: order.id } }),
-      prisma.transaction.findMany({ where: { userId: photographer.id } }),
-    ]);
-
-    expect(purchases).toHaveLength(1);
-    expect(transactions).toHaveLength(1);
+  it('preserves a second paid line as compensation-required without another entitlement or seller credit', async () => {
+    const f = await fixture();
+    await prisma.purchase.create({ data: { buyerId: f.buyer.id, mediaItemId: f.media.id, amountPaid: 1000,
+      platformFee: 200, photographerEarned: 800 } });
+    const result = await repository.commitFulfillment({ orderId: f.order.id, paymentAttemptId: f.attempt.id,
+      buyerId: f.buyer.id, externalOrderId: randomUUID(), paidLines: [f.paidLine] });
+    expect(result).toMatchObject({ applied: true, hasExceptions: true });
+    expect(await prisma.purchase.count()).toBe(1); expect(await prisma.transaction.count()).toBe(0);
+    expect(await prisma.paidOrderLine.findFirstOrThrow()).toMatchObject({ deliveryStatus: 'COMPENSATION_REQUIRED' });
   });
 
-  it('skips a colliding Purchase row but still completes the order and delivers the other items', async () => {
-    const { photographer, buyer, session, mediaItem, order } = await createOrderFixture();
-    const secondMediaItem = await prisma.mediaItem.create({
-      data: {
-        sessionId: session.id,
-        photographerId: photographer.id,
-        status: 'PUBLISHED',
-        price: 1000,
-        capturedAt: new Date('2026-01-01T06:30:00Z'),
-        lightboxUrl: 'https://res.cloudinary.com/test/fulfillment-2.jpg',
-        thumbnailUrl: 'https://res.cloudinary.com/test/fulfillment-2-thumb.jpg',
-        cloudinaryPublicId: 'swelldays/test/fulfillment-2',
-      },
-    });
-    await prisma.orderItem.create({ data: { orderId: order.id, mediaItemId: secondMediaItem.id } });
+  it('conserves mixed duplicate and newly delivered line economics', async () => {
+    const f = await fixture();
+    await prisma.purchase.create({ data: { buyerId: f.buyer.id, mediaItemId: f.media.id, amountPaid: 1000,
+      platformFee: 200, photographerEarned: 800 } });
+    const secondMedia = await prisma.mediaItem.create({ data: { sessionId: f.media.sessionId,
+      photographerId: f.seller.id, capturedAt: new Date(), lightboxUrl: 'lightbox-2', thumbnailUrl: 'thumb-2',
+      cloudinaryPublicId: randomUUID(), status: 'PUBLISHED', price: 1000 } });
+    const secondItem = await prisma.orderItem.create({ data: { orderId: f.order.id, mediaItemId: secondMedia.id,
+      unitAmountCents: 1000, currency: 'USD', sellerId: f.seller.id, feePolicyVersion: 'standard-20-v1',
+      platformFeeAmount: 200, sellerEarningsAmount: 800, deliverablePublicId: secondMedia.cloudinaryPublicId,
+      deliverableType: 'PHOTO' } });
+    await prisma.order.update({ where: { id: f.order.id }, data: { totalAmount: 2000 } });
+    await prisma.paymentAttempt.update({ where: { id: f.attempt.id }, data: { expectedAmountCents: 2000 } });
 
-    // Pre-seed a Purchase the buyer already holds for `mediaItem` from an earlier order —
-    // this is the collision commitFulfillment must skip, not error on.
-    await prisma.purchase.create({
-      data: {
-        buyerId: buyer.id,
-        mediaItemId: mediaItem.id,
-        amountPaid: 1000,
-        platformFee: 200,
-        photographerEarned: 800,
-        downloadToken: randomUUID(),
-      },
-    });
+    const result = await repository.commitFulfillment({ orderId: f.order.id, paymentAttemptId: f.attempt.id,
+      buyerId: f.buyer.id, externalOrderId: randomUUID(), paidLines: [f.paidLine, {
+        ...f.paidLine, orderItemId: secondItem.id, mediaItemId: secondMedia.id,
+        deliverablePublicId: secondMedia.cloudinaryPublicId,
+      }] });
 
-    const externalOrderId = `CC-${randomUUID()}`;
-    const result = await repo.commitFulfillment({
-      orderId: order.id,
-      buyerId: buyer.id,
-      externalOrderId,
-      purchases: [
-        {
-          orderId: order.id,
-          mediaItemId: mediaItem.id,
-          buyerId: buyer.id,
-          guestEmail: null,
-          downloadToken: randomUUID(),
-          amountPaid: 1000,
-          platformFee: 200,
-          photographerEarned: 800,
-          previewUrl: 'https://res.cloudinary.com/test/fulfillment-preview.jpg',
-        },
-        {
-          orderId: order.id,
-          mediaItemId: secondMediaItem.id,
-          buyerId: buyer.id,
-          guestEmail: null,
-          downloadToken: randomUUID(),
-          amountPaid: 1000,
-          platformFee: 200,
-          photographerEarned: 800,
-          previewUrl: 'https://res.cloudinary.com/test/fulfillment-preview-2.jpg',
-        },
-      ],
-      earnings: [{ photographerId: photographer.id, amount: 1600 }],
-    });
+    expect(result).toMatchObject({ applied: true, hasExceptions: true });
+    const lines = await prisma.paidOrderLine.findMany({ orderBy: { mediaItemId: 'asc' } });
+    expect(lines.map((line) => line.deliveryStatus).sort()).toEqual(['COMPENSATION_REQUIRED', 'DELIVERED']);
+    expect(lines.reduce((sum, line) => sum + line.amountPaid, 0)).toBe(2000);
+    expect(lines.reduce((sum, line) => sum + line.platformFee, 0)).toBe(400);
+    expect(lines.reduce((sum, line) => sum + line.sellerEarnings, 0)).toBe(1600);
+    expect(await prisma.purchase.count()).toBe(2);
+    expect(await prisma.transaction.count({ where: { type: 'SALE' } })).toBe(1);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: f.seller.id } })).balance).toBe(800);
+  });
 
-    expect(result).toEqual({ applied: true, skippedMediaItemIds: [mediaItem.id] });
+  it('same-payment replay adds nothing', async () => {
+    const f = await fixture(); const payload = { orderId: f.order.id, paymentAttemptId: f.attempt.id,
+      buyerId: f.buyer.id, externalOrderId: randomUUID(), paidLines: [f.paidLine] };
+    await repository.commitFulfillment(payload);
+    await expect(repository.commitFulfillment(payload)).resolves.toEqual({ applied: false });
+    expect(await prisma.paidOrderLine.count()).toBe(1); expect(await prisma.transaction.count()).toBe(1);
+  });
 
-    const [updatedOrder, purchasesForMediaItem, purchasesForSecondItem] = await Promise.all([
-      prisma.order.findUniqueOrThrow({ where: { id: order.id } }),
-      prisma.purchase.findMany({ where: { buyerId: buyer.id, mediaItemId: mediaItem.id } }),
-      prisma.purchase.findMany({ where: { buyerId: buyer.id, mediaItemId: secondMediaItem.id } }),
-    ]);
+  it('creates one new active entitlement after a fully refunded entitlement was revoked', async () => {
+    const f = await fixture();
+    await prisma.purchase.create({ data: { buyerId: f.buyer.id, mediaItemId: f.media.id, amountPaid: 1000,
+      platformFee: 200, photographerEarned: 800, revokedAt: new Date('2026-09-14T00:00:00Z') } });
 
-    expect(updatedOrder.status).toBe(OrderStatus.COMPLETED);
-    expect(purchasesForMediaItem).toHaveLength(1); // still just the pre-seeded one — the duplicate was skipped
-    expect(purchasesForSecondItem).toHaveLength(1); // the non-colliding item still delivered
+    await repository.commitFulfillment({ orderId: f.order.id, paymentAttemptId: f.attempt.id,
+      buyerId: f.buyer.id, externalOrderId: randomUUID(), paidLines: [f.paidLine] });
+
+    expect(await prisma.purchase.count({ where: { buyerId: f.buyer.id, mediaItemId: f.media.id } })).toBe(2);
+    expect(await prisma.purchase.count({ where: { buyerId: f.buyer.id, mediaItemId: f.media.id,
+      revokedAt: null } })).toBe(1);
+    expect(await prisma.paidOrderLine.findFirstOrThrow()).toMatchObject({ deliveryStatus: 'DELIVERED' });
+    expect(await prisma.transaction.count({ where: { type: 'SALE' } })).toBe(1);
+  });
+
+  it('rolls back the order claim when the payment attempt belongs to another order', async () => {
+    const f = await fixture(); const other = await prisma.order.create({ data: { buyerId: f.buyer.id,
+      clientRequestId: randomUUID(), totalAmount: 0 } });
+    const wrong = await prisma.paymentAttempt.create({ data: { orderId: other.id, provider: 'PADDLE', environment: 'SANDBOX',
+      providerTransactionId: randomUUID(), creationState: 'READY', expectedAmountCents: 0, expectedCurrency: 'USD' } });
+    await expect(repository.commitFulfillment({ orderId: f.order.id, paymentAttemptId: wrong.id,
+      buyerId: f.buyer.id, externalOrderId: randomUUID(), paidLines: [f.paidLine] })).rejects.toThrow('does not belong');
+    expect(await prisma.order.findUniqueOrThrow({ where: { id: f.order.id } })).toMatchObject({ status: 'PENDING', externalOrderId: null });
+    expect(await prisma.paidOrderLine.count()).toBe(0);
   });
 });
