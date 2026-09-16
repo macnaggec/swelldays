@@ -18,6 +18,7 @@ import { MEDIA_STATUS } from '@swelldays/contracts/core';
 import { apiConfig } from 'server/config/env';
 import type { OrderLineSnapshot, PaymentProvider, PricedCheckoutCatalogItem } from 'server/domain/OrderEconomics';
 import { snapshotOrderLine } from 'server/domain/OrderEconomics';
+import type { BuyerCheckoutStatus, CheckoutStatusLocator } from '@swelldays/contracts/validation/checkout';
 
 const RACED_ORDER_RETRY_ATTEMPTS = 3;
 const RACED_ORDER_RETRY_DELAY_MS = 250; // ms
@@ -147,6 +148,35 @@ export class CheckoutService {
       prepared.attempt.id,
       buyerId,
     );
+  }
+
+  async getBuyerCheckoutStatus(
+    buyerId: string,
+    locator: CheckoutStatusLocator,
+  ): Promise<BuyerCheckoutStatus> {
+    const order = 'clientRequestId' in locator
+      ? await this.orders.findOrderByBuyerAndClientRequestId(buyerId, locator.clientRequestId)
+      : await this.orders.findOrderById(locator.orderId);
+
+    if (!order || order.buyerId !== buyerId) return { state: 'not-found' };
+    if (order.status === OrderStatus.COMPLETED) return { state: 'paid', orderId: order.id };
+    if (order.status === OrderStatus.FAILED) {
+      return { state: 'failed', orderId: order.id, reason: 'order-failed' };
+    }
+
+    const outcome = await this.payment.resumeAttempt(order.id);
+    switch (outcome.type) {
+      case 'ready':
+        return { state: 'ready', orderId: order.id, checkoutUrl: outcome.checkoutUrl };
+      case 'creating':
+        return { state: 'creating', orderId: order.id };
+      case 'unknown':
+        return { state: 'unknown', orderId: order.id, reason: outcome.reason };
+      case 'payment-received':
+        return { state: 'processing', orderId: order.id };
+      case 'definitively-failed':
+        return { state: 'failed', orderId: order.id, reason: outcome.reason };
+    }
   }
 
   async getPurchases(buyerId: string): Promise<{

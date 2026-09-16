@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Center, Skeleton, Text } from '@mantine/core';
+import { Center, Skeleton, Stack, Text } from '@mantine/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useTRPC } from 'shared/lib/trpc';
@@ -8,6 +8,8 @@ import { PurchaseCard, PurchaseLightbox, usePurchaseDownload } from 'features/Pu
 import { PanelGalleryLayout } from 'shared/ui/PanelGalleryLayout';
 import { BaseGallery } from 'shared/ui/BaseGallery';
 import { PanelCollectionGrid } from 'shared/ui/PanelCollectionGrid';
+import { AppButton } from 'shared/ui/AppButton';
+import type { BuyerCheckoutStatus } from '@swelldays/contracts/validation/checkout';
 
 export const Route = createFileRoute('/_panel/me/collections/purchases')({
   validateSearch: (search): { order?: string } => ({
@@ -21,6 +23,13 @@ function PurchasesTab() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const { data: purchases = [], isLoading } = useQuery(trpc.checkout.myPurchases.queryOptions());
+  const { data: checkoutStatus } = useQuery({
+    ...trpc.checkout.status.queryOptions({
+      orderId: order ?? '00000000-0000-4000-8000-000000000000',
+    }),
+    enabled: order !== undefined,
+    refetchInterval: (query) => isTransientCheckoutStatus(query.state.data) ? 2_000 : false,
+  });
   const { download, isDownloading, isAnyDownloading } = usePurchaseDownload();
   const removeFromCart = useCartStore((s) => s.remove);
 
@@ -29,17 +38,19 @@ function PurchasesTab() {
   const lightboxPurchase = purchases.find(p => p.mediaItem.id === lightboxMediaItemId) ?? null;
 
   useEffect(() => {
-    if (!order || invalidatedOrderRef.current === order) return;
+    if (!order || checkoutStatus?.state !== 'paid' || invalidatedOrderRef.current === order) return;
 
     invalidatedOrderRef.current = order;
     void queryClient.invalidateQueries({ queryKey: trpc.checkout.myPurchases.queryKey() });
-  }, [order, queryClient, trpc]);
+  }, [checkoutStatus?.state, order, queryClient, trpc]);
 
   useEffect(() => {
-    if (!order || isLoading || purchases.length === 0) return;
+    if (!order || checkoutStatus?.state !== 'paid' || isLoading || purchases.length === 0) return;
 
     purchases.forEach((purchase) => removeFromCart(purchase.mediaItem.id));
-  }, [isLoading, order, purchases, removeFromCart]);
+  }, [checkoutStatus?.state, isLoading, order, purchases, removeFromCart]);
+
+  const checkoutNotice = renderCheckoutNotice(checkoutStatus);
 
   if (isLoading) {
     // Same grid PanelCollectionGrid gives BaseGallery below, so the column count matches
@@ -59,7 +70,10 @@ function PurchasesTab() {
     return (
       <PanelGalleryLayout>
         <Center mih={200}>
-          <Text c="dimmed" size="sm">Your purchases will appear here.</Text>
+          <Stack align="center" gap="sm">
+            {checkoutNotice}
+            {!checkoutNotice && <Text c="dimmed" size="sm">Your purchases will appear here.</Text>}
+          </Stack>
         </Center>
       </PanelGalleryLayout>
     );
@@ -68,6 +82,7 @@ function PurchasesTab() {
   return (
     <>
       <PanelGalleryLayout>
+        {checkoutNotice}
         <BaseGallery
           items={purchases}
           aria-label="Purchases"
@@ -92,4 +107,31 @@ function PurchasesTab() {
       />
     </>
   );
+}
+
+function isTransientCheckoutStatus(status: BuyerCheckoutStatus | undefined): boolean {
+  return status?.state === 'creating' || status?.state === 'unknown' || status?.state === 'processing';
+}
+
+function renderCheckoutNotice(status: BuyerCheckoutStatus | undefined) {
+  if (isTransientCheckoutStatus(status)) {
+    return <Text c="dimmed" size="sm">Checking payment status…</Text>;
+  }
+  if (status?.state === 'failed') {
+    return <Text c="red" size="sm">Payment failed. You can retry from your cart.</Text>;
+  }
+  if (status?.state === 'ready') {
+    return (
+      <AppButton
+        tone="positive"
+        onClick={() => { window.location.href = status.checkoutUrl; }}
+      >
+        Resume checkout
+      </AppButton>
+    );
+  }
+  if (status?.state === 'paid') {
+    return <Text c="green" size="sm">Payment complete.</Text>;
+  }
+  return null;
 }

@@ -33,6 +33,7 @@ vi.mock('entities/Commerce', () => ({
     handleCheckout: mocks.handleCheckout,
     isPending: false,
     totalCents: 1200,
+    status: null,
   }),
 }));
 

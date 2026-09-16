@@ -1,13 +1,23 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from 'server/trpc';
 import { checkoutService } from 'server/services/CheckoutService';
-import { createCheckoutSchema, getSignedMediaAccessSchema } from '@swelldays/contracts/validation/checkout';
+import {
+  buyerCheckoutStatusSchema,
+  checkoutStatusLocatorSchema,
+  createCheckoutSchema,
+  getSignedMediaAccessSchema,
+} from '@swelldays/contracts/validation/checkout';
 import { createRateLimiter } from 'server/lib/rateLimiter';
 
 // 5 checkout session creations per user per minute — prevents CryptoCloud API abuse
 const createCheckoutLimiter = createRateLimiter({ windowMs: 60_000, max: 5 });
 
 export const checkoutRouter = router({
+  status: protectedProcedure
+    .input(checkoutStatusLocatorSchema)
+    .output(buyerCheckoutStatusSchema)
+    .query(({ input, ctx }) => checkoutService.getBuyerCheckoutStatus(ctx.user.id, input)),
+
   /**
    * Creates a CryptoCloud checkout session for the current cart.
    * Returns a URL to redirect the buyer to the hosted payment page.

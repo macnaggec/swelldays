@@ -3,4 +3,6 @@ export { toCartItem } from './model/toCartItem';
 export { useCartToggle } from './model/useCartToggle';
 export { useCartCheckout } from './model/useCartCheckout';
 export type { CartCheckout } from './model/useCartCheckout';
+export { parsePaddleCheckoutParameters } from './model/paddleCheckoutParameters';
+export type { PaddleCheckoutParameters } from './model/paddleCheckoutParameters';
 export type { CartItem } from './model/types';

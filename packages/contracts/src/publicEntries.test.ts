@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { MEDIA_STATUS, MIN_MEDIA_PRICE_CENTS } from '@swelldays/contracts/core';
-import { createCheckoutSchema } from '@swelldays/contracts/validation/checkout';
+import {
+  buyerCheckoutStatusSchema,
+  checkoutStatusLocatorSchema,
+  createCheckoutSchema,
+} from '@swelldays/contracts/validation/checkout';
 import { mediaUpdateSchema } from '@swelldays/contracts/validation/media';
 import { spotLocationSchema } from '@swelldays/contracts/validation/spot';
 import { beginLocalSchema } from '@swelldays/contracts/validation/upload';
@@ -13,6 +17,8 @@ describe('contracts public entries', () => {
 
   it('exposes checkout validation', () => {
     expect(createCheckoutSchema.safeParse({}).success).toBe(false);
+    expect(checkoutStatusLocatorSchema.safeParse({}).success).toBe(false);
+    expect(buyerCheckoutStatusSchema.safeParse({ state: 'not-found' }).success).toBe(true);
   });
 
   it('exposes media validation', () => {

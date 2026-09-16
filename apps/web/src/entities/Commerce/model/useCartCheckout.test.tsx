@@ -3,15 +3,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCartStore } from './cartStore';
 import { useCartCheckout } from './useCartCheckout';
 import type { CartItem } from './types';
+import type { BuyerCheckoutStatus } from '@swelldays/contracts/validation/checkout';
 
-const mocks = vi.hoisted(() => ({
-  mutationInput: undefined as { itemIds: string[]; clientRequestId: string } | undefined,
-  checkoutUrl: '' as string,
-  navigate: vi.fn(),
-  isAuthenticated: true,
-  openAuthModal: vi.fn(),
-  shouldError: false,
-}));
+const mocks = vi.hoisted(() => {
+  let mutationInput: { itemIds: string[]; clientRequestId: string } | undefined;
+  let status: BuyerCheckoutStatus | undefined;
+  return {
+    mutationInput,
+    checkoutUrl: '',
+    navigate: vi.fn(),
+    isAuthenticated: true,
+    openAuthModal: vi.fn(),
+    shouldError: false,
+    status,
+    refetchStatus: vi.fn(),
+  };
+});
 
 vi.mock('shared/hooks/useUser', () => ({
   useUser: () => ({ isAuthenticated: mocks.isAuthenticated }),
@@ -25,6 +32,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();
   return {
     ...actual,
+    useQuery: () => ({
+      data: mocks.status,
+      isFetching: false,
+      refetch: mocks.refetchStatus,
+    }),
     useMutation: (options: {
       onSuccess?: (data: { checkoutUrl: string; orderId: string }) => void;
       onError?: (error: Error) => void;
@@ -50,6 +62,9 @@ vi.mock('shared/lib/trpc', () => ({
     checkout: {
       create: {
         mutationOptions: () => ({}),
+      },
+      status: {
+        queryOptions: () => ({}),
       },
     },
   }),
@@ -78,6 +93,7 @@ describe('useCartCheckout', () => {
     mocks.checkoutUrl = `${window.location.origin}/me/collections/purchases?order=order-1`;
     mocks.isAuthenticated = true;
     mocks.shouldError = false;
+    mocks.status = undefined;
     window.history.replaceState({}, '', '/cart');
     localStorage.clear();
     useCartStore.setState({
@@ -169,6 +185,83 @@ describe('useCartCheckout', () => {
     expect(secondId).toBe(firstId);
   });
 
+  it('reuses the persisted key after unmount and remount', async () => {
+    const first = renderHook(() => useCartCheckout());
+    await act(async () => first.result.current.handleCheckout());
+    const requestId = mocks.mutationInput?.clientRequestId;
+    first.unmount();
+
+    const second = renderHook(() => useCartCheckout());
+    await act(async () => second.result.current.handleCheckout());
+
+    expect(mocks.mutationInput?.clientRequestId).toBe(requestId);
+  });
+
+  it('observes a persisted key written by another tab', async () => {
+    const requestId = '11111111-1111-4111-8111-111111111111';
+    const { result } = renderHook(() => useCartCheckout());
+
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'swelldays.checkout.v1:media-1',
+        newValue: requestId,
+      }));
+    });
+    await act(async () => result.current.handleCheckout());
+
+    expect(mocks.mutationInput?.clientRequestId).toBe(requestId);
+  });
+
+  it.each<BuyerCheckoutStatus>([
+    { state: 'creating', orderId: 'order-1' },
+    { state: 'unknown', orderId: 'order-1', reason: 'provider-timeout' },
+    { state: 'processing', orderId: 'order-1' },
+  ])('checks transient status $state without creating another checkout', async (status) => {
+    mocks.status = status;
+    localStorage.setItem('swelldays.checkout.v1:media-1', '11111111-1111-4111-8111-111111111111');
+    const { result } = renderHook(() => useCartCheckout());
+
+    await act(async () => result.current.handleCheckout());
+
+    expect(mocks.refetchStatus).toHaveBeenCalled();
+    expect(mocks.mutationInput).toBeUndefined();
+  });
+
+  it('resumes a ready checkout without creating another checkout', async () => {
+    mocks.status = { state: 'ready', orderId: 'order-1', checkoutUrl: `${window.location.origin}/checkout/resume` };
+    localStorage.setItem('swelldays.checkout.v1:media-1', '11111111-1111-4111-8111-111111111111');
+    const { result } = renderHook(() => useCartCheckout());
+
+    await act(async () => result.current.handleCheckout());
+
+    expect(mocks.navigate).toHaveBeenCalledWith({ href: '/checkout/resume' });
+    expect(mocks.mutationInput).toBeUndefined();
+  });
+
+  it('routes a paid checkout to purchases without creating another checkout', async () => {
+    mocks.status = { state: 'paid', orderId: 'order-1' };
+    localStorage.setItem('swelldays.checkout.v1:media-1', '11111111-1111-4111-8111-111111111111');
+    const { result } = renderHook(() => useCartCheckout());
+
+    await act(async () => result.current.handleCheckout());
+
+    expect(mocks.navigate).toHaveBeenCalledWith({ href: '/me/collections/purchases?order=order-1' });
+    expect(mocks.mutationInput).toBeUndefined();
+  });
+
+  it('replaces only the current cart key on explicit retry from failed', async () => {
+    mocks.status = { state: 'failed', orderId: 'order-1', reason: 'order-failed' };
+    const oldId = '11111111-1111-4111-8111-111111111111';
+    localStorage.setItem('swelldays.checkout.v1:media-1', oldId);
+    localStorage.setItem('swelldays.checkout.v1:other-media', '22222222-2222-4222-8222-222222222222');
+    const { result } = renderHook(() => useCartCheckout());
+
+    await act(async () => result.current.handleCheckout());
+
+    expect(mocks.mutationInput?.clientRequestId).not.toBe(oldId);
+    expect(localStorage.getItem('swelldays.checkout.v1:other-media')).toBe('22222222-2222-4222-8222-222222222222');
+  });
+
   it('mints a new clientRequestId when the cart items change', async () => {
     const { result, rerender } = renderHook(() => useCartCheckout());
 
@@ -176,6 +269,7 @@ describe('useCartCheckout', () => {
       result.current.handleCheckout();
     });
     const firstId = mocks.mutationInput?.clientRequestId;
+    const firstStorageKey = Object.keys(localStorage).find((key) => key.startsWith('swelldays.checkout.v1:'));
 
     act(() => {
       useCartStore.setState({ items: [{ ...item, id: 'media-2' }] });
@@ -189,9 +283,26 @@ describe('useCartCheckout', () => {
 
     expect(secondId).toBeDefined();
     expect(secondId).not.toBe(firstId);
+    expect(firstStorageKey).toBeDefined();
+    expect(localStorage.getItem(firstStorageKey ?? '')).toBe(firstId);
   });
 
-  it('mints a new clientRequestId after a failed checkout attempt', async () => {
+  it('uses the same persisted key for the same cart in a different item order', async () => {
+    const secondItem = { ...item, id: 'media-2' };
+    useCartStore.setState({ items: [item, secondItem] });
+    const first = renderHook(() => useCartCheckout());
+    await act(async () => first.result.current.handleCheckout());
+    const firstId = mocks.mutationInput?.clientRequestId;
+    first.unmount();
+
+    useCartStore.setState({ items: [secondItem, item] });
+    const second = renderHook(() => useCartCheckout());
+    await act(async () => second.result.current.handleCheckout());
+
+    expect(mocks.mutationInput?.clientRequestId).toBe(firstId);
+  });
+
+  it('preserves the clientRequestId after a transport failure', async () => {
     mocks.shouldError = true;
     const { result } = renderHook(() => useCartCheckout());
 
@@ -207,6 +318,7 @@ describe('useCartCheckout', () => {
     const secondId = mocks.mutationInput?.clientRequestId;
 
     expect(secondId).toBeDefined();
-    expect(secondId).not.toBe(firstId);
+    expect(secondId).toBe(firstId);
+    expect(mocks.refetchStatus).toHaveBeenCalled();
   });
 });

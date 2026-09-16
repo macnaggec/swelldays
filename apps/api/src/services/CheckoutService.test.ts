@@ -22,6 +22,7 @@ import { BadRequestError, BadGatewayError, ForbiddenError, ConflictError } from 
 const mockOrders = {
   createOrder: vi.fn(),
   markOrderFailed: vi.fn(),
+  findOrderById: vi.fn(),
   findOrderByBuyerAndClientRequestId: vi.fn(),
   saveCheckoutSessionUrl: vi.fn(),
 };
@@ -88,8 +89,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockOrders.findOrderByBuyerAndClientRequestId.mockResolvedValue(null);
   mockOrders.createOrder.mockImplementation(defaultCreateOrderImplementation);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mockTransaction.mockImplementation((fn: any) => fn(mockTx));
+  mockTransaction.mockImplementation((fn: (tx: typeof mockTx) => unknown) => fn(mockTx));
   mockTx.$executeRaw.mockResolvedValue(undefined);
   mockTx.purchase.findMany.mockResolvedValue([]);
   mockTx.orderItem.findMany.mockResolvedValue([]);
@@ -122,11 +122,13 @@ function makeMediaItem(overrides: Partial<{
   };
 }
 
-function makeOrder(): OrderWithItems {
+function makeOrder(overrides: Partial<OrderWithItems> = {}): OrderWithItems {
   return {
     id: 'order-uuid-1',
     buyerId: 'buyer-1',
+    status: 'PENDING',
     items: [{ id: 'oi-1', mediaItemId: 'media-1' }],
+    ...overrides,
   } as unknown as OrderWithItems;
 }
 
@@ -634,6 +636,52 @@ describe('CheckoutService.createCheckoutSession', () => {
       platformFeeAmount: 350,
       sellerEarningsAmount: 650,
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getBuyerCheckoutStatus
+// ---------------------------------------------------------------------------
+
+describe('CheckoutService.getBuyerCheckoutStatus', () => {
+  it('looks up by client request ID without creating anything', async () => {
+    mockOrders.findOrderByBuyerAndClientRequestId.mockResolvedValue(makeOrder());
+
+    await expect(service.getBuyerCheckoutStatus('buyer-1', { clientRequestId: 'request-1' }))
+      .resolves.toEqual({
+        state: 'ready', orderId: 'order-uuid-1', checkoutUrl: 'https://pay.cryptocloud.plus/mock-invoice',
+      });
+    expect(mockOrders.createOrder).not.toHaveBeenCalled();
+    expect(mockPayment.openPreparedAttempt).not.toHaveBeenCalled();
+  });
+
+  it('does not reveal missing or foreign orders', async () => {
+    mockOrders.findOrderById.mockResolvedValueOnce(null).mockResolvedValueOnce(makeOrder({ buyerId: 'buyer-2' }));
+    await expect(service.getBuyerCheckoutStatus('buyer-1', { orderId: 'missing' }))
+      .resolves.toEqual({ state: 'not-found' });
+    await expect(service.getBuyerCheckoutStatus('buyer-1', { orderId: 'foreign' }))
+      .resolves.toEqual({ state: 'not-found' });
+    expect(mockPayment.resumeAttempt).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['COMPLETED', { state: 'paid', orderId: 'order-uuid-1' }],
+    ['FAILED', { state: 'failed', orderId: 'order-uuid-1', reason: 'order-failed' }],
+  ] as const)('maps terminal order state %s before consulting payment', async (status, expected) => {
+    mockOrders.findOrderById.mockResolvedValue(makeOrder({ status }));
+    await expect(service.getBuyerCheckoutStatus('buyer-1', { orderId: 'order-uuid-1' })).resolves.toEqual(expected);
+    expect(mockPayment.resumeAttempt).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{ type: 'creating' }, { state: 'creating', orderId: 'order-uuid-1' }],
+    [{ type: 'unknown', reason: 'provider-timeout' }, { state: 'unknown', orderId: 'order-uuid-1', reason: 'provider-timeout' }],
+    [{ type: 'payment-received' }, { state: 'processing', orderId: 'order-uuid-1' }],
+    [{ type: 'definitively-failed', reason: 'provider-rejected' }, { state: 'failed', orderId: 'order-uuid-1', reason: 'provider-rejected' }],
+  ] as const)('maps payment outcome %#', async (outcome, expected) => {
+    mockOrders.findOrderById.mockResolvedValue(makeOrder());
+    mockPayment.resumeAttempt.mockResolvedValue(outcome);
+    await expect(service.getBuyerCheckoutStatus('buyer-1', { orderId: 'order-uuid-1' })).resolves.toEqual(expected);
   });
 });
 

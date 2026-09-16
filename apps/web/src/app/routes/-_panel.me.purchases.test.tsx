@@ -5,7 +5,8 @@ import { useCartStore } from 'entities/Commerce/model/cartStore';
 import type { CartItem } from 'entities/Commerce/model/types';
 import { render } from 'test/setup/render';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
-import { Route } from './_panel.me.collections.purchases';
+import type { BuyerCheckoutStatus } from '@swelldays/contracts/validation/checkout';
+import './_panel.me.collections.purchases';
 
 // Purchases inherits the siteWorkspace intent from /_panel/me (M06c); PanelCollectionGrid
 // (inside BaseGallery) now derives its own column density from the shell policy, so every
@@ -18,34 +19,44 @@ function renderPurchases(ui: ReactNode) {
   );
 }
 
-const mocks = vi.hoisted(() => ({
-  isLoading: false,
-  invalidateQueries: vi.fn(),
-  purchases: [] as {
+const mocks = vi.hoisted(() => {
+  const initialCheckoutStatus = (): BuyerCheckoutStatus => ({ state: 'paid', orderId: 'order-1' });
+  let routeComponent: ComponentType | undefined;
+  return {
+    isLoading: false,
+    invalidateQueries: vi.fn(),
+    purchases: [] as {
     id: string;
     purchasedAt: Date;
     amountPaid: number;
     previewUrl: string | null;
     mediaItem: { id: string; thumbnailUrl: string };
-  }[],
-  useSearch: vi.fn(() => ({ order: 'order-1' })),
-}));
+    }[],
+    checkoutStatus: initialCheckoutStatus(),
+    useSearch: vi.fn(() => ({ order: 'order-1' })),
+    routeComponent,
+  };
+});
 
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => ({
-    ...options,
-    useSearch: mocks.useSearch,
-  }),
+  createFileRoute: () => (options: { component: ComponentType }) => {
+    mocks.routeComponent = options.component;
+    return { ...options, useSearch: mocks.useSearch };
+  },
 }));
+
+function purchasesTab(): ComponentType {
+  if (!mocks.routeComponent) throw new Error('Purchases route component was not registered');
+  return mocks.routeComponent;
+}
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();
   return {
     ...actual,
-    useQuery: () => ({
-      data: mocks.purchases,
-      isLoading: mocks.isLoading,
-    }),
+    useQuery: (options: { queryKey?: string[] }) => options.queryKey?.includes('status')
+      ? { data: mocks.checkoutStatus, isLoading: false }
+      : { data: mocks.purchases, isLoading: mocks.isLoading },
     useQueryClient: () => ({
       invalidateQueries: mocks.invalidateQueries,
     }),
@@ -58,6 +69,9 @@ vi.mock('shared/lib/trpc', () => ({
       myPurchases: {
         queryKey: () => ['checkout', 'myPurchases'],
         queryOptions: () => ({ queryKey: ['checkout', 'myPurchases'] }),
+      },
+      status: {
+        queryOptions: () => ({ queryKey: ['checkout', 'status'] }),
       },
     },
   }),
@@ -103,6 +117,7 @@ describe('PurchasesTab', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.isLoading = false;
+    mocks.checkoutStatus = { state: 'paid', orderId: 'order-1' };
     mocks.purchases = [{
       id: 'purchase-1',
       purchasedAt: new Date('2026-01-03T00:00:00.000Z'),
@@ -115,7 +130,7 @@ describe('PurchasesTab', () => {
   });
 
   it('removes fulfilled purchase items from the cart after a paid return', async () => {
-    const Component = (Route as unknown as { component: ComponentType }).component;
+    const Component = purchasesTab();
 
     renderPurchases(<Component />);
 
@@ -125,7 +140,7 @@ describe('PurchasesTab', () => {
   });
 
   it('refreshes purchases from the server after a paid return', async () => {
-    const Component = (Route as unknown as { component: ComponentType }).component;
+    const Component = purchasesTab();
 
     renderPurchases(<Component />);
 
@@ -136,8 +151,28 @@ describe('PurchasesTab', () => {
     });
   });
 
+  it('shows the server-confirmed paid state', () => {
+    const Component = purchasesTab();
+
+    renderPurchases(<Component />);
+
+    expect(document.body).toHaveTextContent('Payment complete.');
+  });
+
+  it('does not refresh purchases or remove cart items before server-confirmed payment', async () => {
+    mocks.checkoutStatus = { state: 'processing', orderId: 'order-1' };
+    const Component = purchasesTab();
+
+    renderPurchases(<Component />);
+
+    await waitFor(() => {
+      expect(useCartStore.getState().items).toEqual([purchasedItem, unpaidItem]);
+      expect(mocks.invalidateQueries).not.toHaveBeenCalled();
+    });
+  });
+
   it('renders purchase cards inside the shared panel gallery inset', () => {
-    const Component = (Route as unknown as { component: ComponentType }).component;
+    const Component = purchasesTab();
 
     renderPurchases(<Component />);
 

@@ -20,7 +20,7 @@ export const Route = createFileRoute('/_panel/cart')({
 function CartPanelRoute() {
   const items = useCartStore((s) => s.items);
   const remove = useCartStore((s) => s.remove);
-  const { handleCheckout, isPending, totalCents } = useCartCheckout();
+  const { handleCheckout, isPending, totalCents, status } = useCartCheckout();
   const [lightboxItem, setLightboxItem] = useState<CartItem | null>(null);
 
   const renderCartCard = useCallback(
@@ -42,6 +42,7 @@ function CartPanelRoute() {
             <CartCheckoutFooter
               totalCents={totalCents}
               isPending={isPending}
+              status={status}
               onCheckout={handleCheckout}
             />
           ) : undefined
