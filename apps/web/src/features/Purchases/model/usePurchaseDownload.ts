@@ -1,7 +1,18 @@
 import { useCallback, useRef, useState } from 'react';
+import { TRPCClientError } from '@trpc/client';
 import { useTRPCClient } from 'shared/lib/trpc';
 import { notify } from 'shared/lib/notifications';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
+
+const DOWNLOAD_SERVICE_UNAVAILABLE = 'Download service is temporarily unavailable. Please try again.';
+
+function getDownloadErrorMessage(error: unknown): string {
+  if (error instanceof TRPCClientError && error.cause instanceof SyntaxError) {
+    return DOWNLOAD_SERVICE_UNAVAILABLE;
+  }
+
+  return getErrorMessage(error);
+}
 
 export function usePurchaseDownload() {
   const trpcClient = useTRPCClient();
@@ -16,7 +27,7 @@ export function usePurchaseDownload() {
       const { downloadUrl } = await trpcClient.checkout.getSignedMediaAccess.query({ mediaItemId });
       window.open(downloadUrl, '_blank', 'noopener,noreferrer');
     } catch (err) {
-      notify.error(getErrorMessage(err), 'Download Failed');
+      notify.error(getDownloadErrorMessage(err), 'Download Failed');
     } finally {
       downloadingIdRef.current = null;
       setDownloadingId(null);

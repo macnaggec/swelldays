@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { TRPCClientError } from '@trpc/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePurchaseDownload } from './usePurchaseDownload';
 
@@ -93,6 +94,24 @@ describe('usePurchaseDownload', () => {
     });
 
     expect(mocks.notifyError).toHaveBeenCalledWith('Access failed', 'Download Failed');
+    expect(result.current.isAnyDownloading).toBe(false);
+    expect(mocks.open).not.toHaveBeenCalled();
+  });
+
+  it('replaces a non-JSON API response with an actionable availability message', async () => {
+    mocks.getSignedMediaAccess.mockRejectedValue(
+      TRPCClientError.from(new SyntaxError(`Unexpected token '<', "<!doctype "... is not valid JSON`)),
+    );
+    const { result } = renderHook(() => usePurchaseDownload());
+
+    await act(async () => {
+      await result.current.download('media-1');
+    });
+
+    expect(mocks.notifyError).toHaveBeenCalledWith(
+      'Download service is temporarily unavailable. Please try again.',
+      'Download Failed',
+    );
     expect(result.current.isAnyDownloading).toBe(false);
     expect(mocks.open).not.toHaveBeenCalled();
   });
