@@ -60,6 +60,7 @@ describe('viewport capabilities', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     Object.defineProperty(window, 'innerWidth', { value: originalInnerWidth, configurable: true });
     Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
     delete (window.navigator as Navigator & { standalone?: boolean }).standalone;
@@ -78,6 +79,18 @@ describe('viewport capabilities', () => {
     Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
 
     expect(getViewportCapabilitiesSnapshot().sizeBand).toBe(expectedBand);
+  });
+
+  it('keeps the rendered phone viewport compact when iOS Safari reports a spurious desktop inner width', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 980, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 844, configurable: true });
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(390);
+    vi.spyOn(document.documentElement, 'clientHeight', 'get').mockReturnValue(844);
+
+    expect(getViewportCapabilitiesSnapshot()).toMatchObject({
+      sizeBand: 'compact',
+      heightBand: 'regular',
+    });
   });
 
   it('keeps a constrained-width landscape phone on the `constrained` band — Phase M is untouched by Phase T\'s retirement', () => {

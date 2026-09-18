@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { getLayoutViewportSize } from './viewportMetrics';
 
 const CONSTRAINED_MIN_WIDTH_PX = 768;
 const WIDE_MIN_WIDTH_PX = 1200;
@@ -60,8 +61,7 @@ function subscribeViewportCapabilities(onStoreChange: () => void) {
 }
 
 export function getViewportCapabilitiesSnapshot(): ViewportCapabilities {
-  const viewportWidthPx = window.innerWidth;
-  const viewportHeightPx = window.innerHeight;
+  const { widthPx: viewportWidthPx, heightPx: viewportHeightPx } = getLayoutViewportSize();
   const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
   const finePointer = window.matchMedia('(pointer: fine)').matches;
   // 'short' means landscape-constrained — genuinely not enough vertical room for a

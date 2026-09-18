@@ -53,6 +53,19 @@ export function getViewportInnerSize(): { readonly widthPx: number; readonly hei
   return { widthPx: window.innerWidth, heightPx: window.innerHeight };
 }
 
+/**
+ * The rendered document's stable layout viewport. Mobile Safari can transiently
+ * publish a desktop-sized `window.innerWidth` while dismissing the software
+ * keyboard even though the document continues to lay out at phone width. The
+ * root client box remains aligned with the CSS viewport through that transition.
+ */
+export function getLayoutViewportSize(): { readonly widthPx: number; readonly heightPx: number } {
+  return {
+    widthPx: document.documentElement.clientWidth || window.innerWidth,
+    heightPx: document.documentElement.clientHeight || window.innerHeight,
+  };
+}
+
 let cachedMetrics: ViewportMetrics | undefined;
 
 const KEYBOARD_VIEWPORT_REDUCTION_THRESHOLD_PX = 120;
@@ -158,8 +171,10 @@ export function waitForKeyboardViewportToSettle(): Promise<void> {
 
 export function getViewportMetricsSnapshot(): ViewportMetrics {
   const visualViewport = window.visualViewport;
-  const layoutViewportWidthPx = document.documentElement.clientWidth || window.innerWidth;
-  const layoutViewportHeightPx = document.documentElement.clientHeight || window.innerHeight;
+  const {
+    widthPx: layoutViewportWidthPx,
+    heightPx: layoutViewportHeightPx,
+  } = getLayoutViewportSize();
   const nextMetrics: ViewportMetrics = {
     layoutViewportWidthPx,
     layoutViewportHeightPx,
