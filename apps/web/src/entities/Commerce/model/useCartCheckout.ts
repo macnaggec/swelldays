@@ -74,9 +74,16 @@ export function useCartCheckout(): CartCheckout {
   const checkout = useMutation({
     ...trpc.checkout.create.mutationOptions(),
     onSuccess: ({ checkoutUrl }) => openCheckout(checkoutUrl),
-    onError: () => {
-      void statusQuery.refetch();
-      notify.error('Checkout response was interrupted. Checking your payment status…');
+    onError: async () => {
+      const refreshedStatus = await statusQuery.refetch();
+      if (refreshedStatus.data?.state === 'failed') {
+        notify.error('Checkout could not be started. Please try again.', 'Checkout failed');
+        return;
+      }
+      notify.error(
+        'Checkout response was interrupted. Checking your payment status…',
+        'Checkout interrupted',
+      );
     },
   });
 

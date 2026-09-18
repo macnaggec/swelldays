@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCartStore } from './cartStore';
 import { useCartCheckout } from './useCartCheckout';
@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => {
     shouldError: false,
     status,
     refetchStatus: vi.fn(),
+    notifyError: vi.fn(),
   };
 });
 
@@ -26,6 +27,10 @@ vi.mock('shared/hooks/useUser', () => ({
 
 vi.mock('entities/Identity', () => ({
   useAuthModal: () => ({ open: mocks.openAuthModal }),
+}));
+
+vi.mock('shared/lib/notifications', () => ({
+  notify: { error: mocks.notifyError },
 }));
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -94,6 +99,7 @@ describe('useCartCheckout', () => {
     mocks.isAuthenticated = true;
     mocks.shouldError = false;
     mocks.status = undefined;
+    mocks.refetchStatus.mockReset().mockResolvedValue({ data: undefined });
     window.history.replaceState({}, '', '/cart');
     localStorage.clear();
     useCartStore.setState({
@@ -320,5 +326,28 @@ describe('useCartCheckout', () => {
     expect(secondId).toBeDefined();
     expect(secondId).toBe(firstId);
     expect(mocks.refetchStatus).toHaveBeenCalled();
+    expect(mocks.notifyError).toHaveBeenCalledWith(
+      'Checkout response was interrupted. Checking your payment status…',
+      'Checkout interrupted',
+    );
+  });
+
+  it('reports a definitive checkout rejection after confirming failed server state', async () => {
+    mocks.shouldError = true;
+    mocks.refetchStatus.mockResolvedValue({
+      data: { state: 'failed', orderId: 'order-1', reason: 'provider-rejected' } satisfies BuyerCheckoutStatus,
+    });
+    const { result } = renderHook(() => useCartCheckout());
+
+    await act(async () => {
+      result.current.handleCheckout();
+    });
+
+    await waitFor(() => {
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        'Checkout could not be started. Please try again.',
+        'Checkout failed',
+      );
+    });
   });
 });
