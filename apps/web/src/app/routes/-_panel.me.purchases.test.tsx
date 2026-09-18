@@ -1,4 +1,4 @@
-import { waitFor } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 import type { ComponentType, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCartStore } from 'entities/Commerce/model/cartStore';
@@ -33,6 +33,8 @@ const mocks = vi.hoisted(() => {
     mediaItem: { id: string; thumbnailUrl: string };
     }[],
     checkoutStatus: initialCheckoutStatus(),
+    navigate: vi.fn(),
+    notifySuccess: vi.fn(),
     useSearch: vi.fn(() => ({ order: 'order-1' })),
     routeComponent,
   };
@@ -43,6 +45,11 @@ vi.mock('@tanstack/react-router', () => ({
     mocks.routeComponent = options.component;
     return { ...options, useSearch: mocks.useSearch };
   },
+  useNavigate: () => mocks.navigate,
+}));
+
+vi.mock('shared/lib/notifications', () => ({
+  notify: { success: mocks.notifySuccess },
 }));
 
 function purchasesTab(): ComponentType {
@@ -116,6 +123,7 @@ describe('PurchasesTab', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.invalidateQueries.mockResolvedValue(undefined);
     mocks.isLoading = false;
     mocks.checkoutStatus = { state: 'paid', orderId: 'order-1' };
     mocks.purchases = [{
@@ -151,12 +159,73 @@ describe('PurchasesTab', () => {
     });
   });
 
-  it('shows the server-confirmed paid state', () => {
+  it('shows a success toast for the server-confirmed paid state', async () => {
     const Component = purchasesTab();
 
     renderPurchases(<Component />);
 
-    expect(document.body).toHaveTextContent('Payment complete.');
+    await waitFor(() => {
+      expect(mocks.notifySuccess).toHaveBeenCalledWith(
+        'Your purchase is ready to download.',
+        'Payment complete',
+      );
+    });
+    expect(document.body).not.toHaveTextContent('Payment complete.');
+  });
+
+  it('removes the completed order from the URL after showing the success toast', async () => {
+    const Component = purchasesTab();
+
+    renderPurchases(<Component />);
+
+    await waitFor(() => {
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: '/me/collections/purchases',
+        search: {},
+        replace: true,
+      });
+    });
+  });
+
+  it('keeps the paid order in the URL until refreshed purchases are removed from the cart', async () => {
+    let finishRefresh: (() => void) | undefined;
+    mocks.purchases = [];
+    mocks.invalidateQueries.mockReturnValue(new Promise<void>((resolve) => {
+      finishRefresh = resolve;
+    }));
+    const Component = purchasesTab();
+    const view = renderPurchases(<Component />);
+
+    await waitFor(() => {
+      expect(mocks.invalidateQueries).toHaveBeenCalled();
+    });
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(useCartStore.getState().items).toEqual([purchasedItem, unpaidItem]);
+
+    mocks.purchases = [{
+      id: 'purchase-1',
+      purchasedAt: new Date('2026-01-03T00:00:00.000Z'),
+      amountPaid: 300,
+      previewUrl: null,
+      mediaItem: { id: 'media-1', thumbnailUrl: 'https://example.com/thumb-1.jpg' },
+    }];
+    view.rerender(
+      <AppShellLayoutPolicyProvider routeIntent="siteWorkspace" browseExpanded={false} galleryExpanded={false}>
+        <Component />
+      </AppShellLayoutPolicyProvider>,
+    );
+    await act(async () => {
+      finishRefresh?.();
+    });
+
+    await waitFor(() => {
+      expect(useCartStore.getState().items).toEqual([unpaidItem]);
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: '/me/collections/purchases',
+        search: {},
+        replace: true,
+      });
+    });
   });
 
   it('does not refresh purchases or remove cart items before server-confirmed payment', async () => {
