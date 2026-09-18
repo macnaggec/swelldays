@@ -37,7 +37,10 @@ export interface ICloudinaryService {
   uploadFromUrl(sourceUrl: string, authHeaders: Record<string, string>, folder: string, resourceType?: 'image' | 'video'): Promise<RemoteUploadResult>;
   deleteAsset(publicId: string, resourceType?: 'image' | 'video'): Promise<void>;
   generateDeliveryUrl(cloudinaryPublicId: string, transform: string, resourceType?: 'image' | 'video', format?: string): string;
-  generateSignedDownload(cloudinaryPublicId: string, resourceType?: 'image' | 'video'): { downloadUrl: string; expiresAt: number };
+  generateSignedDownload(
+    cloudinaryPublicId: string,
+    resourceType?: 'image' | 'video',
+  ): Promise<SignedMediaAccessResult>;
   generatePermanentPreviewUrl(cloudinaryPublicId: string): string;
   tryGeneratePermanentPreviewUrl(cloudinaryPublicId: string): string | null;
 }
@@ -47,6 +50,10 @@ const cloudinaryReceiptSchema = z.object({
   resourceType: z.string(),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
+});
+
+const cloudinaryOriginalAssetSchema = z.object({
+  format: z.string().trim().min(1),
 });
 
 /**
@@ -194,8 +201,7 @@ export class CloudinaryService implements ICloudinaryService, DirectUploadPort, 
   /**
    * Generates a permanent signed delivery URL for an authenticated Cloudinary asset.
    * Single owner of permanent (no-TTL) delivery URL signing — thumbnails, lightbox previews.
-   * Short-lived download URLs (TTL + fl_attachment) are a separate concern handled by
-   * generateSignedDownload, which calls cloudinary.url() directly with expires_at.
+   * Short-lived download URLs are a separate concern handled by generateSignedDownload.
    */
   generateDeliveryUrl(cloudinaryPublicId: string, transform: string, resourceType: 'image' | 'video' = 'image', format?: string): string {
     return libGenerateDeliveryUrl(cloudinaryPublicId, transform, resourceType, format);
@@ -208,22 +214,32 @@ export class CloudinaryService implements ICloudinaryService, DirectUploadPort, 
    *
    * @param cloudinaryPublicId - The public_id of the authenticated Cloudinary resource
    */
-  generateSignedDownload(
+  async generateSignedDownload(
     cloudinaryPublicId: string,
     resourceType: 'image' | 'video' = 'image',
-  ): { downloadUrl: string; expiresAt: number } {
+  ): Promise<SignedMediaAccessResult> {
     const SIGNED_TTL = 600; // 10 minutes
     const expiresAt = Math.floor(Date.now() / 1000) + SIGNED_TTL;
-
-    // Full original with fl_attachment to trigger browser download.
-    const downloadUrl = cloudinary.url(cloudinaryPublicId, {
-      sign_url: true,
-      type: 'authenticated',
-      expires_at: expiresAt,
-      secure: true,
-      flags: 'attachment',
+    const resource = await cloudinary.api.resource(cloudinaryPublicId, {
       resource_type: resourceType,
+      type: 'authenticated',
     });
+    const parsedResource = cloudinaryOriginalAssetSchema.safeParse(resource);
+
+    if (!parsedResource.success) {
+      throw new InternalServerError('Cloudinary returned an invalid original asset format');
+    }
+
+    const downloadUrl = cloudinary.utils.private_download_url(
+      cloudinaryPublicId,
+      parsedResource.data.format,
+      {
+        resource_type: resourceType,
+        type: 'authenticated',
+        expires_at: expiresAt,
+        attachment: true,
+      },
+    );
 
     return { downloadUrl, expiresAt };
   }
