@@ -4,6 +4,15 @@ vi.mock('server/db', () => ({
   prisma: { $transaction: vi.fn() },
 }));
 
+const revisionMocks = vi.hoisted(() => ({
+  finalize: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('server/services/CheckoutRevision', async (importOriginal) => ({
+  ...await importOriginal<typeof import('server/services/CheckoutRevision')>(),
+  finalizeCheckoutRevision: revisionMocks.finalize,
+}));
+
 import { prisma } from 'server/db';
 import { CheckoutService } from 'server/services/CheckoutService';
 import type { IOrderRepository, OrderWithItems, CreateOrderData } from 'server/repositories/OrderRepository';
@@ -43,6 +52,7 @@ const mockPayment = {
   prepareAttempt: vi.fn(),
   openPreparedAttempt: vi.fn(),
   resumeAttempt: vi.fn(),
+  reconfigureAttempt: vi.fn(),
 };
 
 const mockCloudinary = {
@@ -55,13 +65,17 @@ const mockTx = {
   $executeRaw: vi.fn(),
   purchase: { findMany: vi.fn() },
   orderItem: { findMany: vi.fn() },
+  order: { update: vi.fn() },
 };
 
 const service = new CheckoutService(
   mockOrders as unknown as IOrderRepository,
   mockMedia as unknown as IMediaRepository,
   mockPurchases as unknown as IPurchaseRepository,
-  mockPayment as Pick<IPaymentService, 'prepareAttempt' | 'openPreparedAttempt' | 'resumeAttempt'>,
+  mockPayment as Pick<
+    IPaymentService,
+    'prepareAttempt' | 'openPreparedAttempt' | 'resumeAttempt' | 'reconfigureAttempt'
+  >,
   mockCloudinary as unknown as ICloudinaryService,
   'http://localhost:3000',
   'cryptocloud',
@@ -178,6 +192,17 @@ describe('CheckoutService.createCheckoutSession', () => {
 
     expect(result.checkoutUrl).toBe('https://pay.cryptocloud.plus/mock-invoice');
     expect(result.orderId).toBe('order-uuid-1');
+  });
+
+  it('returns authenticated buyers to the cart until payment is server-confirmed', async () => {
+    setupHappyPath();
+
+    await service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID);
+
+    expect(mockPayment.openPreparedAttempt).toHaveBeenCalledWith(expect.objectContaining({
+      successUrl: 'http://localhost:3000/cart?order=order-uuid-1',
+      failUrl: 'http://localhost:3000/cart',
+    }));
   });
 
   it('creates the order before calling the payment adapter', async () => {
@@ -426,9 +451,14 @@ describe('CheckoutService.createCheckoutSession', () => {
   it('throws BadRequestError when buyer tries to purchase their own media', async () => {
     mockMedia.findByIdsForCheckout.mockResolvedValue([makeMediaItem({ photographerId: BUYER_ID })]);
 
-    await expect(service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID)).rejects.toThrow(
-      'You cannot purchase your own media',
-    );
+    await expect(service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID)).rejects.toMatchObject({
+      message: 'You cannot purchase your own media',
+      details: {
+        reason: 'own-media',
+        mediaItemIds: ITEM_IDS,
+      },
+    });
+    expect(mockOrders.createOrder).not.toHaveBeenCalled();
   });
 
   it('throws BadRequestError when buyer already purchased an item', async () => {
@@ -454,6 +484,55 @@ describe('CheckoutService.createCheckoutSession', () => {
     await expect(service.createCheckoutSession(BUYER_ID, undefined, ITEM_IDS, CLIENT_REQUEST_ID)).rejects.toThrow(
       'Some items already have a pending order',
     );
+  });
+
+  it('expands one active checkout when the buyer adds another cart item', async () => {
+    const paddleService = new CheckoutService(
+      mockOrders as unknown as IOrderRepository,
+      mockMedia as unknown as IMediaRepository,
+      mockPurchases as unknown as IPurchaseRepository,
+      mockPayment,
+      mockCloudinary as unknown as ICloudinaryService,
+      'http://localhost:3000',
+      'paddle',
+    );
+    const second = makeMediaItem({ id: 'media-2', price: 1300 });
+    mockMedia.findByIdsForCheckout.mockResolvedValue([makeMediaItem(), second]);
+    mockTx.orderItem.findMany.mockResolvedValue([{
+      mediaItemId: 'media-1',
+      order: {
+        id: 'existing-order',
+        clientRequestId: 'old-request',
+        pendingRevision: null,
+        items: [{ mediaItemId: 'media-1' }],
+        paymentAttempts: [{
+          creationState: 'READY', environment: 'SANDBOX', providerTransactionId: 'txn-1',
+          checkoutUrl: 'https://pay.example/txn-1', expiresAt: null,
+        }],
+      },
+    }]);
+    mockPayment.reconfigureAttempt.mockResolvedValue({
+      type: 'ready', checkoutUrl: 'https://pay.example/txn-1', expiresAt: null,
+    });
+
+    const result = await paddleService.createCheckoutSession(
+      BUYER_ID,
+      undefined,
+      ['media-1', 'media-2'],
+      'expanded-cart-request',
+    );
+
+    expect(mockOrders.createOrder).not.toHaveBeenCalled();
+    expect(mockTx.order.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'existing-order' },
+      data: expect.objectContaining({ pendingRevision: expect.any(Object) }),
+    }));
+    expect(mockPayment.reconfigureAttempt).toHaveBeenCalledWith({
+      orderId: 'existing-order',
+      totalCents: 2300,
+    });
+    expect(revisionMocks.finalize).toHaveBeenCalledWith('existing-order', 'expanded-cart-request');
+    expect(result).toEqual({ checkoutUrl: 'https://pay.example/txn-1', orderId: 'existing-order' });
   });
 
   it('keeps an old READY Paddle attempt with null expiry blocking', async () => {

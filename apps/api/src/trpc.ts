@@ -59,7 +59,15 @@ const t = initTRPC.context<TRPCContext>().create({
   errorFormatter({ shape, error }) {
     const cause = error.cause;
     if (isHttpError(cause)) {
-      return { ...shape, message: cause.message, data: { ...shape.data, code: httpStatusToTRPCCode(cause.statusCode) } };
+      return {
+        ...shape,
+        message: cause.message,
+        data: {
+          ...shape.data,
+          code: httpStatusToTRPCCode(cause.statusCode),
+          details: cause.details,
+        },
+      };
     }
     return shape;
   },

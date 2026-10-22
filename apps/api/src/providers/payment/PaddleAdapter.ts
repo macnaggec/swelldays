@@ -8,6 +8,7 @@ import type { PaymentReceipt, ReceiptStatus } from 'server/domain/PaymentReceipt
 import type {
   PaymentAdapter,
   CreateCheckoutParams,
+  UpdateCheckoutParams,
   CheckoutSessionResult,
   PaymentWebhookEvent,
 } from 'server/providers/payment/PaymentAdapter';
@@ -67,6 +68,38 @@ function isTransactionResponse(value: unknown): value is PaddleTransactionRespon
     && typeof (checkout as Record<string, unknown>).url === 'string';
 }
 
+async function readPaddleErrorMetadata(response: Response): Promise<Record<string, unknown>> {
+  try {
+    const decoded: unknown = await response.json();
+    if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) return {};
+
+    const payload = decoded as Record<string, unknown>;
+    const error = typeof payload.error === 'object' && payload.error !== null && !Array.isArray(payload.error)
+      ? payload.error as Record<string, unknown>
+      : {};
+    const meta = typeof payload.meta === 'object' && payload.meta !== null && !Array.isArray(payload.meta)
+      ? payload.meta as Record<string, unknown>
+      : {};
+    const validationErrors = Array.isArray(error.errors)
+      ? error.errors.flatMap((entry) => {
+          if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return [];
+          const item = entry as Record<string, unknown>;
+          if (typeof item.field !== 'string' || typeof item.message !== 'string') return [];
+          return [{ field: item.field, message: item.message }];
+        })
+      : undefined;
+
+    return {
+      ...(typeof error.code === 'string' ? { code: error.code } : {}),
+      ...(typeof error.detail === 'string' ? { detail: error.detail } : {}),
+      ...(validationErrors?.length ? { validationErrors } : {}),
+      ...(typeof meta.request_id === 'string' ? { requestId: meta.request_id } : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Credentials — read lazily on first use, same rationale as
 // CryptoCloudAdapter: importing this module must not throw when the mock
@@ -84,6 +117,19 @@ function baseUrl(): string {
   return creds().environment === 'sandbox'
     ? 'https://sandbox-api.paddle.com'
     : 'https://api.paddle.com';
+}
+
+function checkoutItems(totalCents: number) {
+  return [{
+    quantity: 1,
+    price: {
+      description: 'Swelldays order',
+      name: 'Swelldays order',
+      unit_price: { amount: String(totalCents), currency_code: 'USD' },
+      product: { name: 'Swelldays order', tax_category: 'standard' },
+      quantity: { minimum: 1, maximum: 1 },
+    },
+  }];
 }
 
 // ---------------------------------------------------------------------------
@@ -112,30 +158,8 @@ async function createCheckoutSession(
     + `&failUrl=${encodeURIComponent(params.failUrl)}`;
 
   const body = {
-    items: [
-      {
-        quantity: 1,
-        price: {
-          description: 'Swelldays order',
-          name: 'Swelldays order',
-          unit_price: {
-            amount: String(params.totalCents),
-            currency_code: 'USD',
-          },
-          product: {
-            name: 'Swelldays order',
-            tax_category: 'standard',
-          },
-          // Locks the quantity stepper in Paddle's checkout UI to exactly 1.
-          // totalCents already reflects the buyer's whole cart — a buyer
-          // bumping this to 2 would be charged double by Paddle while our
-          // fulfillment still only delivers the one order's fixed item set
-          // (see OrderRepository.findOrderById), since Paddle has no concept
-          // of what a "unit" of this line item corresponds to on our side.
-          quantity: { minimum: 1, maximum: 1 },
-        },
-      },
-    ],
+    // One locked aggregate line represents the immutable local order lines.
+    items: checkoutItems(params.totalCents),
     custom_data: { paymentAttemptId: params.paymentAttemptId },
     checkout: { url: checkoutPageUrl },
   };
@@ -159,7 +183,11 @@ async function createCheckoutSession(
   }
 
   if (!response.ok) {
-    logger.error('[Paddle] Transaction creation failed', { status: response.status });
+    const errorMetadata = await readPaddleErrorMetadata(response);
+    logger.error('[Paddle] Transaction creation failed', {
+      status: response.status,
+      ...errorMetadata,
+    });
     const ambiguous = response.status === 408
       || response.status === 409
       || response.status === 425
@@ -200,6 +228,37 @@ async function createCheckoutSession(
     settlement: 'pending',
     providerTestMode: creds().environment === 'sandbox',
   };
+}
+
+async function updateCheckoutSession(params: UpdateCheckoutParams): Promise<void> {
+  const { apiKey, environment } = creds();
+  if (params.identity.provider !== 'paddle' || params.identity.environment !== environment) {
+    throw new BadGatewayError('Payment provider error');
+  }
+
+  const response = await fetch(
+    `${baseUrl()}/transactions/${encodeURIComponent(params.identity.providerTransactionId)}`,
+    {
+      method: 'PATCH',
+      signal: AbortSignal.timeout(10_000),
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        items: checkoutItems(params.totalCents),
+        custom_data: { paymentAttemptId: params.paymentAttemptId },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    logger.error('[Paddle] Transaction update failed', {
+      status: response.status,
+      ...await readPaddleErrorMetadata(response),
+    });
+    throw new BadGatewayError('Payment provider error');
+  }
 }
 
 const SIGNATURE_TOLERANCE_SECONDS = 5;
@@ -439,6 +498,7 @@ function expectedAccountId(): string | null {
 export const paddleAdapter: PaymentAdapter = {
   provider: 'paddle',
   createCheckoutSession,
+  updateCheckoutSession,
   verifyWebhook,
   parseWebhookEvent,
   retrieveReceipt,

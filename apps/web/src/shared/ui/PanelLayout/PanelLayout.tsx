@@ -25,6 +25,7 @@ const PanelLayoutFooterTargetContext = createContext<HTMLElement | null>(null);
 const PanelLayoutRailTargetContext = createContext<HTMLElement | null>(null);
 const PanelLayoutMetadataTargetContext = createContext<HTMLElement | null>(null);
 const PanelLayoutStickyChromeTargetContext = createContext<HTMLElement | null>(null);
+const PanelLayoutOverlayTargetContext = createContext<HTMLElement | null>(null);
 // Lets the row's own portaled content force an immediate remeasure the moment it
 // renders — see the effect below for why ResizeObserver alone isn't enough.
 const PanelLayoutStickyChromeRemeasureContext = createContext<(() => void) | null>(null);
@@ -47,6 +48,7 @@ export function PanelLayout({
   const [railTarget, setRailTarget] = useState<HTMLDivElement | null>(null);
   const [metadataTarget, setMetadataTarget] = useState<HTMLDivElement | null>(null);
   const [stickyChromeTarget, setStickyChromeTarget] = useState<HTMLDivElement | null>(null);
+  const [overlayTarget, setOverlayTarget] = useState<HTMLDivElement | null>(null);
   const {
     hidden,
     scrolledFromTop,
@@ -191,11 +193,12 @@ export function PanelLayout({
   if (floatsFooter) rootStyle['--wa-panel-footer-height'] = `${footerHeight}px`;
 
   return (
-    <PanelLayoutFooterTargetContext.Provider value={footerTarget}>
-      <PanelLayoutRailTargetContext.Provider value={railTarget}>
-        <PanelLayoutMetadataTargetContext.Provider value={metadataTarget}>
-          <PanelLayoutStickyChromeTargetContext.Provider value={stickyChromeTarget}>
-            <PanelLayoutStickyChromeRemeasureContext.Provider value={publishChromeHeight}>
+    <PanelLayoutOverlayTargetContext.Provider value={overlayTarget}>
+      <PanelLayoutFooterTargetContext.Provider value={footerTarget}>
+        <PanelLayoutRailTargetContext.Provider value={railTarget}>
+          <PanelLayoutMetadataTargetContext.Provider value={metadataTarget}>
+            <PanelLayoutStickyChromeTargetContext.Provider value={stickyChromeTarget}>
+              <PanelLayoutStickyChromeRemeasureContext.Provider value={publishChromeHeight}>
               <div
                 className={styles.root}
                 data-panel-layout
@@ -245,12 +248,18 @@ export function PanelLayout({
                   className={floatsFooter ? `${styles.footer} ${materialClasses.chrome}` : styles.footer}
                   data-panel-layout-footer
                 />
+                <div
+                  ref={setOverlayTarget}
+                  className={styles.overlayTarget}
+                  data-panel-layout-overlay-target
+                />
               </div>
-            </PanelLayoutStickyChromeRemeasureContext.Provider>
-          </PanelLayoutStickyChromeTargetContext.Provider>
-        </PanelLayoutMetadataTargetContext.Provider>
-      </PanelLayoutRailTargetContext.Provider>
-    </PanelLayoutFooterTargetContext.Provider>
+              </PanelLayoutStickyChromeRemeasureContext.Provider>
+            </PanelLayoutStickyChromeTargetContext.Provider>
+          </PanelLayoutMetadataTargetContext.Provider>
+        </PanelLayoutRailTargetContext.Provider>
+      </PanelLayoutFooterTargetContext.Provider>
+    </PanelLayoutOverlayTargetContext.Provider>
   );
 }
 
@@ -269,6 +278,16 @@ export function PanelLayoutRail({ children }: { children: ReactNode }) {
 export function PanelLayoutFooter({ children }: { children: ReactNode }) {
   const footerTarget = useContext(PanelLayoutFooterTargetContext);
   return footerTarget ? createPortal(children, footerTarget) : null;
+}
+
+/**
+ * Root-level panel layer for route-owned interaction locks. Unlike content or
+ * footer portals, this target covers the complete panel surface, including its
+ * floating footer. Renders nothing when mounted outside a PanelLayout.
+ */
+export function PanelLayoutOverlay({ children }: { children: ReactNode }) {
+  const overlayTarget = useContext(PanelLayoutOverlayTargetContext);
+  return overlayTarget ? createPortal(children, overlayTarget) : null;
 }
 
 /**

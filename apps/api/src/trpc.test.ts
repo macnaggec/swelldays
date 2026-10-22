@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 
 vi.hoisted(() => {
   process.env.BETTER_AUTH_URL = 'http://localhost:3000';
@@ -19,6 +20,9 @@ import { publicProcedure, router } from 'server/trpc';
 const testRouter = router({
   notFound: publicProcedure.query(() => { throw new NotFoundError('Widget'); }),
   badRequest: publicProcedure.query(() => { throw new BadRequestError('Bad input'); }),
+  badRequestWithDetails: publicProcedure.query(() => {
+    throw new BadRequestError('Bad input', { reason: 'own-media', mediaItemIds: ['media-1'] });
+  }),
   conflict: publicProcedure.query(() => { throw new ConflictError('Already exists'); }),
   ok: publicProcedure.query(() => 'ok'),
 });
@@ -32,6 +36,28 @@ describe('tRPC boundary: HttpError → TRPCError code mapping', () => {
 
   it('maps BadRequestError to BAD_REQUEST (HTTP 400)', async () => {
     await expect(caller.badRequest()).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  it('serializes domain error details for typed clients', async () => {
+    const response = await fetchRequestHandler({
+      endpoint: '/trpc',
+      req: new Request('http://localhost/trpc/badRequestWithDetails'),
+      router: testRouter,
+      createContext: () => Promise.resolve({ session: null, user: null }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        json: {
+          message: 'Bad input',
+          data: {
+            code: 'BAD_REQUEST',
+            details: { reason: 'own-media', mediaItemIds: ['media-1'] },
+          },
+        },
+      },
+    });
   });
 
   it('maps ConflictError to CONFLICT (HTTP 409)', async () => {

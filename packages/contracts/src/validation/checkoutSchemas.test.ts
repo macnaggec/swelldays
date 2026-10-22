@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buyerCheckoutStatusSchema, checkoutStatusLocatorSchema } from './checkoutSchemas';
+import {
+  buyerCheckoutStatusSchema,
+  checkoutOwnMediaErrorDetailsSchema,
+  checkoutStatusLocatorSchema,
+} from './checkoutSchemas';
 
 const orderId = '11111111-1111-4111-8111-111111111111';
 
@@ -27,5 +31,27 @@ describe('checkout status contracts', () => {
     expect(buyerCheckoutStatusSchema.safeParse({ state: 'paid', orderId: 'bad' }).success).toBe(false);
     expect(buyerCheckoutStatusSchema.safeParse({ state: 'ready', orderId, checkoutUrl: '/relative' }).success).toBe(false);
     expect(buyerCheckoutStatusSchema.safeParse({ state: 'paid', orderId, extra: true }).success).toBe(false);
+  });
+});
+
+describe('checkout own-media error details', () => {
+  it('accepts only a non-empty list of UUID media ids', () => {
+    expect(checkoutOwnMediaErrorDetailsSchema.safeParse({
+      reason: 'own-media',
+      mediaItemIds: [orderId],
+    }).success).toBe(true);
+    expect(checkoutOwnMediaErrorDetailsSchema.safeParse({
+      reason: 'own-media',
+      mediaItemIds: [],
+    }).success).toBe(false);
+    expect(checkoutOwnMediaErrorDetailsSchema.safeParse({
+      reason: 'own-media',
+      mediaItemIds: ['bad'],
+    }).success).toBe(false);
+    expect(checkoutOwnMediaErrorDetailsSchema.safeParse({
+      reason: 'own-media',
+      mediaItemIds: [orderId],
+      extra: true,
+    }).success).toBe(false);
   });
 });

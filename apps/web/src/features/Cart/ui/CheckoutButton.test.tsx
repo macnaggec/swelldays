@@ -26,4 +26,18 @@ describe('CheckoutButton', () => {
     render(<CheckoutButton isPending={false} status={status} onCheckout={vi.fn()} />);
     expect(screen.getByRole('button', { name: label })).toBeVisible();
   });
+
+  it('keeps a returned checkout blocked while server confirmation is pending', () => {
+    render(
+      <CheckoutButton
+        isPending
+        status={{ state: 'ready', orderId: 'order-1', checkoutUrl: 'https://pay.example' }}
+        onCheckout={vi.fn()}
+      />,
+    );
+
+    const button = screen.getByRole('button', { name: 'Checking payment…' });
+    expect(button).toBeDisabled();
+    expect(button).not.toHaveAttribute('data-loading', 'true');
+  });
 });

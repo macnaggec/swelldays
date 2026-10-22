@@ -1,6 +1,6 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import type { ComponentType, ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { PanelLayout } from 'shared/ui/PanelLayout';
@@ -18,10 +18,30 @@ const mocks = vi.hoisted(() => ({
   }>,
   remove: vi.fn(),
   handleCheckout: vi.fn(),
+  navigate: vi.fn(),
+  notifySuccess: vi.fn(),
+  isMobile: false,
+  isPending: false,
+  selfPurchaseItemIds: [] as string[],
+  removeSelfPurchaseItems: vi.fn(),
+  status: null as { state: 'paid' | 'processing'; orderId: string } | null,
+}));
+
+vi.mock('@mantine/hooks', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@mantine/hooks')>(),
+  useMediaQuery: () => mocks.isMobile,
+}));
+
+vi.mock('shared/lib/notifications', () => ({
+  notify: { success: mocks.notifySuccess },
 }));
 
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => options,
+  createFileRoute: () => (options: Record<string, unknown>) => ({
+    ...options,
+    useSearch: () => ({}),
+  }),
+  useNavigate: () => mocks.navigate,
 }));
 
 vi.mock('entities/Commerce', () => ({
@@ -31,9 +51,11 @@ vi.mock('entities/Commerce', () => ({
   }),
   useCartCheckout: () => ({
     handleCheckout: mocks.handleCheckout,
-    isPending: false,
+    isPending: mocks.isPending,
     totalCents: 1200,
-    status: null,
+    status: mocks.status,
+    selfPurchaseItemIds: mocks.selfPurchaseItemIds,
+    removeSelfPurchaseItems: mocks.removeSelfPurchaseItems,
   }),
 }));
 
@@ -68,6 +90,14 @@ function renderCart(ui: ReactNode, drawerPresentation?: 'sideWorkspace') {
 }
 
 describe('CartPanelRoute', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.isMobile = false;
+    mocks.isPending = false;
+    mocks.selfPurchaseItemIds = [];
+    mocks.status = null;
+  });
+
   it('renders the cart gallery inside the shared panel gallery inset', () => {
     mocks.items = [];
     const Component = (Route as unknown as { component: ComponentType }).component;
@@ -111,5 +141,88 @@ describe('CartPanelRoute', () => {
     expect(root).toHaveAttribute('data-drawer-presentation', 'sideWorkspace');
     expect(root.style.getPropertyValue('--wa-panel-footer-height')).toBe('0px');
     expect(screen.getByRole('button', { name: 'Checkout' }).closest('[data-panel-layout-footer]')).not.toBeNull();
+  });
+
+  it('shows purchase confirmation and navigates only after the buyer chooses View purchases', () => {
+    mocks.items = [{
+      id: 'cart-item-1',
+      label: 'Cart item',
+      thumbnailUrl: 'https://example.com/cart.jpg',
+      spotName: 'Malibu',
+      capturedAt: '2026-06-01T06:00:00.000Z',
+      priceCents: 1200,
+    }];
+    mocks.status = { state: 'paid', orderId: 'order-1' };
+    const Component = (Route as unknown as { component: ComponentType }).component;
+
+    renderCart(<Component />);
+
+    expect(screen.getByRole('dialog', { name: 'Purchase complete' })).toBeVisible();
+    expect(screen.queryByTestId('cart-payment-lock')).toBeNull();
+    expect(mocks.notifySuccess).toHaveBeenCalledWith(
+      'Your purchase is ready to download.',
+      'Payment complete',
+    );
+    expect(mocks.navigate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'View purchases' }));
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      href: '/me/collections/purchases?order=order-1',
+    });
+    expect(screen.getByRole('button', { name: 'Opening purchases…' })).toBeDisabled();
+  });
+
+  it('uses the mobile purchase-complete layout on narrow screens', () => {
+    mocks.items = [{
+      id: 'cart-item-1', label: 'Cart item', thumbnailUrl: 'https://example.com/cart.jpg',
+      spotName: 'Malibu', capturedAt: '2026-06-01T06:00:00.000Z', priceCents: 1200,
+    }];
+    mocks.status = { state: 'paid', orderId: 'order-1' };
+    mocks.isMobile = true;
+    const Component = (Route as unknown as { component: ComponentType }).component;
+
+    renderCart(<Component />);
+
+    expect(screen.getByTestId('purchase-complete-layout')).toHaveAttribute('data-mobile', 'true');
+    expect(screen.getByRole('button', { name: 'View purchases' })).toHaveAttribute('data-full-width', 'true');
+  });
+
+  it('covers the complete cart panel while payment is being checked', () => {
+    mocks.items = [{
+      id: 'cart-item-1', label: 'Cart item', thumbnailUrl: 'https://example.com/cart.jpg',
+      spotName: 'Malibu', capturedAt: '2026-06-01T06:00:00.000Z', priceCents: 1200,
+    }];
+    mocks.isPending = true;
+    mocks.status = { state: 'processing', orderId: 'order-1' };
+    const Component = (Route as unknown as { component: ComponentType }).component;
+
+    renderCart(<Component />, 'sideWorkspace');
+
+    const lock = screen.getByTestId('cart-payment-lock');
+    expect(lock).toHaveTextContent('Checking payment…');
+    expect(lock.closest('[data-panel-layout-overlay-target]')).not.toBeNull();
+    expect(lock.closest('[data-panel-scroll-owner]')).toBeNull();
+  });
+
+  it('blocks checkout with a remediation modal when the cart contains own media', () => {
+    mocks.items = [{
+      id: 'cart-item-1', label: 'Own item', thumbnailUrl: 'https://example.com/cart.jpg',
+      spotName: 'Malibu', capturedAt: '2026-06-01T06:00:00.000Z', priceCents: 1200,
+    }];
+    mocks.selfPurchaseItemIds = ['cart-item-1'];
+    const Component = (Route as unknown as { component: ComponentType }).component;
+
+    renderCart(<Component />);
+
+    expect(screen.getByRole('dialog', { name: 'Remove your own items' })).toBeVisible();
+    expect(screen.getByText(
+      'You cannot purchase media you uploaded. Remove these items from your cart to continue.',
+    )).toBeVisible();
+    expect(screen.queryByTestId('cart-payment-lock')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove my items' }));
+
+    expect(mocks.removeSelfPurchaseItems).toHaveBeenCalledTimes(1);
   });
 });

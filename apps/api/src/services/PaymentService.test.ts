@@ -31,6 +31,7 @@ const notifications: IPaymentNotificationRepository = {
 };
 const adapter: PaymentAdapter = {
   provider: 'cryptocloud', createCheckoutSession: vi.fn(),
+  updateCheckoutSession: vi.fn(),
   verifyWebhook: vi.fn(), parseWebhookEvent: vi.fn(),
   retrieveReceipt: vi.fn(), expectedAccountId: vi.fn(),
 };
@@ -87,6 +88,7 @@ beforeEach(() => {
     ...readyAttempt, creationState: 'definitively-failed', creationFailureCode: code,
   }));
   vi.mocked(adapter.createCheckoutSession).mockResolvedValue(session);
+  vi.mocked(adapter.updateCheckoutSession!).mockResolvedValue(undefined);
   vi.mocked(adapter.retrieveReceipt).mockResolvedValue(receipt);
   vi.mocked(adapter.expectedAccountId).mockReturnValue(null);
   vi.mocked(fulfillment.fulfillOrder).mockResolvedValue({ type: 'fulfilled' });
@@ -188,6 +190,18 @@ describe('PaymentService preparation and creation', () => {
 });
 
 describe('PaymentService resume policy', () => {
+  it('updates a bound checkout through the owning provider adapter', async () => {
+    await expect(service().reconfigureAttempt({ orderId: 'order-1', totalCents: 2300 }))
+      .resolves.toEqual({
+        type: 'ready', checkoutUrl: session.checkoutUrl, expiresAt: session.expiresAt,
+      });
+    expect(adapter.updateCheckoutSession).toHaveBeenCalledWith({
+      identity,
+      paymentAttemptId: 'attempt-1',
+      totalCents: 2300,
+    });
+  });
+
   it('returns an unexpired authoritative URL without provider lookup', async () => {
     await expect(service().resumeAttempt('order-1')).resolves.toEqual({
       type: 'ready', checkoutUrl: session.checkoutUrl, expiresAt: session.expiresAt,

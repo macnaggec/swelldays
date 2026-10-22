@@ -37,4 +37,25 @@ describe('CartLightbox', () => {
       '[data-lightbox-floating-actions]',
     )).not.toBeNull();
   });
+
+  it('cannot remove the item while cart interaction is disabled', async () => {
+    const onRemove = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <CartLightbox
+        item={item}
+        onClose={onClose}
+        onRemove={onRemove}
+        disabled
+      />,
+    );
+
+    const removeButton = screen.getByRole('button', { name: 'Remove from cart' });
+    expect(removeButton).toBeDisabled();
+
+    await userEvent.click(removeButton);
+
+    expect(onRemove).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

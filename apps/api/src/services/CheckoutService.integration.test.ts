@@ -265,3 +265,74 @@ describe('CheckoutService.createCheckoutSession — R05 atomic preparation', () 
     expect(failingPayment.openPreparedAttempt).not.toHaveBeenCalled();
   });
 });
+
+describe('CheckoutService.createCheckoutSession — expanded Paddle cart', () => {
+  it('reuses one pending order and atomically replaces its immutable snapshots', async () => {
+    const photographer = await prisma.user.create({
+      data: { email: `photographer-${randomUUID()}@example.com`, balance: 0 },
+    });
+    const buyer = await prisma.user.create({
+      data: { email: `buyer-${randomUUID()}@example.com` },
+    });
+    const session = await prisma.surfSession.create({
+      data: { photographerId: photographer.id, status: 'PUBLISHED' },
+    });
+    const mediaA = await prisma.mediaItem.create({ data: {
+      sessionId: session.id, photographerId: photographer.id, status: 'PUBLISHED', price: 300,
+      capturedAt: new Date('2026-01-01T06:30:00Z'), lightboxUrl: 'https://example/a.jpg',
+      thumbnailUrl: 'https://example/a-thumb.jpg', cloudinaryPublicId: 'test/a',
+    } });
+    const mediaB = await prisma.mediaItem.create({ data: {
+      sessionId: session.id, photographerId: photographer.id, status: 'PUBLISHED', price: 500,
+      capturedAt: new Date('2026-01-01T06:31:00Z'), lightboxUrl: 'https://example/b.jpg',
+      thumbnailUrl: 'https://example/b-thumb.jpg', cloudinaryPublicId: 'test/b',
+    } });
+    const paddlePayment = {
+      prepareAttempt: vi.fn().mockImplementation(({ orderId, totalCents }, db) =>
+        paymentAttemptRepository.prepareAttempt({
+          orderId, provider: 'paddle', expectedAmountCents: totalCents, expectedCurrency: 'USD',
+        }, db)),
+      openPreparedAttempt: vi.fn().mockResolvedValue({
+        type: 'ready', checkoutUrl: 'https://example.test/checkout', expiresAt: null,
+      }),
+      resumeAttempt: vi.fn().mockResolvedValue({
+        type: 'ready', checkoutUrl: 'https://example.test/checkout', expiresAt: null,
+      }),
+      reconfigureAttempt: vi.fn().mockResolvedValue({
+        type: 'ready', checkoutUrl: 'https://example.test/checkout', expiresAt: null,
+      }),
+    } satisfies Pick<
+      IPaymentService,
+      'prepareAttempt' | 'openPreparedAttempt' | 'resumeAttempt' | 'reconfigureAttempt'
+    >;
+    const paddleCheckout = new CheckoutService(
+      orderRepository, mediaRepository, purchaseRepository, paddlePayment,
+      cloudinaryService, 'http://localhost:3000', 'paddle',
+    );
+
+    const first = await paddleCheckout.createCheckoutSession(
+      buyer.id, undefined, [mediaA.id], randomUUID(),
+    );
+    const expandedRequest = randomUUID();
+    const second = await paddleCheckout.createCheckoutSession(
+      buyer.id, undefined, [mediaA.id, mediaB.id], expandedRequest,
+    );
+
+    expect(second.orderId).toBe(first.orderId);
+    expect(paddlePayment.reconfigureAttempt).toHaveBeenCalledWith({
+      orderId: first.orderId,
+      totalCents: 800,
+    });
+    const order = await prisma.order.findUniqueOrThrow({
+      where: { id: first.orderId },
+      include: { items: true, paymentAttempts: true },
+    });
+    expect(order.clientRequestId).toBe(expandedRequest);
+    expect(order.totalAmount).toBe(800);
+    expect(order.pendingRevision).toBeNull();
+    expect(order.items.map((item) => item.mediaItemId).sort()).toEqual([mediaA.id, mediaB.id].sort());
+    expect(order.paymentAttempts).toHaveLength(1);
+    expect(order.paymentAttempts[0]!.expectedAmountCents).toBe(800);
+    await expect(prisma.order.count({ where: { buyerId: buyer.id } })).resolves.toBe(1);
+  });
+});

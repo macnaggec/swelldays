@@ -55,6 +55,13 @@ export const buyerCheckoutStatusSchema: z.ZodType<BuyerCheckoutStatus> = z.discr
   z.object({ state: z.literal('failed'), orderId: z.uuid(), reason: checkoutFailureReasonSchema }).strict(),
 ]);
 
+export const checkoutOwnMediaErrorDetailsSchema = z.object({
+  reason: z.literal('own-media'),
+  mediaItemIds: z.array(z.uuid()).min(1),
+}).strict();
+
+export type CheckoutOwnMediaErrorDetails = z.infer<typeof checkoutOwnMediaErrorDetailsSchema>;
+
 export const createCheckoutSchema = z.object({
   itemIds: z.array(z.uuid()).min(1),
   clientRequestId: z.uuid(),

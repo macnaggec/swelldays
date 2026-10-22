@@ -15,7 +15,9 @@ const mocks = vi.hoisted(() => {
     isAuthenticated: true,
     openAuthModal: vi.fn(),
     shouldError: false,
+    mutationError: new Error('Checkout failed') as unknown,
     status,
+    statusQueryInput: undefined as { orderId: string } | { clientRequestId: string } | undefined,
     refetchStatus: vi.fn(),
     notifyError: vi.fn(),
   };
@@ -44,13 +46,13 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     }),
     useMutation: (options: {
       onSuccess?: (data: { checkoutUrl: string; orderId: string }) => void;
-      onError?: (error: Error) => void;
+      onError?: (error: unknown) => void;
     }) => ({
       isPending: false,
       mutate: (input: { itemIds: string[]; clientRequestId: string }) => {
         mocks.mutationInput = input;
         if (mocks.shouldError) {
-          options.onError?.(new Error('Checkout failed'));
+          options.onError?.(mocks.mutationError);
           return;
         }
         options.onSuccess?.({
@@ -69,7 +71,10 @@ vi.mock('shared/lib/trpc', () => ({
         mutationOptions: () => ({}),
       },
       status: {
-        queryOptions: () => ({}),
+        queryOptions: (input: { orderId: string } | { clientRequestId: string }) => {
+          mocks.statusQueryInput = input;
+          return {};
+        },
       },
     },
   }),
@@ -98,7 +103,9 @@ describe('useCartCheckout', () => {
     mocks.checkoutUrl = `${window.location.origin}/me/collections/purchases?order=order-1`;
     mocks.isAuthenticated = true;
     mocks.shouldError = false;
+    mocks.mutationError = new Error('Checkout failed');
     mocks.status = undefined;
+    mocks.statusQueryInput = undefined;
     mocks.refetchStatus.mockReset().mockResolvedValue({ data: undefined });
     window.history.replaceState({}, '', '/cart');
     localStorage.clear();
@@ -140,6 +147,17 @@ describe('useCartCheckout', () => {
     expect(mocks.navigate).toHaveBeenCalledWith({
       href: '/me/collections/purchases?order=order-1',
     });
+  });
+
+  it('keeps cart interaction locked after checkout creation until navigation unmounts it', async () => {
+    const { result } = renderHook(() => useCartCheckout());
+
+    await act(async () => {
+      result.current.handleCheckout();
+    });
+
+    expect(mocks.navigate).toHaveBeenCalled();
+    expect(result.current.isPending).toBe(true);
   });
 
   it('opens the auth modal and skips checkout when the buyer is unauthenticated', async () => {
@@ -255,6 +273,26 @@ describe('useCartCheckout', () => {
     expect(mocks.mutationInput).toBeUndefined();
   });
 
+  it('keeps a provider return blocked on the cart until payment is confirmed', () => {
+    mocks.status = { state: 'processing', orderId: 'order-1' };
+
+    const { result } = renderHook(() => useCartCheckout('order-1'));
+
+    expect(mocks.statusQueryInput).toEqual({ orderId: 'order-1' });
+    expect(result.current.isPending).toBe(true);
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('does not leave the cart until the buyer acknowledges a server-confirmed purchase', async () => {
+    mocks.status = { state: 'paid', orderId: 'order-1' };
+
+    const { result } = renderHook(() => useCartCheckout('order-1'));
+
+    await waitFor(() => expect(mocks.statusQueryInput).toEqual({ orderId: 'order-1' }));
+    expect(result.current.isPending).toBe(true);
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
   it('replaces only the current cart key on explicit retry from failed', async () => {
     mocks.status = { state: 'failed', orderId: 'order-1', reason: 'order-failed' };
     const oldId = '11111111-1111-4111-8111-111111111111';
@@ -330,6 +368,57 @@ describe('useCartCheckout', () => {
       'Checkout response was interrupted. Checking your payment status…',
       'Checkout interrupted',
     );
+  });
+
+  it('surfaces an own-media rejection without treating it as an interrupted payment', async () => {
+    const ownedId = '11111111-1111-4111-8111-111111111111';
+    mocks.shouldError = true;
+    mocks.mutationError = {
+      data: {
+        details: {
+          reason: 'own-media',
+          mediaItemIds: [ownedId],
+        },
+      },
+    };
+    useCartStore.setState({ items: [{ ...item, id: ownedId }] });
+    const { result } = renderHook(() => useCartCheckout());
+
+    await act(async () => {
+      result.current.handleCheckout();
+    });
+
+    expect(result.current.selfPurchaseItemIds).toEqual([ownedId]);
+    expect(mocks.refetchStatus).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(result.current.isPending).toBe(false);
+  });
+
+  it('removes only rejected own-media items and preserves valid cart items', async () => {
+    const ownedId = '11111111-1111-4111-8111-111111111111';
+    const validId = '22222222-2222-4222-8222-222222222222';
+    mocks.shouldError = true;
+    mocks.mutationError = {
+      data: {
+        details: {
+          reason: 'own-media',
+          mediaItemIds: [ownedId],
+        },
+      },
+    };
+    useCartStore.setState({ items: [{ ...item, id: ownedId }, { ...item, id: validId }] });
+    const { result } = renderHook(() => useCartCheckout());
+
+    await act(async () => {
+      result.current.handleCheckout();
+    });
+    act(() => {
+      result.current.removeSelfPurchaseItems();
+    });
+
+    expect(useCartStore.getState().items.map(({ id }) => id)).toEqual([validId]);
+    expect(result.current.selfPurchaseItemIds).toEqual([]);
   });
 
   it('reports a definitive checkout rejection after confirming failed server state', async () => {

@@ -8,6 +8,17 @@
   container-name: panel;
 }
 
+.overlayTarget {
+  position: absolute;
+  inset: 0;
+  z-index: calc(var(--wa-z-floating-chrome) + 1);
+  pointer-events: none;
+}
+
+.overlayTarget:not(:empty) {
+  pointer-events: auto;
+}
+
 .body {
   flex: 1 1 auto;
   min-height: 0;

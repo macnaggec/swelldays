@@ -21,6 +21,12 @@ export interface CreateCheckoutParams {
   failUrl: string;
 }
 
+export interface UpdateCheckoutParams {
+  identity: PaymentIdentity;
+  paymentAttemptId: string;
+  totalCents: number;
+}
+
 export interface CheckoutSessionResult {
   providerTransactionId: string;
   environment: PaymentEnvironment;
@@ -62,6 +68,12 @@ export interface PaymentAdapter {
    * All pricing must be passed in — provider must not be queried for prices.
    */
   createCheckoutSession(params: CreateCheckoutParams): Promise<CheckoutSessionResult>;
+
+  /**
+   * Replaces the amount represented by an existing unpaid checkout. Providers
+   * without an authoritative update operation omit this capability.
+   */
+  updateCheckoutSession?(params: UpdateCheckoutParams): Promise<void>;
 
   /**
    * Verifies the webhook request came from the trusted provider.

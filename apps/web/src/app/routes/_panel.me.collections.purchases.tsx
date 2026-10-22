@@ -9,7 +9,6 @@ import { PanelGalleryLayout } from 'shared/ui/PanelGalleryLayout';
 import { BaseGallery } from 'shared/ui/BaseGallery';
 import { PanelCollectionGrid } from 'shared/ui/PanelCollectionGrid';
 import { AppButton } from 'shared/ui/AppButton';
-import { notify } from 'shared/lib/notifications';
 import type { BuyerCheckoutStatus } from '@swelldays/contracts/validation/checkout';
 
 export const Route = createFileRoute('/_panel/me/collections/purchases')({
@@ -36,8 +35,6 @@ function PurchasesTab() {
   const removeFromCart = useCartStore((s) => s.remove);
 
   const invalidatedOrderRef = useRef<string | null>(null);
-  const notifiedOrderRef = useRef<string | null>(null);
-  const [refreshedOrderId, setRefreshedOrderId] = useState<string | null>(null);
   const [lightboxMediaItemId, setLightboxMediaItemId] = useState<string | null>(null);
   const lightboxPurchase = purchases.find(p => p.mediaItem.id === lightboxMediaItemId) ?? null;
 
@@ -45,22 +42,17 @@ function PurchasesTab() {
     if (!order || checkoutStatus?.state !== 'paid' || invalidatedOrderRef.current === order) return;
 
     invalidatedOrderRef.current = order;
-    void queryClient.invalidateQueries({ queryKey: trpc.checkout.myPurchases.queryKey() })
-      .then(() => setRefreshedOrderId(order));
-  }, [checkoutStatus?.state, order, queryClient, trpc]);
-
-  useEffect(() => {
-    if (!order || refreshedOrderId !== order || notifiedOrderRef.current === order) return;
-
-    notifiedOrderRef.current = order;
-    purchases.forEach((purchase) => removeFromCart(purchase.mediaItem.id));
-    notify.success('Your purchase is ready to download.', 'Payment complete');
-    void navigate({
-      to: '/me/collections/purchases',
-      search: {},
-      replace: true,
+    const purchasesQueryKey = trpc.checkout.myPurchases.queryKey();
+    void queryClient.invalidateQueries({ queryKey: purchasesQueryKey }).then(() => {
+      const refreshedPurchases = queryClient.getQueryData<typeof purchases>(purchasesQueryKey) ?? [];
+      refreshedPurchases.forEach((purchase) => removeFromCart(purchase.mediaItem.id));
+      void navigate({
+        to: '/me/collections/purchases',
+        search: {},
+        replace: true,
+      });
     });
-  }, [navigate, order, purchases, refreshedOrderId, removeFromCart]);
+  }, [checkoutStatus?.state, navigate, order, purchases, queryClient, removeFromCart, trpc]);
 
   const checkoutNotice = renderCheckoutNotice(checkoutStatus);
 

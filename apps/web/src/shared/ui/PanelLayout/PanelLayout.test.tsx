@@ -9,6 +9,7 @@ import {
   PanelLayout,
   PanelLayoutFooter,
   PanelLayoutMetadata,
+  PanelLayoutOverlay,
   PanelLayoutRail,
   PanelLayoutStickyChrome,
   PanelLayoutStickyChromeReplacement,
@@ -168,6 +169,33 @@ describe('PanelLayoutRail', () => {
     );
 
     expect(screen.queryByText('Date rail')).toBeNull();
+  });
+});
+
+describe('PanelLayoutOverlay', () => {
+  it('covers the panel from a root-level target outside the scroll owner', () => {
+    render(
+      <PanelLayout>
+        <div>Scrolled content</div>
+        <PanelLayoutOverlay>
+          <div>Blocking layer</div>
+        </PanelLayoutOverlay>
+      </PanelLayout>,
+    );
+
+    const blockingLayer = screen.getByText('Blocking layer');
+    expect(blockingLayer.closest('[data-panel-layout-overlay-target]')).not.toBeNull();
+    expect(blockingLayer.closest('[data-panel-scroll-owner]')).toBeNull();
+  });
+
+  it('renders nothing when mounted outside a PanelLayout', () => {
+    render(
+      <PanelLayoutOverlay>
+        <div>Blocking layer</div>
+      </PanelLayoutOverlay>,
+    );
+
+    expect(screen.queryByText('Blocking layer')).toBeNull();
   });
 });
 

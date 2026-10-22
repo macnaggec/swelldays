@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { BadGatewayError } from 'server/errors';
 import { PaymentCreationError } from './PaymentAdapter';
 import { apiConfig } from 'server/config/env';
+import { logger } from 'server/lib/logger';
 import { paddleAdapter } from './PaddleAdapter';
 import { BadRequestError } from 'server/errors';
 
@@ -250,6 +251,32 @@ describe('PaddleAdapter.createCheckoutSession', () => {
     ).rejects.toMatchObject({ certainty: 'unknown', failureCode: 'provider-unreachable' });
   });
 
+  it('logs safe Paddle error metadata when transaction creation is rejected', async () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: {
+          code: 'invalid_field',
+          detail: 'Request does not pass validation.',
+          errors: [{ field: 'checkout.url', message: 'must be on an approved domain' }],
+        },
+        meta: { request_id: 'request-123' },
+      }),
+    }));
+
+    await expect(paddleAdapter.createCheckoutSession(validParams)).rejects.toBeInstanceOf(PaymentCreationError);
+
+    expect(errorSpy).toHaveBeenCalledWith('[Paddle] Transaction creation failed', {
+      status: 400,
+      code: 'invalid_field',
+      detail: 'Request does not pass validation.',
+      validationErrors: [{ field: 'checkout.url', message: 'must be on an approved domain' }],
+      requestId: 'request-123',
+    });
+  });
+
   it('classifies an unusable success response as unknown', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -281,6 +308,35 @@ describe('PaddleAdapter.createCheckoutSession', () => {
     await expect(paddleAdapter.createCheckoutSession(validParams)).rejects.toMatchObject({
       certainty: 'unknown', failureCode: 'provider-response-invalid',
     });
+  });
+});
+
+describe('PaddleAdapter.updateCheckoutSession', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('replaces the aggregate checkout amount without changing attempt identity', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await paddleAdapter.updateCheckoutSession?.({
+      identity: {
+        provider: 'paddle',
+        environment: 'sandbox',
+        providerTransactionId: 'txn_01m2test',
+      },
+      paymentAttemptId: 'attempt-123',
+      totalCents: 2300,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://sandbox-api.paddle.com/transactions/txn_01m2test',
+      expect.objectContaining({ method: 'PATCH' }),
+    );
+    const requestBody = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(requestBody.custom_data).toEqual({ paymentAttemptId: 'attempt-123' });
+    expect(requestBody.items[0].price.unit_price).toEqual({ amount: '2300', currency_code: 'USD' });
   });
 });
 

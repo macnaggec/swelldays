@@ -27,6 +27,7 @@ import { PurchaseFulfillmentService, purchaseFulfillmentService } from 'server/s
 import type { PaymentAdjustmentRepository } from 'server/repositories/PaymentAdjustmentRepository';
 import { paymentAdjustmentRepository } from 'server/repositories/PaymentAdjustmentRepository';
 import { isPaymentAdjustmentAction, isPaymentAdjustmentProviderStatus } from 'server/domain/PaymentAdjustment';
+import { resolveCheckoutRevisionForReceipt } from 'server/services/CheckoutRevision';
 
 export const PAYMENT_CREATION_LEASE_MS = 30_000;
 export const PAYMENT_NOTIFICATION_CLAIM_LEASE_MS = 30_000;
@@ -39,6 +40,7 @@ export type OpenPreparedPaymentAttemptCommand = {
   successUrl: string;
   failUrl: string;
 };
+export type ReconfigurePaymentAttemptCommand = { orderId: string; totalCents: number };
 
 export type PaymentCheckoutOutcome =
   | { type: 'ready'; checkoutUrl: string; expiresAt: Date | null }
@@ -66,6 +68,7 @@ export interface IPaymentService {
   prepareAttempt(command: PreparePaymentAttemptCommand, db?: PaymentAttemptWriteClient): Promise<PaymentAttemptRecord>;
   openPreparedAttempt(command: OpenPreparedPaymentAttemptCommand): Promise<PaymentCheckoutOutcome>;
   resumeAttempt(orderId: string): Promise<PaymentCheckoutOutcome>;
+  reconfigureAttempt(command: ReconfigurePaymentAttemptCommand): Promise<PaymentCheckoutOutcome>;
   acceptVerifiedNotification(
     adapter: PaymentAdapter,
     rawBody: string,
@@ -181,6 +184,48 @@ export class PaymentService implements IPaymentService {
     }
     if (attempt === null) return { type: 'unknown', reason: 'missing-attempt' };
     return this.outcomeForStoredAttempt(attempt);
+  }
+
+  async reconfigureAttempt(
+    command: ReconfigurePaymentAttemptCommand,
+  ): Promise<PaymentCheckoutOutcome> {
+    const attempt = await this.attempts.findByOrderId(command.orderId);
+    if (attempt === null || !hasBinding(attempt)) {
+      return { type: 'unknown', reason: 'missing-attempt' };
+    }
+    const adapter = this.adapters.get(attempt.provider);
+    if (adapter?.updateCheckoutSession === undefined) {
+      return { type: 'unknown', reason: 'inconsistent-attempt' };
+    }
+
+    try {
+      await adapter.updateCheckoutSession({
+        identity: identityFor(attempt),
+        paymentAttemptId: attempt.id,
+        totalCents: command.totalCents,
+      });
+      return { type: 'ready', checkoutUrl: attempt.checkoutUrl, expiresAt: attempt.expiresAt };
+    } catch {
+      let receipt;
+      try {
+        receipt = await adapter.retrieveReceipt(identityFor(attempt));
+      } catch {
+        return { type: 'unknown', reason: 'provider-unreachable' };
+      }
+      if (receipt.status === 'paid' || receipt.status === 'overpaid') {
+        await resolveCheckoutRevisionForReceipt(attempt.orderId, receipt);
+        return { type: 'payment-received' };
+      }
+      if (receipt.status === 'cancelled') {
+        return { type: 'definitively-failed', reason: 'provider-cancelled' };
+      }
+      // A lost PATCH response is recoverable when the authoritative provider
+      // subtotal already reflects the requested aggregate cart amount.
+      if (receipt.subtotalCents === command.totalCents) {
+        return { type: 'ready', checkoutUrl: attempt.checkoutUrl, expiresAt: attempt.expiresAt };
+      }
+      return { type: 'unknown', reason: 'provider-unreachable' };
+    }
   }
 
   private async outcomeForStoredAttempt(attempt: PaymentAttemptRecord): Promise<PaymentCheckoutOutcome> {
@@ -320,7 +365,7 @@ export class PaymentService implements IPaymentService {
     }
     const identity: PaymentIdentity = { provider: claim.provider, environment: claim.environment,
       providerTransactionId: claim.providerTransactionId };
-    const attempt = await this.attempts.findByIdentity(identity);
+    let attempt = await this.attempts.findByIdentity(identity);
     if (attempt === null) { await this.recordRetry(claim, 'unknown-transaction', summary); return; }
     if (claim.eventType !== 'payment.adjustment' && claim.correlationAttemptId !== attempt.id) {
       if (await this.notifications.reject(claim, 'mismatched-transaction', this.now())) summary.rejected += 1;
@@ -349,6 +394,11 @@ export class PaymentService implements IPaymentService {
     let receipt;
     try { receipt = await adapter.retrieveReceipt(identity); }
     catch { await this.recordRetry(claim, 'provider-unreachable', summary); return; }
+    if (receipt.status === 'paid' || receipt.status === 'overpaid') {
+      await resolveCheckoutRevisionForReceipt(attempt.orderId, receipt);
+      attempt = await this.attempts.findByIdentity(identity);
+      if (attempt === null) { await this.recordRetry(claim, 'unknown-transaction', summary); return; }
+    }
     const validation = validateReceiptAgainstAttempt(receipt, attempt, adapter.expectedAccountId());
     if (!validation.ok) {
       if (await this.notifications.reject(claim, 'rejected-receipt', this.now())) summary.rejected += 1;

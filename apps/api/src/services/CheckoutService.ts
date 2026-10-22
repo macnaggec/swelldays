@@ -19,6 +19,11 @@ import { apiConfig } from 'server/config/env';
 import type { OrderLineSnapshot, PaymentProvider, PricedCheckoutCatalogItem } from 'server/domain/OrderEconomics';
 import { snapshotOrderLine } from 'server/domain/OrderEconomics';
 import type { BuyerCheckoutStatus, CheckoutStatusLocator } from '@swelldays/contracts/validation/checkout';
+import {
+  checkoutRevisionJson,
+  finalizeCheckoutRevision,
+  parseCheckoutRevision,
+} from 'server/services/CheckoutRevision';
 
 const RACED_ORDER_RETRY_ATTEMPTS = 3;
 const RACED_ORDER_RETRY_DELAY_MS = 250; // ms
@@ -35,7 +40,8 @@ export class CheckoutService {
     private orders: IOrderRepository,
     private media: IMediaRepository,
     private purchases: IPurchaseRepository,
-    private payment: Pick<IPaymentService, 'prepareAttempt' | 'openPreparedAttempt' | 'resumeAttempt'>,
+    private payment: Pick<IPaymentService, 'prepareAttempt' | 'openPreparedAttempt' | 'resumeAttempt'>
+      & Partial<Pick<IPaymentService, 'reconfigureAttempt'>>,
     private cloudinary: ICloudinaryService,
     private frontendOrigin: string,
     private paymentProvider: PaymentProvider,
@@ -143,11 +149,24 @@ export class CheckoutService {
       throw err;
     }
 
-    return this.openPaymentSession(
-      prepared.order.id,
-      prepared.attempt.id,
-      buyerId,
-    );
+    if (prepared.type === 'revision') {
+      if (this.payment.reconfigureAttempt === undefined) {
+        throw new ServiceUnavailableError('Payment provider cannot update this checkout');
+      }
+      const outcome = await this.payment.reconfigureAttempt({
+        orderId: prepared.orderId,
+        totalCents: prepared.totalCents,
+      });
+      if (outcome.type === 'ready') {
+        if (!await finalizeCheckoutRevision(prepared.orderId, prepared.clientRequestId)) {
+          throw new ServiceUnavailableError('Checkout changed while it was being updated — retry later');
+        }
+        return { checkoutUrl: outcome.checkoutUrl, orderId: prepared.orderId };
+      }
+      return this.requireCheckoutUrl(prepared.orderId, outcome);
+    }
+
+    return this.openPaymentSession(prepared.order.id, prepared.attempt.id, buyerId);
   }
 
   async getBuyerCheckoutStatus(
@@ -254,7 +273,10 @@ export class CheckoutService {
       const ownedItems = mediaItems.filter((m) => m.photographerId === buyerId);
 
       if (ownedItems.length > 0) {
-        throw new BadRequestError('You cannot purchase your own media');
+        throw new BadRequestError('You cannot purchase your own media', {
+          reason: 'own-media',
+          mediaItemIds: ownedItems.map((item) => item.id),
+        });
       }
     }
 
@@ -292,8 +314,14 @@ export class CheckoutService {
     itemIds: string[],
     clientRequestId: string,
   ): Promise<{
+    type: 'new';
     order: OrderWithItems;
     attempt: Awaited<ReturnType<IPaymentService['prepareAttempt']>>;
+  } | {
+    type: 'revision';
+    orderId: string;
+    totalCents: number;
+    clientRequestId: string;
   }> {
     return runQuery(() =>
       withTransactionRetry(() =>
@@ -339,6 +367,10 @@ export class CheckoutService {
                       expiresAt: true,
                     },
                   },
+                  id: true,
+                  clientRequestId: true,
+                  pendingRevision: true,
+                  items: { select: { mediaItemId: true } },
                 },
               },
             },
@@ -348,6 +380,40 @@ export class CheckoutService {
             new Date(),
           ));
           if (blockingRows.length > 0) {
+            const blockingOrders = new Map(blockingRows.map((row) => [row.order.id, row.order]));
+            const blockingOrder = blockingOrders.size === 1
+              ? [...blockingOrders.values()][0]
+              : undefined;
+            const requestedIds = new Set(itemIds);
+            const canExpandOneOrder = blockingOrder !== undefined
+              && this.paymentProvider === 'paddle'
+              && typeof blockingOrder.id === 'string'
+              && Array.isArray(blockingOrder.items)
+              && blockingOrder.items.length < requestedIds.size
+              && blockingOrder.items.every((item) => requestedIds.has(item.mediaItemId));
+
+            if (canExpandOneOrder) {
+              const existingRevision = parseCheckoutRevision(blockingOrder.pendingRevision ?? null);
+              if (existingRevision !== null && !itemSetsMatch(existingRevision.items, itemIds)) {
+                throw new ServiceUnavailableError('Checkout is already being updated — retry shortly');
+              }
+              const items = existingRevision?.items
+                ?? await this.snapshotCartLines(buyerId, itemIds, tx);
+              if (existingRevision === null) {
+                await tx.order.update({
+                  where: { id: blockingOrder.id },
+                  data: {
+                    pendingRevision: checkoutRevisionJson({ clientRequestId, items }),
+                  },
+                });
+              }
+              return {
+                type: 'revision' as const,
+                orderId: blockingOrder.id,
+                totalCents: items.reduce((sum, item) => sum + item.unitAmountCents, 0),
+                clientRequestId: existingRevision?.clientRequestId ?? clientRequestId,
+              };
+            }
             throw new BadRequestError(
               `Some items already have a pending order: ${blockingRows.map((r) => r.mediaItemId).join(', ')}`,
             );
@@ -359,7 +425,7 @@ export class CheckoutService {
             orderId: order.id,
             totalCents: order.totalAmount,
           }, tx);
-          return { order, attempt };
+          return { type: 'new' as const, order, attempt };
         })
       )
     );
@@ -370,6 +436,7 @@ export class CheckoutService {
     itemIds: string[],
     clientRequestId: string,
   ): Promise<{
+    type: 'new';
     order: OrderWithItems;
     attempt: Awaited<ReturnType<IPaymentService['prepareAttempt']>>;
   }> {
@@ -385,7 +452,7 @@ export class CheckoutService {
         orderId: order.id,
         totalCents: order.totalAmount,
       }, tx);
-      return { order, attempt };
+      return { type: 'new', order, attempt };
     }));
   }
 
@@ -395,7 +462,7 @@ export class CheckoutService {
     buyerId: string | null,
   ): Promise<{ checkoutUrl: string; orderId: string }> {
     const successUrl = buyerId
-      ? `${this.frontendOrigin}/me/collections/purchases?order=${orderId}`
+      ? `${this.frontendOrigin}/cart?order=${orderId}`
       : `${this.frontendOrigin}/order-success?orderId=${orderId}`;
 
     const outcome = await this.payment.openPreparedAttempt({

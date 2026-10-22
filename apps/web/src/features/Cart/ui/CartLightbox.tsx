@@ -10,18 +10,24 @@ export interface CartLightboxProps {
   item: CartItem | null;
   onClose: () => void;
   onRemove: (id: string) => void;
+  disabled?: boolean;
 }
 
 /**
  * CartLightbox — single-item watermarked preview before checkout.
  * No carousel: the cart grid already shows all items; this is a verify-before-buying modal.
  */
-const CartLightbox: FC<CartLightboxProps> = memo(({ item, onClose, onRemove }) => {
+const CartLightbox: FC<CartLightboxProps> = memo(({
+  item,
+  onClose,
+  onRemove,
+  disabled = false,
+}) => {
   const handleRemove = useCallback(() => {
-    if (!item) return;
+    if (!item || disabled) return;
     onRemove(item.id);
     onClose();
-  }, [item, onRemove, onClose]);
+  }, [disabled, item, onRemove, onClose]);
 
   const lightboxItem = item ? { id: item.id, url: item.lightboxUrl } : null;
 
@@ -49,6 +55,7 @@ const CartLightbox: FC<CartLightboxProps> = memo(({ item, onClose, onRemove }) =
             color="red"
             size={44}
             radius="xl"
+            disabled={disabled}
             onClick={handleRemove}
           >
             <IconTrash size={24} stroke={2} />

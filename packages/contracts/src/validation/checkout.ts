@@ -1,5 +1,6 @@
 export {
   buyerCheckoutStatusSchema,
+  checkoutOwnMediaErrorDetailsSchema,
   checkoutStatusLocatorSchema,
   createCheckoutSchema,
   getGuestDownloadAccessSchema,
@@ -11,5 +12,6 @@ export {
 export type {
   BuyerCheckoutFailureReason,
   BuyerCheckoutStatus,
+  CheckoutOwnMediaErrorDetails,
   CheckoutStatusLocator,
 } from './checkoutSchemas';

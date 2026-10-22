@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => {
   return {
     isLoading: false,
     invalidateQueries: vi.fn(),
+    getQueryData: vi.fn(),
     purchases: [] as {
     id: string;
     purchasedAt: Date;
@@ -66,6 +67,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       : { data: mocks.purchases, isLoading: mocks.isLoading },
     useQueryClient: () => ({
       invalidateQueries: mocks.invalidateQueries,
+      getQueryData: mocks.getQueryData,
     }),
   };
 });
@@ -133,6 +135,7 @@ describe('PurchasesTab', () => {
       previewUrl: null,
       mediaItem: { id: 'media-1', thumbnailUrl: 'https://example.com/thumb-1.jpg' },
     }];
+    mocks.getQueryData.mockImplementation(() => mocks.purchases);
     localStorage.clear();
     useCartStore.setState({ items: [purchasedItem, unpaidItem] });
   });
@@ -159,18 +162,15 @@ describe('PurchasesTab', () => {
     });
   });
 
-  it('shows a success toast for the server-confirmed paid state', async () => {
+  it('does not duplicate the Cart payment-complete toast', async () => {
     const Component = purchasesTab();
 
     renderPurchases(<Component />);
 
     await waitFor(() => {
-      expect(mocks.notifySuccess).toHaveBeenCalledWith(
-        'Your purchase is ready to download.',
-        'Payment complete',
-      );
+      expect(mocks.navigate).toHaveBeenCalled();
     });
-    expect(document.body).not.toHaveTextContent('Payment complete.');
+    expect(mocks.notifySuccess).not.toHaveBeenCalled();
   });
 
   it('removes the completed order from the URL after showing the success toast', async () => {
@@ -191,10 +191,19 @@ describe('PurchasesTab', () => {
     let finishRefresh: (() => void) | undefined;
     mocks.purchases = [];
     mocks.invalidateQueries.mockReturnValue(new Promise<void>((resolve) => {
-      finishRefresh = resolve;
+      finishRefresh = () => {
+        mocks.getQueryData.mockReturnValue([{
+          id: 'purchase-1',
+          purchasedAt: new Date('2026-01-03T00:00:00.000Z'),
+          amountPaid: 300,
+          previewUrl: null,
+          mediaItem: { id: 'media-1', thumbnailUrl: 'https://example.com/thumb-1.jpg' },
+        }]);
+        resolve();
+      };
     }));
     const Component = purchasesTab();
-    const view = renderPurchases(<Component />);
+    renderPurchases(<Component />);
 
     await waitFor(() => {
       expect(mocks.invalidateQueries).toHaveBeenCalled();
@@ -202,18 +211,6 @@ describe('PurchasesTab', () => {
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(useCartStore.getState().items).toEqual([purchasedItem, unpaidItem]);
 
-    mocks.purchases = [{
-      id: 'purchase-1',
-      purchasedAt: new Date('2026-01-03T00:00:00.000Z'),
-      amountPaid: 300,
-      previewUrl: null,
-      mediaItem: { id: 'media-1', thumbnailUrl: 'https://example.com/thumb-1.jpg' },
-    }];
-    view.rerender(
-      <AppShellLayoutPolicyProvider routeIntent="siteWorkspace" browseExpanded={false} galleryExpanded={false}>
-        <Component />
-      </AppShellLayoutPolicyProvider>,
-    );
     await act(async () => {
       finishRefresh?.();
     });

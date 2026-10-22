@@ -242,6 +242,7 @@ model Order {
   totalAmount        Int         @map("total_amount")
   status             OrderStatus @default(PENDING)
   checkoutSessionUrl String?     @map("checkout_session_url")
+  pendingRevision    Json?       @map("pending_revision")
   createdAt          DateTime    @default(now()) @map("created_at")
   updatedAt          DateTime    @updatedAt @map("updated_at")
   guestEmail         String?     @map("guest_email")

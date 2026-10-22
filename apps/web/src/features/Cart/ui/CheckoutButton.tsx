@@ -9,20 +9,22 @@ export interface CheckoutButtonProps {
 }
 
 export function CheckoutButton({ isPending, status, onCheckout }: CheckoutButtonProps) {
-  const label = status?.state === 'ready'
+  const label = isPending
+    ? 'Checking payment…'
+    : status?.state === 'ready'
     ? 'Resume checkout'
     : status?.state === 'failed'
       ? 'Try checkout again'
       : status?.state === 'paid'
         ? 'View purchases'
-      : isPending || status?.state === 'creating' || status?.state === 'unknown' || status?.state === 'processing'
+      : status?.state === 'creating' || status?.state === 'unknown' || status?.state === 'processing'
         ? 'Checking payment…'
         : 'Checkout';
   return (
     <AppButton
       tone="positive"
       leftSection={<IconShoppingCart size={20} />}
-      loading={isPending}
+      disabled={isPending}
       onClick={onCheckout}
     >
       {label}

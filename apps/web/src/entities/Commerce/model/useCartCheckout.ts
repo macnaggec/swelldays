@@ -2,7 +2,10 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import type { BuyerCheckoutStatus } from '@swelldays/contracts/validation/checkout';
+import {
+  checkoutOwnMediaErrorDetailsSchema,
+  type BuyerCheckoutStatus,
+} from '@swelldays/contracts/validation/checkout';
 import { useTRPC } from 'shared/lib/trpc';
 import { useCartStore } from 'entities/Commerce/model/cartStore';
 import { notify } from 'shared/lib/notifications';
@@ -14,6 +17,8 @@ export interface CartCheckout {
   isPending: boolean;
   totalCents: number;
   status: BuyerCheckoutStatus | null;
+  selfPurchaseItemIds: string[];
+  removeSelfPurchaseItems: () => void;
 }
 
 const STORAGE_PREFIX = 'swelldays.checkout.v1:';
@@ -27,13 +32,22 @@ function isTransient(status: BuyerCheckoutStatus | undefined): boolean {
   return status?.state === 'creating' || status?.state === 'unknown' || status?.state === 'processing';
 }
 
-export function useCartCheckout(): CartCheckout {
+function getErrorDetails(error: unknown): unknown {
+  if (typeof error !== 'object' || error === null || !('data' in error)) return undefined;
+  const data = error.data;
+  if (typeof data !== 'object' || data === null || !('details' in data)) return undefined;
+  return data.details;
+}
+
+export function useCartCheckout(returnOrderId?: string): CartCheckout {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const items = useCartStore((s) => s.items);
   const totalCents = useCartStore((s) => s.totalCents());
   const { isAuthenticated } = useUser();
   const { open: openAuthModal } = useAuthModal();
+  const [isOpeningCheckout, setIsOpeningCheckout] = useState(false);
+  const [selfPurchaseItemIds, setSelfPurchaseItemIds] = useState<string[]>([]);
   const itemIds = useMemo(() => items.map((item) => item.id), [items]);
   const storageKey = useMemo(() => storageKeyFor(itemIds), [itemIds]);
   const [storedAttempt, setStoredAttempt] = useState(() => ({
@@ -43,6 +57,9 @@ export function useCartCheckout(): CartCheckout {
   const clientRequestId = storedAttempt.storageKey === storageKey
     ? storedAttempt.clientRequestId
     : localStorage.getItem(storageKey);
+  const statusLocator = returnOrderId === undefined
+    ? { clientRequestId: clientRequestId ?? '00000000-0000-4000-8000-000000000000' }
+    : { orderId: returnOrderId };
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
@@ -55,14 +72,19 @@ export function useCartCheckout(): CartCheckout {
   }, [storageKey]);
 
   const statusQuery = useQuery({
-    ...trpc.checkout.status.queryOptions(
-      { clientRequestId: clientRequestId ?? '00000000-0000-4000-8000-000000000000' },
-    ),
-    enabled: isAuthenticated && clientRequestId !== null,
-    refetchInterval: (query) => isTransient(query.state.data) ? POLL_INTERVAL_MS : false,
+    ...trpc.checkout.status.queryOptions(statusLocator),
+    enabled: isAuthenticated && (returnOrderId !== undefined || clientRequestId !== null),
+    refetchInterval: (query) => isTransient(query.state.data)
+      || returnOrderId !== undefined && query.state.data?.state === 'ready'
+      ? POLL_INTERVAL_MS
+      : false,
   });
 
   const openCheckout = useCallback((checkoutUrl: string) => {
+    // Navigation does not unmount this route synchronously. Keep the cart locked
+    // across the gap after the mutation settles and before Paddle's checkout route
+    // takes over, instead of relying only on React Query's mutation pending state.
+    setIsOpeningCheckout(true);
     const checkoutLocation = new URL(checkoutUrl, window.location.origin);
     if (checkoutLocation.origin === window.location.origin) {
       void navigate({ href: `${checkoutLocation.pathname}${checkoutLocation.search}${checkoutLocation.hash}` });
@@ -74,7 +96,12 @@ export function useCartCheckout(): CartCheckout {
   const checkout = useMutation({
     ...trpc.checkout.create.mutationOptions(),
     onSuccess: ({ checkoutUrl }) => openCheckout(checkoutUrl),
-    onError: async () => {
+    onError: async (error) => {
+      const ownMedia = checkoutOwnMediaErrorDetailsSchema.safeParse(getErrorDetails(error));
+      if (ownMedia.success) {
+        setSelfPurchaseItemIds(ownMedia.data.mediaItemIds);
+        return;
+      }
       const refreshedStatus = await statusQuery.refetch();
       if (refreshedStatus.data?.state === 'failed') {
         notify.error('Checkout could not be started. Please try again.', 'Checkout failed');
@@ -123,10 +150,25 @@ export function useCartCheckout(): CartCheckout {
     continueCheckout();
   };
 
+  const removeSelfPurchaseItems = useCallback(() => {
+    const rejectedIds = new Set(selfPurchaseItemIds);
+    useCartStore.setState((state) => ({
+      items: state.items.filter((item) => !rejectedIds.has(item.id)),
+    }));
+    setSelfPurchaseItemIds([]);
+  }, [selfPurchaseItemIds]);
+
   return {
     handleCheckout,
-    isPending: checkout.isPending || statusQuery.isFetching && isTransient(statusQuery.data),
+    isPending: isOpeningCheckout
+      || checkout.isPending
+      || isTransient(statusQuery.data)
+      || statusQuery.data?.state === 'paid'
+      || returnOrderId !== undefined
+        && (statusQuery.data === undefined || statusQuery.data.state === 'ready'),
     totalCents,
     status: statusQuery.data ?? null,
+    selfPurchaseItemIds,
+    removeSelfPurchaseItems,
   };
 }

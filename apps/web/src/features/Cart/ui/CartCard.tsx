@@ -11,6 +11,7 @@ export interface CartCardProps {
   item: CartItem;
   onRemove: (id: string) => void;
   onClick?: () => void;
+  disabled?: boolean;
 }
 
 /**
@@ -19,10 +20,12 @@ export interface CartCardProps {
  * Mirrors PublicCard visually: same BaseCard shell, same action slot.
  * Single action: remove from cart (trash icon).
  */
-const CartCard: FC<CartCardProps> = memo(({ item, onRemove, onClick }) => {
+const CartCard: FC<CartCardProps> = memo(({ item, onRemove, onClick, disabled = false }) => {
   const handleRemove = useCallback(
-    () => onRemove(item.id),
-    [onRemove, item.id],
+    () => {
+      if (!disabled) onRemove(item.id);
+    },
+    [disabled, onRemove, item.id],
   );
 
   return (
@@ -30,7 +33,7 @@ const CartCard: FC<CartCardProps> = memo(({ item, onRemove, onClick }) => {
       imageUrl={item.thumbnailUrl}
       resourceType="image"
       alt={item.label}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       overlays={
         <Stack gap={2}>
           <Text size="xs" fw={700} c="white" className={classes.priceLabel}>
@@ -51,6 +54,7 @@ const CartCard: FC<CartCardProps> = memo(({ item, onRemove, onClick }) => {
           size="md"
           radius="xl"
           aria-label={`Remove ${item.label} from cart`}
+          disabled={disabled}
           onClick={handleRemove}
         >
           <IconTrash size={14} />
