@@ -37,7 +37,7 @@
    12px inset matches the panel toolbar chrome (PanelScrollChrome). */
 .divider {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   min-height: var(--wa-panel-section-chrome-height);
   padding: 0 var(--wa-panel-content-inset);
   border-bottom: 1px solid var(--mantine-color-default-border);
@@ -52,9 +52,8 @@
 
 /* In the compact Gallery, the first date label is the first visible grid
    element. It owns the same 12px separation from filter pills that those pills
-   already use below search, while later date dividers retain centered labels. */
+   already use below search. */
 .container[data-dense] [data-index='0'] .divider {
-  align-items: flex-start;
   box-sizing: border-box;
   padding-block-start: var(--wa-panel-stack-gap);
 }
@@ -66,7 +65,16 @@
   display: grid;
   grid-template-columns: repeat(var(--gallery-cols, 3), 1fr);
   gap: var(--wa-panel-grid-gap);
-  padding: 5px var(--wa-panel-content-inset);
+  padding: calc(var(--wa-panel-grid-gap) / 2) var(--wa-panel-content-inset);
+}
+
+.mediaRow[data-section-start] {
+  padding-block-start: var(--wa-panel-content-inset);
+}
+
+.mediaRow[data-section-end] {
+  /* The date font's line box has 4px of leading above the visible glyphs. */
+  padding-block-end: calc(var(--wa-panel-content-inset) - 4px);
 }
 
 /* Dense grid: gapless, edge-to-edge tiles. */

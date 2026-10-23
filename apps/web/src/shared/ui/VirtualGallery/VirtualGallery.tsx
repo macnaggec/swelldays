@@ -535,7 +535,11 @@ function VirtualGalleryInner<T extends { id: string }>(
                   </div>
                 )
               ) : (
-                <div className={styles.mediaRow}>
+                <div
+                  className={styles.mediaRow}
+                  data-section-start={rows[virtualItem.index - 1]?.type === 'divider' || undefined}
+                  data-section-end={rows[virtualItem.index + 1]?.type !== 'media' || undefined}
+                >
                   {row.items.map((item) => {
                     const globalIndex = itemIndexMap.get(item.id) ?? 0;
                     const isSelected = selection?.isSelected(item.id) ?? false;
