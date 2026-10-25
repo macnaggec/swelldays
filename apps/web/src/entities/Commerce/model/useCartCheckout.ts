@@ -2,9 +2,9 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  checkoutOwnMediaErrorDetailsSchema,
-  type BuyerCheckoutStatus,
+import type {
+  BuyerCheckoutStatus,
+  CheckoutOwnMediaErrorDetails,
 } from '@swelldays/contracts/validation/checkout';
 import { useTRPC } from 'shared/lib/trpc';
 import { useCartStore } from 'entities/Commerce/model/cartStore';
@@ -23,6 +23,7 @@ export interface CartCheckout {
 
 const STORAGE_PREFIX = 'swelldays.checkout.v1:';
 const POLL_INTERVAL_MS = 2_000;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function storageKeyFor(itemIds: string[]): string {
   return `${STORAGE_PREFIX}${[...itemIds].sort().join(',')}`;
@@ -37,6 +38,17 @@ function getErrorDetails(error: unknown): unknown {
   const data = error.data;
   if (typeof data !== 'object' || data === null || !('details' in data)) return undefined;
   return data.details;
+}
+
+function parseOwnMediaErrorDetails(value: unknown): CheckoutOwnMediaErrorDetails | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  if (Object.keys(record).some((key) => key !== 'reason' && key !== 'mediaItemIds')) return null;
+  if (record.reason !== 'own-media' || !Array.isArray(record.mediaItemIds)) return null;
+  if (record.mediaItemIds.length === 0 || !record.mediaItemIds.every(
+    (item): item is string => typeof item === 'string' && UUID_PATTERN.test(item),
+  )) return null;
+  return { reason: 'own-media', mediaItemIds: record.mediaItemIds };
 }
 
 export function useCartCheckout(returnOrderId?: string): CartCheckout {
@@ -97,9 +109,9 @@ export function useCartCheckout(returnOrderId?: string): CartCheckout {
     ...trpc.checkout.create.mutationOptions(),
     onSuccess: ({ checkoutUrl }) => openCheckout(checkoutUrl),
     onError: async (error) => {
-      const ownMedia = checkoutOwnMediaErrorDetailsSchema.safeParse(getErrorDetails(error));
-      if (ownMedia.success) {
-        setSelfPurchaseItemIds(ownMedia.data.mediaItemIds);
+      const ownMedia = parseOwnMediaErrorDetails(getErrorDetails(error));
+      if (ownMedia !== null) {
+        setSelfPurchaseItemIds(ownMedia.mediaItemIds);
         return;
       }
       const refreshedStatus = await statusQuery.refetch();
