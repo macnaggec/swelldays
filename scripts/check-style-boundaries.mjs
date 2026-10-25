@@ -745,7 +745,7 @@ const requiredMobileGalleryLargeTextStyles = [
   [
     'apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css',
     'the first compact date divider owning the 12px gap below filter pills',
-    /\.container\[data-dense\]\s+\[data-index='0'\]\s+\.divider\s*\{[^}]*align-items:\s*flex-start;[^}]*box-sizing:\s*border-box;[^}]*padding-block-start:\s*var\(--wa-panel-stack-gap\)/s,
+    /\.divider\s*\{[^}]*align-items:\s*flex-start;[^}]*\}[\s\S]*?\.container\[data-dense\]\s+\[data-index='0'\]\s+\.divider\s*\{[^}]*box-sizing:\s*border-box;[^}]*padding-block-start:\s*var\(--wa-panel-stack-gap\)/s,
   ],
   [
     'apps/web/src/shared/ui/VirtualGallery/VirtualGallery.module.css',
