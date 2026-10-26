@@ -1,12 +1,6 @@
-# Public content (home, spot pages, galleries, sessions, about) is allowed
-# by default below. Everything else is a private/transactional route and is
-# explicitly blocked. See docs/roadmaps/seo-optimization.md.
+# Public documents may be crawled. Private SPA documents send noindex in HTTP
+# headers so crawlers can observe it. Authentication, not robots.txt, protects data.
 User-agent: *
-Disallow: /cart
-Disallow: /upload
-Disallow: /me
-Disallow: /admin
-Disallow: /auth
-Disallow: /order-success
+Allow: /
 
 Sitemap: https://swelldays.surf/sitemap.xml

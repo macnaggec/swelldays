@@ -75,6 +75,7 @@ export interface GlobeMapProps {
   onUserExploreEnd?: () => void;
   /** Reports that Mapbox has completed its initial visual load. */
   onMapReady?: () => void;
+  onMapError?: () => void;
   /** Reports the start of genuine camera movement, excluding clicks and pointer-down alone. */
   onCameraGestureStart?: () => void;
   /** Feature-owned content (e.g. a favorite toggle) rendered in the selected-spot popup — GlobeMap stays feature-agnostic. */
@@ -98,6 +99,7 @@ export function GlobeMapComponent({
   onUserExploreStart,
   onUserExploreEnd,
   onMapReady,
+  onMapError,
   onCameraGestureStart,
   renderSelectedSpotContent,
   onClearSelectedSpot,
@@ -395,6 +397,7 @@ export function GlobeMapComponent({
         projection={{ name: 'globe' as any }}
         fog={globeFog}
         onLoad={handleLoad}
+        onError={() => { if (!mapInstanceRef.current) onMapError?.(); }}
         onClick={isCoordinatePickerActive ? handleCoordinateClick : (acceptsSpotInteraction ? onSpotClick : undefined)}
         onDragStart={acceptsCameraGestures ? handleCameraGestureStart : undefined}
         onDragEnd={acceptsCameraGestures ? handleUserInteractionEnd : undefined}

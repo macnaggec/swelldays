@@ -47,15 +47,15 @@ describe('injectHead', () => {
     expect(html.indexOf('rel="canonical"')).toBeLessThan(html.indexOf('</head>'));
   });
 
-  it('leaves the default og:image and twitter:image untouched when no imageUrl is given', () => {
+  it('uses an absolute public default image when no imageUrl is given', () => {
     const html = injectHead(SHELL_HTML, {
       title: 'T',
       description: 'D',
       canonicalUrl: 'https://swelldays.surf/gallery',
     });
 
-    expect(html).toContain('<meta property="og:image" content="/default-image.png" />');
-    expect(html).toContain('<meta name="twitter:image" content="/default-image.png" />');
+    expect(html).toContain('<meta property="og:image" content="https://swelldays.surf/android-chrome-512x512.png" />');
+    expect(html).toContain('<meta name="twitter:image" content="https://swelldays.surf/android-chrome-512x512.png" />');
   });
 
   it('replaces og:image and twitter:image when an imageUrl is given', () => {

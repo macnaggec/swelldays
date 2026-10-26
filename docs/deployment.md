@@ -212,3 +212,7 @@ Every previous release's images remain in GHCR under their tag, so rollback is r
 - Migration rollback: Prisma migrations are forward-only here; there is no automatic down migration. Stop writes, preserve the failed database, and restore the verified pre-release backup into a replacement database when schema rollback is required.
 - If the migrator fails, do not start the new API. Inspect migrator logs, correct configuration or migration compatibility, and rerun the same immutable migrator.
 - Keep previous web, API, and migrator tags in GHCR until post-deployment checks and a backup cycle have completed.
+
+## Commercial SEO delivery gate (October 25, 2026)
+
+See [the SEO operations runbook](seo/operations-and-measurement.md) and [verification report](seo/verification-2026-10-25.md). Main-domain `/sitemap.xml` and public documents must reach the API shim for ordinary users and crawlers. `/index.html`, `/robots.txt`, assets and private SPA documents remain web-owned. Never route index.html into the shim it feeds. Do not guess an external Caddyfile: obtain running config/imports/invocation/upstreams, prepare a minimal exact diff, back up after authorization, validate in its actual context, then obtain approval for reload. Application release and Caddy application are separate actions. Backend query changes still require fresh verified database backup/isolated restoration before production deployment, even without new migrations. Submit the main sitemap only after live verification and account authorization.

@@ -1,15 +1,13 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { HOME_PAGE_DESCRIPTION, HOME_PAGE_TITLE } from '@swelldays/contracts/core';
+import { staticPublicDocument } from '@swelldays/contracts/core';
 import { SessionFeed } from 'widgets/SidePanel';
-import { buildCanonicalLink, buildPageMeta } from 'shared/lib/seoMeta';
+import { buildPublicDocumentHead } from 'shared/lib/seoMeta';
 import { usePanelFeedLayoutReadyChange, usePanelFilter } from '../lib/panelContexts';
 
 export const Route = createFileRoute('/_panel/')({
   staticData: { panelHeader: 'Recent Sessions' },
-  head: () => ({
-    meta: buildPageMeta({ title: HOME_PAGE_TITLE, description: HOME_PAGE_DESCRIPTION }),
-    links: buildCanonicalLink('/'),
-  }),
+  loader: () => staticPublicDocument('home'),
+  head: ({ loaderData }) => loaderData ? buildPublicDocumentHead(loaderData) : {},
   component: DefaultFeed,
 });
 

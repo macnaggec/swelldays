@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { useEffect } from 'react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
@@ -7,269 +8,180 @@ import { FIRST_VISIT_STORAGE_KEY } from '../model/firstVisitStorage';
 import { FirstVisitGate } from './FirstVisitGate';
 
 const TITLE = /surf photos & videos/i;
-
 function MapSurface() {
-  const { markMapReady } = useFirstVisitMapReadiness();
-
-  return (
-    <button type="button" onClick={markMapReady}>
-      Mark map ready
-    </button>
-  );
+  const { markMapReady, markMapFailed, markMapLoading, mapAttempt } = useFirstVisitMapReadiness();
+  return <><button type="button" onClick={markMapReady}>Mark map ready</button><button type="button" onClick={() => markMapFailed?.()}>Fail map</button><button type="button" onClick={() => markMapLoading?.()}>Mark map loading</button><output data-testid="map-attempt">{mapAttempt}</output></>;
 }
-
-function renderGate({
-  isEligibleRoute = true,
-  isSessionLoading = false,
-  isAuthenticated = false,
-} = {}) {
-  return render(
-    <FirstVisitGate
-      isEligibleRoute={isEligibleRoute}
-      isSessionLoading={isSessionLoading}
-      isAuthenticated={isAuthenticated}
-    >
-      <MapSurface />
-    </FirstVisitGate>,
-  );
+function renderGate({ isEligibleRoute = true, isSessionLoading = false, isAuthenticated = false } = {}) {
+  return render(<FirstVisitGate isEligibleRoute={isEligibleRoute} isSessionLoading={isSessionLoading} isAuthenticated={isAuthenticated}><MapSurface /></FirstVisitGate>);
 }
+const enter = () => screen.getAllByRole('link', { name: 'Find my photos' })[0]!;
+const markReady = () => fireEvent.click(screen.getByRole('button', { name: 'Mark map ready', hidden: true }));
 
-const markMapReady = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(screen.getByRole('button', { name: 'Mark map ready', hidden: true }));
-};
-
-/** A third of the screen is the commit line, so both sides of it are worth naming. */
-const commitLinePx = () => window.innerHeight / 3;
-
-/**
- * Drags upward by `distancePx` of effective travel, then lifts the finger. The
- * first move only crosses the engagement slop, which is where the drag
- * re-anchors, so the second move carries the whole measured distance.
- */
-const dragUpBy = (surface: HTMLElement, distancePx: number) => {
-  const start = window.innerHeight;
-  fireEvent.touchStart(surface, { touches: [{ clientY: start }] });
-  fireEvent.touchMove(surface, { touches: [{ clientY: start - 40 }] });
-  fireEvent.touchMove(surface, { touches: [{ clientY: start - 30 - distancePx }] });
-  fireEvent.touchEnd(surface, {});
-};
-
-/** Longer than the pause that stands in for a trackpad's fingers lifting. */
-const PAST_WHEEL_IDLE_MS = 300;
-const wait = (ms: number) => new Promise<void>((resolve) => { setTimeout(resolve, ms); });
-
-describe('FirstVisitGate', () => {
+describe('FirstVisitGate scroll presentation', () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.history.replaceState({}, '', '/');
   });
-
-  it('shows the introduction with its prompt to a first-time visitor', () => {
+  it('shows only the two audience paths immediately', () => {
     const { container } = renderGate();
-
-    expect(screen.getByRole('heading', { name: TITLE })).not.toBeNull();
-    expect(screen.getByText('Buy · Sell · Share')).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'Enter the map' })).not.toBeNull();
-    expect(container.querySelectorAll('[data-first-visit-artwork]')).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: TITLE })).toBeVisible();
+    expect(screen.getByText('For surfers')).toBeVisible();
+    expect(screen.getByText('For photographers')).toBeVisible();
+    expect(container.querySelectorAll('[data-first-visit-document] a')).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: 'Find your surf photos' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Sell surf photos' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Start uploading' })).toHaveAttribute('href', '/upload');
+    expect(container.querySelectorAll('[data-first-visit-document]')).toHaveLength(1);
   });
-
-  it('holds the app behind an opaque cover without showing intro copy while the session resolves', () => {
-    const { container } = renderGate({ isSessionLoading: true });
-
-    expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
-    expect(container.querySelector('[data-first-visit-state="checking-session"]')).not.toBeNull();
-    expect(container.querySelector('[data-first-visit-artwork]')).toBeNull();
+  it('keeps public text readable while auth is resolving', () => {
+    renderGate({ isSessionLoading: true });
+    expect(screen.getByRole('heading', { name: TITLE })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Find your surf photos' })).toBeVisible();
+  });
+  it('does not turn a scroll on the hero into map entry', async () => {
+    const { container } = renderGate();
+    markReady();
+    const surface = container.querySelector('[data-first-visit-document]');
+    if (!surface) throw new Error('Missing presentation scroll surface');
+    fireEvent.wheel(surface, { deltaY: window.innerHeight });
+    fireEvent.touchStart(surface, { touches: [{ clientY: 700 }] });
+    fireEvent.touchMove(surface, { touches: [{ clientY: 20 }] });
+    fireEvent.touchEnd(surface);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    expect(screen.getByRole('heading', { name: TITLE })).toBeVisible();
+    expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBeNull();
+  });
+  it('keeps early entry pending until the existing map is ready', async () => {
+    const user = userEvent.setup();
+    const { container } = renderGate();
+    const mapNode = screen.getByRole('button', { name: 'Mark map ready', hidden: true });
+    await user.click(enter());
+    expect(screen.getByRole('status')).toHaveTextContent('Preparing the map');
+    expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBeNull();
     expect(container.querySelector('[data-first-visit-app]')).toHaveAttribute('inert');
-    expect(container.querySelector('[data-first-visit-app]')).toContainElement(
-      screen.getByRole('button', { name: 'Mark map ready', hidden: true }),
-    );
-  });
-
-  it('keeps an early entry request covered until the map reports ready', async () => {
-    const user = userEvent.setup();
-    const { container } = renderGate();
-
-    await user.click(screen.getByRole('button', { name: 'Enter the map' }));
-
-    expect(screen.getByRole('button', { name: 'Preparing the map' })).toBeDisabled();
-    expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBeNull();
-
-    await markMapReady(user);
-
-    await waitFor(() => {
-      expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
-    });
+    markReady();
+    await waitFor(() => expect(screen.queryByRole('heading', { name: TITLE })).toBeNull());
     expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBe('seen');
+    expect(screen.getByRole('button', { name: 'Mark map ready' })).toBe(mapNode);
     expect(container.querySelector('[data-first-visit-app]')).not.toHaveAttribute('inert');
   });
-
-  it('enters when the prompt is pressed after the map is ready', async () => {
+  it('allows an early request to be cancelled without completing the visit', async () => {
     const user = userEvent.setup();
     renderGate();
-
-    await markMapReady(user);
-    await user.click(screen.getByRole('button', { name: 'Enter the map' }));
-
-    await waitFor(() => {
-      expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
-    });
-  });
-
-  it('enters when the finger lifts past a third of the screen', async () => {
-    const user = userEvent.setup();
-    renderGate();
-
-    await markMapReady(user);
-    dragUpBy(screen.getByRole('dialog'), commitLinePx() + 40);
-
-    await waitFor(() => {
-      expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
-    });
-  });
-
-  it('returns to the introduction when the finger lifts just short of a third of the screen', async () => {
-    const user = userEvent.setup();
-    renderGate();
-
-    await markMapReady(user);
-    dragUpBy(screen.getByRole('dialog'), commitLinePx() - 40);
-
-    await wait(PAST_WHEEL_IDLE_MS);
-
-    expect(screen.getByRole('heading', { name: TITLE })).not.toBeNull();
+    await user.click(enter());
+    await user.click(screen.getByRole('button', { name: 'Keep reading' }));
+    markReady();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByRole('heading', { name: TITLE })).toBeVisible();
     expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBeNull();
   });
-
-  it('ignores the trackpad momentum that keeps arriving after the release', async () => {
-    const user = userEvent.setup();
-    renderGate();
-
-    await markMapReady(user);
-    const surface = screen.getByRole('dialog');
-
-    // A short scroll, below half the screen, so the release sends it back.
-    fireEvent.wheel(surface, { deltaY: window.innerHeight * 0.2 });
-    await wait(PAST_WHEEL_IDLE_MS);
-
-    // Momentum still arriving must not reopen the drag and carry it over the
-    // line — that is what could leave the introduction parked half way.
-    fireEvent.wheel(surface, { deltaY: window.innerHeight * 0.5 });
-    fireEvent.wheel(surface, { deltaY: window.innerHeight * 0.5 });
-    await wait(700);
-
-    expect(screen.getByRole('heading', { name: TITLE })).not.toBeNull();
-    expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBeNull();
-  });
-
-  it('stays on the introduction while the finger is still down', async () => {
-    const user = userEvent.setup();
-    renderGate();
-
-    await markMapReady(user);
-
-    const surface = screen.getByRole('dialog');
-    fireEvent.touchStart(surface, { touches: [{ clientY: 600 }] });
-    fireEvent.touchMove(surface, { touches: [{ clientY: 560 }], timeStamp: 40 });
-    fireEvent.touchMove(surface, { touches: [{ clientY: 120 }], timeStamp: 400 });
-
-    expect(screen.getByRole('heading', { name: TITLE })).not.toBeNull();
-    expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBeNull();
-  });
-
-  it('returns to the introduction when the swipe falls short of the threshold', async () => {
-    const user = userEvent.setup();
-    renderGate();
-
-    await markMapReady(user);
-
-    const surface = screen.getByRole('dialog');
-    fireEvent.touchStart(surface, { touches: [{ clientY: 600 }] });
-    fireEvent.touchMove(surface, { touches: [{ clientY: 585 }], timeStamp: 200 });
-    fireEvent.touchMove(surface, { touches: [{ clientY: 578 }], timeStamp: 600 });
-    fireEvent.touchEnd(surface, {});
-
-    expect(screen.getByRole('heading', { name: TITLE })).not.toBeNull();
-    expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBeNull();
-  });
-
-  it('ignores a tap that never travels far enough to be a drag', async () => {
-    const user = userEvent.setup();
-    renderGate();
-
-    await markMapReady(user);
-
-    const surface = screen.getByRole('dialog');
-    fireEvent.touchStart(surface, { touches: [{ clientY: 600 }] });
-    fireEvent.touchMove(surface, { touches: [{ clientY: 596 }], timeStamp: 60 });
-    fireEvent.touchEnd(surface, {});
-
-    expect(screen.getByRole('heading', { name: TITLE })).not.toBeNull();
-  });
-
-  it('hands the app back after entering in review mode', async () => {
+  it('skips the presentation for a returning visitor', () => {
     window.localStorage.setItem(FIRST_VISIT_STORAGE_KEY, 'seen');
-    window.history.replaceState({}, '', '/?firstVisitReview=1');
-
-    const user = userEvent.setup();
-    const { container } = renderGate();
-
-    await markMapReady(user);
-    await user.click(screen.getByRole('button', { name: 'Enter the map' }));
-
-    await waitFor(() => {
-      expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
-    });
-    expect(container.querySelector('[data-first-visit-app]')).not.toHaveAttribute('inert');
+    renderGate();
+    expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
   });
-
-  it('lets an authenticated returning visitor explicitly reopen review mode', () => {
+  it('skips the presentation for authenticated visitors', () => {
+    renderGate({ isAuthenticated: true });
+    expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
+  });
+  it.each(['/#intro', '/?firstVisitReview=1'])('reopens explicitly at %s for an authenticated returning visitor', (url) => {
     window.localStorage.setItem(FIRST_VISIT_STORAGE_KEY, 'seen');
-    window.history.replaceState({}, '', '/?firstVisitReview=1');
-
-    const { container } = renderGate({ isAuthenticated: true });
-
-    expect(screen.getByRole('dialog')).not.toBeNull();
-    expect(screen.getByRole('heading', { name: TITLE })).not.toBeNull();
-    expect(container.querySelectorAll('[data-first-visit-artwork]')).toHaveLength(1);
+    window.history.replaceState({}, '', url);
+    renderGate({ isAuthenticated: true });
+    expect(screen.getByRole('heading', { name: TITLE })).toBeVisible();
   });
-
-  it('bypasses the introduction for authenticated visitors and remembers the bypass', async () => {
-    const { container } = renderGate({ isAuthenticated: true });
-
+  it('honours explicit map entry ahead of review mode', () => {
+    window.history.replaceState({}, '', '/?firstVisitReview=1#map');
+    renderGate();
     expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
-    expect(container.querySelector('[data-first-visit-artwork]')).toBeNull();
-    await waitFor(() => {
-      expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBe('seen');
-    });
   });
-
-  it('bypasses the introduction for returning visitors', () => {
-    window.localStorage.setItem(FIRST_VISIT_STORAGE_KEY, 'seen');
-    const { container } = renderGate();
-
+  it('keeps direct entity/private routes outside the presentation', () => {
+    window.history.replaceState({}, '', '/upload#intro');
+    renderGate({ isEligibleRoute: false });
     expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
-    expect(container.querySelector('[data-first-visit-artwork]')).toBeNull();
   });
-
-  it('bypasses the introduction for direct links', () => {
-    const { container } = renderGate({ isEligibleRoute: false });
-
-    expect(screen.queryByRole('heading', { name: TITLE })).toBeNull();
-    expect(container.querySelector('[data-first-visit-artwork]')).toBeNull();
-  });
-
-  it('shows the introduction when acknowledgement storage cannot be read', () => {
-    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
-      throw new Error('Storage unavailable');
-    });
-
+  it('does not block entry when storage reads and writes fail', async () => {
+    const read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('Unavailable'); });
+    const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Unavailable'); });
     try {
-      const { container } = renderGate();
-
-      expect(screen.getByRole('heading', { name: TITLE })).not.toBeNull();
-      expect(container.querySelectorAll('[data-first-visit-artwork]')).toHaveLength(1);
-    } finally {
-      getItemSpy.mockRestore();
-    }
+      renderGate();
+      markReady();
+      fireEvent.click(enter());
+      await waitFor(() => expect(screen.queryByRole('heading', { name: TITLE })).toBeNull());
+    } finally { read.mockRestore(); write.mockRestore(); }
   });
+});
+
+
+describe('map entry reliability', () => {
+  beforeEach(() => { window.localStorage.clear(); window.history.replaceState({}, '', '/'); });
+  it('keeps the intro usable after a map error and retries without completing a visit', async () => {
+    renderGate();
+    fireEvent.click(enter());
+    fireEvent.click(screen.getByRole('button', { name: 'Fail map', hidden: true }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the map');
+    expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry map' }));
+    expect(screen.getByTestId('map-attempt')).toHaveTextContent('1');
+    expect(screen.getByRole('status')).toHaveTextContent('Preparing the map');
+    markReady();
+    await waitFor(() => expect(screen.queryByRole('heading', { name: TITLE })).toBeNull());
+  });
+  it('offers retry when a pending map never becomes ready', () => {
+    vi.useFakeTimers();
+    try {
+      renderGate();
+      fireEvent.click(enter());
+      act(() => vi.advanceTimersByTime(20_000));
+      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the map');
+      expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBeNull();
+    } finally { vi.useRealTimers(); }
+  });
+  it('moves keyboard focus into the existing app after entering', async () => {
+    renderGate();
+    markReady();
+    enter().focus();
+    fireEvent.click(enter(), { detail: 0 });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Mark map ready' })).toHaveFocus());
+  });
+  it('cancels a pending request on Escape and returns focus to the surfer action', () => {
+    renderGate();
+    fireEvent.click(enter());
+    fireEvent.keyDown(screen.getByRole('status'), { key: 'Escape' });
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(enter()).toHaveFocus();
+    markReady();
+    expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBeNull();
+  });
+  it('does not acknowledge an interrupted reveal after a route change', async () => {
+    const view = renderGate();
+    markReady();
+    fireEvent.click(enter());
+    view.rerender(<FirstVisitGate isEligibleRoute={false} isSessionLoading={false} isAuthenticated={false}><MapSurface /></FirstVisitGate>);
+    await new Promise((resolve) => setTimeout(resolve, 550));
+    expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBeNull();
+  });
+});
+
+it('waits for the current canvas rather than readiness from an earlier map mount', () => {
+  window.localStorage.clear(); window.history.replaceState({}, '', '/');
+  renderGate();
+  markReady();
+  fireEvent.click(screen.getByRole('button', { name: 'Mark map loading', hidden: true }));
+  fireEvent.click(enter());
+  expect(screen.getByRole('status')).toHaveTextContent('Preparing the map');
+  expect(window.localStorage.getItem(FIRST_VISIT_STORAGE_KEY)).toBeNull();
+});
+
+it('skips decorative or hidden controls when handing keyboard focus to the app', async () => {
+  window.localStorage.clear(); window.history.replaceState({}, '', '/');
+  function FocusSurface() {
+    const { markMapReady } = useFirstVisitMapReadiness();
+    useEffect(markMapReady, [markMapReady]);
+    return <><div inert><button type="button">Decorative map</button></div><button type="button">Search sessions</button></>;
+  }
+  render(<FirstVisitGate isEligibleRoute isAuthenticated={false} isSessionLoading={false}><FocusSurface /></FirstVisitGate>);
+  fireEvent.click(enter(), { detail: 0 });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Search sessions' })).toHaveFocus());
 });

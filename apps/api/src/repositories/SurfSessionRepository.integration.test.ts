@@ -205,6 +205,7 @@ describe('SurfSessionRepository.listPublished favorites filter', () => {
           endsAt: new Date(startsAt.getTime() + 60 * 60 * 1000),
           createdAt,
           status: 'PUBLISHED',
+          mediaItems: { create: { spotId, status: 'PUBLISHED', type: 'PHOTO', capturedAt: startsAt, price: 700, cloudinaryPublicId: randomUUID(), lightboxUrl: 'https://example.com/preview.jpg', thumbnailUrl: 'https://example.com/thumb.jpg' } },
         },
       });
 
@@ -233,5 +234,44 @@ describe('SurfSessionRepository.listPublished favorites filter', () => {
     expect(firstPage.items.map((session) => session.id)).toEqual([newestFavorite.id]);
     expect(secondPage.items.map((session) => session.id)).toEqual([olderFavorite.id]);
     expect(secondPage.nextCursor).toBeNull();
+  });
+});
+
+
+describe('public discovery completeness and pagination', () => {
+  it('walks tied dates without gaps and excludes draft, deleted, empty and deleted-media sessions', async () => {
+    const photographer = await prisma.user.create({ data: { email: 'seo-pagination@example.com' } });
+    const spot = await prisma.spot.create({ data: { slug: 'seo-test', name: 'SEO test', location: 'Test coast' } });
+    const startsAt = new Date('2026-01-01T10:00:00Z');
+    const endsAt = new Date('2026-01-01T11:00:00Z');
+    const publicIds: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const session = await prisma.surfSession.create({ data: {
+        photographerId: photographer.id, spotId: spot.id, startsAt, endsAt, status: 'PUBLISHED',
+        mediaItems: { create: { spotId: spot.id, capturedAt: startsAt, status: 'PUBLISHED', price: 700, cloudinaryPublicId: randomUUID(), lightboxUrl: 'https://example.com/preview.jpg', thumbnailUrl: 'https://example.com/thumb.jpg' } },
+      } });
+      publicIds.push(session.id);
+    }
+    for (const status of ['DELETED', 'PUBLISHED'] as const) {
+      await prisma.surfSession.create({ data: { photographerId: photographer.id, spotId: spot.id, startsAt, endsAt, status } });
+    }
+    await prisma.surfSession.create({ data: {
+      photographerId: photographer.id, spotId: spot.id, startsAt, endsAt, status: 'PUBLISHED',
+      mediaItems: { create: { spotId: spot.id, capturedAt: startsAt, status: 'PUBLISHED', deletedAt: new Date(), price: 700, cloudinaryPublicId: randomUUID(), lightboxUrl: 'https://example.com/preview.jpg', thumbnailUrl: 'https://example.com/thumb.jpg' } },
+    } });
+    await prisma.uploadWorkspace.create({ data: { photographerId: photographer.id, spotId: spot.id, kind: 'NEW_SESSION', status: 'ACTIVE' } });
+    const found: string[] = [];
+    let cursor: string | undefined;
+    for (let i = 0; i < 5; i++) {
+      const page = await repository.listPublished({ limit: 2, cursor });
+      found.push(...page.items.map((session) => session.id));
+      if (!page.nextCursor) break;
+      cursor = page.nextCursor;
+    }
+    expect(found).toEqual(publicIds.sort().reverse());
+    expect(new Set(found).size).toBe(5);
+    await prisma.mediaItem.updateMany({ where: { sessionId: found[0] }, data: { deletedAt: new Date() } });
+    const remaining = await repository.listPublished({ limit: 20 });
+    expect(remaining.items.map((session) => session.id)).toEqual(found.slice(1));
   });
 });

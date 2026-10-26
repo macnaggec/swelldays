@@ -7,8 +7,8 @@
 type SpotNameLocation = { name: string; location: string };
 type SessionSpotSummary = { spot: SpotNameLocation };
 
-export const HOME_PAGE_TITLE = 'Swelldays | Buy and Sell Surf Photos & Videos';
-export const HOME_PAGE_DESCRIPTION = 'Swelldays is an interactive map for finding, buying, and selling surf-spot photos and videos, searchable by date.';
+export const HOME_PAGE_TITLE = 'Buy and Sell Surf Photos & Videos | Swelldays';
+export const HOME_PAGE_DESCRIPTION = 'Find surf-session photos and videos by spot and date. Preview your waves, buy media, or publish your sessions on Swelldays.';
 
 export const ABOUT_PAGE_TITLE = 'About | Swelldays';
 export const ABOUT_PAGE_DESCRIPTION = 'Swelldays is a map of surf spots. Photographers publish photos and videos from their sessions, and surfers search, preview, and buy them by spot and date.';

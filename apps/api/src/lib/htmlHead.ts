@@ -1,3 +1,5 @@
+import { DEFAULT_SOCIAL_IMAGE, PUBLIC_ORIGIN } from '@swelldays/contracts/core';
+
 /**
  * Swaps the per-page title/description/OG/Twitter tags into an already-built
  * index.html shell and appends a canonical link and optional JSON-LD blocks.
@@ -10,6 +12,7 @@ export type PageHeadInput = {
   description: string;
   canonicalUrl: string;
   imageUrl?: string;
+  noindex?: boolean;
   jsonLd?: Record<string, unknown>[];
 };
 
@@ -33,26 +36,30 @@ function jsonLdScriptTag(entry: Record<string, unknown>): string {
 }
 
 export function injectHead(html: string, head: PageHeadInput): string {
-  let result = html;
-
-  result = replaceTag(result, /<title>.*?<\/title>/s, `<title>${escapeHtml(head.title)}</title>`);
-  result = replaceTag(result, /<meta name="description"[^>]*>/, `<meta name="description" content="${escapeAttr(head.description)}" />`);
-  result = replaceTag(result, /<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${escapeAttr(head.title)}" />`);
-  result = replaceTag(result, /<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${escapeAttr(head.description)}" />`);
-  result = replaceTag(result, /<meta name="twitter:title"[^>]*>/, `<meta name="twitter:title" content="${escapeAttr(head.title)}" />`);
-  result = replaceTag(result, /<meta name="twitter:description"[^>]*>/, `<meta name="twitter:description" content="${escapeAttr(head.description)}" />`);
-
-  if (head.imageUrl) {
-    result = replaceTag(result, /<meta property="og:image"[^>]*>/, `<meta property="og:image" content="${escapeAttr(head.imageUrl)}" />`);
-    result = replaceTag(result, /<meta name="twitter:image"[^>]*>/, `<meta name="twitter:image" content="${escapeAttr(head.imageUrl)}" />`);
-  }
-
-  const appendedTags = [
+  // Replace only owned SEO fields. Preserve verification tags, icons and assets.
+  const clean = html
+    .replace(/<title[^>]*>[\s\S]*?<\/title>/gi, '')
+    .replace(/<meta\b[^>]*(?:name=["'](?:description|robots|twitter:[^"']+)["']|property=["']og:[^"']+["'])[^>]*>/gi, '')
+    .replace(/<link\b[^>]*rel=["']canonical["'][^>]*>/gi, '')
+    .replace(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi, '');
+  const image = new URL(head.imageUrl ?? DEFAULT_SOCIAL_IMAGE, PUBLIC_ORIGIN).toString();
+  const tags = [
+    `<title>${escapeHtml(head.title)}</title>`,
+    `<meta name="description" content="${escapeAttr(head.description)}" />`,
+    `<meta name="robots" content="${head.noindex ? 'noindex, follow' : 'index, follow'}" />`,
+    ...['og', 'twitter'].flatMap((prefix) => {
+      const attr = prefix === 'og' ? 'property' : 'name';
+      return [
+        `<meta ${attr}="${prefix}:title" content="${escapeAttr(head.title)}" />`,
+        `<meta ${attr}="${prefix}:description" content="${escapeAttr(head.description)}" />`,
+        `<meta ${attr}="${prefix}:image" content="${escapeAttr(image)}" />`,
+      ];
+    }),
+    '<meta property="og:type" content="website" />',
+    `<meta property="og:url" content="${escapeAttr(head.canonicalUrl)}" />`,
+    '<meta name="twitter:card" content="summary_large_image" />',
     `<link rel="canonical" href="${escapeAttr(head.canonicalUrl)}" />`,
     ...(head.jsonLd ?? []).map(jsonLdScriptTag),
   ].join('\n  ');
-
-  result = replaceTag(result, /<\/head>/, `  ${appendedTags}\n</head>`);
-
-  return result;
+  return replaceTag(clean, /<\/head>/, `  ${tags}\n</head>`);
 }

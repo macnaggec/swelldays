@@ -36,8 +36,8 @@ vi.mock('features/Cart', () => ({
   useCartSessionSync: () => undefined,
 }));
 
-vi.mock('features/FirstVisit', () => ({
-  FirstVisitGate: ({
+vi.mock('app/FirstVisitBoundary', () => ({
+  FirstVisitBoundary: ({
     children,
     isEligibleRoute,
     isAuthenticated,

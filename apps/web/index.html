@@ -12,20 +12,21 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/site.webmanifest" />
   <link rel="preload" as="image" type="image/png" href="/src/assets/startup/swelldays-logo-white.png" />
+  <link rel="stylesheet" href="/src/features/FirstVisit/ui/FirstVisitDocument.css" />
   <meta name="theme-color" content="#0a1628" />
   <meta name="description"
     content="Swelldays is an interactive map for finding, buying, and selling surf-spot photos and videos, searchable by date." />
-  <meta property="og:title" content="Swelldays | Buy and Sell Surf Photos & Videos" />
+  <meta property="og:title" content="Buy and Sell Surf Photos & Videos | Swelldays" />
   <meta property="og:description"
     content="An interactive map for finding, buying, and selling surf-spot photos and videos, searchable by date." />
-  <meta property="og:image" content="/android-chrome-512x512.png" />
+  <meta property="og:image" content="https://swelldays.surf/android-chrome-512x512.png" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Swelldays | Buy and Sell Surf Photos & Videos" />
+  <meta name="twitter:title" content="Buy and Sell Surf Photos & Videos | Swelldays" />
   <meta name="twitter:description"
     content="An interactive map for finding, buying, and selling surf-spot photos and videos, searchable by date." />
-  <meta name="twitter:image" content="/android-chrome-512x512.png" />
-  <title>Swelldays | Buy and Sell Surf Photos & Videos</title>
+  <meta name="twitter:image" content="https://swelldays.surf/android-chrome-512x512.png" />
+  <title>Buy and Sell Surf Photos & Videos | Swelldays</title>
   <style>
     [data-bootstrap-shell] {
       position: fixed;
@@ -52,6 +53,20 @@
       content: "";
       background: linear-gradient(90deg, transparent, rgba(244, 249, 250, 0.32), transparent);
     }
+    .public-document {
+      max-width: 62ch;
+      margin: 0 auto;
+      padding: 24px;
+      color: #d2dce5;
+      font: 16px/1.55 system-ui, sans-serif;
+      overflow-wrap: anywhere;
+    }
+    body:has(.public-document) { background: #0a1628; }
+    .public-document h1, .public-document h2 { color: #f4f9fa; line-height: 1.2; }
+    .public-document h1 { font-size: 1.6rem; }
+    .public-document h2 { font-size: 1.1rem; }
+    .public-document ul { padding-inline-start: 20px; }
+    .public-document a { display: inline-block; padding-block: 8px; color: #9ecbd5; }
   </style>
 </head>
 

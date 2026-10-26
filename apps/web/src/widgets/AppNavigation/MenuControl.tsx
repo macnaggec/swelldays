@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type MouseEvent } from 'react';
 import { ActionIcon, Avatar, Menu, Text } from '@mantine/core';
 import {
   IconInfoCircle,
@@ -14,6 +14,7 @@ import { useNavigate, useRouter } from '@tanstack/react-router';
 import { signOut } from 'shared/lib/auth';
 import { useUser } from 'shared/hooks/useUser';
 import { preloadAuthSurface, useAuthModal } from 'features/Auth';
+import { useFirstVisitPresentation } from 'features/FirstVisit';
 import { notify } from 'shared/lib/notifications';
 import classes from './MenuControl.module.css';
 
@@ -35,6 +36,7 @@ export function MenuControl() {
   const navigate = useNavigate();
   const router = useRouter();
   const { open: openAuthModal } = useAuthModal();
+  const presentation = useFirstVisitPresentation();
   const [opened, setOpened] = useState(false);
 
   const handleSignIn = useCallback(() => openAuthModal(), [openAuthModal]);
@@ -62,6 +64,12 @@ export function MenuControl() {
   const handleGoToCollection = useCallback(() => navigate({ to: '/me/collections' }), [navigate]);
   const handleGoToEarnings = useCallback(() => navigate({ to: '/me/earnings' }), [navigate]);
   const handleOpenAccount = useCallback(() => navigate({ to: '/me' }), [navigate]);
+  const handleOpenPresentation = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
+    if (!presentation || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    setOpened(false);
+    presentation.open();
+  }, [presentation]);
   const handleGoToAbout = useCallback(() => navigate({ to: '/about' }), [navigate]);
   const preloadMenuRoutes = useCallback(() => {
     const requests = [router.preloadRoute({ to: '/about' })];
@@ -158,6 +166,11 @@ export function MenuControl() {
           </Menu.Item>
         )}
         <Menu.Divider />
+        <Menu.Item component="a" href="/#intro" onClick={handleOpenPresentation}
+          leftSection={<IconInfoCircle size={16} stroke={1.75} style={ITEM_ICON_STYLE} />}
+        >
+          How it works
+        </Menu.Item>
         <Menu.Item
           leftSection={<IconInfoCircle size={16} stroke={1.75} style={ITEM_ICON_STYLE} />}
           onClick={handleGoToAbout}

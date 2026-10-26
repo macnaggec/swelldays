@@ -37,6 +37,7 @@ vi.mock('react-map-gl', () => ({
     onMouseDown,
     onZoomStart,
     onLoad,
+    onError,
     onMouseEnter,
     onMoveEnd,
     onWheel,
@@ -59,6 +60,7 @@ vi.mock('react-map-gl', () => ({
     onMouseDown?: () => void;
     onZoomStart?: (event: { originalEvent?: Event }) => void;
     onLoad: (event: { target: unknown }) => void;
+    onError?: () => void;
     onMouseEnter?: () => void;
     onMoveEnd?: (event: { viewState: { longitude: number; latitude: number; zoom: number; pitch: number; bearing: number } }) => void;
     onWheel?: () => void;
@@ -72,6 +74,7 @@ vi.mock('react-map-gl', () => ({
     touchZoomRotate?: boolean;
   }) => (
     <div>
+      <button type="button" onClick={onError}>Fail initial map load</button>
       <button
         type="button"
         data-initial-view-state={JSON.stringify(initialViewState)}
@@ -1149,5 +1152,18 @@ describe('GlobeMapComponent camera inset changes', () => {
     fireEvent.click(screen.getByRole('button', { name: /load map/i }));
 
     expect(mocks.setPadding).toHaveBeenCalledWith({ top: 0, right: 480, bottom: 0, left: 0 });
+  });
+});
+
+
+describe('initial map failure reporting', () => {
+  it('reports initialization errors but ignores tile errors after a successful load', () => {
+    const onMapError = vi.fn();
+    render(<GlobeMapComponent spots={[]} onSpotSelect={vi.fn()} motionPolicy="paused" onMapError={onMapError} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Fail initial map load' }));
+    expect(onMapError).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: /load map/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Fail initial map load' }));
+    expect(onMapError).toHaveBeenCalledTimes(1);
   });
 });

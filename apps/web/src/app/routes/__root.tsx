@@ -6,7 +6,7 @@ import { AppShell } from 'app/AppShell';
 import { AuthModalProvider } from 'features/Auth';
 import { AddSpotProvider, useAddSpotStore } from 'features/AddSpot';
 import { useCartSessionSync } from 'features/Cart';
-import { FirstVisitGate } from 'features/FirstVisit';
+import { FirstVisitBoundary } from 'app/FirstVisitBoundary';
 import classes from './__root.module.css';
 import { getErrorMessage } from 'shared/lib/getErrorMessage';
 import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
@@ -58,7 +58,7 @@ function RootLayout() {
             preferredExpanded={sheetPreferredExpanded}
             onPreferredExpandedChange={setSheetPreferredExpanded}
           >
-            <FirstVisitGate
+            <FirstVisitBoundary
               isEligibleRoute={isFirstVisitEligibleRoute}
               isSessionLoading={isSessionLoading}
               isAuthenticated={isAuthenticated}
@@ -66,7 +66,7 @@ function RootLayout() {
               <AppShell>
                 <Outlet />
               </AppShell>
-            </FirstVisitGate>
+            </FirstVisitBoundary>
           </BrowseSurfaceProvider>
         </AppShellLayoutPolicyProvider>
       </AddSpotProvider>

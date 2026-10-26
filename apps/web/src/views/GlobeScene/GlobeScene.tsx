@@ -5,7 +5,7 @@ import { FavoriteSpotButton } from 'features/FavoriteSpot';
 import { useFirstVisitMapReadiness } from 'features/FirstVisit';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMatches, useNavigate } from '@tanstack/react-router';
-import { Suspense, useCallback, useMemo, useState, useSyncExternalStore } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { LngLat } from '@swelldays/contracts/core';
 import { usePanelExpansionStore } from 'shared/model/panelExpansionStore';
 import { resolveAppRouteIntent } from 'shared/model/appRouteIntent';
@@ -58,7 +58,8 @@ function useDocumentHidden() {
  */
 export function GlobeScene() {
   const { data: spots = [] } = useMapSpots(getOverviewMapBounds());
-  const { markMapReady } = useFirstVisitMapReadiness();
+  const { markMapReady, markMapFailed, markMapLoading, mapAttempt } = useFirstVisitMapReadiness();
+  useEffect(() => markMapLoading, [markMapLoading]);
   const mapSpots = useMemo<MapSpotProjection[]>(
     () => spots.map(({ id, slug, name, coords, status }) => ({ id, slug, name, coords, status })),
     [spots],
@@ -258,6 +259,7 @@ export function GlobeScene() {
   return (
     <div className={classes.root}>
       <GlobeMap
+        key={mapAttempt}
         spots={mapSpots}
         selectedSpotId={selectedSpotId}
         onSpotSelect={handleSpotSelect}
@@ -271,6 +273,7 @@ export function GlobeScene() {
         onUserExploreStart={() => setIsUserExploring(true)}
         onUserExploreEnd={() => setIsUserExploring(false)}
         onMapReady={markMapReady}
+        onMapError={markMapFailed}
         onCameraGestureStart={handleCameraGestureStart}
         renderSelectedSpotContent={(spot) => <FavoriteSpotButton spotId={spot.id} />}
         onClearSelectedSpot={sceneMode.kind === 'uploadSpotSelection' ? undefined : handleClearSelectedSpot}

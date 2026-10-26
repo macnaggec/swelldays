@@ -22,7 +22,7 @@ vi.mock('entities/SurfSession', () => ({
           endsAt: new Date('2026-06-24T10:00:00.000Z'),
           status: 'PUBLISHED',
           createdAt: new Date('2026-06-24T11:00:00.000Z'),
-          spot: { id: 'spot-1', name: 'Pipeline', location: 'Oahu' },
+          spot: { id: 'spot-1', slug: 'pipeline', name: 'Pipeline', location: 'Oahu' },
           photographer: { id: 'photographer-1', name: 'Kai' },
           thumbnailUrl: 'https://example.com/session.jpg',
           mediaCount: 1,
@@ -92,4 +92,19 @@ describe('SessionFeed', () => {
 
     expect(mocks.refetch).toHaveBeenCalledOnce();
   });
+});
+
+
+it('exposes a real session anchor and preserves modified-click navigation', () => {
+  mocks.isError = false;
+  mocks.isLoading = false;
+  const onSessionClick = vi.fn();
+  render(<MantineProvider><AppShellLayoutPolicyProvider routeIntent="browse" browseExpanded={false} galleryExpanded={false}><SessionFeed onSessionClick={onSessionClick} /></AppShellLayoutPolicyProvider></MantineProvider>);
+  const link = screen.getByRole('link', { name: /Pipeline/ });
+  expect(link).toHaveAttribute('href', '/pipeline/session/session-1');
+  link.addEventListener('click', (event) => event.preventDefault(), { once: true });
+  fireEvent.click(link, { ctrlKey: true });
+  expect(onSessionClick).not.toHaveBeenCalled();
+  fireEvent.click(link);
+  expect(onSessionClick).toHaveBeenCalledOnce();
 });

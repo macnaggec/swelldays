@@ -1,4 +1,5 @@
 import { Spot as PrismaSpot } from '@prisma/client';
+import { isPublicSpotSlug } from '@swelldays/contracts/core';
 import type { MediaType } from '@swelldays/contracts/core';
 import type { Spot, SpotStatus } from '@swelldays/contracts/core';
 import { prisma } from 'server/db';
@@ -151,10 +152,10 @@ export class SpotRepository implements ISpotRepository {
   // window would need to serialize anyway, and spot creation is rare enough
   // that this cost is invisible.
   private async generateUniqueSlug(name: string): Promise<string> {
-    const base = slugify(name);
+    const base = slugify(name) || 'surf-spot';
     let candidate = base;
     let suffix = 2;
-    while (await prisma.spot.findUnique({ where: { slug: candidate }, select: { id: true } })) {
+    while (!isPublicSpotSlug(candidate) || await prisma.spot.findUnique({ where: { slug: candidate }, select: { id: true } })) {
       candidate = `${base}-${suffix}`;
       suffix += 1;
     }

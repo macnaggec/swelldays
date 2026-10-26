@@ -1,5 +1,6 @@
 import { Anchor, Text, ThemeIcon } from '@mantine/core';
 import { IconCamera, IconCash, IconMail, IconSearch } from '@tabler/icons-react';
+import { SELLER_EARNINGS_COPY } from '@swelldays/contracts/core';
 import materials from 'shared/ui/design-system/materials.module.css';
 import classes from './AboutPanel.module.css';
 
@@ -55,10 +56,7 @@ export function AboutPanel() {
               Payouts
             </Text>
             <Text className={classes.cardBody}>
-              Photographers receive the majority of each sale. Swelldays&apos; share covers
-              payment-processing costs, which vary by payment method, plus a service fee.
-              Payouts may be requested once the available balance reaches $20 and are processed
-              manually within several business days.
+              {SELLER_EARNINGS_COPY}
             </Text>
           </div>
         </div>

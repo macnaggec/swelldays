@@ -1,13 +1,12 @@
-import { ActionIcon } from '@mantine/core';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import swelldaysLogoUrl from '../../../assets/startup/swelldays-logo-white.png';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { AppButton } from 'shared/ui/AppButton';
+import { FirstVisitPresentationContext } from '../model/firstVisitPresentation';
 import { FirstVisitMapReadinessContext } from '../model/firstVisitMapReadiness';
-import { resolveFirstVisitPresentation } from '../model/firstVisitPolicy';
-import {
-  readFirstVisitAcknowledgement,
-  writeFirstVisitAcknowledgement,
-} from '../model/firstVisitStorage';
+import { firstVisitEntryReducer } from '../model/firstVisitEntry';
+import { resolveFirstVisitIntent, resolveFirstVisitPresentation, type FirstVisitIntent } from '../model/firstVisitPolicy';
+import { readFirstVisitAcknowledgement, writeFirstVisitAcknowledgement } from '../model/firstVisitStorage';
 import { useFirstVisitHandoff } from '../model/useFirstVisitHandoff';
+import { FirstVisitDocument } from './FirstVisitDocument';
 import classes from './FirstVisitGate.module.css';
 
 interface FirstVisitGateProps {
@@ -15,176 +14,123 @@ interface FirstVisitGateProps {
   isEligibleRoute: boolean;
   isSessionLoading: boolean;
   isAuthenticated: boolean;
+  intent?: FirstVisitIntent;
+  presentationKey?: string;
+  onOpenPresentation?: () => void;
+  onEntered?: () => void;
 }
 
-export function FirstVisitGate({
-  children,
-  isEligibleRoute,
-  isSessionLoading,
-  isAuthenticated,
-}: FirstVisitGateProps) {
-  /*
-   * Review mode decides only where the introduction starts, never that it stays.
-   * Overriding the acknowledgement on every render held the introduction open
-   * after the visitor had entered, which left the app underneath inert: visible,
-   * but with nothing clickable or draggable.
-   */
-  const isReviewMode = useMemo(
-    () => new URLSearchParams(window.location.search).get('firstVisitReview') === '1',
-    [],
-  );
-
+export function FirstVisitGate({ children, isEligibleRoute, isAuthenticated, intent: controlledIntent, presentationKey, onOpenPresentation, onEntered }: FirstVisitGateProps) {
+  const initialIntent = useMemo(() => resolveFirstVisitIntent(window.location.hash, window.location.search), []);
+  const intent = controlledIntent ?? initialIntent;
+  const navigationKey = presentationKey ?? intent;
+  const [renderedNavigationKey, setRenderedNavigationKey] = useState(navigationKey);
+  const wasCoveringApp = useRef(false);
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const openPresentation = useCallback(() => {
+    returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    onOpenPresentation?.();
+  }, [onOpenPresentation]);
+  const presentationNavigation = useMemo(() => onOpenPresentation ? { open: openPresentation } : null, [onOpenPresentation, openPresentation]);
+  const [hasVisited, setHasVisited] = useState(readFirstVisitAcknowledgement);
+  const [entry, dispatch] = useReducer(firstVisitEntryReducer, { phase: 'reading', mapStatus: 'loading' });
+  const [mapAttempt, setMapAttempt] = useState(0);
+  const appRef = useRef<HTMLDivElement | null>(null);
+  const focusRequest = useRef<'app' | 'intro' | null>(null);
   const overlayRef = useRef<HTMLElement | null>(null);
-  const [hasVisited, setHasVisited] = useState(
-    () => (isReviewMode ? false : readFirstVisitAcknowledgement()),
-  );
-  const [isMapReady, setIsMapReady] = useState(false);
-  const [entryRequested, setEntryRequested] = useState(false);
-
   const presentation = resolveFirstVisitPresentation({
-    isEligibleRoute,
-    isSessionLoading: isReviewMode ? false : isSessionLoading,
-    isAuthenticated: isReviewMode ? false : isAuthenticated,
-    hasVisited,
+    isEligibleRoute, isAuthenticated, hasVisited, intent,
+    // Public reading never waits for the authentication endpoint.
+    isSessionLoading: false,
   });
-  const isCoveringApp = presentation !== 'hidden';
-
+  if (navigationKey !== renderedNavigationKey) {
+    setRenderedNavigationKey(navigationKey);
+    dispatch({ type: presentation === 'intro' ? 'show' : 'hide' });
+  }
+  const isCoveringApp = presentation === 'intro' && entry.phase !== 'map';
+  const handleCommit = useCallback(() => dispatch({ type: 'enter' }), []);
+  const { reveal, rest } = useFirstVisitHandoff({ surfaceRef: overlayRef });
   const acknowledgeVisit = useCallback(() => {
     writeFirstVisitAcknowledgement();
     setHasVisited(true);
+    dispatch({ type: 'revealed' });
+    onEntered?.();
+  }, [onEntered]);
+
+  useEffect(() => {
+    if (!isCoveringApp || entry.phase !== 'revealing') return;
+    reveal(acknowledgeVisit);
+    return rest;
+  }, [acknowledgeVisit, entry.phase, isCoveringApp, rest, reveal]);
+
+  const markMapReady = useCallback(() => dispatch({ type: 'ready' }), []);
+  const markMapLoading = useCallback(() => dispatch({ type: 'retry' }), []);
+  const markMapFailed = useCallback(() => dispatch({ type: 'failed' }), []);
+  const readiness = useMemo(() => ({ isMapReady: entry.mapStatus === 'ready', markMapReady, markMapFailed, markMapLoading, mapAttempt }), [entry.mapStatus, mapAttempt, markMapFailed, markMapLoading, markMapReady]);
+  useEffect(() => {
+    if (!isCoveringApp || entry.phase !== 'waiting') return;
+    const timer = window.setTimeout(markMapFailed, 20_000);
+    return () => window.clearTimeout(timer);
+  }, [entry.phase, isCoveringApp, markMapFailed]);
+  useLayoutEffect(() => {
+    if (isCoveringApp && !wasCoveringApp.current && intent === 'intro') {
+      if (!returnFocus.current?.isConnected) returnFocus.current = document.activeElement instanceof HTMLElement && appRef.current?.contains(document.activeElement) ? document.activeElement : null;
+      overlayRef.current?.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true });
+    }
+    if (focusRequest.current === 'app' && !isCoveringApp && entry.phase === 'map') {
+      const targets = appRef.current?.querySelectorAll<HTMLElement>('input:not([disabled]):not([type="hidden"]), button:not([disabled]), [tabindex="0"], a[href]');
+      const target = targets && [...targets].find((element) => !element.closest('[inert], [hidden], [aria-hidden="true"]'));
+      target?.focus({ preventScroll: true });
+      focusRequest.current = null;
+    } else if (focusRequest.current === 'intro' && isCoveringApp && entry.phase === 'reading') {
+      overlayRef.current?.querySelector<HTMLElement>('a[href="/#map"]')?.focus({ preventScroll: true });
+      focusRequest.current = null;
+    } else if (!isCoveringApp && wasCoveringApp.current) {
+      const target = returnFocus.current?.isConnected && !returnFocus.current.closest('[role="menu"]') ? returnFocus.current : appRef.current?.querySelector<HTMLElement>('button[aria-label="Open menu"]');
+      target?.focus({ preventScroll: true });
+    }
+    wasCoveringApp.current = isCoveringApp;
+  }, [entry.phase, intent, isCoveringApp]);
+  const handleEnter = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    focusRequest.current = event.detail === 0 ? 'app' : null;
+    handleCommit();
+  }, [handleCommit]);
+  const keepReading = useCallback(() => {
+    focusRequest.current = 'intro';
+    dispatch({ type: 'cancel' });
+    rest();
+  }, [rest]);
+
+  const retryMap = useCallback(() => {
+    dispatch({ type: 'retry' });
+    dispatch({ type: 'enter' });
+    setMapAttempt((attempt) => attempt + 1);
   }, []);
 
-  const handleCommit = useCallback(() => setEntryRequested(true), []);
-
-  const {
-    onWheel,
-    onTouchStart,
-    onTouchMove,
-    onTouchEnd,
-    reveal,
-    rest,
-  } = useFirstVisitHandoff({
-    surfaceRef: overlayRef,
-    isActive: presentation === 'intro',
-    onCommit: handleCommit,
-  });
-
-  useEffect(() => {
-    // Review mode is an explicit request to watch the introduction, so the
-    // signed-in bypass must not close it before it has been seen.
-    if (isReviewMode || isSessionLoading || !isAuthenticated || hasVisited) return;
-    writeFirstVisitAcknowledgement();
-    // Authenticated people already know the product. Remembering the bypass
-    // prevents the introduction appearing if they later sign out here.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- session resolution owns this persistent gate transition
-    setHasVisited(true);
-  }, [hasVisited, isAuthenticated, isReviewMode, isSessionLoading]);
-
-  useEffect(() => {
-    if (!entryRequested) return;
-
-    // The introduction exists so nobody meets a half-drawn map. Until Mapbox
-    // reports its first paint the cover stays put, whatever the visitor did.
-    if (!isMapReady) {
-      rest();
-      return;
-    }
-
-    reveal(acknowledgeVisit);
-  }, [acknowledgeVisit, entryRequested, isMapReady, rest, reveal]);
-
-  const markMapReady = useCallback(() => setIsMapReady(true), []);
-
-  const readiness = useMemo(
-    () => ({ isMapReady, markMapReady }),
-    [isMapReady, markMapReady],
-  );
-
-  const isWaitingForMap = entryRequested && !isMapReady;
-
   return (
+    <FirstVisitPresentationContext.Provider value={presentationNavigation}>
     <FirstVisitMapReadinessContext.Provider value={readiness}>
-      <div
-        className={classes.app}
-        data-first-visit-app
-        inert={isCoveringApp ? true : undefined}
-        aria-hidden={isCoveringApp || undefined}
-      >
+      <div ref={appRef} className={classes.app} data-first-visit-app inert={isCoveringApp ? true : undefined} aria-hidden={isCoveringApp || undefined}>
         {children}
       </div>
-
       {isCoveringApp && (
-        <section
-          ref={overlayRef}
-          className={classes.overlay}
-          data-first-visit-state={presentation}
-          role={presentation === 'intro' ? 'dialog' : undefined}
-          aria-modal={presentation === 'intro' || undefined}
-          aria-labelledby={presentation === 'intro' ? 'first-visit-title' : undefined}
-          aria-hidden={presentation === 'checking-session' || undefined}
-          onWheel={onWheel}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-          onTouchCancel={onTouchEnd}
-        >
-          <div className={classes.veil} aria-hidden="true" />
-
-          {presentation === 'intro' && (
-            <>
-              <div
-                className={classes.artwork}
-                data-first-visit-artwork
-                aria-hidden="true"
-              >
-                <div className={classes.plate} />
-                <div className={`${classes.plate} ${classes.plateTrailing}`} />
-              </div>
-
-              <div className={classes.logo}>
-                <span className={classes.rise}>
-                  <img
-                    src={swelldaysLogoUrl}
-                    alt="Swelldays"
-                    className={classes.logoImage}
-                  />
-                </span>
-              </div>
-
-              <div className={classes.content}>
-                <div className={classes.message}>
-                  <p className={classes.eyebrow}>
-                    <span className={classes.rise}>Buy · Sell · Share</span>
-                  </p>
-                  <h1 id="first-visit-title" className={classes.title}>
-                    <span className={classes.rise}>Surf photos &amp; videos</span>
-                  </h1>
-                  <p className={classes.tagline}>
-                    <span className={classes.rise}>
-                      Find your session on the map. Sell your shots. Or just share
-                      the day with the lineup.
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              <div className={classes.dock}>
-                <ActionIcon
-                  type="button"
-                  variant="transparent"
-                  className={classes.enterButton}
-                  onClick={handleCommit}
-                  aria-label={isWaitingForMap ? 'Preparing the map' : 'Enter the map'}
-                  aria-busy={isWaitingForMap || undefined}
-                  disabled={isWaitingForMap}
-                >
-                  <span className={classes.thread} aria-hidden="true" />
-                </ActionIcon>
-              </div>
-            </>
-          )}
+        <section ref={overlayRef} className={classes.overlay} data-first-visit-state="intro" aria-label="About Swelldays" onKeyDown={(event) => {
+          if (event.key === 'Escape' && (entry.phase === 'waiting' || entry.phase === 'revealing')) { event.preventDefault(); keepReading(); }
+        }}>
+          <FirstVisitDocument onEnter={handleEnter} />
+          {entry.mapStatus === 'error' && <div className={classes.status}>
+            <p role="alert">Unable to load the map. You can retry or keep reading.</p>
+            <AppButton onClick={retryMap}>Retry map</AppButton>
+          </div>}
+          {entry.phase === 'waiting' && <div className={classes.status}>
+            <p role="status">Preparing the map</p>
+            <AppButton onClick={keepReading}>Keep reading</AppButton>
+          </div>}
         </section>
       )}
     </FirstVisitMapReadinessContext.Provider>
+    </FirstVisitPresentationContext.Provider>
   );
 }

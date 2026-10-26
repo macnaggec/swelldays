@@ -22,6 +22,7 @@ import { TRPCProvider } from 'shared/lib/trpc';
 import { queryClient } from 'shared/lib/queryClient';
 import { trpcClient } from 'shared/lib/trpcClient';
 import { webConfig } from 'config/env';
+import { releaseInitialSeoHead } from 'shared/lib/seoMeta';
 
 const SENTRY_STARTUP_DELAY_MS = 1_000;
 
@@ -57,7 +58,14 @@ function initializeSentryAfterFirstPaint() {
   window.requestAnimationFrame(scheduleAfterStartup);
 }
 
-ReactDOM
+async function startApp() {
+  // Preserve the initial public document until its React route is ready.
+  // The homepage loader is static: this does not wait for auth or inventory.
+  if (['/', '/buy-surf-photos', '/sell-surf-photos'].includes(window.location.pathname)) {
+    await router.load();
+  }
+  releaseInitialSeoHead();
+  ReactDOM
   .createRoot(document.getElementById('root')!)
   .render(
     <React.StrictMode>
@@ -81,4 +89,7 @@ ReactDOM
     </React.StrictMode>,
   );
 
-initializeSentryAfterFirstPaint();
+  initializeSentryAfterFirstPaint();
+}
+
+void startApp();

@@ -7,6 +7,14 @@ export {
 export type { MediaResourceType, MediaStatus } from './constants/media';
 
 export { getCapturedMediaCalendarDayKey } from './capturedMediaCalendarDay';
+export { RESERVED_SPOT_SLUGS, isPublicSpotSlug } from './seo/publicRoutes';
+export {
+  PUBLIC_ORIGIN, DEFAULT_SOCIAL_IMAGE, SELLER_EARNINGS_COPY,
+  publicCanonical, publicShortDate, publicDateRange, publicBreadcrumbs,
+  staticPublicDocument, spotPublicDocument, sessionPublicDocument, sessionPublicLink,
+  serializePublicJsonLd,
+} from './seo/publicDocument';
+export type { PublicDocument, PublicDocumentLink, StaticPublicPage } from './seo/publicDocument';
 
 export {
   ABOUT_PAGE_DESCRIPTION,
@@ -59,3 +67,4 @@ export type {
   UploadWorkspaceStatus,
   UploadWorkspaceSummary,
 } from './types/uploadWorkspace';
+export { FIRST_VISIT_CONTENT, type FirstVisitPath } from './seo/firstVisit';

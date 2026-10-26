@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   showBrowseResults: vi.fn(),
   notifyError: vi.fn(),
   markMapReady: vi.fn(),
+  markMapLoading: vi.fn(),
   addSpotState: {
     isActive: false,
     tempPin: null as LngLat | null,
@@ -97,6 +98,7 @@ vi.mock('features/FirstVisit', () => ({
   useFirstVisitMapReadiness: () => ({
     isMapReady: false,
     markMapReady: mocks.markMapReady,
+    markMapLoading: mocks.markMapLoading,
   }),
 }));
 
@@ -825,5 +827,15 @@ describe('GlobeScene map camera insets', () => {
     mocks.alternateDrawerTargetGeometry = true;
     mocks.drawerTargetGeometryReadCount = 1;
     expect(() => rerender(globeSceneTree())).not.toThrow();
+  });
+});
+
+describe('map readiness lifecycle', () => {
+  it('invalidates readiness when a full-page route removes the scene', () => {
+    mocks.markMapLoading.mockClear();
+    const view = renderGlobeScene();
+    expect(mocks.markMapLoading).not.toHaveBeenCalled();
+    view.unmount();
+    expect(mocks.markMapLoading).toHaveBeenCalledOnce();
   });
 });

@@ -17,9 +17,11 @@ import { Route as PageOrderSuccessRouteImport } from './routes/_page.order-succe
 import { Route as PanelIndexRouteImport } from './routes/_panel.index'
 import { Route as PanelSpotIdRouteImport } from './routes/_panel.$spotId'
 import { Route as PanelAboutRouteImport } from './routes/_panel.about'
+import { Route as PanelBuySurfPhotosRouteImport } from './routes/_panel.buy-surf-photos'
 import { Route as PanelCartRouteImport } from './routes/_panel.cart'
 import { Route as PanelGalleryRouteImport } from './routes/_panel.gallery'
 import { Route as PanelMeRouteImport } from './routes/_panel.me'
+import { Route as PanelSellSurfPhotosRouteImport } from './routes/_panel.sell-surf-photos'
 import { Route as PanelUploadRouteImport } from './routes/_panel.upload'
 import { Route as PageCheckoutPaddleRouteImport } from './routes/_page.checkout.paddle'
 import { Route as PanelSpotIdIndexRouteImport } from './routes/_panel.$spotId.index'
@@ -70,6 +72,11 @@ const PanelAboutRoute = PanelAboutRouteImport.update({
   path: '/about',
   getParentRoute: () => PanelRoute,
 } as any)
+const PanelBuySurfPhotosRoute = PanelBuySurfPhotosRouteImport.update({
+  id: '/buy-surf-photos',
+  path: '/buy-surf-photos',
+  getParentRoute: () => PanelRoute,
+} as any)
 const PanelCartRoute = PanelCartRouteImport.update({
   id: '/cart',
   path: '/cart',
@@ -83,6 +90,11 @@ const PanelGalleryRoute = PanelGalleryRouteImport.update({
 const PanelMeRoute = PanelMeRouteImport.update({
   id: '/me',
   path: '/me',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelSellSurfPhotosRoute = PanelSellSurfPhotosRouteImport.update({
+  id: '/sell-surf-photos',
+  path: '/sell-surf-photos',
   getParentRoute: () => PanelRoute,
 } as any)
 const PanelUploadRoute = PanelUploadRouteImport.update({
@@ -151,9 +163,11 @@ export interface FileRoutesByFullPath {
   '/order-success': typeof PageOrderSuccessRoute
   '/$spotId': typeof PanelSpotIdRouteWithChildren
   '/about': typeof PanelAboutRoute
+  '/buy-surf-photos': typeof PanelBuySurfPhotosRoute
   '/cart': typeof PanelCartRoute
   '/gallery': typeof PanelGalleryRoute
   '/me': typeof PanelMeRouteWithChildren
+  '/sell-surf-photos': typeof PanelSellSurfPhotosRoute
   '/upload': typeof PanelUploadRoute
   '/checkout/paddle': typeof PageCheckoutPaddleRoute
   '/$spotId/gallery': typeof PanelSpotIdGalleryRoute
@@ -172,8 +186,10 @@ export interface FileRoutesByTo {
   '/admin': typeof PageAdminRoute
   '/order-success': typeof PageOrderSuccessRoute
   '/about': typeof PanelAboutRoute
+  '/buy-surf-photos': typeof PanelBuySurfPhotosRoute
   '/cart': typeof PanelCartRoute
   '/gallery': typeof PanelGalleryRoute
+  '/sell-surf-photos': typeof PanelSellSurfPhotosRoute
   '/upload': typeof PanelUploadRoute
   '/checkout/paddle': typeof PageCheckoutPaddleRoute
   '/$spotId/gallery': typeof PanelSpotIdGalleryRoute
@@ -194,9 +210,11 @@ export interface FileRoutesById {
   '/_page/order-success': typeof PageOrderSuccessRoute
   '/_panel/$spotId': typeof PanelSpotIdRouteWithChildren
   '/_panel/about': typeof PanelAboutRoute
+  '/_panel/buy-surf-photos': typeof PanelBuySurfPhotosRoute
   '/_panel/cart': typeof PanelCartRoute
   '/_panel/gallery': typeof PanelGalleryRoute
   '/_panel/me': typeof PanelMeRouteWithChildren
+  '/_panel/sell-surf-photos': typeof PanelSellSurfPhotosRoute
   '/_panel/upload': typeof PanelUploadRoute
   '/_panel/': typeof PanelIndexRoute
   '/_page/checkout/paddle': typeof PageCheckoutPaddleRoute
@@ -219,9 +237,11 @@ export interface FileRouteTypes {
     | '/order-success'
     | '/$spotId'
     | '/about'
+    | '/buy-surf-photos'
     | '/cart'
     | '/gallery'
     | '/me'
+    | '/sell-surf-photos'
     | '/upload'
     | '/checkout/paddle'
     | '/$spotId/gallery'
@@ -240,8 +260,10 @@ export interface FileRouteTypes {
     | '/admin'
     | '/order-success'
     | '/about'
+    | '/buy-surf-photos'
     | '/cart'
     | '/gallery'
+    | '/sell-surf-photos'
     | '/upload'
     | '/checkout/paddle'
     | '/$spotId/gallery'
@@ -261,9 +283,11 @@ export interface FileRouteTypes {
     | '/_page/order-success'
     | '/_panel/$spotId'
     | '/_panel/about'
+    | '/_panel/buy-surf-photos'
     | '/_panel/cart'
     | '/_panel/gallery'
     | '/_panel/me'
+    | '/_panel/sell-surf-photos'
     | '/_panel/upload'
     | '/_panel/'
     | '/_page/checkout/paddle'
@@ -342,6 +366,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanelAboutRouteImport
       parentRoute: typeof PanelRoute
     }
+    '/_panel/buy-surf-photos': {
+      id: '/_panel/buy-surf-photos'
+      path: '/buy-surf-photos'
+      fullPath: '/buy-surf-photos'
+      preLoaderRoute: typeof PanelBuySurfPhotosRouteImport
+      parentRoute: typeof PanelRoute
+    }
     '/_panel/cart': {
       id: '/_panel/cart'
       path: '/cart'
@@ -361,6 +392,13 @@ declare module '@tanstack/react-router' {
       path: '/me'
       fullPath: '/me'
       preLoaderRoute: typeof PanelMeRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/_panel/sell-surf-photos': {
+      id: '/_panel/sell-surf-photos'
+      path: '/sell-surf-photos'
+      fullPath: '/sell-surf-photos'
+      preLoaderRoute: typeof PanelSellSurfPhotosRouteImport
       parentRoute: typeof PanelRoute
     }
     '/_panel/upload': {
@@ -506,9 +544,11 @@ const PanelMeRouteWithChildren =
 interface PanelRouteChildren {
   PanelSpotIdRoute: typeof PanelSpotIdRouteWithChildren
   PanelAboutRoute: typeof PanelAboutRoute
+  PanelBuySurfPhotosRoute: typeof PanelBuySurfPhotosRoute
   PanelCartRoute: typeof PanelCartRoute
   PanelGalleryRoute: typeof PanelGalleryRoute
   PanelMeRoute: typeof PanelMeRouteWithChildren
+  PanelSellSurfPhotosRoute: typeof PanelSellSurfPhotosRoute
   PanelUploadRoute: typeof PanelUploadRoute
   PanelIndexRoute: typeof PanelIndexRoute
 }
@@ -516,9 +556,11 @@ interface PanelRouteChildren {
 const PanelRouteChildren: PanelRouteChildren = {
   PanelSpotIdRoute: PanelSpotIdRouteWithChildren,
   PanelAboutRoute: PanelAboutRoute,
+  PanelBuySurfPhotosRoute: PanelBuySurfPhotosRoute,
   PanelCartRoute: PanelCartRoute,
   PanelGalleryRoute: PanelGalleryRoute,
   PanelMeRoute: PanelMeRouteWithChildren,
+  PanelSellSurfPhotosRoute: PanelSellSurfPhotosRoute,
   PanelUploadRoute: PanelUploadRoute,
   PanelIndexRoute: PanelIndexRoute,
 }

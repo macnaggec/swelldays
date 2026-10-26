@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'test/setup/render';
 import { MenuControl } from './MenuControl';
@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   notifyError: vi.fn(),
   openAuthModal: vi.fn(),
+  openIntro: vi.fn(),
   preloadAuthSurface: vi.fn(() => Promise.resolve()),
   preloadRoute: vi.fn(),
   signOut: vi.fn(),
@@ -37,17 +38,21 @@ vi.mock('@mantine/core', async (importOriginal) => {
         children,
         color: _color,
         onClick,
+        href,
         onPointerEnter,
         onPointerDown,
         onFocus,
       }: {
         children: ReactNode;
         color?: string;
-        onClick?: () => void;
+        onClick?: (event: MouseEvent<HTMLElement>) => void;
+        href?: string;
         onPointerEnter?: () => void;
         onPointerDown?: () => void;
         onFocus?: () => void;
-      }) => (
+      }) => href ? (
+        <a role="menuitem" href={href} onClick={onClick} onPointerEnter={onPointerEnter} onPointerDown={onPointerDown} onFocus={onFocus}>{children}</a>
+      ) : (
         <button
           type="button"
           role="menuitem"
@@ -80,6 +85,10 @@ vi.mock('shared/hooks/useUser', () => ({
 vi.mock('features/Auth', () => ({
   useAuthModal: () => ({ open: mocks.openAuthModal }),
   preloadAuthSurface: mocks.preloadAuthSurface,
+}));
+
+vi.mock('features/FirstVisit', () => ({
+  useFirstVisitPresentation: () => ({ open: mocks.openIntro }),
 }));
 
 vi.mock('shared/lib/auth', () => ({
@@ -229,5 +238,16 @@ describe('MenuControl', () => {
       );
     });
     expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('presentation menu entry', () => {
+  it('offers a real intro link and opens it without replacing the current route', () => {
+    render(<MenuControl />);
+    const link = screen.getByRole('menuitem', { name: 'How it works' });
+    expect(link).toHaveAttribute('href', '/#intro');
+    fireEvent.click(link);
+    expect(mocks.openIntro).toHaveBeenCalledOnce();
   });
 });

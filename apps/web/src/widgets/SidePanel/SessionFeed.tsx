@@ -22,7 +22,7 @@ import styles from './SessionFeed.module.css';
  * and jump instead. `layoutDependency` then limits re-measuring to exactly that change,
  * so ordinary feed updates do not pay for it.
  */
-function FeedCardSlot({ session, onClick }: { session: SurfSessionItem; onClick: () => void }) {
+function FeedCardSlot({ session, onClick }: { session: SurfSessionItem; onClick?: () => void }) {
   const columns = usePanelCollectionColumns();
   return (
     <motion.div
@@ -35,15 +35,26 @@ function FeedCardSlot({ session, onClick }: { session: SurfSessionItem; onClick:
   );
 }
 
-function SessionCard({ session, onClick }: { session: SurfSessionItem; onClick: () => void }) {
+function SessionCard({ session, onClick }: { session: SurfSessionItem; onClick?: () => void }) {
   return (
-    <div className={styles.card} onClick={onClick}>
+    <a
+      className={styles.card}
+      href={`/${session.spot.slug}/session/${session.id}`}
+      onClick={(event) => {
+        if (!onClick || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        onClick();
+      }}
+    >
       <div className={styles.cardMedia}>
         {session.thumbnailUrl ? (
           <img
             src={session.thumbnailUrl}
             alt={session.spot.name}
             className={styles.thumbnail}
+            width={1600}
+            height={1000}
+            decoding="async"
           />
         ) : (
           <Center className={styles.emptyMedia}>
@@ -64,7 +75,7 @@ function SessionCard({ session, onClick }: { session: SurfSessionItem; onClick: 
           {formatDateRange(session.startsAt, session.endsAt)}
         </Text>
       </Stack>
-    </div>
+    </a>
   );
 }
 
@@ -141,7 +152,7 @@ export function SessionFeed({
               <FeedCardSlot
                 key={s.id}
                 session={s}
-                onClick={() => onSessionClick?.(s)}
+                onClick={onSessionClick ? () => onSessionClick(s) : undefined}
               />
             ))}
           </PanelCollectionGrid>

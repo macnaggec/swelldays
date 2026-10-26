@@ -16,6 +16,8 @@ vi.mock('server/db', () => ({
     spot: {
       findMany: vi.fn(),
       update: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
     },
     userFavoriteSpot: {
       findUnique: vi.fn(),
@@ -174,5 +176,19 @@ describe('SpotRepository.isSpotFavorited', () => {
     mockFavoriteFindUnique.mockResolvedValue(null);
 
     await expect(repo.isSpotFavorited('spot-1', 'user-1')).resolves.toBe(false);
+  });
+});
+
+
+describe('reserved spot slugs', () => {
+  it.each(['About', 'Buy Surf Photos', 'Sell Surf Photos', 'Cart', 'Assets'])('suffixes reserved name %s at creation', async (name) => {
+    vi.mocked(prisma.spot.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.spot.create).mockResolvedValue({
+      id: 'new-spot', slug: 'safe-slug', name, location: 'Bali', lat: null, lng: null,
+      status: 'unverified', creatorId: null, createdAt: new Date(), coverUrl: null, searchRadius: null,
+    });
+    await repo.createSpot({ name, location: 'Bali', lat: 1, lng: 2, status: 'unverified', creatorId: 'user-1' });
+    const call = vi.mocked(prisma.spot.create).mock.calls[0];
+    expect(call?.[0].data.slug).toBe(`${name.toLowerCase().replaceAll(' ', '-')}-2`);
   });
 });

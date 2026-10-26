@@ -65,12 +65,17 @@ export class SurfSessionRepository implements ISurfSessionRepository {
       const rows = await prisma.surfSession.findMany({
         where: {
           status: SurfSessionStatus.PUBLISHED,
+          spotId: { not: null },
+          startsAt: { not: null },
+          endsAt: { not: null },
+          mediaItems: { some: { status: MediaStatus.PUBLISHED, deletedAt: null } },
           ...(filter.spotId ? { spotId: filter.spotId } : {}),
           ...(filter.favoriteUserId ? {
             spot: { favoritedBy: { some: { userId: filter.favoriteUserId } } },
           } : {}),
           ...(filter.dateFrom || filter.dateTo ? {
             startsAt: {
+              not: null,
               ...(filter.dateFrom ? { gte: filter.dateFrom } : {}),
               ...(filter.dateTo ? { lt: filter.dateTo } : {}),
             },
@@ -78,7 +83,7 @@ export class SurfSessionRepository implements ISurfSessionRepository {
         },
         take: filter.limit + 1,
         ...(filter.cursor ? { cursor: { id: filter.cursor }, skip: 1 } : {}),
-        orderBy: { startsAt: 'desc' },
+        orderBy: [{ startsAt: 'desc' }, { id: 'desc' }],
         include: sessionProjectionInclude,
       });
 

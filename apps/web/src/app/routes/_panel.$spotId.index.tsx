@@ -1,10 +1,12 @@
 import { createFileRoute, useMatch, useNavigate } from '@tanstack/react-router';
 import { SessionFeed } from 'widgets/SidePanel';
-import { buildCanonicalLink } from 'shared/lib/seoMeta';
+import { loadSpotDocument } from 'app/lib/publicDocuments';
+import { buildPublicDocumentHead } from 'shared/lib/seoMeta';
 import { usePanelFeedLayoutReadyChange, usePanelFilter } from '../lib/panelContexts';
 
 export const Route = createFileRoute('/_panel/$spotId/')({
-  head: ({ params }) => ({ links: buildCanonicalLink(`/${params.spotId}`) }),
+  loader: ({ context: { queryClient }, params }) => loadSpotDocument(queryClient, params.spotId, false),
+  head: ({ loaderData }) => loaderData ? buildPublicDocumentHead(loaderData) : {},
   component: SpotFeed,
 });
 

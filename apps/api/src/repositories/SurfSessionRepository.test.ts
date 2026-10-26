@@ -147,3 +147,18 @@ describe('SurfSessionRepository.retire', () => {
     await expect(repo.retire('session-1', 'user-1')).rejects.toThrow(BadRequestError);
   });
 });
+
+describe('public discovery query', () => {
+  it('requires real published media and a complete session, and orders ties deterministically', async () => {
+    mockSessionFindMany.mockResolvedValue([]);
+    await repo.listPublished({ limit: 20 });
+    expect(mockSessionFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        status: 'PUBLISHED',
+        spotId: { not: null }, startsAt: { not: null }, endsAt: { not: null },
+        mediaItems: { some: { status: 'PUBLISHED', deletedAt: null } },
+      }),
+      orderBy: [{ startsAt: 'desc' }, { id: 'desc' }],
+    }));
+  });
+});
