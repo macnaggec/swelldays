@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const SHELL_HTML = `<!doctype html>
@@ -62,6 +63,20 @@ describe('publicPagesRouter', () => {
     expect(res.status).toBe(200);
     expect(html).toContain('<title>Buy and Sell Surf Photos &amp; Videos | Swelldays</title>');
     expect(html).toContain('<link rel="canonical" href="https://swelldays.surf/" />');
+  });
+
+  it('preserves the existing loading shell beside the initial welcome for early returning-visit selection', async () => {
+    const shell = readFileSync('apps/web/index.html', 'utf8');
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(shell, { headers: { 'Content-Type': 'text/html' } })));
+    const response = await publicPagesRouter.request('/');
+    const html = await response.text();
+
+    expect(html).toContain('<div data-first-visit-loader aria-hidden="true">');
+    expect(html).toContain('<div data-bootstrap-shell');
+    expect(html).toContain('<div data-first-visit-initial>');
+    expect(html).toContain('data-first-visit-description');
+    expect(html.match(/data-first-visit-action/g)).toHaveLength(2);
+    expect(html.match(/id="root"/g)).toHaveLength(1);
   });
 
   it('serves the about page with about copy', async () => {

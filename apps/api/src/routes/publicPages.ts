@@ -8,8 +8,8 @@ import { apiConfig } from 'server/config/env';
 import { spotRepository } from 'server/repositories/SpotRepository';
 import { surfSessionRepository } from 'server/repositories/SurfSessionRepository';
 import { injectHead } from 'server/lib/htmlHead';
-import { firstVisitHtml } from 'server/lib/firstVisitHtml';
-import { injectInitialBody, injectPublicDocument } from 'server/lib/publicDocumentHtml';
+import { injectFirstVisitHtml } from 'server/lib/firstVisitHtml';
+import { injectPublicDocument } from 'server/lib/publicDocumentHtml';
 import { buildSitemapXml, type SitemapEntry } from 'server/lib/sitemapXml';
 
 async function fetchAppShell(): Promise<string> {
@@ -34,7 +34,7 @@ async function renderDocument(document: PublicDocument): Promise<string> {
   });
   // Existing map/gallery drawers keep their approved UI. Supplemental SEO
   // bodies must not flash on startup or disappear when React takes over.
-  if (document.path === '/') return injectInitialBody(shell, firstVisitHtml());
+  if (document.path === '/') return injectFirstVisitHtml(shell);
   return ['/buy-surf-photos', '/sell-surf-photos'].includes(document.path)
     ? injectPublicDocument(shell, document)
     : shell;

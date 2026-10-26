@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { createBundleModuleInventoryPlugin } from './scripts/bundleBudget';
+import { createFirstVisitBootstrapPlugin } from './scripts/firstVisitBootstrap';
 import { decodeWebEnvironment } from './src/config/decodeWebEnvironment';
 
 const environmentDirectory = fileURLToPath(new URL('.', import.meta.url));
@@ -44,6 +45,7 @@ export default defineConfig(({ mode }) => {
       }),
       react(),
       tsconfigPaths(),
+      createFirstVisitBootstrapPlugin(environmentDirectory),
       ...(mode === 'production'
         ? [createBundleModuleInventoryPlugin(environmentDirectory)]
         : []),

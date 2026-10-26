@@ -1,3 +1,6 @@
+export const FIRST_VISIT_STORAGE_KEY = 'swelldays:first-visit:v1';
+export const FIRST_VISIT_ACKNOWLEDGEMENT = 'seen';
+
 export type FirstVisitIntent = 'auto' | 'intro' | 'map';
 
 export type FirstVisitPresentation = 'checking-session' | 'intro' | 'hidden';

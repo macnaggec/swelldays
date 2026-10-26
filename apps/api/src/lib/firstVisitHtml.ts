@@ -1,5 +1,11 @@
 import { FIRST_VISIT_CONTENT as content } from '@swelldays/contracts/core';
-import { escapeHtml as e } from './publicDocumentHtml';
+import { escapeHtml as e, injectInitialBody } from './publicDocumentHtml';
+
+export function injectFirstVisitHtml(shell: string): string {
+  const bootstrap = /<div\b[^>]*\bdata-bootstrap-shell\b[^>]*>[\s\S]*?<\/div>/.exec(shell)?.[0]
+    ?? '<div data-bootstrap-shell aria-hidden="true"></div>';
+  return injectInitialBody(shell, `<div data-first-visit-initial>${firstVisitHtml()}</div><div data-first-visit-loader aria-hidden="true">${bootstrap}</div>`);
+}
 
 export function firstVisitHtml(): string {
   const paths = content.paths.map((path) => `<section data-first-visit-path="${e(path.id)}" id="${path.id === 'surfer' ? 'map' : e(path.id)}" aria-labelledby="first-visit-${e(path.id)}"><p data-first-visit-audience>${e(path.audience)}</p><h2 id="first-visit-${e(path.id)}">${e(path.heading)}</h2><p data-first-visit-description>${e(path.intro)}</p><a data-first-visit-action href="${e(path.action.href)}">${e(path.action.label)}</a>${path.id === 'surfer' ? `<noscript><p>${e(content.noScript)}</p></noscript>` : ''}</section>`).join('');
