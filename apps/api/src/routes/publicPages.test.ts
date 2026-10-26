@@ -73,7 +73,7 @@ describe('publicPagesRouter', () => {
 
     expect(html).toContain('<div data-first-visit-loader aria-hidden="true">');
     expect(html).toContain('<div data-bootstrap-shell');
-    expect(html).toContain('<div data-first-visit-initial>');
+    expect(html).toContain('<div data-first-visit-initial data-first-visit-preserved>');
     expect(html).toContain('data-first-visit-description');
     expect(html.match(/data-first-visit-action/g)).toHaveLength(2);
     expect(html.match(/id="root"/g)).toHaveLength(1);

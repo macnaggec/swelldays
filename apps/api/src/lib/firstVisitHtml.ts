@@ -4,7 +4,10 @@ import { escapeHtml as e, injectInitialBody } from './publicDocumentHtml';
 export function injectFirstVisitHtml(shell: string): string {
   const bootstrap = /<div\b[^>]*\bdata-bootstrap-shell\b[^>]*>[\s\S]*?<\/div>/.exec(shell)?.[0]
     ?? '<div data-bootstrap-shell aria-hidden="true"></div>';
-  return injectInitialBody(shell, `<div data-first-visit-initial>${firstVisitHtml()}</div><div data-first-visit-loader aria-hidden="true">${bootstrap}</div>`);
+  // Keep the painted welcome outside the root React replaces. Moving it later
+  // disconnects animated descendants and can restart their entrance animations.
+  const withLoader = injectInitialBody(shell, `<div data-first-visit-loader aria-hidden="true">${bootstrap}</div>`);
+  return withLoader.replace('<div id="root">', `<div data-first-visit-initial data-first-visit-preserved>${firstVisitHtml()}</div><div id="root">`);
 }
 
 export function firstVisitHtml(): string {

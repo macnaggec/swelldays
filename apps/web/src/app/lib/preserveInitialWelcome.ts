@@ -1,9 +1,13 @@
-/** Preserve painted nodes so background React startup cannot create a late welcome LCP. */
+/** Adopt the server-positioned welcome without moving its already-painted nodes. */
 export function preserveInitialWelcome(root: HTMLElement): void {
-  if (document.documentElement.getAttribute('data-first-visit-startup') === 'app') return;
-  const initial = root.querySelector<HTMLElement>('[data-first-visit-initial]');
+  const initial = root.ownerDocument.querySelector<HTMLElement>('[data-first-visit-initial]');
   if (!initial) return;
+  if (document.documentElement.getAttribute('data-first-visit-startup') === 'app') {
+    // Returning/direct visits never painted this hidden document. Let React own
+    // any later request to open the welcome instead of retaining a hidden copy.
+    initial.remove();
+    return;
+  }
   initial.querySelector('[data-first-visit-startup-error]')?.remove();
   initial.setAttribute('data-first-visit-preserved', '');
-  root.after(initial);
 }
