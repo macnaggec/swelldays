@@ -3,21 +3,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MapRef } from 'react-map-gl';
 import { useGlobeAnimation } from './useGlobeAnimation';
 
-function createMapRef(zoom: number): React.RefObject<MapRef | null> {
+function createMapRef(zoom: number, isMoving = () => false): React.RefObject<MapRef | null> {
+  const map = {
+    getZoom: () => zoom,
+    getCenter: () => ({ lng: 10, lat: 20 }),
+    setCenter: vi.fn(),
+    isMoving,
+  };
   return {
     current: {
-      getMap: () => ({
-        getZoom: () => zoom,
-        getCenter: () => ({ lng: 10, lat: 20 }),
-        setCenter: vi.fn(),
-        isMoving: () => false,
-      }),
+      getMap: () => map,
     } as unknown as MapRef,
   };
 }
 
 describe('useGlobeAnimation', () => {
-  const requestAnimationFrameMock = vi.fn(() => 1);
+  const requestAnimationFrameMock = vi.fn<(callback: FrameRequestCallback) => number>(() => 1);
   const cancelAnimationFrameMock = vi.fn();
 
   beforeEach(() => {
@@ -40,6 +41,25 @@ describe('useGlobeAnimation', () => {
     act(() => result.current.startSpinning());
 
     expect(requestAnimationFrameMock).not.toHaveBeenCalled();
+  });
+
+  it('leaves camera transitions uninterrupted and resumes rotation after they finish', () => {
+    let moving = false;
+    const mapRef = createMapRef(2, () => moving);
+    const setCenter = mapRef.current!.getMap().setCenter;
+    const { result } = renderHook(() => useGlobeAnimation(mapRef));
+    act(() => result.current.startSpinning());
+    expect(setCenter).toHaveBeenCalledTimes(1);
+    vi.mocked(setCenter).mockClear();
+
+    moving = true;
+    act(() => requestAnimationFrameMock.mock.calls[0]![0](16));
+    expect(setCenter).not.toHaveBeenCalled();
+    expect(requestAnimationFrameMock).toHaveBeenCalledTimes(2);
+
+    moving = false;
+    act(() => requestAnimationFrameMock.mock.calls[1]![0](32));
+    expect(setCenter).toHaveBeenCalledTimes(1);
   });
 
   it('cancels the queued animation frame when spinning stops', () => {

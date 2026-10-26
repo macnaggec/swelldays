@@ -1109,7 +1109,7 @@ describe('GlobeMapComponent camera inset changes', () => {
     expect(mocks.easeTo).toHaveBeenCalledWith(expect.objectContaining({ duration: 0 }));
   });
 
-  it('does not ease the camera but does update padding when insets change with no spot selected', () => {
+  it('animates padding changes without changing the camera location when no spot is selected', () => {
     const { rerender } = render(
       <GlobeMapComponent
         spots={spots}
@@ -1134,8 +1134,70 @@ describe('GlobeMapComponent camera inset changes', () => {
       />,
     );
 
-    expect(mocks.easeTo).not.toHaveBeenCalled();
-    expect(mocks.setPadding).toHaveBeenCalledWith({ top: 0, right: 750, bottom: 0, left: 0 });
+    expect(mocks.easeTo).toHaveBeenCalledWith({
+      padding: { top: 0, right: 750, bottom: 0, left: 0 },
+      duration: 280,
+      essential: true,
+    });
+    expect(mocks.setPadding).not.toHaveBeenCalled();
+  });
+
+  it.each(['paused', 'ambientSpin', 'disabled'] as const)(
+    'moves smoothly between the lower and middle mobile snaps with %s motion',
+    (motionPolicy) => {
+      const renderMap = (bottom: number) => (
+        <GlobeMapComponent
+          spots={spots}
+          onSpotSelect={vi.fn()}
+          motionPolicy={motionPolicy}
+          cameraInsetsPx={{ top: 0, right: 0, bottom, left: 0 }}
+        />
+      );
+      const { rerender } = render(renderMap(132));
+      fireEvent.click(screen.getByRole('button', { name: /load map/i }));
+      mocks.setPadding.mockClear();
+      mocks.easeTo.mockClear();
+
+      for (const bottom of [422, 132]) {
+        rerender(renderMap(bottom));
+        expect(mocks.easeTo).toHaveBeenLastCalledWith({
+          padding: { top: 0, right: 0, bottom, left: 0 },
+          duration: motionPolicy === 'disabled' ? 0 : 280,
+          essential: true,
+        });
+      }
+      expect(mocks.easeTo).toHaveBeenCalledTimes(2);
+      expect(mocks.setPadding).not.toHaveBeenCalled();
+      expect(mocks.flyTo).not.toHaveBeenCalled();
+
+      rerender(renderMap(132));
+      expect(mocks.easeTo).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('restores the lower snap after focusing a spot with the middle snap open', () => {
+    const renderMap = (selectedSpotId: string | null, bottom: number) => (
+      <GlobeMapComponent
+        spots={spots}
+        selectedSpotId={selectedSpotId}
+        onSpotSelect={vi.fn()}
+        motionPolicy="paused"
+        cameraInsetsPx={{ top: 0, right: 0, bottom, left: 0 }}
+      />
+    );
+    const { rerender } = render(renderMap(null, 132));
+    fireEvent.click(screen.getByRole('button', { name: /load map/i }));
+    rerender(renderMap('spot-1', 422));
+    mocks.easeTo.mockClear();
+    mocks.setPadding.mockClear();
+
+    rerender(renderMap(null, 132));
+    expect(mocks.easeTo).toHaveBeenCalledWith({
+      padding: { top: 0, right: 0, bottom: 132, left: 0 },
+      duration: 280,
+      essential: true,
+    });
+    expect(mocks.setPadding).not.toHaveBeenCalled();
   });
 
   it('applies the current insets as padding once the map loads with no spot selected, so the globe centers in the free space beside the panel', () => {

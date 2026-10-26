@@ -74,9 +74,10 @@ export function useGlobeAnimation(
     const map = mapRef.current.getMap();
     if (!map) return;
 
-    // Check if map is currently moving/zooming/rotating by user
-    if (map.isMoving() && userInteractingRef.current) {
-      isSpinningRef.current = false;
+    // setCenter cancels Mapbox camera animations. Wait for padding/focus transitions
+    // to finish before rotating again, keeping the existing spin duration limit.
+    if (map.isMoving()) {
+      animationFrameRef.current = requestAnimationFrame(() => spinGlobeRef.current());
       return;
     }
 

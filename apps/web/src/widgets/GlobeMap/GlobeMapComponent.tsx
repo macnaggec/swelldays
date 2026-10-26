@@ -112,6 +112,7 @@ export function GlobeMapComponent({
   const mapRef = useRef<MapRef>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const pendingFocusRef = useRef<PendingFocus | null>(null);
+  const appliedInsetsKeyRef = useRef<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const cameraState = useMapStore((s) => s.cameraState);
   const saveCameraState = useMapStore((s) => s.saveCameraState);
@@ -192,6 +193,7 @@ export function GlobeMapComponent({
       bottom: insetBottomPx,
       left: insetLeftPx,
     };
+    appliedInsetsKeyRef.current = [insetTopPx, insetRightPx, insetBottomPx, insetLeftPx].join(':');
     const center: [number, number] = [spot.coords.lng, spot.coords.lat];
     const skipAnimation = motionPolicy === 'disabled';
 
@@ -293,14 +295,27 @@ export function GlobeMapComponent({
     if (!isLoaded) return;
     if (selectedSpotId && selectedSpotFocusEnabled) return;
 
-    mapInstanceRef.current?.setPadding({
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    const padding = {
       top: insetTopPx,
       right: insetRightPx,
       bottom: insetBottomPx,
       left: insetLeftPx,
-    });
+    };
+    const key = [insetTopPx, insetRightPx, insetBottomPx, insetLeftPx].join(':');
+    if (appliedInsetsKeyRef.current === key) return;
+
+    if (appliedInsetsKeyRef.current === null) {
+      map.setPadding(padding);
+    } else {
+      // Match the sheet's 280ms settling time without moving or zooming the camera.
+      map.easeTo({ padding, duration: motionPolicy === 'disabled' ? 0 : 280, essential: true });
+    }
+    appliedInsetsKeyRef.current = key;
   }, [
     isLoaded,
+    motionPolicy,
     insetTopPx,
     insetRightPx,
     insetBottomPx,
