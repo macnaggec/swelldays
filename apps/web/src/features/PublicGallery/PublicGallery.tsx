@@ -327,12 +327,13 @@ const PublicGallery: FC<PublicGalleryProps> = memo(({
               rows={rows}
               columns={columns}
               dense={isCompactGalleryLayout}
-              renderCard={(item) => {
+              renderCard={(item, context) => {
                 const { actions, activeActions, isOwn } = getCardActions(item, false);
                 const isPurchased = item.viewerEntitlement.purchaseState === 'purchased';
                 return (
                   <PublicCard
                     mediaItem={item}
+                    imageLoading={context.imageLoading}
                     actions={actions}
                     activeActions={activeActions}
                     onAction={handleCardAction}

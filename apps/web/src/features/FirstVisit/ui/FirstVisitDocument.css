@@ -1,4 +1,23 @@
+@import '../../../shared/ui/design-system/tokens.css';
+
+@font-face {
+  font-family: 'Geist Sans';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Cormorant Garamond Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url('@fontsource-variable/cormorant-garamond/files/cormorant-garamond-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
 /* One public screen, two journeys. Map/drawer styling remains outside this surface. */
+[data-first-visit-document], [data-first-visit-document] * { box-sizing: border-box; }
 [data-first-visit-document] {
   --first-visit-swell-duration: 18s;
   --first-visit-progress: 0;
@@ -11,6 +30,9 @@
   background: #0a1628;
   color: rgba(244, 249, 250, 0.96);
   font-family: 'Geist Sans', sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
   container-type: size;
   isolation: isolate;
 }
@@ -117,19 +139,23 @@
 [data-first-visit-description] { margin: 12px 0 18px; max-width: 42ch; color: #cfdbdf; font-size: 15px; line-height: 1.55; }
 [data-first-visit-action] { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 24px; border-radius: 28px; color: #0a1628; background: #f4f9fa; font-size: 14px; text-decoration: none; }
 img[data-first-visit-part='logoImage'] { height: auto; background: none; }
-@container (min-width: 48em) {
-  :is([data-first-visit-part='plate'], [data-first-visit-part='plateTrailing']) { background-image: url('../../../assets/startup/first-visit-waves-landscape.webp'); }
-  [data-first-visit-part='logo'] { top: calc(var(--wa-safe-area-top, 0px) + clamp(34px, 5.5cqh, 66px)); }
-  [data-first-visit-part='logoImage'] { width: clamp(168px, 19cqw, 268px); }
-  [data-first-visit-part='content'] { padding-inline: clamp(34px, 5cqw, 76px); }
-  [data-first-visit-part='title'] { font-size: clamp(34px, 5.6cqw, 82px); }
-  [data-first-visit-paths] { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 72px; }
-  [data-first-visit-path] h2 { font-size: 44px; }
-  [data-first-visit-description] { font-size: 17px; }
-}
 @media (prefers-reduced-motion: no-preference) {
   :is([data-first-visit-part='plate'], [data-first-visit-part='plateTrailing']) { animation: first-visit-swell var(--first-visit-swell-duration) linear var(--first-visit-plate-offset) infinite; }
   [data-first-visit-part='rise'] { animation: first-visit-rise 900ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  [data-first-visit-resumed] [data-first-visit-part='rise'] { animation: none; }
+}
+[data-first-visit-startup-error] {
+  position: fixed;
+  z-index: 7;
+  right: 28px;
+  bottom: calc(var(--wa-safe-area-bottom, 0px) + 24px);
+  left: 28px;
+  padding: 16px 24px;
+  border: 1px solid #64748b;
+  border-radius: 12px;
+  background: #0a1628;
+  color: #f4f9fa;
+  font: 14px/1.5 sans-serif;
 }
 @media (prefers-reduced-motion: reduce) {
   [data-first-visit-part='artwork'] { transition: none; }

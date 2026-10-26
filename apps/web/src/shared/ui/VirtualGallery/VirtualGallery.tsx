@@ -558,6 +558,10 @@ function VirtualGalleryInner<T extends { id: string }>(
                           isFirst: globalIndex === 0,
                           isLast: globalIndex === totalItems - 1,
                           isSelectionMode: showCheckbox,
+                          imageLoading: virtualizer.scrollRect?.height
+                            ? (virtualItem.start + virtualItem.size > (virtualizer.scrollOffset ?? 0)
+                              && virtualItem.start < (virtualizer.scrollOffset ?? 0) + virtualizer.scrollRect.height ? 'eager' : 'lazy')
+                            : (virtualItem.index === virtualItems.find((item) => rows[item.index]?.type === 'media')?.index ? 'eager' : 'lazy'),
                         })}
                         {showCheckbox && <SelectionCheckbox checked={isSelected} />}
                       </div>

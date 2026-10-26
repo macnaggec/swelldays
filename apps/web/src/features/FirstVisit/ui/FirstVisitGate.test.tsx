@@ -6,6 +6,8 @@ import { render } from 'test/setup/render';
 import { useFirstVisitMapReadiness } from '../model/firstVisitMapReadiness';
 import { FIRST_VISIT_STORAGE_KEY } from '../model/firstVisitStorage';
 import { FirstVisitGate } from './FirstVisitGate';
+import { FirstVisitDocument } from './FirstVisitDocument';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 const TITLE = /surf photos & videos/i;
 function MapSurface() {
@@ -116,6 +118,56 @@ describe('FirstVisitGate scroll presentation', () => {
 
 describe('map entry reliability', () => {
   beforeEach(() => { window.localStorage.clear(); window.history.replaceState({}, '', '/'); });
+  it('keeps background map errors quiet until the visitor requests entry', () => {
+    renderGate();
+    fireEvent.click(screen.getByRole('button', { name: 'Fail map', hidden: true }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    fireEvent.click(enter());
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the map');
+    markReady();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+  it('lets the visitor dismiss a failed entry and keep reading', () => {
+    renderGate();
+    fireEvent.click(enter());
+    fireEvent.click(screen.getByRole('button', { name: 'Fail map', hidden: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep reading' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('heading', { name: TITLE })).toBeVisible();
+    fireEvent.click(enter());
+    expect(screen.getByRole('button', { name: 'Retry map' })).toBeVisible();
+  });
+  it('hides the prepared application visually without unmounting it', () => {
+    const { container } = renderGate();
+    expect(container.querySelector('[data-first-visit-app]')).toHaveAttribute('data-app-visible', 'false');
+    expect(screen.getByRole('button', { name: 'Mark map ready', hidden: true })).toBeInTheDocument();
+  });
+  it('continues a click made in the initial HTML and counts its elapsed wait', () => {
+    vi.useFakeTimers();
+    try {
+      document.documentElement.setAttribute('data-first-visit-enter-requested', String(Date.now() - 18_000));
+      renderGate();
+      expect(screen.getByRole('status')).toHaveTextContent('Preparing the map');
+      act(() => vi.advanceTimersByTime(2_000));
+      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the map');
+    } finally { document.documentElement.removeAttribute('data-first-visit-enter-requested'); vi.useRealTimers(); }
+  });
+  it('reuses the painted welcome and connects its existing link to the prepared map', async () => {
+    const initial = document.createElement('div');
+    initial.setAttribute('data-first-visit-preserved', '');
+    initial.innerHTML = renderToStaticMarkup(<FirstVisitDocument />);
+    document.body.append(initial);
+    const heading = initial.querySelector('h1');
+    try {
+      renderGate();
+      expect(screen.getAllByRole('heading', { name: TITLE })).toEqual([heading]);
+      fireEvent.click(enter());
+      expect(screen.getByRole('status')).toHaveTextContent('Preparing the map');
+      markReady();
+      await waitFor(() => expect(initial).not.toBeVisible());
+      expect(initial.querySelector('h1')).toBe(heading);
+    } finally { initial.remove(); }
+  });
   it('keeps the intro usable after a map error and retries without completing a visit', async () => {
     renderGate();
     fireEvent.click(enter());

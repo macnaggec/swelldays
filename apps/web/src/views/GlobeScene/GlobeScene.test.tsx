@@ -5,6 +5,8 @@ import type { LngLat } from '@swelldays/contracts/core';
 import { resolveAppRouteIntent, type DeclaredAppRouteIntent } from 'shared/model/appRouteIntent';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import type { DrawerGeometry, SheetSnap } from 'shared/ui/DrawerShell';
+import { AppVisibilityContext } from 'shared/model/appVisibility';
+import type { MapLoadFailure } from 'widgets/GlobeMap';
 
 const mocks = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
@@ -31,6 +33,7 @@ const mocks = vi.hoisted(() => ({
   showBrowseResults: vi.fn(),
   notifyError: vi.fn(),
   markMapReady: vi.fn(),
+  markMapFailed: vi.fn(),
   markMapLoading: vi.fn(),
   addSpotState: {
     isActive: false,
@@ -48,6 +51,7 @@ vi.mock('widgets/GlobeMap', () => ({
     onSpotSelect,
     onCameraGestureStart,
     onMapReady,
+    onMapError,
     selectedSpotId,
     selectedSpotFocusEnabled,
     tempPin,
@@ -58,6 +62,8 @@ vi.mock('widgets/GlobeMap', () => ({
     onSpotSelect: (spot: { id: string; slug: string }) => void;
     onCameraGestureStart?: () => void;
     onMapReady?: () => void;
+    onMapError?: (failure: MapLoadFailure) => void;
+    motionPolicy?: string;
     selectedSpotId?: string | null;
     selectedSpotFocusEnabled?: boolean;
     tempPin?: LngLat | null;
@@ -66,6 +72,7 @@ vi.mock('widgets/GlobeMap', () => ({
   }) => (
     <div
       data-coordinate-picker-active={String(isCoordinatePickerActive)}
+      data-motion-policy={restProps.motionPolicy}
       data-temp-pin={tempPin?.join(',') ?? ''}
       data-selected-spot-id={selectedSpotId ?? ''}
       data-selected-spot-focus-enabled={String(selectedSpotFocusEnabled)}
@@ -79,6 +86,8 @@ vi.mock('widgets/GlobeMap', () => ({
       <button onClick={() => onCameraGestureStart?.()}>Explore map</button>
       <button onClick={() => onMapCoordinateClick?.([151.2, -33.85])}>Place pin</button>
       <button onClick={() => onMapReady?.()}>Complete map load</button>
+      <button onClick={() => onMapError?.({ error: new Error('Tile failed'), fatal: false })}>Recoverable map error</button>
+      <button onClick={() => onMapError?.({ error: new Error('WebGL failed'), fatal: true })}>Fatal map error</button>
     </div>
   ),
   NO_MAP_CAMERA_INSETS: { top: 0, right: 0, bottom: 0, left: 0 },
@@ -98,6 +107,7 @@ vi.mock('features/FirstVisit', () => ({
   useFirstVisitMapReadiness: () => ({
     isMapReady: false,
     markMapReady: mocks.markMapReady,
+    markMapFailed: mocks.markMapFailed,
     markMapLoading: mocks.markMapLoading,
   }),
 }));
@@ -203,6 +213,15 @@ function renderGlobeScene() {
 }
 
 describe('GlobeScene first-visit readiness', () => {
+  it('pauses the prepared map while welcome covers it and ignores recoverable errors', () => {
+    mocks.markMapFailed.mockClear();
+    const { container } = render(<AppVisibilityContext.Provider value={false}>{globeSceneTree()}</AppVisibilityContext.Provider>);
+    expect(container.querySelector('[data-motion-policy]')).toHaveAttribute('data-motion-policy', 'paused');
+    fireEvent.click(screen.getByRole('button', { name: 'Recoverable map error' }));
+    expect(mocks.markMapFailed).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Fatal map error' }));
+    expect(mocks.markMapFailed).toHaveBeenCalledOnce();
+  });
   it('forwards Mapbox readiness to the first-visit gate', () => {
     renderGlobeScene();
 

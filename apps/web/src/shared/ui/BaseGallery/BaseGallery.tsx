@@ -18,6 +18,8 @@ export interface CardContext {
   isLast: boolean;
   /** Whether selection mode is active (hides individual card actions) */
   isSelectionMode: boolean;
+  /** Native image loading priority derived from a virtual row's viewport overlap. */
+  imageLoading?: 'eager' | 'lazy';
 }
 
 /** Props for the BaseGallery component */

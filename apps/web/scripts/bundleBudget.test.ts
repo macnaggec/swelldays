@@ -382,6 +382,36 @@ const fixtureFile = (fixture: Fixture, path: string): string => {
 };
 
 describe('analyzeWebBundle', () => {
+  it('enforces separate JS and CSS budgets on the deferred application graph', async () => {
+    const fixture = await createFixture('deferred');
+    fixture.config.criticalGraphs.push(
+      { id: 'application-js', label: 'Application JS', roots: ['index.html'], assetKind: 'javascript', budget: { baselineGzipBytes: 1, maximumGzipBytes: 1_000_000 } },
+      { id: 'application-css', label: 'Application CSS', roots: ['index.html'], assetKind: 'stylesheet', budget: { baselineGzipBytes: 1, maximumGzipBytes: 1_000_000 } },
+    );
+    await writeJson(fixture.configPath, fixture.config);
+    const report = await analyzeFixture(fixture);
+    expect(report.criticalGraphs.find((graph) => graph.id === 'application-js')?.gzipBytes).toBe(report.entryJavaScript.gzipBytes);
+    expect(report.criticalGraphs.find((graph) => graph.id === 'application-css')?.gzipBytes).toBe(report.entryCss.gzipBytes);
+  });
+  it('resolves a deferred application root from its source module when Vite omits a facade', async () => {
+    const fixture = await createFixture('facade');
+    fixture.config.criticalGraphs.push({ id: 'application', label: 'Application', roots: ['src/optional/forbidden.ts'], budget: { baselineGzipBytes: 1, maximumGzipBytes: 1_000_000 } });
+    await writeJson(fixture.configPath, fixture.config);
+    const report = await analyzeFixture(fixture);
+    expect(report.criticalGraphs.find((graph) => graph.id === 'application')?.fileCount).toBeGreaterThan(report.entryJavaScript.fileCount + report.entryCss.fileCount);
+  });
+  it('keeps the logo runtime reference requirement after its code moves behind a dynamic import', async () => {
+    const fixture = await createFixture('asset-graph');
+    fixture.config.startupAssets[0]!.referenceGraph = 'browse-feed';
+    await writeJson(fixture.configPath, fixture.config);
+    const entryPath = join(fixture.distDirectory, 'assets/index-asset-graph.js');
+    await writeFile(entryPath, 'entry();');
+    await writeFile(join(fixture.distDirectory, 'assets/feed-asset-graph.js'), `const logo = "/${startupAssetFiles.logo}";`);
+    const report = await analyzeFixture(fixture);
+    expect(report.startupAssets[0]?.references.entryJavaScript).toBe(1);
+    await writeFile(join(fixture.distDirectory, 'assets/feed-asset-graph.js'), 'feed();');
+    await expect(analyzeFixture(fixture)).rejects.toThrow('requires at least 1 entry JavaScript reference');
+  });
   it('measures a deduplicated cyclic static graph and passes below its budgets', async () => {
     const fixture = await createFixture('alpha');
 

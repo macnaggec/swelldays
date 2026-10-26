@@ -2,6 +2,11 @@
   display: contents;
 }
 
+.app[data-app-visible='false'],
+.app[data-app-visible='false'][aria-hidden='true'] * {
+  visibility: hidden;
+}
+
 /* Only the presentation is clipped. Fixed map/drawer descendants remain viewport-owned. */
 .overlay {
   --first-visit-progress: 0;
@@ -30,3 +35,5 @@
 }
 
 .status p { margin: 0 0 12px; }
+
+.statusActions { display: flex; flex-wrap: wrap; gap: 12px; }

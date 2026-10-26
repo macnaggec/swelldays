@@ -42,6 +42,7 @@ export interface CriticalGraphBudget {
   label: string;
   roots: string[];
   budget: GzipBudget;
+  assetKind?: 'javascript' | 'stylesheet';
 }
 
 export interface ReportedModuleGroup {
@@ -67,6 +68,7 @@ export interface StartupAssetContract {
   label: string;
   source: string;
   minimumReferences: StartupAssetReferenceMinimums;
+  referenceGraph?: string;
 }
 
 export interface WebBundleBudgetConfig {
@@ -329,11 +331,15 @@ const parseConfig = (value: unknown): WebBundleBudgetConfig => {
 
   const criticalGraphs = record.criticalGraphs.map((value, index): CriticalGraphBudget => {
     const graph = requireRecord(value, `criticalGraphs[${index}]`);
+    if (graph.assetKind !== undefined && graph.assetKind !== 'javascript' && graph.assetKind !== 'stylesheet') {
+      throw new Error(`criticalGraphs[${index}].assetKind must be javascript or stylesheet`);
+    }
     return {
       id: requireString(graph.id, `criticalGraphs[${index}].id`),
       label: requireString(graph.label, `criticalGraphs[${index}].label`),
       roots: requireStringArray(graph.roots, `criticalGraphs[${index}].roots`),
       budget: parseBudget(graph.budget, `criticalGraphs[${index}].budget`),
+      assetKind: graph.assetKind,
     };
   });
   const graphIds = new Set<string>();
@@ -384,10 +390,15 @@ const parseConfig = (value: unknown): WebBundleBudgetConfig => {
         asset.minimumReferences,
         `startupAssets[${index}].minimumReferences`,
       );
+      const referenceGraph = asset.referenceGraph === undefined ? undefined : requireString(asset.referenceGraph, `startupAssets[${index}].referenceGraph`);
+      if (referenceGraph !== undefined && referenceGraph !== 'entry' && !graphIds.has(referenceGraph)) {
+        throw new Error(`Startup asset "${String(asset.id)}" references unsupported graph "${referenceGraph}"`);
+      }
       return {
         id: requireString(asset.id, `startupAssets[${index}].id`),
         label: requireString(asset.label, `startupAssets[${index}].label`),
         source: requireString(asset.source, `startupAssets[${index}].source`),
+        referenceGraph,
         minimumReferences: {
           html: requireNonNegativeInteger(
             minimumReferences.html,
@@ -813,33 +824,45 @@ export async function analyzeWebBundle(
     'entry-css',
     'Entry CSS',
   );
-  const startupAssets = await validateStartupAssets(
-    options.distDirectory,
-    options.configPath,
-    manifest,
-    entryGraph,
-    config.startupAssets,
-  );
-
   const graphs = new Map<string, ManifestGraph>([['entry', entryGraph]]);
   const criticalGraphs: ArtifactReport[] = [];
   const criticalBudgets = new Map<string, GzipBudget>();
   for (const graphConfig of config.criticalGraphs) {
+    // Rollup may emit a shared dynamic chunk without a source-keyed facade.
+    // Resolve that source through the recorded module inventory, never a hashed name.
+    const roots = graphConfig.roots.map((root) => {
+      if (manifest[root]) return root;
+      const chunks = inventory.chunks.filter((chunk) => chunk.modules.some((moduleId) => moduleId === root || moduleId.endsWith(`/${root}`)));
+      if (!chunks.length) return root;
+      const keys = Object.keys(manifest).filter((key) => chunks.some((chunk) => chunk.file === manifest[key]?.file));
+      if (keys.length !== 1) throw new Error(`Critical graph "${graphConfig.id}" source "${root}" must resolve to exactly one chunk`);
+      return keys[0]!;
+    });
     const graph = collectManifestGraph(
       manifest,
-      graphConfig.roots,
+      roots,
       `Critical graph "${graphConfig.id}"`,
     );
     graphs.set(graphConfig.id, graph);
     criticalBudgets.set(graphConfig.id, graphConfig.budget);
     criticalGraphs.push(await measureFiles(
       options.distDirectory,
-      [...graph.javascriptFiles, ...graph.cssFiles],
+      graphConfig.assetKind === 'javascript' ? graph.javascriptFiles
+        : graphConfig.assetKind === 'stylesheet' ? graph.cssFiles
+          : [...graph.javascriptFiles, ...graph.cssFiles],
       graphConfig.id,
       graphConfig.label,
     ));
   }
   criticalGraphs.sort(compareReports);
+
+  const startupAssets: StartupAssetReport[] = [];
+  for (const [graphId, graph] of graphs) {
+    const assets = config.startupAssets.filter((asset) => (asset.referenceGraph ?? 'entry') === graphId);
+    if (!assets.length) continue;
+    startupAssets.push(...await validateStartupAssets(options.distDirectory, options.configPath, manifest, graph, assets));
+  }
+  startupAssets.sort((a, b) => a.id.localeCompare(b.id));
 
   const cssByChunkFile = new Map<string, Set<string>>();
   for (const entry of Object.values(manifest)) {

@@ -13,6 +13,11 @@
   <link rel="manifest" href="/site.webmanifest" />
   <link rel="preload" as="image" type="image/png" href="/src/assets/startup/swelldays-logo-white.png" />
   <link rel="stylesheet" href="/src/features/FirstVisit/ui/FirstVisitDocument.css" />
+  <link rel="stylesheet" href="/src/shared/ui/design-system/firstVisitViewport.css" />
+  <link data-first-visit-preload rel="preload" as="font" type="font/woff2" crossorigin media="not all" href="../../node_modules/@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2" />
+  <link data-first-visit-preload rel="preload" as="font" type="font/woff2" crossorigin media="not all" href="../../node_modules/@fontsource-variable/cormorant-garamond/files/cormorant-garamond-latin-wght-normal.woff2" />
+  <link data-first-visit-preload data-first-visit-background rel="preload" as="image" type="image/webp" media="not all" data-first-visit-media="(width &lt; 48em)" href="/src/assets/startup/first-visit-waves-portrait.webp" />
+  <link data-first-visit-preload data-first-visit-background rel="preload" as="image" type="image/webp" media="not all" data-first-visit-media="(width &gt;= 48em)" href="/src/assets/startup/first-visit-waves-landscape.webp" />
   <meta name="theme-color" content="#0a1628" />
   <meta name="description"
     content="Swelldays is an interactive map for finding, buying, and selling surf-spot photos and videos, searchable by date." />
@@ -79,7 +84,7 @@
       <img src="/src/assets/startup/swelldays-logo-white.png" alt="" width="600" height="272" fetchpriority="high" />
     </div>
   </div>
-  <script type="module" src="/src/app/main.tsx"></script>
+  <script type="module" src="/src/app/bootstrap.ts"></script>
   <!-- Cloudflare Web Analytics -->
   <script>
     window.addEventListener('load', () => {

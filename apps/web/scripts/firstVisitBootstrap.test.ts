@@ -33,6 +33,21 @@ async function startupScript() {
 }
 
 describe('first-visit screen before the application entry', () => {
+  it.each([false, true])('activates welcome-only resource hints only when seen=%s resolves to intro', async (seen) => {
+    const media = { font: 'not all', portrait: 'not all', landscape: 'not all' };
+    const links = Object.keys(media).map((key) => ({
+      getAttribute: () => key === 'font' ? null : key === 'portrait' ? '(width < 48em)' : '(width >= 48em)',
+      setAttribute: (name: string, value: string) => Reflect.set(media, key, name === 'media' ? value : 'unexpected attribute'),
+    }));
+    runInNewContext(await startupScript(), {
+      URLSearchParams,
+      window: { location: new URL('https://swelldays.surf/'), localStorage: { getItem: () => seen ? 'seen' : null } },
+      document: { documentElement: { setAttribute: vi.fn() }, querySelectorAll: () => links },
+    });
+    expect(media).toEqual(seen
+      ? { font: 'not all', portrait: 'not all', landscape: 'not all' }
+      : { font: 'all', portrait: '(width < 48em)', landscape: '(width >= 48em)' });
+  });
   it.each([
     { href: '/', seen: false, expected: null },
     { href: '/', seen: true, expected: 'app' },
@@ -48,7 +63,7 @@ describe('first-visit screen before the application entry', () => {
         location: new URL(href, 'https://swelldays.surf'),
         localStorage: { getItem: (key: string) => key === FIRST_VISIT_STORAGE_KEY && seen ? 'seen' : null },
       },
-      document: { documentElement: { setAttribute: (key: string, value: string) => attributes.set(key, value) } },
+      document: { documentElement: { setAttribute: (key: string, value: string) => attributes.set(key, value) }, querySelectorAll: () => [] },
     });
     expect(attributes.get('data-first-visit-startup') ?? null).toBe(expected);
   });
@@ -61,7 +76,7 @@ describe('first-visit screen before the application entry', () => {
         location: new URL('https://swelldays.surf/'),
         get localStorage() { throw new Error('Storage blocked'); },
       },
-      document: { documentElement: { setAttribute } },
+      document: { documentElement: { setAttribute }, querySelectorAll: () => [] },
     });
     expect(setAttribute).not.toHaveBeenCalled();
   });

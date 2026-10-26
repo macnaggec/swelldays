@@ -3,12 +3,20 @@ import userEvent from '@testing-library/user-event';
 import { MantineProvider } from '@mantine/core';
 import { describe, expect, it, vi } from 'vitest';
 import BaseCard from './BaseCard';
+import { AppVisibilityContext } from 'shared/model/appVisibility';
 
 function wrap(ui: React.ReactElement) {
   return render(<MantineProvider>{ui}</MantineProvider>);
 }
 
 describe('BaseCard', () => {
+  it('does not request a hidden gallery thumbnail and loads it when revealed', () => {
+    const card = (visible: boolean) => <MantineProvider><AppVisibilityContext.Provider value={visible}><BaseCard imageUrl="/thumbnail.jpg" resourceType="image" /></AppVisibilityContext.Provider></MantineProvider>;
+    const { container, rerender } = render(card(false));
+    expect(container.querySelector('img[src]')).toBeNull();
+    rerender(card(true));
+    expect(container.querySelector('img')).toHaveAttribute('src', '/thumbnail.jpg');
+  });
   it('renders <img> with the imageUrl for image resources', () => {
     const { container } = wrap(
       <BaseCard imageUrl="https://cdn.example.com/photo.jpg" resourceType="image" alt="Test photo" />,

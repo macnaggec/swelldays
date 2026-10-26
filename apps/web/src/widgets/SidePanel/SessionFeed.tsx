@@ -10,6 +10,7 @@ import { formatDateRange } from 'shared/lib/dateUtils';
 import { DRAWER_SHELL_TRANSITION } from 'shared/ui/DrawerShell';
 import { PanelCollectionGrid, usePanelCollectionColumns } from 'shared/ui/PanelCollectionGrid';
 import styles from './SessionFeed.module.css';
+import { useAppVisibility } from 'shared/model/appVisibility';
 
 // ─── Session card
 
@@ -22,7 +23,7 @@ import styles from './SessionFeed.module.css';
  * and jump instead. `layoutDependency` then limits re-measuring to exactly that change,
  * so ordinary feed updates do not pay for it.
  */
-function FeedCardSlot({ session, onClick }: { session: SurfSessionItem; onClick?: () => void }) {
+function FeedCardSlot({ session, onClick, first }: { session: SurfSessionItem; onClick?: () => void; first: boolean }) {
   const columns = usePanelCollectionColumns();
   return (
     <motion.div
@@ -30,12 +31,13 @@ function FeedCardSlot({ session, onClick }: { session: SurfSessionItem; onClick?
       layoutDependency={columns}
       transition={{ layout: DRAWER_SHELL_TRANSITION }}
     >
-      <SessionCard session={session} onClick={onClick} />
+      <SessionCard session={session} onClick={onClick} first={first} />
     </motion.div>
   );
 }
 
-function SessionCard({ session, onClick }: { session: SurfSessionItem; onClick?: () => void }) {
+function SessionCard({ session, onClick, first }: { session: SurfSessionItem; onClick?: () => void; first: boolean }) {
+  const visible = useAppVisibility();
   return (
     <a
       className={styles.card}
@@ -47,7 +49,7 @@ function SessionCard({ session, onClick }: { session: SurfSessionItem; onClick?:
       }}
     >
       <div className={styles.cardMedia}>
-        {session.thumbnailUrl ? (
+        {session.thumbnailUrl && visible ? (
           <img
             src={session.thumbnailUrl}
             alt={session.spot.name}
@@ -55,6 +57,8 @@ function SessionCard({ session, onClick }: { session: SurfSessionItem; onClick?:
             width={1600}
             height={1000}
             decoding="async"
+            loading={first ? 'eager' : 'lazy'}
+            fetchPriority={first ? 'high' : undefined}
           />
         ) : (
           <Center className={styles.emptyMedia}>
@@ -148,10 +152,11 @@ export function SessionFeed({
       ) : (
         <>
           <PanelCollectionGrid className={styles.grid}>
-            {sessions.map((s) => (
+          {sessions.map((s, index) => (
               <FeedCardSlot
                 key={s.id}
                 session={s}
+                first={index === 0}
                 onClick={onSessionClick ? () => onSessionClick(s) : undefined}
               />
             ))}

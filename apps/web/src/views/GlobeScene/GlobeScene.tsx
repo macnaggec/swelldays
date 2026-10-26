@@ -1,4 +1,4 @@
-import { GlobeMap, type MapSpotProjection } from 'widgets/GlobeMap';
+import { GlobeMap, type MapSpotProjection, type MapLoadFailure } from 'widgets/GlobeMap';
 import { useMapSpots, type Spot } from 'entities/Spot';
 import { LazyAddSpotPanel, useAddSpotStore } from 'features/AddSpot';
 import { FavoriteSpotButton } from 'features/FavoriteSpot';
@@ -28,6 +28,7 @@ import { deriveGlobeMotionPolicy } from './model/globeMotionPolicy';
 import { deriveGlobeSceneMode } from './model/globeSceneMode';
 import { deriveMapCameraInsets, resolveFrozenInsetPx } from './model/mapCameraInsets';
 import { getOverviewMapBounds } from './model/overviewBoundsStrategy';
+import { useAppVisibility } from 'shared/model/appVisibility';
 
 function subscribeDocumentVisibility(onStoreChange: () => void) {
   document.addEventListener('visibilitychange', onStoreChange);
@@ -59,6 +60,9 @@ function useDocumentHidden() {
 export function GlobeScene() {
   const { data: spots = [] } = useMapSpots(getOverviewMapBounds());
   const { markMapReady, markMapFailed, markMapLoading, mapAttempt } = useFirstVisitMapReadiness();
+  const handleMapError = useCallback((failure: MapLoadFailure) => {
+    if (failure.fatal) markMapFailed();
+  }, [markMapFailed]);
   useEffect(() => markMapLoading, [markMapLoading]);
   const mapSpots = useMemo<MapSpotProjection[]>(
     () => spots.map(({ id, slug, name, coords, status }) => ({ id, slug, name, coords, status })),
@@ -69,6 +73,7 @@ export function GlobeScene() {
   const setTempPin = useAddSpotStore((s) => s.setTempPin);
   const [isUserExploring, setIsUserExploring] = useState(false);
   const isDocumentHidden = useDocumentHidden();
+  const isAppVisible = useAppVisibility();
   const { prefersReducedMotion } = useViewportCapabilities();
   const { layoutViewportWidthPx: viewportWidthPx, layoutViewportHeightPx: viewportHeightPx } = useViewportMetrics();
   const setBrowsingPanelExpanded = usePanelExpansionStore((state) => state.setBrowsingPanelExpanded);
@@ -119,7 +124,7 @@ export function GlobeScene() {
   });
   const motionPolicy = deriveGlobeMotionPolicy({
     sceneMode,
-    isDocumentHidden,
+    isDocumentHidden: isDocumentHidden || !isAppVisible,
     prefersReducedMotion,
   });
   const interactionPolicy = layoutPolicy.map.interaction === 'hidden'
@@ -273,7 +278,7 @@ export function GlobeScene() {
         onUserExploreStart={() => setIsUserExploring(true)}
         onUserExploreEnd={() => setIsUserExploring(false)}
         onMapReady={markMapReady}
-        onMapError={markMapFailed}
+        onMapError={handleMapError}
         onCameraGestureStart={handleCameraGestureStart}
         renderSelectedSpotContent={(spot) => <FavoriteSpotButton spotId={spot.id} />}
         onClearSelectedSpot={sceneMode.kind === 'uploadSpotSelection' ? undefined : handleClearSelectedSpot}

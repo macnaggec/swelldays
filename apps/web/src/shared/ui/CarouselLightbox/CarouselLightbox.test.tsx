@@ -635,9 +635,31 @@ describe('CarouselLightbox', () => {
         />,
       );
 
+      expect(requestedUrls).not.toContain('https://cdn.example.com/clip-1-poster.jpg');
+      fireEvent.load(screen.getByAltText('Media preview'));
       expect(requestedUrls).toContain('https://cdn.example.com/clip-1-poster.jpg');
       expect(requestedUrls).not.toContain('https://cdn.example.com/clip-1.mp4');
     } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('does not preload neighbors on Save-Data even after the active photo loads', () => {
+    const requestedUrls: string[] = [];
+    vi.stubGlobal('Image', class { set src(url: string) { requestedUrls.push(url); } });
+    const previousConnection = Object.getOwnPropertyDescriptor(navigator, 'connection');
+    Object.defineProperty(navigator, 'connection', { configurable: true, value: { saveData: true } });
+    try {
+      render(<CarouselLightbox items={[
+        { id: '1', url: 'https://cdn.example.com/one.jpg', width: 1200, height: 800 },
+        { id: '2', url: 'https://cdn.example.com/two.jpg', width: 1200, height: 800 },
+        { id: '3', url: 'https://cdn.example.com/three.jpg', width: 1200, height: 800 },
+      ]} initialIndex={0} opened onClose={vi.fn()} />);
+      fireEvent.load(screen.getByAltText('Media preview'));
+      expect(requestedUrls).toEqual([]);
+    } finally {
+      if (previousConnection) Object.defineProperty(navigator, 'connection', previousConnection);
+      else Reflect.deleteProperty(navigator, 'connection');
       vi.unstubAllGlobals();
     }
   });

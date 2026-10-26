@@ -14,7 +14,6 @@ import '@mantine/core/styles.css';
 import '@mantine/carousel/styles.css';
 import '@mantine/dates/styles.css';
 import '@mantine/notifications/styles.css';
-import 'shared/ui/design-system/tokens.css';
 import './app.css';
 import { router } from 'app/lib/router';
 import { theme, cssVariablesResolver } from 'app/lib/theme';
@@ -23,6 +22,7 @@ import { queryClient } from 'shared/lib/queryClient';
 import { trpcClient } from 'shared/lib/trpcClient';
 import { webConfig } from 'config/env';
 import { releaseInitialSeoHead } from 'shared/lib/seoMeta';
+import { preserveInitialWelcome } from './lib/preserveInitialWelcome';
 
 const SENTRY_STARTUP_DELAY_MS = 1_000;
 
@@ -65,8 +65,10 @@ async function startApp() {
     await router.load();
   }
   releaseInitialSeoHead();
+  const root = document.getElementById('root')!;
+  preserveInitialWelcome(root);
   ReactDOM
-  .createRoot(document.getElementById('root')!)
+  .createRoot(root)
   .render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
@@ -92,4 +94,4 @@ async function startApp() {
   initializeSentryAfterFirstPaint();
 }
 
-void startApp();
+export const applicationReady = startApp();

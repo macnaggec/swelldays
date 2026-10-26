@@ -577,7 +577,10 @@ const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
     if (!opened) return;
     const seenUrls = new Set<string>();
     const activeVideo = activeItem?.type === 'video' ? activeItem : undefined;
-    [activeVideo, previousPreloadItem, nextPreloadItem].forEach((item) => {
+    const saveData = 'connection' in navigator && typeof navigator.connection === 'object'
+      && navigator.connection !== null && 'saveData' in navigator.connection && navigator.connection.saveData === true;
+    const neighbors = activeMediaReady && !saveData ? [previousPreloadItem, nextPreloadItem] : [];
+    [activeVideo, ...neighbors].forEach((item) => {
       const url = preloadableUrl(item);
       if (!url) return;
       if (seenUrls.has(url)) return;
@@ -607,7 +610,7 @@ const CarouselLightbox: FC<CarouselLightboxProps> = memo(({
         image.decode().then(() => finish(true), () => finish(false));
       }
     });
-  }, [activeItem, markMediaConfirmed, markPosterSettled, nextPreloadItem, opened, previousPreloadItem]);
+  }, [activeItem, activeMediaReady, markMediaConfirmed, markPosterSettled, nextPreloadItem, opened, previousPreloadItem]);
 
   return (
     <Modal

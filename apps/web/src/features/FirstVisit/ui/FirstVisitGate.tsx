@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { AppButton } from 'shared/ui/AppButton';
+import { AppVisibilityContext } from 'shared/model/appVisibility';
+import { createPortal } from 'react-dom';
 import { FirstVisitPresentationContext } from '../model/firstVisitPresentation';
 import { FirstVisitMapReadinessContext } from '../model/firstVisitMapReadiness';
 import { firstVisitEntryReducer } from '../model/firstVisitEntry';
@@ -33,11 +35,19 @@ export function FirstVisitGate({ children, isEligibleRoute, isAuthenticated, int
   }, [onOpenPresentation]);
   const presentationNavigation = useMemo(() => onOpenPresentation ? { open: openPresentation } : null, [onOpenPresentation, openPresentation]);
   const [hasVisited, setHasVisited] = useState(readFirstVisitAcknowledgement);
-  const [entry, dispatch] = useReducer(firstVisitEntryReducer, { phase: 'reading', mapStatus: 'loading' });
+  const [entry, dispatch] = useReducer(firstVisitEntryReducer, { phase: document.documentElement.hasAttribute('data-first-visit-enter-requested') ? 'waiting' : 'reading', mapStatus: 'loading' });
+  const [hasRequestedEntry, setHasRequestedEntry] = useState(() => document.documentElement.hasAttribute('data-first-visit-enter-requested'));
+  const entryRequestedAt = useRef(Number(document.documentElement.getAttribute('data-first-visit-enter-requested')) || null);
+  const [resumed] = useState(() => Boolean(document.querySelector('[data-first-visit-initial]')));
+  const [initialDocument] = useState(() => document.querySelector<HTMLElement>('[data-first-visit-preserved]'));
+  useEffect(() => {
+    document.documentElement.removeAttribute('data-first-visit-enter-requested');
+    document.documentElement.removeAttribute('data-first-visit-enter-keyboard');
+  }, []);
   const [mapAttempt, setMapAttempt] = useState(0);
   const appRef = useRef<HTMLDivElement | null>(null);
-  const focusRequest = useRef<'app' | 'intro' | null>(null);
-  const overlayRef = useRef<HTMLElement | null>(null);
+  const focusRequest = useRef<'app' | 'intro' | null>(document.documentElement.getAttribute('data-first-visit-enter-keyboard') === 'true' ? 'app' : null);
+  const overlayRef = useRef<HTMLElement | null>(initialDocument);
   const presentation = resolveFirstVisitPresentation({
     isEligibleRoute, isAuthenticated, hasVisited, intent,
     // Public reading never waits for the authentication endpoint.
@@ -45,10 +55,23 @@ export function FirstVisitGate({ children, isEligibleRoute, isAuthenticated, int
   });
   if (navigationKey !== renderedNavigationKey) {
     setRenderedNavigationKey(navigationKey);
+    setHasRequestedEntry(false);
     dispatch({ type: presentation === 'intro' ? 'show' : 'hide' });
   }
   const isCoveringApp = presentation === 'intro' && entry.phase !== 'map';
-  const handleCommit = useCallback(() => dispatch({ type: 'enter' }), []);
+  const isAppVisible = !isCoveringApp || entry.phase === 'revealing';
+  useLayoutEffect(() => {
+    if (!initialDocument) return;
+    if (classes.overlay) initialDocument.classList.add(classes.overlay);
+    initialDocument.setAttribute('role', 'region');
+    initialDocument.setAttribute('aria-label', 'About Swelldays');
+    initialDocument.toggleAttribute('hidden', !isCoveringApp);
+  }, [initialDocument, isCoveringApp]);
+  const handleCommit = useCallback(() => {
+    entryRequestedAt.current = Number(document.documentElement.getAttribute('data-first-visit-enter-requested')) || Date.now();
+    setHasRequestedEntry(true);
+    dispatch({ type: 'enter' });
+  }, []);
   const { reveal, rest } = useFirstVisitHandoff({ surfaceRef: overlayRef });
   const acknowledgeVisit = useCallback(() => {
     writeFirstVisitAcknowledgement();
@@ -69,7 +92,8 @@ export function FirstVisitGate({ children, isEligibleRoute, isAuthenticated, int
   const readiness = useMemo(() => ({ isMapReady: entry.mapStatus === 'ready', markMapReady, markMapFailed, markMapLoading, mapAttempt }), [entry.mapStatus, mapAttempt, markMapFailed, markMapLoading, markMapReady]);
   useEffect(() => {
     if (!isCoveringApp || entry.phase !== 'waiting') return;
-    const timer = window.setTimeout(markMapFailed, 20_000);
+    const remaining = Math.max(0, 20_000 - (Date.now() - (entryRequestedAt.current ?? Date.now())));
+    const timer = window.setTimeout(markMapFailed, remaining);
     return () => window.clearTimeout(timer);
   }, [entry.phase, isCoveringApp, markMapFailed]);
   useLayoutEffect(() => {
@@ -91,45 +115,77 @@ export function FirstVisitGate({ children, isEligibleRoute, isAuthenticated, int
     }
     wasCoveringApp.current = isCoveringApp;
   }, [entry.phase, intent, isCoveringApp]);
-  const handleEnter = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
+  const handleEnter = useCallback((event: MouseEvent<HTMLAnchorElement> | globalThis.MouseEvent) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     event.preventDefault();
     focusRequest.current = event.detail === 0 ? 'app' : null;
     handleCommit();
   }, [handleCommit]);
   const keepReading = useCallback(() => {
+    setHasRequestedEntry(false);
     focusRequest.current = 'intro';
     dispatch({ type: 'cancel' });
     rest();
   }, [rest]);
 
   const retryMap = useCallback(() => {
+    entryRequestedAt.current = Date.now();
     dispatch({ type: 'retry' });
     dispatch({ type: 'enter' });
     setMapAttempt((attempt) => attempt + 1);
   }, []);
 
+  useLayoutEffect(() => {
+    if (!initialDocument) return;
+    const onClick = (event: globalThis.MouseEvent) => {
+      if (event.target instanceof Element && event.target.closest('a[href="/#map"]')) handleEnter(event);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && (entry.phase === 'waiting' || entry.phase === 'revealing')) {
+        event.preventDefault();
+        keepReading();
+      }
+    };
+    initialDocument.addEventListener('click', onClick);
+    initialDocument.addEventListener('keydown', onKeyDown);
+    // The bootstrap listener hands ownership to this gate after its first commit.
+    document.dispatchEvent(new Event('swelldays:welcome-ready'));
+    return () => {
+      initialDocument.removeEventListener('click', onClick);
+      initialDocument.removeEventListener('keydown', onKeyDown);
+    };
+  }, [entry.phase, handleEnter, initialDocument, keepReading]);
+
+  const feedback = <>
+    {hasRequestedEntry && entry.mapStatus === 'error' && <div className={classes.status}>
+      <p role="alert">Unable to load the map. You can retry or keep reading.</p>
+      <div className={classes.statusActions}>
+        <AppButton onClick={retryMap}>Retry map</AppButton>
+        <AppButton onClick={keepReading}>Keep reading</AppButton>
+      </div>
+    </div>}
+    {entry.phase === 'waiting' && <div className={classes.status}>
+      <p role="status">Preparing the map</p>
+      <AppButton onClick={keepReading}>Keep reading</AppButton>
+    </div>}
+  </>;
+
   return (
     <FirstVisitPresentationContext.Provider value={presentationNavigation}>
     <FirstVisitMapReadinessContext.Provider value={readiness}>
-      <div ref={appRef} className={classes.app} data-first-visit-app inert={isCoveringApp ? true : undefined} aria-hidden={isCoveringApp || undefined}>
+    <AppVisibilityContext.Provider value={isAppVisible}>
+      <div ref={appRef} className={classes.app} data-first-visit-app data-app-visible={String(isAppVisible)} inert={isCoveringApp ? true : undefined} aria-hidden={isCoveringApp || undefined}>
         {children}
       </div>
-      {isCoveringApp && (
+      {isCoveringApp && (initialDocument ? createPortal(feedback, initialDocument) : (
         <section ref={overlayRef} className={classes.overlay} data-first-visit-state="intro" aria-label="About Swelldays" onKeyDown={(event) => {
           if (event.key === 'Escape' && (entry.phase === 'waiting' || entry.phase === 'revealing')) { event.preventDefault(); keepReading(); }
         }}>
-          <FirstVisitDocument onEnter={handleEnter} />
-          {entry.mapStatus === 'error' && <div className={classes.status}>
-            <p role="alert">Unable to load the map. You can retry or keep reading.</p>
-            <AppButton onClick={retryMap}>Retry map</AppButton>
-          </div>}
-          {entry.phase === 'waiting' && <div className={classes.status}>
-            <p role="status">Preparing the map</p>
-            <AppButton onClick={keepReading}>Keep reading</AppButton>
-          </div>}
+          <FirstVisitDocument onEnter={handleEnter} resumed={resumed} />
+          {feedback}
         </section>
-      )}
+      ))}
+    </AppVisibilityContext.Provider>
     </FirstVisitMapReadinessContext.Provider>
     </FirstVisitPresentationContext.Provider>
   );

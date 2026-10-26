@@ -1,15 +1,15 @@
 {
   "version": 1,
-  "baselineDate": "2026-08-28",
+  "baselineDate": "2026-10-26",
   "headroomPercent": 2,
   "entrySource": "index.html",
   "entryJavaScript": {
-    "baselineGzipBytes": 289616,
-    "maximumGzipBytes": 295000
+    "baselineGzipBytes": 1905,
+    "maximumGzipBytes": 12000
   },
   "entryCss": {
-    "baselineGzipBytes": 41889,
-    "maximumGzipBytes": 42500
+    "baselineGzipBytes": 3444,
+    "maximumGzipBytes": 6000
   },
   "criticalGraphs": [
     {
@@ -17,12 +17,39 @@
       "label": "Default Browse Feed critical graph",
       "roots": [
         "index.html",
+        "src/app/main.tsx",
         "src/app/routes/_panel.tsx?tsr-split=component",
         "src/app/routes/_panel.index.tsx?tsr-split=component"
       ],
       "budget": {
         "baselineGzipBytes": 423724,
         "maximumGzipBytes": 432000
+      }
+    },
+    {
+      "id": "application-javascript",
+      "label": "Deferred application JavaScript",
+      "roots": [
+        "index.html",
+        "src/app/main.tsx"
+      ],
+      "assetKind": "javascript",
+      "budget": {
+        "baselineGzipBytes": 289616,
+        "maximumGzipBytes": 295000
+      }
+    },
+    {
+      "id": "application-css",
+      "label": "Deferred application stylesheets",
+      "roots": [
+        "index.html",
+        "src/app/main.tsx"
+      ],
+      "assetKind": "stylesheet",
+      "budget": {
+        "baselineGzipBytes": 41889,
+        "maximumGzipBytes": 42500
       }
     }
   ],
@@ -46,7 +73,7 @@
   "moduleAbsenceAssertions": [
     {
       "label": "Startup excludes unrelated contract validation domains",
-      "graph": "entry",
+      "graph": "application-javascript",
       "forbiddenModuleSubstrings": [
         "packages/contracts/src/validation/checkoutSchemas.ts",
         "packages/contracts/src/validation/mediaSchemas.ts",
@@ -55,7 +82,7 @@
     },
     {
       "label": "Startup excludes Add Spot workspace UI and validation",
-      "graph": "entry",
+      "graph": "application-javascript",
       "forbiddenModuleSubstrings": [
         "src/features/AddSpot/ui/",
         "src/features/AddSpot/model/useAddSpotFlow.ts",
@@ -67,7 +94,7 @@
     },
     {
       "label": "Startup excludes authentication modal surface and forms",
-      "graph": "entry",
+      "graph": "application-javascript",
       "forbiddenModuleSubstrings": [
         "src/features/Auth/AuthModalProvider.module.css",
         "src/features/Auth/AuthModalSurface.tsx",
@@ -89,6 +116,19 @@
       "label": "Default Browse Feed excludes Public Gallery feature modules",
       "graph": "browse-feed",
       "forbiddenModuleSubstrings": ["src/features/PublicGallery/"]
+    },
+    {
+      "label": "Welcome excludes full application and optional runtimes",
+      "graph": "entry",
+      "forbiddenModuleSubstrings": [
+        "src/app/main.tsx",
+        "node_modules/react/",
+        "node_modules/react-dom/",
+        "node_modules/@mantine/",
+        "node_modules/mapbox-gl/",
+        "node_modules/hls.js/",
+        "node_modules/@sentry/"
+      ]
     }
   ],
   "startupAssets": [
@@ -100,14 +140,15 @@
         "html": 2,
         "entryJavaScript": 1,
         "entryCss": 0
-      }
+      },
+      "referenceGraph": "application-javascript"
     },
     {
       "id": "first-visit-portrait",
       "label": "First-visit portrait artwork",
       "source": "src/assets/startup/first-visit-waves-portrait.webp",
       "minimumReferences": {
-        "html": 0,
+        "html": 1,
         "entryJavaScript": 0,
         "entryCss": 1
       }
@@ -117,7 +158,7 @@
       "label": "First-visit landscape artwork",
       "source": "src/assets/startup/first-visit-waves-landscape.webp",
       "minimumReferences": {
-        "html": 0,
+        "html": 1,
         "entryJavaScript": 0,
         "entryCss": 1
       }

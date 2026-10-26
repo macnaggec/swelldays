@@ -56,8 +56,15 @@ describe('startup performance contracts', () => {
   it('leaves first-visit artwork requests to the resolved presentation', () => {
     const indexHtml = readWorkspaceFile('apps/web/index.html');
 
-    expect(indexHtml).not.toContain('first-visit-waves-portrait.webp');
-    expect(indexHtml).not.toContain('first-visit-waves-landscape.webp');
+    const doc = new DOMParser().parseFromString(indexHtml, 'text/html');
+    const backgrounds = [...doc.querySelectorAll('link[data-first-visit-background]')];
+    expect(backgrounds).toHaveLength(2);
+    expect(backgrounds.map((link) => link.getAttribute('media'))).toEqual(['not all', 'not all']);
+    expect(backgrounds.map((link) => link.getAttribute('data-first-visit-media'))).toEqual(['(width < 48em)', '(width >= 48em)']);
+    const viewportCss = readWorkspaceFile('apps/web/src/shared/ui/design-system/firstVisitViewport.css');
+    expect(viewportCss).toContain('@media (width >= 48em)');
+    expect(viewportCss).toContain('first-visit-waves-landscape.webp');
+    expect(readWorkspaceFile('apps/web/src/features/FirstVisit/ui/FirstVisitDocument.css')).not.toContain('@container');
   });
 
   it('loads Google APIs only from the Drive feature', () => {
@@ -70,7 +77,7 @@ describe('startup performance contracts', () => {
   it('keeps the Cloudflare module beacon from delaying page lifecycle', () => {
     const indexHtml = readWorkspaceFile('apps/web/index.html');
     const beaconTag = indexHtml.match(/<script[^>]+cloudflareinsights\.com\/beacon\.min\.js[^>]*>/)?.[0];
-    const appEntryTag = indexHtml.match(/<script[^>]+src=["']\/src\/app\/main\.tsx["'][^>]*>/)?.[0];
+    const appEntryTag = indexHtml.match(/<script[^>]+src=["']\/src\/app\/bootstrap\.ts["'][^>]*>/)?.[0];
 
     expect(beaconTag).toBeUndefined();
     expect(indexHtml).toContain("window.addEventListener('load'");

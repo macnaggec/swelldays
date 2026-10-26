@@ -23,6 +23,11 @@ export function createFirstVisitBootstrapPlugin(webDirectory: string): Plugin {
             intent: resolveFirstVisitIntent(window.location.hash, window.location.search),
           });
           if (presentation === 'hidden') document.documentElement.setAttribute('data-first-visit-startup', 'app');
+          if (presentation === 'intro') {
+            document.querySelectorAll('link[data-first-visit-preload]').forEach((link) => {
+              link.setAttribute('media', link.getAttribute('data-first-visit-media') ?? 'all');
+            });
+          }
         `, 'first-visit-bootstrap.ts', { loader: 'ts', format: 'iife', minify: true, target: 'es2018' });
         return [{ tag: 'script', attrs: { 'data-first-visit-bootstrap': '' }, children: code, injectTo: 'head' }];
       },

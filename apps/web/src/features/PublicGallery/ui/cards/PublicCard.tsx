@@ -55,6 +55,7 @@ export interface PublicCardProps {
    * divider already labels.
    */
   dense?: boolean;
+  imageLoading?: 'eager' | 'lazy';
 }
 
 /**
@@ -131,6 +132,7 @@ const PublicCard: FC<PublicCardProps> = memo(({
   showOwnerBadge = false,
   showPurchasedBadge = false,
   dense = false,
+  imageLoading,
 }) => {
   const handleClick = useCallback(() => {
     onCardClick?.(mediaItem.id);
@@ -205,6 +207,7 @@ const PublicCard: FC<PublicCardProps> = memo(({
   return (
     <BaseCard
       imageUrl={mediaItem.thumbnailUrl}
+      imageLoading={imageLoading}
       resourceType={mediaItem.type === 'VIDEO' ? 'video' : 'image'}
       alt={`Surf ${mediaItem.type === 'VIDEO' ? 'video' : 'photo'} from ${formatCapturedAtDate(mediaItem.capturedAt)}`}
       onClick={onCardClick ? handleClick : undefined}

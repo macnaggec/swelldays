@@ -4,6 +4,7 @@ import React, { FC, ReactNode, memo, useState } from 'react';
 import { Box } from '@mantine/core';
 import { IconPlayerPlay, IconPhotoOff } from '@tabler/icons-react';
 import classes from './BaseCard.module.css';
+import { useAppVisibility } from 'shared/model/appVisibility';
 
 /**
  * Props for BaseCard component
@@ -11,6 +12,7 @@ import classes from './BaseCard.module.css';
 export interface BaseCardProps {
   /** Image URL (JPEG poster frame for videos, thumbnail for images) */
   imageUrl: string;
+  imageLoading?: 'eager' | 'lazy';
 
   /**
    * Local video source to paint as the cover while imageUrl is still empty (e.g. a video
@@ -71,6 +73,7 @@ export interface BaseCardProps {
  */
 const BaseCard: FC<BaseCardProps> = memo(({
   imageUrl,
+  imageLoading = 'eager',
   videoPreviewUrl,
   resourceType,
   alt = 'Media',
@@ -83,6 +86,7 @@ const BaseCard: FC<BaseCardProps> = memo(({
   onBrokenChange,
   onLoad,
 }) => {
+  const visible = useAppVisibility();
   // Track the url that failed to load rather than a bare boolean, so a memoized card reused
   // for a different item (virtualized grids) doesn't carry a stale failure onto a good image.
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
@@ -116,7 +120,9 @@ const BaseCard: FC<BaseCardProps> = memo(({
           </div>
         ) : (
           <img
-            src={imageUrl}
+            src={visible ? imageUrl : undefined}
+            loading={imageLoading}
+            decoding="async"
             alt={alt}
             className={classes.nativeMedia}
             onLoad={onLoad}
@@ -126,7 +132,7 @@ const BaseCard: FC<BaseCardProps> = memo(({
       ) : (
         resourceType === 'video' && videoPreviewUrl && (
           <video
-            src={videoPreviewUrl}
+            src={visible ? videoPreviewUrl : undefined}
             className={classes.nativeMedia}
             muted
             playsInline

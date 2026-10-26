@@ -35,6 +35,7 @@ import {
 } from './layerStyles';
 
 import classes from './GlobeMap.module.css';
+import { classifyMapLoadFailure, type MapLoadFailure } from './model/mapLoadFailure';
 
 const MAPBOX_TOKEN = webConfig.mapboxAccessToken;
 if (!MAPBOX_TOKEN) throw new Error('Missing VITE_MAPBOX_ACCESS_TOKEN');
@@ -75,7 +76,7 @@ export interface GlobeMapProps {
   onUserExploreEnd?: () => void;
   /** Reports that Mapbox has completed its initial visual load. */
   onMapReady?: () => void;
-  onMapError?: () => void;
+  onMapError?: (failure: MapLoadFailure) => void;
   /** Reports the start of genuine camera movement, excluding clicks and pointer-down alone. */
   onCameraGestureStart?: () => void;
   /** Feature-owned content (e.g. a favorite toggle) rendered in the selected-spot popup — GlobeMap stays feature-agnostic. */
@@ -397,7 +398,12 @@ export function GlobeMapComponent({
         projection={{ name: 'globe' as any }}
         fog={globeFog}
         onLoad={handleLoad}
-        onError={() => { if (!mapInstanceRef.current) onMapError?.(); }}
+        onError={(event) => {
+          if (mapInstanceRef.current) return;
+          const failure = classifyMapLoadFailure(event.error);
+          // react-map-gl uses a null target when constructing Mapbox itself failed.
+          onMapError?.({ ...failure, fatal: event.target === null || failure.fatal });
+        }}
         onClick={isCoordinatePickerActive ? handleCoordinateClick : (acceptsSpotInteraction ? onSpotClick : undefined)}
         onDragStart={acceptsCameraGestures ? handleCameraGestureStart : undefined}
         onDragEnd={acceptsCameraGestures ? handleUserInteractionEnd : undefined}

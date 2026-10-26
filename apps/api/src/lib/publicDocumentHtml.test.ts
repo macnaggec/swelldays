@@ -12,7 +12,7 @@ describe('semantic initial documents', () => {
     expect(html.match(/id="root"/g)).toHaveLength(1);
     expect(html.match(/<h1>/g)).toHaveLength(1);
     expect(html).not.toContain('<div data-bootstrap-shell');
-    expect(html).toContain('src="/src/app/main.tsx"');
+    expect(html).toContain('src="/src/app/bootstrap.ts"');
     for (const section of document.sections) expect(html).toContain(section.text);
     expect(html.indexOf('<article')).toBeGreaterThan(html.indexOf('id="root"'));
   });

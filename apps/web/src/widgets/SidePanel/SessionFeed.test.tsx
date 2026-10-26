@@ -3,19 +3,21 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppShellLayoutPolicyProvider } from 'shared/model/appShellPresentation';
 import { SessionFeed } from './SessionFeed';
+import { AppVisibilityContext } from 'shared/model/appVisibility';
 
 const mocks = vi.hoisted(() => ({
   isLoading: false,
   isError: false,
   refetch: vi.fn(),
+  sessionCount: 1,
 }));
 
 vi.mock('entities/SurfSession', () => ({
   useSessionFeed: () => ({
     data: {
       pages: [{
-        items: [{
-          id: 'session-1',
+        items: Array.from({ length: mocks.sessionCount }, (_, index) => ({
+          id: `session-${index + 1}`,
           spotId: 'spot-1',
           photographerId: 'photographer-1',
           startsAt: new Date('2026-06-24T06:00:00.000Z'),
@@ -26,7 +28,7 @@ vi.mock('entities/SurfSession', () => ({
           photographer: { id: 'photographer-1', name: 'Kai' },
           thumbnailUrl: 'https://example.com/session.jpg',
           mediaCount: 1,
-        }],
+        })),
         nextCursor: null,
       }],
     },
@@ -44,6 +46,21 @@ describe('SessionFeed', () => {
     mocks.isLoading = false;
     mocks.isError = false;
     mocks.refetch.mockClear();
+    mocks.sessionCount = 1;
+  });
+
+  it('requests only the visible feed and prioritizes its first thumbnail', () => {
+    mocks.sessionCount = 2;
+    const feed = (visible: boolean) => <MantineProvider><AppShellLayoutPolicyProvider routeIntent="browse" browseExpanded={false} galleryExpanded={false}><AppVisibilityContext.Provider value={visible}><SessionFeed /></AppVisibilityContext.Provider></AppShellLayoutPolicyProvider></MantineProvider>;
+    const { container, rerender } = render(feed(false));
+    expect(container.querySelectorAll('img[src]')).toHaveLength(0);
+    rerender(feed(true));
+    const images = container.querySelectorAll('img');
+    expect(images).toHaveLength(2);
+    expect(images[0]).toHaveAttribute('loading', 'eager');
+    expect(images[0]).toHaveAttribute('fetchpriority', 'high');
+    expect(images[1]).toHaveAttribute('loading', 'lazy');
+    expect(images[1]).not.toHaveAttribute('fetchpriority', 'high');
   });
 
   it('reports layout readiness only while real session cards are committed', () => {

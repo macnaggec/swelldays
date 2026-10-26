@@ -4,12 +4,13 @@ import { FIRST_VISIT_CONTENT as content } from '@swelldays/contracts/core';
 
 interface FirstVisitDocumentProps {
   onEnter?: MouseEventHandler<HTMLAnchorElement>;
+  resumed?: boolean;
 }
 
 /** The public document stays readable independently of auth and map readiness. */
-export function FirstVisitDocument({ onEnter }: FirstVisitDocumentProps) {
+export function FirstVisitDocument({ onEnter, resumed = false }: FirstVisitDocumentProps) {
   return (
-    <div data-first-visit-document>
+    <div data-first-visit-document data-first-visit-resumed={resumed || undefined}>
       <section data-first-visit-part="hero" id="intro" aria-labelledby="first-visit-title">
         <div data-first-visit-part="artwork" aria-hidden="true">
           <div data-first-visit-part="plate" />

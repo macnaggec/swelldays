@@ -1,0 +1,12 @@
+/* The public welcome fills the viewport before app containers exist. Keep its
+   viewport-owned presentation aligned with the HTML's 48em image preloads. */
+@media (width >= 48em) {
+  :is([data-first-visit-part='plate'], [data-first-visit-part='plateTrailing']) { background-image: url('../../../assets/startup/first-visit-waves-landscape.webp'); }
+  [data-first-visit-part='logo'] { top: calc(var(--wa-safe-area-top, 0px) + clamp(34px, 5.5cqh, 66px)); }
+  [data-first-visit-part='logoImage'] { width: clamp(168px, 19cqw, 268px); }
+  [data-first-visit-part='content'] { padding-inline: clamp(34px, 5cqw, 76px); }
+  [data-first-visit-part='title'] { font-size: clamp(34px, 5.6cqw, 82px); }
+  [data-first-visit-paths] { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 72px; }
+  [data-first-visit-path] h2 { font-size: 44px; }
+  [data-first-visit-description] { font-size: 17px; }
+}
